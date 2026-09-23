@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: trosky-api
+  namespace: trosky
+spec:
+  # At least 2 of >=3 replicas stay up through voluntary disruptions (node
+  # drains, cluster upgrades) — WebSocket tracking clients on a draining
+  # pod still get disconnected, but the API as a whole never goes fully
+  # dark for a rolling node upgrade.
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: trosky-api

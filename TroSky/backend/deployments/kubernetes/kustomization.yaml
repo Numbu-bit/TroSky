@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: trosky
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  # secret.example.yaml is deliberately NOT listed here — it is a
+  # documentation template, not something `kubectl apply -k` should ever
+  # apply. Provision the real `trosky-backend-secrets` Secret via your
+  # cluster's secret manager integration instead (see that file's header).
+  - api-deployment.yaml
+  - api-service.yaml
+  - api-hpa.yaml
+  - api-pdb.yaml
+  - worker-deployment.yaml
+  - worker-hpa.yaml
+  - worker-pdb.yaml
+  - scheduler-deployment.yaml
+  - ingress.yaml
+  - networkpolicy.yaml
+  # migration-job.yaml is intentionally NOT listed here either — it's a
+  # one-shot, per-release resource applied as its own explicit pipeline
+  # step (`kubectl apply -f migration-job.yaml`), not part of the
+  # steady-state manifest set `kustomize build` produces.
+
+images:
+  - name: ghcr.io/trosky/backend
+    newTag: REPLACE_WITH_IMAGE_TAG

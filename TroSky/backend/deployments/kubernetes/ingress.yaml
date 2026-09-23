@@ -1,0 +1,33 @@
+# Written against ingress-nginx; adjust annotations if the cluster uses a
+# different controller. `proxy-read-timeout`/`proxy-send-timeout` are
+# raised well above nginx's 60s default because `/api/v1/ws/trips/*/track`
+# is a long-lived WebSocket connection, not a normal request/response call.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: trosky-api
+  namespace: trosky
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-production
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m" # matches MAX_REQUEST_BODY_BYTES headroom
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.trosky.africa
+      secretName: trosky-api-tls
+  rules:
+    - host: api.trosky.africa
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: trosky-api
+                port:
+                  name: http

@@ -1,0 +1,47 @@
+# Non-secret configuration only. Anything sensitive (SECRET_KEY,
+# DATABASE_URL with credentials, PAYMENTS_WEBHOOK_SIGNING_SECRET,
+# TICKET_QR_SIGNING_SECRET, provider API keys, ...) belongs in `secret.yaml`
+# (or better, a real secret manager — see that file's own header) and is
+# never placed here.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trosky-backend-config
+  namespace: trosky
+data:
+  APP_ENV: "production"
+  APP_NAME: "TroSky Backend"
+  DEBUG: "false"
+  API_PREFIX: "/api/v1"
+  TIMEZONE_DISPLAY: "Africa/Accra"
+  JWT_SIGNING_ALGORITHM: "HS256"
+  JWT_ISSUER: "trosky.africa"
+  JWT_AUDIENCE: "trosky-mobile-clients"
+  ACCESS_TOKEN_TTL_SECONDS: "900"
+  REFRESH_TOKEN_TTL_SECONDS: "2592000"
+  DATABASE_POOL_SIZE: "10"
+  DATABASE_MAX_OVERFLOW: "20"
+  REDIS_MAX_CONNECTIONS: "50"
+  S3_REGION: "eu-west-1"
+  S3_USE_SSL: "true"
+  EMAIL_PROVIDER: "ses"
+  SMS_PROVIDER: "hubtel"
+  PAYMENTS_ACTIVE_PROVIDER: "sandbox" # flip to a real provider only once its adapter is verified — see app/providers/payments/unavailable.py
+  MAPS_PROVIDER: "local"
+  CORS_ALLOWED_ORIGINS: "https://app.trosky.africa"
+  TRUSTED_HOSTS: "api.trosky.africa"
+  LOG_LEVEL: "INFO"
+  LOG_JSON: "true"
+  OTEL_ENABLED: "true"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4318"
+  OTEL_SERVICE_NAME: "trosky-backend"
+  METRICS_ENABLED: "true"
+  EXPOSE_HEALTH_DETAILS: "false"
+  SEAT_RESERVATION_HOLD_SECONDS: "600"
+  DRIVER_EARNINGS_SHARE_PERCENT: "80.00"
+  MIN_WITHDRAWAL_AMOUNT_GHS: "10.00"
+  GPS_UPDATE_MIN_INTERVAL_SECONDS: "5"
+  GPS_STALE_THRESHOLD_SECONDS: "30"
+  GPS_MAX_PLAUSIBLE_SPEED_KMH: "140"
+  GPS_RAW_RETENTION_DAYS: "30"
+  RATE_LIMIT_DEFAULT_PER_MINUTE: "60"

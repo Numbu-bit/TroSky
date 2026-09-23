@@ -1,0 +1,71 @@
+# Celery beat must run as exactly one instance — two beat processes would
+# each independently fire every scheduled task (seat-hold expiry, payment
+# reconciliation, GPS purge), double-processing everything. `replicas: 1`
+# is therefore load-bearing, not a placeholder default; if this pod dies,
+# scheduled tasks simply pause until Kubernetes restarts it (a `Recreate`
+# strategy, not `RollingUpdate`, so there's never a moment with two beats
+# running during a rollout).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trosky-scheduler
+  namespace: trosky
+  labels:
+    app.kubernetes.io/name: trosky-scheduler
+    app.kubernetes.io/component: scheduler
+spec:
+  replicas: 1
+  revisionHistoryLimit: 5
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: trosky-scheduler
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: trosky-scheduler
+        app.kubernetes.io/component: scheduler
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: scheduler
+          image: ghcr.io/trosky/backend:REPLACE_WITH_IMAGE_TAG
+          imagePullPolicy: IfNotPresent
+          command:
+            - celery
+            - -A
+            - app.workers.celery_app
+            - beat
+            - --loglevel=info
+          envFrom:
+            - configMapRef:
+                name: trosky-backend-config
+            - secretRef:
+                name: trosky-backend-secrets
+          env:
+            - name: SERVICE_ROLE
+              value: scheduler
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      terminationGracePeriodSeconds: 15

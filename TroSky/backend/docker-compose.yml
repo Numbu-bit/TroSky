@@ -1,0 +1,162 @@
+name: trosky
+
+x-app-env: &app-env
+  APP_ENV: development
+  DEBUG: "true"
+  SECRET_KEY: dev-only-secret-key-please-change-32chars
+  JWT_SECRET_KEY: dev-only-jwt-secret-key-please-change-32
+  PAYMENTS_WEBHOOK_SIGNING_SECRET: dev-only-webhook-secret-please-change-32
+  TICKET_QR_SIGNING_SECRET: dev-only-ticket-secret-please-change-32
+  DATABASE_URL: postgresql+asyncpg://trosky:trosky@postgres:5432/trosky
+  DATABASE_URL_SYNC: postgresql+psycopg://trosky:trosky@postgres:5432/trosky
+  REDIS_URL: redis://redis:6379/0
+  CELERY_BROKER_URL: redis://redis:6379/1
+  CELERY_RESULT_BACKEND: redis://redis:6379/2
+  S3_ENDPOINT: http://minio:9000
+  S3_BUCKET: trosky-documents
+  S3_ACCESS_KEY: trosky-minio-admin
+  S3_SECRET_KEY: dev-only-minio-secret-please-change
+  EMAIL_PROVIDER: smtp
+  EMAIL_SMTP_HOST: mailhog
+  EMAIL_SMTP_PORT: "1025"
+  CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:19006
+  TRUSTED_HOSTS: localhost,127.0.0.1,api
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: trosky
+      POSTGRES_PASSWORD: trosky
+      POSTGRES_DB: trosky
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trosky -d trosky"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:RELEASE.2024-10-13T13-34-11Z
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: trosky-minio-admin
+      MINIO_ROOT_PASSWORD: dev-only-minio-secret-please-change
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web UI
+
+  api:
+    build:
+      context: .
+      target: runtime
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      SERVICE_ROLE: api
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        pip install -e .[dev] >/dev/null 2>&1 || true
+        python -m scripts.wait_for_services &&
+        alembic upgrade head &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app/app
+      - ./alembic:/app/alembic
+      - ./tests:/app/tests
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  worker:
+    build:
+      context: .
+      target: runtime
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      SERVICE_ROLE: worker
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        pip install -e .[dev] >/dev/null 2>&1 || true
+        python -m scripts.wait_for_services &&
+        celery -A app.workers.celery_app worker --loglevel=info --concurrency=4
+    volumes:
+      - ./app:/app/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  scheduler:
+    build:
+      context: .
+      target: runtime
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      SERVICE_ROLE: scheduler
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        pip install -e .[dev] >/dev/null 2>&1 || true
+        python -m scripts.wait_for_services &&
+        celery -A app.workers.celery_app beat --loglevel=info
+    volumes:
+      - ./app:/app/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:

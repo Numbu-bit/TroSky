@@ -1,0 +1,106 @@
+# Default-deny plus explicit allows. Namespace label selectors
+# (`kubernetes.io/metadata.name: ingress-nginx`, `...: kube-system`) match
+# common cluster conventions but are cluster-specific — verify against the
+# actual ingress controller / DNS namespace labels before applying.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: trosky-default-deny
+  namespace: trosky
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: trosky-api-allow-ingress
+  namespace: trosky
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: trosky-api
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: trosky-allow-dns-egress
+  namespace: trosky
+spec:
+  podSelector: {}
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+# api/worker/scheduler all need to reach: the managed Postgres (5432),
+# managed Redis (6379), and external HTTPS (443) for S3/SES/SMS/MTN
+# MoMo/Firebase/OTel-collector-if-external. A managed database/cache
+# outside the cluster has no in-cluster pod selector to target, so this
+# rule is intentionally broad on port 443/5432/6379 rather than scoped to
+# specific IPs — tighten with `ipBlock` CIDRs once the managed instances'
+# addresses are known and stable.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: trosky-allow-external-egress
+  namespace: trosky
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values: [trosky-api, trosky-worker, trosky-scheduler, trosky-migrate]
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 6379
+---
+# api -> worker/scheduler don't call each other directly (Redis/Postgres
+# are the only shared state), but api, worker, and scheduler all need to
+# reach the in-cluster OTel collector if one is deployed instead of an
+# external endpoint.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: trosky-allow-otel-egress
+  namespace: trosky
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values: [trosky-api, trosky-worker, trosky-scheduler]
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+      ports:
+        - protocol: TCP
+          port: 4318

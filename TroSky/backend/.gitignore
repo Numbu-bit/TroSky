@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+# Any other local interpreter directory. CI runs `ruff check .` and
+# `ruff format --check .` over the whole tree, so an un-ignored venv
+# puts third-party scripts through the project's own lint gate.
+.venv*/
+venv*/
+env/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Testing / QA
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Alembic (keep versions, ignore local sqlite artifacts if any)
+*.sqlite3
+
+# Docker volumes / local data
+minio_data/
+postgres_data/

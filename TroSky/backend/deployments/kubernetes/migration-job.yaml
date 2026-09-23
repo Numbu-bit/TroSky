@@ -1,0 +1,59 @@
+# A one-shot pre-deploy step: `kubectl apply -f migration-job.yaml` (or a
+# CI/CD pipeline step that does the same) as part of a release, before
+# rolling the api/worker/scheduler Deployments to the new image — never
+# run implicitly by application pods on startup (see api-deployment.yaml's
+# comment for why: N replicas racing `alembic upgrade head` concurrently
+# is exactly the failure mode a dedicated Job avoids). The Job name
+# includes a templated tag so re-running a release doesn't collide with a
+# completed Job of the same name (Jobs are immutable once created).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: trosky-migrate-REPLACE_WITH_IMAGE_TAG
+  namespace: trosky
+  labels:
+    app.kubernetes.io/name: trosky-migrate
+    app.kubernetes.io/component: migration
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 600
+  ttlSecondsAfterFinished: 86400 # auto-cleaned a day later; kept briefly for `kubectl logs` debugging
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: trosky-migrate
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: migrate
+          image: ghcr.io/trosky/backend:REPLACE_WITH_IMAGE_TAG
+          imagePullPolicy: IfNotPresent
+          command: ["alembic", "upgrade", "head"]
+          envFrom:
+            - configMapRef:
+                name: trosky-backend-config
+            - secretRef:
+                name: trosky-backend-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
