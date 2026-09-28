@@ -17,7 +17,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -255,9 +255,9 @@ class PaymentRepository:
         if status is not None:
             stmt = stmt.where(RefundRequest.status == status)
         count_result = await self._session.execute(
-            select(RefundRequest.id).select_from(stmt.subquery())
+            select(func.count()).select_from(stmt.subquery())
         )
-        total = len(count_result.scalars().all())
+        total = count_result.scalar_one()
         result = await self._session.execute(
             stmt.order_by(RefundRequest.created_at.desc()).limit(limit).offset(offset)
         )
@@ -323,9 +323,9 @@ class PaymentRepository:
         if status is not None:
             stmt = stmt.where(WithdrawalRequest.status == status)
         count_result = await self._session.execute(
-            select(WithdrawalRequest.id).select_from(stmt.subquery())
+            select(func.count()).select_from(stmt.subquery())
         )
-        total = len(count_result.scalars().all())
+        total = count_result.scalar_one()
         result = await self._session.execute(
             stmt.order_by(WithdrawalRequest.created_at.desc()).limit(limit).offset(offset)
         )

@@ -15,6 +15,7 @@ from fastapi import Depends, Request
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
 
+from app.core.client_ip import resolve_client_ip
 from app.core.config import get_settings
 from app.core.exceptions import RateLimitExceededError
 from app.core.logging import get_logger
@@ -77,15 +78,17 @@ class RateLimiter:
 
 def _client_identifier(request: Request) -> str:
     """Prefer an authenticated principal if resolved upstream; otherwise the
-    client IP (respecting a trusted reverse-proxy's X-Forwarded-For)."""
+    client IP.
+
+    ``X-Forwarded-For`` is believed only from ``TRUSTED_PROXY_CIDRS`` (see
+    ``app.core.client_ip``). Taking it from anyone, as this once did, let a
+    client dodge every limit by sending a fresh made-up address per request.
+    """
     principal = getattr(request.state, "principal", None)
     if principal is not None:
         return f"user:{principal.user_id}"
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return f"ip:{forwarded.split(',')[0].strip()}"
-    client_host = request.client.host if request.client else "unknown"
-    return f"ip:{client_host}"
+    client_ip = resolve_client_ip(request, get_settings().trusted_proxy_networks)
+    return f"ip:{client_ip or 'unknown'}"
 
 
 def rate_limit(

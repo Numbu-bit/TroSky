@@ -41,9 +41,26 @@ class TestClientIdentifier:
         request = self._request(principal=principal)
         assert _client_identifier(request) == f"user:{principal.user_id}"
 
-    def test_falls_back_to_forwarded_for_header(self) -> None:
+    def test_ignores_forwarded_for_from_an_untrusted_peer(self) -> None:
+        """This used to return ``ip:9.9.9.9`` -- the address the *client*
+        wrote -- which let anyone dodge a limit by varying the header. With
+        no trusted proxies configured, the TCP peer is the client."""
         request = self._request(headers={"x-forwarded-for": "9.9.9.9, 1.1.1.1"})
-        assert _client_identifier(request) == "ip:9.9.9.9"
+        assert _client_identifier(request) == "ip:1.2.3.4"
+
+    def test_believes_forwarded_for_from_a_trusted_proxy(self, monkeypatch) -> None:
+        """Behind our own proxy, the hop it appended identifies the client --
+        not the leftmost entry, which the client controls."""
+        import ipaddress
+
+        monkeypatch.setattr(
+            "app.core.ratelimit.get_settings",
+            lambda: SimpleNamespace(trusted_proxy_networks=[ipaddress.ip_network("10.0.0.0/8")]),
+        )
+        request = self._request(
+            headers={"x-forwarded-for": "9.9.9.9, 198.51.100.7"}, client_host="10.1.2.3"
+        )
+        assert _client_identifier(request) == "ip:198.51.100.7"
 
     def test_falls_back_to_client_host(self) -> None:
         request = self._request(client_host="5.5.5.5")

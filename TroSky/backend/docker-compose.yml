@@ -19,6 +19,12 @@ x-app-env: &app-env
   EMAIL_PROVIDER: smtp
   EMAIL_SMTP_HOST: mailhog
   EMAIL_SMTP_PORT: "1025"
+  # Codes go by email (read them in MailHog at http://localhost:8025);
+  # new accounts need a Gmail address and must verify before logging in.
+  OTP_DELIVERY_CHANNEL: email
+  REGISTRATION_EMAIL_DOMAINS: gmail.com,googlemail.com
+  OTP_SEND_IN_BACKGROUND: "true"
+  REQUIRE_VERIFIED_ACCOUNT: "true"
   CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:19006
   TRUSTED_HOSTS: localhost,127.0.0.1,api
 

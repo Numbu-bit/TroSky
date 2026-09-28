@@ -120,9 +120,9 @@ class ComplaintRepository:
         if status is not None:
             stmt = stmt.where(Complaint.status == status)
         count_result = await self._session.execute(
-            select(Complaint.id).select_from(stmt.subquery())
+            select(func.count()).select_from(stmt.subquery())
         )
-        total = len(count_result.scalars().all())
+        total = count_result.scalar_one()
         result = await self._session.execute(
             stmt.order_by(Complaint.created_at.desc()).limit(limit).offset(offset)
         )

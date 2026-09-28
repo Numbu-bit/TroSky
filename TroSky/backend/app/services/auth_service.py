@@ -11,11 +11,14 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 from redis.asyncio import Redis
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.background import run_in_background
 from app.core.config import Settings, get_settings
 from app.core.exceptions import (
     AccountLockedError,
+    AccountNotVerifiedError,
     AccountSuspendedError,
     ConflictError,
     InvalidCredentialsError,
@@ -23,6 +26,7 @@ from app.core.exceptions import (
     PasswordResetTokenInvalidError,
     TokenReuseDetectedError,
     UnauthorizedError,
+    ValidationAppError,
 )
 from app.core.logging import get_logger
 from app.core.security import (
@@ -39,11 +43,11 @@ from app.models.identity import OtpChannel, OtpPurpose, User, UserSession
 from app.providers.email.base import EmailProvider
 from app.providers.sms.base import SmsProvider
 from app.repositories.otp_repository import OtpRepository
-from app.repositories.profile_repository import NotificationPreferenceRepository
+from app.repositories.profile_repository import DeviceRepository, NotificationPreferenceRepository
 from app.repositories.session_repository import SessionRepository
 from app.repositories.user_repository import DuplicateUserError, UserRepository
 from app.schemas.auth import DeviceContext, RegisterRequest, TokenPairResponse
-from app.services.otp_service import OtpService
+from app.services.otp_service import OtpService, normalize_otp_target
 from app.utilities.password_policy import PasswordPolicyError, validate_password_policy
 from app.utilities.phone import InvalidPhoneNumberError, normalize_phone_number
 
@@ -67,7 +71,57 @@ class AuthService:
         self._sessions = SessionRepository(session)
         self._otp_repo = OtpRepository(session)
         self._notification_prefs = NotificationPreferenceRepository(session)
+        self._devices = DeviceRepository(session)
         self._otp = OtpService(session, redis, sms_provider, email_provider, self._settings)
+
+    @property
+    def _codes_by_email(self) -> bool:
+        """Whether verification codes go by email rather than SMS."""
+        return self._settings.OTP_DELIVERY_CHANNEL == "email"
+
+    def _verification_target(self, user: User) -> str:
+        """Where a new registration code for ``user`` would be sent."""
+        if self._codes_by_email and user.email is not None:
+            return user.email
+        return user.phone_number
+
+    def _check_registration_email(self, email: str | None) -> None:
+        """Refuse a registration whose email address is missing, or is on a
+        domain new accounts may not use (``REGISTRATION_EMAIL_DOMAINS``)."""
+        allowed = self._settings.registration_email_domains
+        domains = " or ".join(f"@{domain}" for domain in sorted(allowed))
+        if email is None:
+            if allowed:
+                raise ValidationAppError(
+                    f"An email address ending in {domains} is required to register.",
+                    code="EMAIL_REQUIRED",
+                    details={"allowed_domains": sorted(allowed)},
+                )
+            if self._codes_by_email:
+                raise ValidationAppError(
+                    "An email address is required: verification codes are sent by email.",
+                    code="EMAIL_REQUIRED",
+                )
+            return
+        if allowed and email.rpartition("@")[2].lower() not in allowed:
+            raise ValidationAppError(
+                f"Please register with an email address ending in {domains}.",
+                code="EMAIL_DOMAIN_NOT_ALLOWED",
+                details={"allowed_domains": sorted(allowed)},
+            )
+
+    def _code_channel(self, purpose: OtpPurpose, requested: OtpChannel) -> OtpChannel:
+        """The channel a code for ``purpose`` is actually sent by.
+
+        A code verifying the email must go to the email and one verifying
+        the phone to the phone, whatever was asked for -- otherwise one
+        could vouch for the other.
+        """
+        if purpose == OtpPurpose.EMAIL_VERIFICATION:
+            return OtpChannel.EMAIL
+        if purpose == OtpPurpose.PHONE_VERIFICATION:
+            return OtpChannel.SMS
+        return OtpChannel.EMAIL if self._codes_by_email else requested
 
     # ------------------------------------------------------------------
     # Registration
@@ -81,6 +135,7 @@ class AuthService:
                 code="PASSWORD_POLICY_VIOLATION",
                 details={"violations": exc.violations},
             ) from None
+        self._check_registration_email(request.email)
 
         if await self._users.get_by_phone(request.phone_number) is not None:
             raise ConflictError(
@@ -120,65 +175,110 @@ class AuthService:
         await self._users.assign_role(user.id, role.id)
         await self._notification_prefs.create_default(user.id)
 
-        await self._otp.request_otp(
-            target=user.phone_number,
-            channel=OtpChannel.SMS,
-            purpose=OtpPurpose.REGISTRATION,
-            user_id=user.id,
-        )
+        if self._codes_by_email and user.email is not None:
+            # The one code goes to the email address; verifying it verifies
+            # that address. If it cannot be sent the registration fails and
+            # rolls back, as it would for an undeliverable SMS.
+            await self._otp.request_otp(
+                target=user.email,
+                channel=OtpChannel.EMAIL,
+                purpose=OtpPurpose.REGISTRATION,
+                user_id=user.id,
+            )
+            otp_target = user.email
+        else:
+            await self._otp.request_otp(
+                target=user.phone_number,
+                channel=OtpChannel.SMS,
+                purpose=OtpPurpose.REGISTRATION,
+                user_id=user.id,
+            )
+            otp_target = user.phone_number
 
-        if user.email is not None:
-            # Best-effort: the phone number is the account's verified
-            # identity (see RegisterResponse), so a mail-transport failure
-            # must not roll back an otherwise completed registration. The
-            # savepoint keeps a failed challenge insert from poisoning the
-            # request's outer transaction. The caller can always re-request
-            # this code via POST /auth/resend-otp.
-            try:
-                async with self._session.begin_nested():
-                    await self._otp.request_otp(
-                        target=user.email,
-                        channel=OtpChannel.EMAIL,
-                        purpose=OtpPurpose.EMAIL_VERIFICATION,
-                        user_id=user.id,
+            if user.email is not None:
+                # Best-effort: the phone number is the account's verified
+                # identity (see RegisterResponse), so a mail-transport failure
+                # must not roll back an otherwise completed registration. The
+                # savepoint keeps a failed challenge insert from poisoning the
+                # request's outer transaction. The caller can always re-request
+                # this code via POST /auth/resend-otp.
+                try:
+                    async with self._session.begin_nested():
+                        await self._otp.request_otp(
+                            target=user.email,
+                            channel=OtpChannel.EMAIL,
+                            purpose=OtpPurpose.EMAIL_VERIFICATION,
+                            user_id=user.id,
+                        )
+                except Exception:
+                    logger.warning(
+                        "registration_email_otp_failed", user_id=str(user.id), exc_info=True
                     )
-            except Exception:
-                logger.warning("registration_email_otp_failed", user_id=str(user.id), exc_info=True)
 
         logger.info("user_registered", user_id=str(user.id), role=request.role.value)
-        return user, user.phone_number
+        return user, otp_target
 
     async def verify_otp(self, target: str, purpose: OtpPurpose, code: str) -> User | None:
         """Verify an OTP for ``purpose`` and apply the associated side effect.
 
-        ``registration`` / ``phone_verification`` mark the account's phone
-        number verified; ``email_verification`` marks the email verified.
-        ``login`` / ``password_reset`` have no side effect here — those
-        flows call :meth:`OtpService.verify_otp` directly as part of a
-        larger operation (issuing tokens, generating a reset token).
+        ``registration`` marks verified whichever contact the code was
+        delivered to -- the phone by SMS, or the email address when codes go
+        by email. ``phone_verification`` / ``email_verification`` mark the
+        phone / email verified. ``login`` / ``password_reset`` have no side
+        effect here — those flows call :meth:`OtpService.verify_otp`
+        directly as part of a larger operation (issuing tokens, generating
+        a reset token).
         """
-        await self._otp.verify_otp(target=target, purpose=purpose, code=code)
+        target = normalize_otp_target(target)
+        challenge = await self._otp.verify_otp(target=target, purpose=purpose, code=code)
 
-        if purpose in (OtpPurpose.REGISTRATION, OtpPurpose.PHONE_VERIFICATION):
-            user = await self._users.get_by_phone(target)
-            if user is None:
-                raise NotFoundError("No account found for this phone number.")
-            await self._users.mark_phone_verified(user)
-            return user
+        if purpose == OtpPurpose.REGISTRATION:
+            proves_email = challenge.channel == OtpChannel.EMAIL
+        elif purpose in (OtpPurpose.PHONE_VERIFICATION, OtpPurpose.EMAIL_VERIFICATION):
+            proves_email = purpose == OtpPurpose.EMAIL_VERIFICATION
+        else:
+            return None
 
-        if purpose == OtpPurpose.EMAIL_VERIFICATION:
-            user = await self._users.get_by_email(target)
-            if user is None:
-                raise NotFoundError("No account found for this email address.")
+        user = await self._resolve_user(target)
+        if user is None:
+            raise NotFoundError("No account found for this phone number or email.")
+        if proves_email:
             await self._users.mark_email_verified(user)
-            return user
-
-        return None
+        else:
+            await self._users.mark_phone_verified(user)
+        return user
 
     async def resend_otp(self, target: str, purpose: OtpPurpose, channel: OtpChannel) -> None:
+        """Send a new code to ``target`` -- only if it belongs to an account.
+
+        Every purpose this endpoint serves needs an existing account, so a
+        code for anyone else could never be used; sending it would only let
+        callers make TroSky pay for SMS to arbitrary numbers. The caller
+        still gets the same answer, cooldown included, so the endpoint does
+        not reveal which numbers are registered.
+
+        The code goes to the account's own phone or email, so it reaches the
+        user whichever identifier they typed. When codes go by email, an
+        account with no email address is sent nothing.
+        """
         user = await self._resolve_user(target)
+        if user is None:
+            await self._otp.hold_cooldown(target=target, purpose=purpose)
+            logger.info("otp_not_sent_no_account", purpose=purpose.value, channel=channel.value)
+            return
+
+        channel = self._code_channel(purpose, channel)
+        deliver_to = user.email if channel == OtpChannel.EMAIL else user.phone_number
+        if deliver_to is None:
+            await self._otp.hold_cooldown(target=target, purpose=purpose)
+            logger.warning("otp_not_sent_no_email", user_id=str(user.id), purpose=purpose.value)
+            return
         await self._otp.request_otp(
-            target=target, channel=channel, purpose=purpose, user_id=user.id if user else None
+            target=target,
+            channel=channel,
+            purpose=purpose,
+            user_id=user.id,
+            deliver_to=deliver_to,
         )
 
     # ------------------------------------------------------------------
@@ -217,6 +317,13 @@ class AuthService:
                 lockout_seconds=self._settings.LOGIN_LOCKOUT_SECONDS,
             )
             raise InvalidCredentialsError()
+        # Checked only once the password is right, so a stranger cannot learn
+        # whether an account has been verified.
+        if self._settings.REQUIRE_VERIFIED_ACCOUNT and not user.is_verified:
+            raise AccountNotVerifiedError(
+                "Verify your account with the code sent to you before logging in.",
+                details={"target": self._verification_target(user), "purpose": "registration"},
+            )
 
         await self._users.record_login_success(user)
         return await self._issue_token_pair(user, device, ip_address)
@@ -238,7 +345,13 @@ class AuthService:
             raise NotFoundError("No account found for this identifier.")
         self._assert_login_allowed(user)
 
-        await self._otp.verify_otp(target=target, purpose=OtpPurpose.LOGIN, code=code)
+        challenge = await self._otp.verify_otp(target=target, purpose=OtpPurpose.LOGIN, code=code)
+        # The code reached the user, which proves the contact it went to -- so
+        # this also completes an account that never finished verifying.
+        if challenge.channel == OtpChannel.EMAIL and user.email_verified_at is None:
+            await self._users.mark_email_verified(user)
+        elif challenge.channel == OtpChannel.SMS and user.phone_verified_at is None:
+            await self._users.mark_phone_verified(user)
         await self._users.record_login_success(user)
         return await self._issue_token_pair(user, device, ip_address)
 
@@ -252,8 +365,31 @@ class AuthService:
             ip_address=ip_address,
             user_agent=None,
         )
+        if device is not None:
+            await self._register_login_device(user.id, device)
         roles = await self._users.get_roles_for_user(user.id)
         return await self._issue_tokens_for_session(user.id, session_record.id, roles)
+
+    async def _register_login_device(self, user_id: uuid.UUID, device: DeviceContext) -> None:
+        """Record the push token the app sent with its login, as
+        ``POST /users/me/devices`` would.
+
+        Only when the app sent a token: saving the device without one would
+        wipe a token registered earlier. Best-effort -- a clash with a
+        concurrent login from the same device must not fail the login.
+        """
+        if not (device.device_id and device.platform and device.push_token):
+            return
+        try:
+            async with self._session.begin_nested():
+                await self._devices.upsert(
+                    user_id=user_id,
+                    device_id=device.device_id,
+                    platform=device.platform,
+                    push_token=device.push_token,
+                )
+        except IntegrityError:
+            logger.warning("login_device_registration_failed", user_id=str(user_id))
 
     async def _issue_tokens_for_session(
         self, user_id: uuid.UUID, session_id: uuid.UUID, roles: list[str]
@@ -355,6 +491,11 @@ class AuthService:
         if user is None:
             # Do not reveal whether an account exists.
             return
+        by_email = self._codes_by_email or "@" in identifier
+        if by_email and user.email is None:
+            # Codes go by email and this account has none: nothing to send.
+            logger.warning("password_reset_not_sent_no_email", user_id=str(user.id))
+            return
 
         raw_token = generate_opaque_token()
         await self._otp_repo.create_password_reset_token(
@@ -364,12 +505,23 @@ class AuthService:
             + timedelta(seconds=self._settings.PASSWORD_RESET_TOKEN_TTL_SECONDS),
         )
         message = f"Your TroSky password reset code is {raw_token}. It expires in 30 minutes."
-        if "@" in identifier:
-            await self._email_provider.send_email(
-                user.email or identifier, "Reset your TroSky password", message
-            )
+        # Plain values, not the ORM object: a background send runs after the
+        # request's session has closed.
+        email_to = user.email if by_email else None
+        phone_to = user.phone_number
+
+        async def deliver() -> None:
+            if email_to is not None:
+                await self._email_provider.send_email(
+                    email_to, "Reset your TroSky password", message
+                )
+            else:
+                await self._sms_provider.send_sms(phone_to, message)
+
+        if self._settings.OTP_SEND_IN_BACKGROUND:
+            run_in_background(deliver(), name="password-reset")
         else:
-            await self._sms_provider.send_sms(user.phone_number, message)
+            await deliver()
         logger.info("password_reset_requested", user_id=str(user.id))
 
     async def reset_password(self, raw_token: str, new_password: str) -> None:

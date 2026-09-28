@@ -279,7 +279,9 @@ class TripService:
                 changed_by=user_id,
                 reason="Trip completed",
             )
-            driver_share = (booking.total_amount * share_percent / Decimal("100")).quantize(
+            # A share of the fare only: total_amount also carries TroSky's
+            # platform fee, which is not the driver's to share in.
+            driver_share = (booking.fare_amount * share_percent / Decimal("100")).quantize(
                 Decimal("0.01")
             )
             if driver_share > 0:

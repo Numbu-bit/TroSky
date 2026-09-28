@@ -108,7 +108,9 @@ class TestTicketValidation:
             booking_id, requesting_user_id=passenger_id
         )
         token = ticket_service.get_qr_token(ticket)
-        await ticket_service.validate_qr(token, trip_id=trip_id, validated_by=uuid.uuid4())
+        await ticket_service.validate_qr(
+            token, trip_id=trip_id, validated_by=(await make_user()).id
+        )
 
         with pytest.raises(InvalidStateTransitionError):
             await ticket_service.validate_qr(token, trip_id=trip_id, validated_by=uuid.uuid4())
@@ -179,7 +181,9 @@ class TestTicketRevocation:
         )
         boarded_ticket = tickets[0]
         token = ticket_service.get_qr_token(boarded_ticket)
-        await ticket_service.validate_qr(token, trip_id=trip_id, validated_by=uuid.uuid4())
+        await ticket_service.validate_qr(
+            token, trip_id=trip_id, validated_by=(await make_user()).id
+        )
 
         booking_service = BookingService(db_session)
         await booking_service.cancel_booking(

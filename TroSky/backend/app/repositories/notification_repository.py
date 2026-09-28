@@ -6,7 +6,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.notifications import Notification, NotificationCategory
@@ -55,9 +55,9 @@ class NotificationRepository:
         if unread_only:
             stmt = stmt.where(Notification.is_read.is_(False))
         count_result = await self._session.execute(
-            select(Notification.id).select_from(stmt.subquery())
+            select(func.count()).select_from(stmt.subquery())
         )
-        total = len(count_result.scalars().all())
+        total = count_result.scalar_one()
         result = await self._session.execute(
             stmt.order_by(Notification.created_at.desc()).limit(limit).offset(offset)
         )

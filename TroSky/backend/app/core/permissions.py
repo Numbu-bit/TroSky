@@ -21,6 +21,7 @@ from enum import StrEnum
 from typing import Any
 
 from fastapi import Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.exceptions import ForbiddenError, UnauthorizedError
 
@@ -136,10 +137,22 @@ def require_self_or_roles(
     return _dependency
 
 
-async def get_current_principal() -> Principal:
+# The one bearer-token scheme every protected route declares -- here and
+# in the real ``app.api.auth_dependencies.get_current_principal``.
+bearer_scheme = HTTPBearer(auto_error=False, description="TroSky access token (JWT).")
+
+
+async def get_current_principal(
+    _credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+) -> Principal:
     """Placeholder resolved for real by ``app.api.dependencies.get_current_principal``
     once Phase 2 introduces session/JWT-backed authentication. Kept here so
     permission dependency factories have a stable import target from Phase 1
     onward; it always raises until overridden by the Phase 2 dependency.
+
+    It still declares the bearer token: OpenAPI is built from this signature,
+    not from the override, so without it routes guarded only by
+    ``require_roles``/``require_permissions`` were documented as public and
+    Swagger never sent them the token.
     """
     raise UnauthorizedError("Authentication is not yet configured for this route.")

@@ -102,13 +102,34 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      - name: Install pip-audit
-        run: pip install pip-audit
-      - name: Audit dependencies
-        run: pip-audit -r <(pip install -e . --dry-run --report - 2>/dev/null || true) || true
-      - name: Audit pyproject dependencies directly
-        run: pip-audit --requirement <(python -c "import tomllib,sys; d=tomllib.load(open('pyproject.toml','rb')); print('\n'.join(d['project']['dependencies']))")
-        continue-on-error: true
+
+      # Scanners need exact versions, but pyproject.toml holds ranges. Install
+      # the project the way it ships and pin whatever resolved, transitive
+      # dependencies included.
+      - name: Resolve runtime dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .
+          pip freeze --exclude-editable | grep -iv '^trosky-backend' > requirements.lock.txt
+          echo "Pinned $(wc -l < requirements.lock.txt) packages"
+
+      # Blocking gate: any HIGH or CRITICAL vulnerability that has a released
+      # fix fails the job, and so the pull request. Trivy rather than
+      # pip-audit because pip-audit cannot filter by severity. Unfixed
+      # advisories are excluded because no upgrade could clear them; they
+      # still appear in the image scan below. To accept a specific finding,
+      # add its ID with a justification to a .trivyignore file at the
+      # repository root -- a reviewed exception, never `|| true`.
+      - name: Fail on High/Critical vulnerabilities
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scan-ref: backend/requirements.lock.txt
+          scanners: vuln
+          severity: "CRITICAL,HIGH"
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
 
   build-image:
     name: Build & scan container image

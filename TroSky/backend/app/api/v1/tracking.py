@@ -10,18 +10,21 @@ or a holder of ``Permission.TRIPS_MONITOR_LIVE`` (ops/admin).
 
 from __future__ import annotations
 
+import asyncio
+import time
 import uuid
+from collections.abc import Awaitable, Callable
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, WebSocketException, status
+from redis.asyncio.client import PubSub
 
-from app.api.dependencies import CurrentPrincipal, TrackingServiceDep
+from app.api.dependencies import CurrentPrincipal, TrackingServiceDep, resolve_principal
 from app.core.config import get_settings
 from app.core.database import get_session_factory
-from app.core.exceptions import ForbiddenError, NotFoundError
+from app.core.exceptions import AppError, ForbiddenError, NotFoundError
 from app.core.logging import get_logger
 from app.core.permissions import Principal
 from app.core.redis import get_redis_client
-from app.core.security import TokenError, TokenType, decode_token
 from app.core.telemetry import ACTIVE_WEBSOCKET_CONNECTIONS
 from app.schemas.tracking import EtaResponse, LiveLocationResponse
 from app.services.tracking_service import TrackingService, channel_name
@@ -29,6 +32,9 @@ from app.services.tracking_service import TrackingService, channel_name
 logger = get_logger(__name__)
 
 router = APIRouter()
+
+# RFC 6455 caps a close frame's reason at 123 bytes.
+_MAX_CLOSE_REASON = 120
 
 
 @router.get("/trips/{trip_id}/location", response_model=LiveLocationResponse)
@@ -66,56 +72,102 @@ async def get_trip_eta(
     )
 
 
+async def authorize_trip_watcher(token: str | None, trip_id: uuid.UUID) -> Principal:
+    """Decide whether ``token`` may watch ``trip_id`` right now.
+
+    Runs exactly the check HTTP requests get (``resolve_principal``: token
+    signature and expiry, session revocation, account suspension) followed
+    by ``can_watch_trip``. Called at the handshake and again periodically
+    while the socket is open. Raises ``WebSocketException`` (1008) on refusal.
+    """
+    if not token:
+        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason="Missing token")
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        try:
+            principal = await resolve_principal(session, token)
+        except AppError as exc:
+            raise WebSocketException(
+                code=status.WS_1008_POLICY_VIOLATION, reason=exc.message[:_MAX_CLOSE_REASON]
+            ) from exc
+        service = TrackingService(session, get_redis_client(), get_settings())
+        if not await service.can_watch_trip(trip_id, principal):
+            raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason="Forbidden")
+    return principal
+
+
+async def relay_while_authorized(
+    websocket: WebSocket,
+    pubsub: PubSub,
+    *,
+    reauthorize: Callable[[], Awaitable[object]],
+    recheck_seconds: float,
+    poll_seconds: float = 1.0,
+) -> None:
+    """Forward published updates until the client leaves or loses access.
+
+    An HTTP request is re-authorized every time it is made; an open socket
+    never is, so without this loop a connection accepted once would stream
+    indefinitely -- past its token's expiry, a logout, or a suspension.
+    ``reauthorize`` runs every ``recheck_seconds`` and closes the socket
+    with its 1008 reason when it refuses.
+
+    A pending ``receive()`` watches for the client disconnecting, so a
+    silent drop ends the loop promptly rather than re-checking the database
+    on behalf of a connection that is already gone.
+    """
+    next_check = time.monotonic() + recheck_seconds
+    client = asyncio.ensure_future(websocket.receive())
+    try:
+        while True:
+            if client.done():
+                if client.exception() is not None:
+                    return
+                if client.result()["type"] == "websocket.disconnect":
+                    return
+                client = asyncio.ensure_future(websocket.receive())  # ignore client chatter
+            message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=poll_seconds)
+            if message is not None and message.get("type") == "message":
+                await websocket.send_text(message["data"])
+            if time.monotonic() >= next_check:
+                try:
+                    await reauthorize()
+                except WebSocketException as exc:
+                    await websocket.close(code=exc.code, reason=exc.reason)
+                    return
+                next_check = time.monotonic() + recheck_seconds
+    finally:
+        client.cancel()
+
+
 @router.websocket("/ws/trips/{trip_id}/track")
 async def track_trip(websocket: WebSocket, trip_id: uuid.UUID) -> None:
     """Streams live-location updates for one trip as they're published by
     ``TrackingService.record_location``.
 
     Browsers can't attach an ``Authorization`` header to a WebSocket
-    handshake, so the access token is passed as ``?token=...`` instead —
-    the standard fallback for this transport; the same JWT validation and
-    ``can_watch_trip`` authorization check apply as on the REST endpoints
-    above, just performed before ``accept()`` rather than via a FastAPI
-    dependency (which doesn't run for WebSocket routes).
+    handshake, so the access token is passed as ``?token=...`` instead --
+    the standard fallback for this transport. FastAPI dependencies don't run
+    for WebSocket routes, so ``authorize_trip_watcher`` applies the same
+    checks as ``get_current_principal`` plus ``can_watch_trip``: before
+    ``accept()``, and then every ``WS_AUTH_RECHECK_SECONDS`` for as long as
+    the socket stays open.
     """
     token = websocket.query_params.get("token")
-    if not token:
-        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason="Missing token")
-    try:
-        claims = decode_token(token, expected_type=TokenType.ACCESS)
-    except TokenError as exc:
-        raise WebSocketException(
-            code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token"
-        ) from exc
+    await authorize_trip_watcher(token, trip_id)
 
-    session_factory = get_session_factory()
     redis = get_redis_client()
-    async with session_factory() as session:
-        # A minimal, session-only Principal: WebSocket auth intentionally
-        # skips the full session-revocation/role-refresh lookup
-        # `get_current_principal` does for HTTP requests (no per-message
-        # request cycle to hang that check off of) — acceptable for a
-        # read-only location stream gated additionally by
-        # `can_watch_trip`, which re-checks booking/driver ownership
-        # against the database on every connection.
-        principal = Principal(
-            user_id=claims.subject_user_id, session_id=claims.session_id, roles=frozenset()
-        )
-        service = TrackingService(session, redis, get_settings())
-        allowed = await service.can_watch_trip(trip_id, principal)
-
-    if not allowed:
-        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason="Forbidden")
-
     await websocket.accept()
     ACTIVE_WEBSOCKET_CONNECTIONS.labels(event="connected").inc()
     pubsub = redis.pubsub()
     try:
         await pubsub.subscribe(channel_name(trip_id))
-        async for message in pubsub.listen():
-            if message["type"] != "message":
-                continue
-            await websocket.send_text(message["data"])
+        await relay_while_authorized(
+            websocket,
+            pubsub,
+            reauthorize=lambda: authorize_trip_watcher(token, trip_id),
+            recheck_seconds=get_settings().WS_AUTH_RECHECK_SECONDS,
+        )
     except WebSocketDisconnect:
         pass
     finally:

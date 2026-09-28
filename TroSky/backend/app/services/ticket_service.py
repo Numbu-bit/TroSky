@@ -86,7 +86,9 @@ class TicketService:
         ticket = await self._tickets.get_for_update(ticket_id)
         if ticket is None:
             raise TicketValidationError("Ticket not found.")
-        if ticket.expires_at != token_expires_at:
+        # Compared in whole seconds: that's all the token carries, while the
+        # column keeps microseconds.
+        if int(ticket.expires_at.timestamp()) != int(token_expires_at.timestamp()):
             # The persisted expiry no longer matches what this token was
             # signed against — the only way that happens is a stale token
             # from before some (currently nonexistent) re-issuance flow.

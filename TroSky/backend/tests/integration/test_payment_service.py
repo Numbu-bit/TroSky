@@ -299,8 +299,10 @@ class TestReconciliation:
         await db_session.flush()
         SandboxPaymentProvider.resolve(payment.internal_reference, PaymentProviderStatus.SUCCESSFUL)
 
+        # The sweep is platform-wide, so other stale payments may be swept
+        # too; what matters is that this one was.
         reconciled_count = await service.reconcile_pending_payments(older_than_seconds=300)
-        assert reconciled_count == 1
+        assert reconciled_count >= 1
 
         refreshed = await service.get_payment(payment.id, requesting_user_id=passenger_id)
         assert refreshed.status == PaymentStatus.SUCCESSFUL

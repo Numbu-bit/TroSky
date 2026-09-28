@@ -10,14 +10,16 @@ logic alone, is what prevents the race.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Collection
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import exists, func, literal, select, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.selectable import Subquery
 
 from app.models.drivers import Driver
-from app.models.routes import Route
+from app.models.routes import Route, RouteStop
 from app.models.trips import (
     Trip,
     TripDriverAssignment,
@@ -28,6 +30,38 @@ from app.models.trips import (
     TripVehicleAssignment,
 )
 from app.models.vehicles import Vehicle
+
+# Sits after any real sequence number, so a route's destination always
+# orders last even when it is missing from route_stops.
+_LAST_POSITION = 2_147_483_647
+
+
+def _route_stop_positions() -> Subquery:
+    """Every stop a route serves, with its order along the route.
+
+    Routes created through the admin API list origin, intermediates and
+    destination in ``route_stops``; routes inserted directly may carry only
+    their endpoints on ``routes``. Taking the union of both makes the order
+    well defined either way. A stop appearing twice (origin at -1 and again
+    at sequence 0) is harmless, because callers only ask whether *some*
+    valid ordering exists.
+    """
+    first = select(
+        Route.id.label("route_id"),
+        Route.origin_stop_id.label("stop_id"),
+        literal(-1).label("position"),
+    )
+    middle = select(
+        RouteStop.route_id.label("route_id"),
+        RouteStop.stop_id.label("stop_id"),
+        RouteStop.sequence_number.label("position"),
+    )
+    last = select(
+        Route.id.label("route_id"),
+        Route.destination_stop_id.label("stop_id"),
+        literal(_LAST_POSITION).label("position"),
+    )
+    return union_all(first, middle, last).subquery("route_stop_positions")
 
 
 class TripRepository:
@@ -69,7 +103,7 @@ class TripRepository:
     async def search(
         self,
         *,
-        origin_stop_id: uuid.UUID | None,
+        origin_stop_ids: Collection[uuid.UUID] | None,
         destination_stop_id: uuid.UUID | None,
         departure_after: datetime,
         departure_before: datetime,
@@ -77,6 +111,16 @@ class TripRepository:
         limit: int,
         offset: int,
     ) -> tuple[list[Trip], int]:
+        """Trips a passenger can board at one of ``origin_stop_ids`` and
+        leave at ``destination_stop_id``.
+
+        A stop only has to lie *along* the route, not be its terminal —
+        a passenger at Madina can board an Accra-Kumasi service there — and
+        boarding must come before alighting. Several origins are accepted
+        because a GPS pickup resolves to every stop within walking
+        distance, and the nearest one is not always served by the route
+        the passenger needs.
+        """
         stmt = (
             select(Trip)
             .join(Route, Route.id == Trip.route_id)
@@ -86,10 +130,21 @@ class TripRepository:
                 Trip.status.in_(statuses),
             )
         )
-        if origin_stop_id is not None:
-            stmt = stmt.where(Route.origin_stop_id == origin_stop_id)
-        if destination_stop_id is not None:
-            stmt = stmt.where(Route.destination_stop_id == destination_stop_id)
+        if origin_stop_ids is not None or destination_stop_id is not None:
+            positions = _route_stop_positions()
+            board = positions.alias("board")
+            alight = positions.alias("alight")
+            conditions = [
+                board.c.route_id == Trip.route_id,
+                alight.c.route_id == Trip.route_id,
+                board.c.position < alight.c.position,
+                board.c.stop_id != alight.c.stop_id,
+            ]
+            if origin_stop_ids is not None:
+                conditions.append(board.c.stop_id.in_(list(origin_stop_ids)))
+            if destination_stop_id is not None:
+                conditions.append(alight.c.stop_id == destination_stop_id)
+            stmt = stmt.where(exists().where(*conditions))
 
         count_result = await self._session.execute(
             select(func.count()).select_from(stmt.subquery())

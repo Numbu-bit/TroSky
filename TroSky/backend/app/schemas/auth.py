@@ -31,7 +31,14 @@ def _validate_phone(value: str) -> str:
 
 class RegisterRequest(RequestModel):
     phone_number: str = Field(..., examples=["0241234567"])
-    email: EmailStr | None = None
+    email: EmailStr | None = Field(
+        default=None,
+        description=(
+            "Where verification codes are sent. The server can require one on "
+            "specific domains; by default a Gmail address (@gmail.com)."
+        ),
+        examples=["ama.mensah@gmail.com"],
+    )
     password: str = Field(..., min_length=8, max_length=128)
     full_name: str = Field(..., min_length=2, max_length=200)
     role: RegistrableRole = RegistrableRole.PASSENGER

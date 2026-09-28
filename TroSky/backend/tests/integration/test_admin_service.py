@@ -33,6 +33,16 @@ class TestListUsers:
         assert total == 1
         assert users[0].id == user.id
 
+    @pytest.mark.parametrize("search", ["0571199903", "057 119 9903", "057-119-9903", "0571199"])
+    async def test_a_registered_number_is_found_by_its_local_form(
+        self, db_session: AsyncSession, search: str
+    ) -> None:
+        # Registration stores numbers in international form.
+        user = await _make_user(db_session, "+233571199903")
+        users, total = await AdminService(db_session).list_users(search=search, limit=10, offset=0)
+        assert total == 1
+        assert users[0].id == user.id
+
 
 class TestSuspendReactivate:
     async def test_suspend_sets_flag_and_revokes_sessions(self, db_session: AsyncSession) -> None:

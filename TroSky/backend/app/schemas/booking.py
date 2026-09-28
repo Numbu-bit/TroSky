@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 
 from app.models.bookings import BookingStatus, CancellationStatus
 from app.schemas.common import ApiModel, RequestModel
@@ -27,6 +27,24 @@ class BookingCreateRequest(RequestModel):
     destination_stop_id: uuid.UUID | None = Field(
         default=None, description="Alighting stop. Omit to ride the whole route."
     )
+    pickup_latitude: float | None = Field(
+        default=None,
+        ge=-90,
+        le=90,
+        description=(
+            "Device GPS position, used as the pickup by default: it is snapped to "
+            "the nearest stop on this trip's route within walking distance. "
+            "Ignored when origin_stop_id is given, because a pickup chosen by hand "
+            "always wins."
+        ),
+    )
+    pickup_longitude: float | None = Field(default=None, ge=-180, le=180)
+
+    @model_validator(mode="after")
+    def _pickup_point_is_complete(self) -> BookingCreateRequest:
+        if (self.pickup_latitude is None) != (self.pickup_longitude is None):
+            raise ValueError("Provide both pickup_latitude and pickup_longitude, or neither.")
+        return self
 
     @field_validator("passengers")
     @classmethod

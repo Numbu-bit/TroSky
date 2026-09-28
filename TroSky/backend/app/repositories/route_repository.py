@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Collection
 from datetime import time
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.routes import DayOfWeek, Route, RouteSchedule, RouteStop, Stop
@@ -43,6 +44,35 @@ class StopRepository:
             .limit(limit)
         )
         return list(result.scalars().all())
+
+    async def find_nearby(
+        self,
+        *,
+        latitude: float,
+        longitude: float,
+        radius_m: int,
+        limit: int,
+        stop_ids: Collection[uuid.UUID] | None = None,
+    ) -> list[tuple[Stop, float]]:
+        """Active stops within ``radius_m`` metres, nearest first.
+
+        ``ST_DWithin`` on the geography column uses the ``ix_stops_location``
+        GIST index, so this stays cheap however many stops exist. Distances
+        are true metres along the earth's surface, not planar degrees.
+        ``stop_ids`` restricts the candidates, e.g. to one route's stops.
+        """
+        point = func.ST_GeogFromText(latlng_to_wkt(latitude, longitude))
+        distance = func.ST_Distance(Stop.location, point).label("distance_m")
+        stmt = (
+            select(Stop, distance)
+            .where(Stop.is_active.is_(True), func.ST_DWithin(Stop.location, point, radius_m))
+            .order_by(distance)
+            .limit(limit)
+        )
+        if stop_ids is not None:
+            stmt = stmt.where(Stop.id.in_(list(stop_ids)))
+        rows = (await self._session.execute(stmt)).all()
+        return [(row[0], float(row[1])) for row in rows]
 
     async def create(
         self,
@@ -145,6 +175,19 @@ class RouteRepository:
         self._session.add(route_stop)
         await self._session.flush()
         return route_stop
+
+    async def stop_order(self, route: Route) -> dict[uuid.UUID, int]:
+        """Each stop the route serves, mapped to its position along it.
+
+        The origin sorts first and the destination last even for a route
+        whose ``route_stops`` were never filled in, so every route has at
+        least a two-stop order to validate against.
+        """
+        order: dict[uuid.UUID, int] = {route.origin_stop_id: -1}
+        for route_stop in await self.list_route_stops(route.id):
+            order[route_stop.stop_id] = route_stop.sequence_number
+        order.setdefault(route.destination_stop_id, max(order.values()) + 1)
+        return order
 
     async def list_route_stops(self, route_id: uuid.UUID) -> list[RouteStop]:
         result = await self._session.execute(

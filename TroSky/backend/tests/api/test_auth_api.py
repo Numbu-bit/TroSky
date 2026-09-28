@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import secrets
+
 import pytest
 from httpx import AsyncClient
 
@@ -132,3 +134,54 @@ class TestRegistrationAndLoginFlow:
         body = response.json()
         assert body["error"]["code"] == "INVALID_CREDENTIALS"
         assert "request_id" in body["error"]
+
+
+def _fresh_local_number() -> str:
+    """A valid MTN number no earlier run has registered (these requests
+    commit, and phone numbers are unique)."""
+    return f"024{secrets.randbelow(10**7):07d}"
+
+
+class TestPasswordlessLogin:
+    async def test_login_code_works_however_the_number_is_written(
+        self, client: AsyncClient, seed_identity_data: None, require_redis: None
+    ) -> None:
+        local = _fresh_local_number()
+        international = "+233" + local[1:]
+        registered = await client.post(
+            "/api/v1/auth/register",
+            json={
+                "phone_number": local,
+                "password": "Str0ngPass",
+                "full_name": "Akua Boateng",
+                "role": "passenger",
+            },
+        )
+        assert registered.status_code == 201, registered.text
+        SandboxSmsProvider.clear()  # drop the registration code
+
+        requested = await client.post(
+            "/api/v1/auth/resend-otp", json={"target": local, "purpose": "login"}
+        )
+        assert requested.status_code == 200, requested.text
+        message = SandboxSmsProvider.get_last_message(international)
+        assert message is not None
+
+        login = await client.post(
+            "/api/v1/auth/otp-login",
+            json={"target": international, "code": _extract_otp(message)},
+        )
+        assert login.status_code == 200, login.text
+        assert login.json()["access_token"]
+
+    async def test_unregistered_number_gets_the_same_answer_but_no_sms(
+        self, client: AsyncClient, seed_identity_data: None, require_redis: None
+    ) -> None:
+        local = _fresh_local_number()
+        response = await client.post(
+            "/api/v1/auth/resend-otp", json={"target": local, "purpose": "login"}
+        )
+        assert response.status_code == 200
+        assert response.json() == {"message": "A new verification code has been sent."}
+        assert SandboxSmsProvider.get_sent_messages("+233" + local[1:]) == []
+        assert SandboxSmsProvider.get_sent_messages(local) == []

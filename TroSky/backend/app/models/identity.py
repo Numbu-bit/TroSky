@@ -136,6 +136,12 @@ class User(UUIDAuditBase, SoftDeleteMixin):
         back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
 
+    @property
+    def is_verified(self) -> bool:
+        """Whether the user has proven their phone or their email by
+        entering a code sent to it."""
+        return self.phone_verified_at is not None or self.email_verified_at is not None
+
     __table_args__ = (
         UniqueConstraint("phone_number", name="uq_users_phone_number"),
         UniqueConstraint("email", name="uq_users_email"),

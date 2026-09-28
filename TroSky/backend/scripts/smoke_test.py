@@ -11,6 +11,7 @@ phone/email are derived from the current timestamp.
 Usage:
     .venv\\Scripts\\python -m scripts.smoke_test
     .venv\\Scripts\\python -m scripts.smoke_test --base-url http://127.0.0.1:8000
+    .venv\\Scripts\\python -m scripts.smoke_test --passenger 0245550101:Passenger@2026
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ import urllib.request
 from typing import Any
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8000"
+DEFAULT_INBOX = "troskynoreply@gmail.com"
 ADMIN_PHONE = "+233200000000"
 ADMIN_PASSWORD = "TroSkyDevAdmin!2026"  # noqa: S105 - local dev seed credential
 
@@ -81,6 +83,17 @@ def wait_for_server(base: str, attempts: int = 30) -> bool:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
+    parser.add_argument(
+        "--inbox",
+        default=DEFAULT_INBOX,
+        help="Gmail inbox that receives the throwaway account's code (as a +tag alias).",
+    )
+    parser.add_argument(
+        "--passenger",
+        metavar="IDENTIFIER:PASSWORD",
+        help="A verified passenger for the signed-in checks. A brand-new account "
+        "cannot log in until it enters its emailed code, so without this they are skipped.",
+    )
     args = parser.parse_args()
     base = args.base_url.rstrip("/")
 
@@ -113,27 +126,40 @@ def main() -> int:
     # --- registration + login -----------------------------------------
     print("\n[3/5] Registration and login")
     stamp = int(time.time())
-    phone = f"+2332{stamp % 100_000_000:08d}"
+    phone = f"+23324{stamp % 10_000_000:07d}"  # always a valid MTN number
     password = "SmokeTest123"  # noqa: S105 - throwaway test account
+    # New accounts need a Gmail address. A +tag alias of our own inbox means
+    # the verification email this run triggers reaches nobody else.
+    user, _, domain = args.inbox.partition("@")
+    email = f"{user}+smoke{stamp}@{domain}"
 
     status, body = call(
         base,
         "POST",
         "/api/v1/auth/register",
-        {
-            "phone_number": phone,
-            "email": f"smoke{stamp}@example.com",
-            "password": password,
-            "full_name": "Smoke Test",
-        },
+        {"phone_number": phone, "email": email, "password": password, "full_name": "Smoke Test"},
     )
-    check("POST /api/v1/auth/register", status, 201, phone)
+    check("POST /api/v1/auth/register", status, 201, email)
 
     status, body = call(
         base, "POST", "/api/v1/auth/login", {"identifier": phone, "password": password}
     )
-    check("POST /api/v1/auth/login", status, 200, "received JWT" if status == 200 else "")
     token = body.get("access_token")
+    if status == 403 and body.get("error", {}).get("code") == "ACCOUNT_NOT_VERIFIED":
+        check("POST /api/v1/auth/login (not yet verified)", status, 403, "must verify first")
+    else:
+        check("POST /api/v1/auth/login", status, 200, "received JWT" if status == 200 else "")
+
+    if not token and args.passenger:
+        identifier, _, passenger_password = args.passenger.partition(":")
+        status, body = call(
+            base,
+            "POST",
+            "/api/v1/auth/login",
+            {"identifier": identifier, "password": passenger_password},
+        )
+        check("POST /api/v1/auth/login (verified passenger)", status, 200, identifier)
+        token = body.get("access_token")
 
     status, _ = call(
         base, "POST", "/api/v1/auth/login", {"identifier": phone, "password": "WrongPassword1"}
@@ -143,7 +169,7 @@ def main() -> int:
     # --- authenticated passenger surface -------------------------------
     print("\n[4/5] Authenticated passenger endpoints")
     if not token:
-        print("  SKIP  no access token -- login failed above")
+        print("  SKIP  no signed-in passenger -- pass --passenger IDENTIFIER:PASSWORD")
     else:
         for path in (
             "/api/v1/users/me",

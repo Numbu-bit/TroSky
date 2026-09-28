@@ -10,10 +10,11 @@ from decimal import Decimal
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ConflictError
+from app.core.exceptions import ConflictError, NotFoundError
 from app.models.vehicles import VehicleType
 from app.providers.storage.malware_scan import NoOpMalwareScanner
 from app.providers.storage.sandbox import SandboxStorageProvider
+from app.repositories.route_repository import RouteRepository
 from app.schemas.fleet import (
     FleetCreateRequest,
     FleetOwnerRegisterRequest,
@@ -148,6 +149,10 @@ class TestSearch:
             ),
         )
 
+        await fleet_service.approve_vehicle(
+            vehicle.id, reviewer_id=(await make_user()).id, notes=None
+        )
+
         trip_service = TripService(db_session)
 
         departure = datetime.combine(date.today() + timedelta(days=1), time(8, 0), tzinfo=UTC)
@@ -169,7 +174,7 @@ class TestSearch:
             db_session, make_user
         )
         trips, total = await route_service.search_trips(
-            origin_stop_id=origin.id,
+            origin_stop_ids=[origin.id],
             destination_stop_id=destination.id,
             travel_date=trip.scheduled_departure_at.date(),
             departure_after=None,
@@ -186,9 +191,9 @@ class TestSearch:
         route_service, route, trip, origin, destination = await self._setup_searchable_trip(
             db_session, make_user
         )
-        other_stop_id = (await make_user()).id
+        other_stop_id = uuid.uuid4()
         trips, total = await route_service.search_trips(
-            origin_stop_id=other_stop_id,
+            origin_stop_ids=[other_stop_id],
             destination_stop_id=destination.id,
             travel_date=trip.scheduled_departure_at.date(),
             departure_after=None,
@@ -239,3 +244,75 @@ class TestSearch:
         )
         with pytest.raises(ConflictError):
             await route_service.get_trip_seats(trip.id)
+
+
+async def _stops_on_a_meridian(service: RouteService, count: int = 5) -> list:
+    """Stops 0.1 degrees of latitude apart on one meridian, so every leg is
+    the same length."""
+    return [
+        await service.create_stop(
+            name=f"M{i}-{uuid.uuid4().hex[:6]}",
+            code=None,
+            latitude=5.6 + i / 10,
+            longitude=-1.0,
+            address=None,
+            city=None,
+            region=None,
+        )
+        for i in range(count)
+    ]
+
+
+class TestRouteStopDistances:
+    async def test_each_stop_gets_its_distance_and_time_along_the_route(
+        self, db_session: AsyncSession
+    ) -> None:
+        service = RouteService(db_session)
+        stops = await _stops_on_a_meridian(service)
+        route = await service.create_route(
+            name=f"Meridian-{uuid.uuid4().hex[:8]}",
+            origin_stop_id=stops[0].id,
+            destination_stop_id=stops[-1].id,
+            distance_km=Decimal("200"),
+            estimated_duration_minutes=240,
+            intermediate_stop_ids=[s.id for s in stops[1:-1]],
+            created_by=None,
+        )
+        route_stops = await RouteRepository(db_session).list_route_stops(route.id)
+        assert [rs.distance_from_origin_km for rs in route_stops] == [
+            Decimal(km) for km in ("0.00", "50.00", "100.00", "150.00", "200.00")
+        ]
+        assert [rs.estimated_offset_minutes for rs in route_stops] == [0, 60, 120, 180, 240]
+
+    async def test_without_a_length_the_route_is_measured_from_the_map(
+        self, db_session: AsyncSession
+    ) -> None:
+        service = RouteService(db_session)
+        stops = await _stops_on_a_meridian(service, count=3)
+        route = await service.create_route(
+            name=f"Meridian-{uuid.uuid4().hex[:8]}",
+            origin_stop_id=stops[0].id,
+            destination_stop_id=stops[-1].id,
+            distance_km=None,
+            estimated_duration_minutes=None,
+            intermediate_stop_ids=[stops[1].id],
+            created_by=None,
+        )
+        route_stops = await RouteRepository(db_session).list_route_stops(route.id)
+        assert route.distance_km is not None
+        assert route.distance_km == route_stops[-1].distance_from_origin_km
+        assert Decimal("22") < route.distance_km < Decimal("23")  # 0.2 degrees
+
+    async def test_an_unknown_intermediate_stop_is_refused(self, db_session: AsyncSession) -> None:
+        service = RouteService(db_session)
+        stops = await _stops_on_a_meridian(service, count=2)
+        with pytest.raises(NotFoundError):
+            await service.create_route(
+                name=f"Meridian-{uuid.uuid4().hex[:8]}",
+                origin_stop_id=stops[0].id,
+                destination_stop_id=stops[1].id,
+                distance_km=Decimal("50"),
+                estimated_duration_minutes=None,
+                intermediate_stop_ids=[uuid.uuid4()],
+                created_by=None,
+            )

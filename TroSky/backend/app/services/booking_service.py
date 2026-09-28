@@ -24,11 +24,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
 from app.core.exceptions import (
+    AccountNotVerifiedError,
     ConflictError,
     IdempotencyConflictError,
     InvalidStateTransitionError,
+    NoPickupNearbyError,
     NotFoundError,
     SeatNotAvailableError,
+    StopNotOnRouteError,
 )
 from app.core.logging import get_logger
 from app.core.telemetry import BOOKING_EVENTS_TOTAL, RESERVATION_EXPIRATIONS_TOTAL
@@ -43,8 +46,9 @@ from app.models.bookings import (
 from app.models.notifications import NotificationCategory
 from app.models.trips import Trip, TripStatus
 from app.repositories.booking_repository import BookingRepository, SeatAlreadyReservedError
-from app.repositories.route_repository import RouteRepository
+from app.repositories.route_repository import RouteRepository, StopRepository
 from app.repositories.trip_repository import TripRepository
+from app.repositories.user_repository import UserRepository
 from app.repositories.vehicle_repository import VehicleRepository
 from app.schemas.booking import BookingCreateRequest
 from app.services.fare_service import FareBreakdown, FareService, segment_distance_km
@@ -77,8 +81,10 @@ class BookingService:
         self._bookings = BookingRepository(session)
         self._trips = TripRepository(session)
         self._routes = RouteRepository(session)
+        self._stops = StopRepository(session)
         self._fares = FareService(self._settings)
         self._vehicles = VehicleRepository(session)
+        self._users = UserRepository(session)
         self._tickets = TicketService(session, self._settings)
         self._notifications = NotificationService(session, self._settings)
 
@@ -87,6 +93,67 @@ class BookingService:
         seat_ids = sorted(str(p.seat_id) for p in request.passengers)
         raw = f"{request.trip_id}:{','.join(seat_ids)}"
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+    async def _resolve_segment(
+        self, trip: Trip, request: BookingCreateRequest
+    ) -> tuple[uuid.UUID | None, uuid.UUID | None]:
+        """Where this booking boards and alights, as stops on the trip's route.
+
+        Pickup precedence: a stop the passenger chose by hand, then the
+        device's GPS position, then (neither given) the whole route. GPS is
+        snapped to the nearest stop *this trip serves* within walking
+        distance, so the price is always for a real segment of the route.
+
+        Named stops are checked against the route here because the fare
+        engine would otherwise price a stop it cannot place as the whole
+        route, charging a full fare without telling anyone why.
+        """
+        route = await self._routes.get_by_id(trip.route_id)
+        if route is None:
+            raise NotFoundError("Route not found.")
+        order = await self._routes.stop_order(route)
+
+        destination = request.destination_stop_id
+        if destination is not None and destination not in order:
+            raise StopNotOnRouteError(details={"stop_id": str(destination), "role": "destination"})
+        alight_at = order[destination] if destination is not None else max(order.values())
+
+        origin: uuid.UUID | None = None
+        if request.origin_stop_id is not None:
+            origin = request.origin_stop_id
+            if origin not in order:
+                raise StopNotOnRouteError(details={"stop_id": str(origin), "role": "origin"})
+        elif request.pickup_latitude is not None and request.pickup_longitude is not None:
+            candidates = await self._stops.find_nearby(
+                latitude=request.pickup_latitude,
+                longitude=request.pickup_longitude,
+                radius_m=self._settings.PICKUP_MAX_WALK_METERS,
+                limit=self._settings.PICKUP_NEARBY_LIMIT,
+                stop_ids=order.keys(),
+            )
+            origin = next(
+                (
+                    stop.id
+                    for stop, _ in candidates
+                    if order[stop.id] < alight_at and stop.id != destination
+                ),
+                None,
+            )
+            if origin is None:
+                raise NoPickupNearbyError(
+                    "None of this trip's stops is within walking distance of your location.",
+                    details={
+                        "max_walk_meters": self._settings.PICKUP_MAX_WALK_METERS,
+                        "hint": "Choose a pickup stop on this route instead.",
+                    },
+                )
+
+        if origin is not None and order[origin] >= alight_at:
+            raise StopNotOnRouteError(
+                "The pickup must come before the destination on this route.",
+                details={"origin_stop_id": str(origin), "destination_stop_id": str(destination)},
+            )
+        return origin, destination
 
     async def _quote_segment(
         self,
@@ -151,6 +218,12 @@ class BookingService:
         *,
         idempotency_key: uuid.UUID | None,
     ) -> Booking:
+        if self._settings.REQUIRE_VERIFIED_ACCOUNT:
+            account = await self._users.get_by_id(passenger_id)
+            if account is not None and not account.is_verified:
+                raise AccountNotVerifiedError(
+                    "Verify your account with the code sent to you before booking."
+                )
         request_hash = self._hash_request(request)
 
         if idempotency_key is not None:
@@ -196,10 +269,11 @@ class BookingService:
         hold_seconds = self._settings.SEAT_RESERVATION_HOLD_SECONDS
         expires_at = datetime.now(UTC) + timedelta(seconds=hold_seconds)
         seat_count = len(request.passengers)
+        origin_stop_id, destination_stop_id = await self._resolve_segment(trip, request)
         quote = await self._quote_segment(
             trip=trip,
-            origin_stop_id=request.origin_stop_id,
-            destination_stop_id=request.destination_stop_id,
+            origin_stop_id=origin_stop_id,
+            destination_stop_id=destination_stop_id,
             seat_count=seat_count,
         )
         fare_amount: Decimal = quote.per_seat_fare * seat_count
@@ -210,8 +284,8 @@ class BookingService:
             passenger_id=passenger_id,
             trip_id=trip.id,
             passenger_count=seat_count,
-            origin_stop_id=request.origin_stop_id,
-            destination_stop_id=request.destination_stop_id,
+            origin_stop_id=origin_stop_id,
+            destination_stop_id=destination_stop_id,
             fare_amount=fare_amount,
             platform_fee=platform_fee,
             total_amount=total_amount,

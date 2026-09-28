@@ -9,10 +9,11 @@ broken or insecure state.
 
 from __future__ import annotations
 
+import ipaddress
 from decimal import Decimal
 from enum import StrEnum
 from functools import lru_cache
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -89,6 +90,10 @@ class Settings(BaseSettings):
     JWT_AUDIENCE: str = "trosky-mobile-clients"
     ACCESS_TOKEN_TTL_SECONDS: int = Field(default=900, gt=0)
     REFRESH_TOKEN_TTL_SECONDS: int = Field(default=2_592_000, gt=0)
+    # How often an open tracking WebSocket re-runs the full session check.
+    # HTTP re-validates on every request; a socket has no requests, so this
+    # bounds how long a logout, suspension or token expiry can go unnoticed.
+    WS_AUTH_RECHECK_SECONDS: int = Field(default=30, gt=0, le=3600)
 
     # --- Database --------------------------------------------------------
     DATABASE_URL: str
@@ -156,6 +161,13 @@ class Settings(BaseSettings):
     FARE_SHARING_ENABLED: bool = True
     FARE_SHARING_MIN_RATIO: Decimal = Field(default=Decimal("0.25"), gt=0, le=1)
     FARE_MINIMUM_AMOUNT: Decimal = Field(default=Decimal("1.00"), ge=0)
+
+    # --- GPS pickup ---------------------------------------------------------
+    # A passenger's device location is the default pickup: the backend snaps
+    # it to the nearest stop within walking distance. An explicitly chosen
+    # stop always wins over coordinates, so manual selection overrides GPS.
+    PICKUP_MAX_WALK_METERS: int = Field(default=1000, gt=0, le=20_000)
+    PICKUP_NEARBY_LIMIT: int = Field(default=5, gt=0, le=50)
     PAYMENTS_WEBHOOK_SIGNING_SECRET: SecretStr
     PAYMENTS_MTN_MOMO_BASE_URL: str = ""
     PAYMENTS_MTN_MOMO_API_KEY: SecretStr = SecretStr("")
@@ -178,6 +190,12 @@ class Settings(BaseSettings):
     # --- CORS / hosts --------------------------------------------------
     CORS_ALLOWED_ORIGINS: str = "http://localhost:3000"
     TRUSTED_HOSTS: str = "localhost,127.0.0.1"
+    # Reverse proxies whose X-Forwarded-For may be believed: comma-separated
+    # IPs or CIDRs. Empty means none -- the TCP peer is taken as the client
+    # and forwarded headers, which any client can forge, are ignored. Behind
+    # a proxy this MUST cover the proxy's addresses, or every client shares
+    # the proxy's single rate-limit bucket. See app.core.client_ip.
+    TRUSTED_PROXY_CIDRS: str = ""
 
     # --- Logging / observability -----------------------------------------
     LOG_LEVEL: str = "INFO"
@@ -198,6 +216,23 @@ class Settings(BaseSettings):
     OTP_EXPIRATION_SECONDS: int = Field(default=300, gt=0)
     OTP_RESEND_COOLDOWN_SECONDS: int = Field(default=60, gt=0)
     OTP_MAX_ATTEMPTS: int = Field(default=5, gt=0)
+    # How verification codes (registration, login, password reset) reach
+    # the user. "email" sends them to the account's email address instead
+    # of by SMS -- for running without a paid SMS provider. Registration
+    # then requires an email address.
+    OTP_DELIVERY_CHANNEL: Literal["sms", "email"] = "sms"
+    # Email domains a new account's address must be on, comma-separated.
+    # While set, registration requires an email address on one of them
+    # (by default a Gmail address). Empty accepts any domain, and no
+    # email at all unless codes go by email.
+    REGISTRATION_EMAIL_DOMAINS: str = "gmail.com,googlemail.com"
+    # Send verification and password-reset codes after the response instead
+    # of making the request wait for the mail/SMS server. A failed send is
+    # logged, and the user can ask for a new code straight away.
+    OTP_SEND_IN_BACKGROUND: bool = True
+    # Accounts must prove their phone or email (by entering a code sent to
+    # it) before they can log in with a password or book a seat.
+    REQUIRE_VERIFIED_ACCOUNT: bool = True
     PASSWORD_RESET_TOKEN_TTL_SECONDS: int = Field(default=1800, gt=0)
     LOGIN_MAX_FAILED_ATTEMPTS: int = Field(default=5, gt=0)
     LOGIN_LOCKOUT_SECONDS: int = Field(default=900, gt=0)
@@ -248,6 +283,24 @@ class Settings(BaseSettings):
         return [h.strip() for h in self.TRUSTED_HOSTS.split(",") if h.strip()]
 
     @property
+    def trusted_proxy_networks(self) -> list[ipaddress.IPv4Network | ipaddress.IPv6Network]:
+        return [
+            ipaddress.ip_network(entry.strip(), strict=False)
+            for entry in self.TRUSTED_PROXY_CIDRS.split(",")
+            if entry.strip()
+        ]
+
+    @property
+    def registration_email_domains(self) -> frozenset[str]:
+        """Parsed ``REGISTRATION_EMAIL_DOMAINS``, lower-cased; empty means
+        any domain is accepted."""
+        return frozenset(
+            entry.strip().lstrip("@").lower()
+            for entry in self.REGISTRATION_EMAIL_DOMAINS.split(",")
+            if entry.strip()
+        )
+
+    @property
     def rate_limit_overrides(self) -> dict[str, tuple[int, int]]:
         """Parsed ``RATE_LIMIT_OVERRIDES``, keyed by rule name. Rule names
         themselves contain a colon (``auth:register``), so each entry is
@@ -286,6 +339,17 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------
     # Validators
     # ------------------------------------------------------------------
+    @field_validator("TRUSTED_PROXY_CIDRS")
+    @classmethod
+    def _validate_trusted_proxy_cidrs(cls, value: str) -> str:
+        for entry in value.split(","):
+            if entry.strip():
+                try:
+                    ipaddress.ip_network(entry.strip(), strict=False)
+                except ValueError as exc:
+                    raise ValueError(f"TRUSTED_PROXY_CIDRS entry {entry.strip()!r}: {exc}") from exc
+        return value
+
     @field_validator("PAYMENTS_DEFAULT_CURRENCY")
     @classmethod
     def _currency_must_be_ghs_for_mvp(cls, v: str) -> str:

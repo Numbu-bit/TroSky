@@ -34,6 +34,7 @@ from app.schemas.fleet import (
 )
 from app.services.booking_service import BookingService
 from app.services.fleet_service import FleetService
+from app.services.route_service import RouteService
 from app.services.trip_service import TripService
 from app.utilities.geo import latlng_to_wkt
 
@@ -80,6 +81,15 @@ async def _build_route_with_stops(
             estimated_offset_minutes=i * 45,
         )
 
+    trip_id, seat_ids = await _bookable_trip_on(session, make_user, route.id, seat_count)
+    return trip_id, [s.id for s in stops], seat_ids
+
+
+async def _bookable_trip_on(
+    session: AsyncSession, make_user, route_id: uuid.UUID, seat_count: int
+) -> tuple[uuid.UUID, list[uuid.UUID]]:
+    """A trip on ``route_id`` with an approved bus of ``seat_count`` seats.
+    Returns (trip_id, seat_ids)."""
     fleet_service = FleetService(session, SandboxStorageProvider(), NoOpMalwareScanner())
     owner_id = (await make_user()).id
     await fleet_service.register(owner_id, FleetOwnerRegisterRequest(business_name="Kumasi Line"))
@@ -103,7 +113,7 @@ async def _build_route_with_stops(
 
     trips = TripService(session)
     trip = await trips.create_trip(
-        route_id=route.id,
+        route_id=route_id,
         route_schedule_id=None,
         scheduled_departure_at=datetime.now(UTC) + timedelta(hours=3),
         scheduled_arrival_at=None,
@@ -111,7 +121,7 @@ async def _build_route_with_stops(
         created_by=None,
     )
     await trips.assign_vehicle(trip.id, vehicle.id, assigned_by=None)
-    return trip.id, [s.id for s in stops], [s.id for s in seat_rows]
+    return trip.id, [s.id for s in seat_rows]
 
 
 async def _book(
@@ -302,3 +312,45 @@ class TestSharingByDistance:
         )
         # 600 passenger-km aboard: 40.00 x 200/600 = 13.33.
         assert third.fare_amount == Decimal("13.33")
+
+
+class TestAdminBuiltRoutes:
+    async def test_part_of_an_admin_built_route_costs_its_share(
+        self, db_session: AsyncSession, make_user
+    ) -> None:
+        """POST /admin/routes gives no stop distances; the service measures
+        them from the map, so a quarter of the way costs a quarter of the
+        fare rather than all of it."""
+        service = RouteService(db_session)
+        stops = [
+            await service.create_stop(
+                name=f"A{i}-{uuid.uuid4().hex[:6]}",
+                code=None,
+                latitude=5.6 + i / 10,
+                longitude=-1.0,
+                address=None,
+                city=None,
+                region=None,
+            )
+            for i in range(5)
+        ]
+        route = await service.create_route(
+            name=f"Admin-{uuid.uuid4().hex[:8]}",
+            origin_stop_id=stops[0].id,
+            destination_stop_id=stops[-1].id,
+            distance_km=ROUTE_KM,
+            estimated_duration_minutes=240,
+            intermediate_stop_ids=[s.id for s in stops[1:-1]],
+            created_by=None,
+        )
+        trip_id, seats = await _bookable_trip_on(db_session, make_user, route.id, 2)
+
+        booking = await _book(
+            BookingService(db_session),
+            make_user,
+            trip_id=trip_id,
+            seat_ids=seats[:1],
+            origin=stops[0].id,
+            destination=stops[1].id,
+        )
+        assert booking.fare_amount == Decimal("10.00")

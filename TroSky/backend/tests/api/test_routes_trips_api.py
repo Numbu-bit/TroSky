@@ -3,7 +3,10 @@ trip lifecycle endpoints."""
 
 from __future__ import annotations
 
+import secrets
 import uuid
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 
 import pytest
 from httpx import AsyncClient
@@ -12,9 +15,16 @@ from app.core.database import get_session_factory
 from app.models.routes import Route, Stop
 from app.providers.email.sandbox import SandboxEmailProvider
 from app.providers.sms.sandbox import SandboxSmsProvider
+from app.services.trip_service import TripService
 from app.utilities.geo import latlng_to_wkt
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
+
+
+def _fresh_phone() -> str:
+    """A valid MTN number no other test or earlier run has registered —
+    registrations here are committed, and phone numbers are unique."""
+    return f"024{secrets.randbelow(10**7):07d}"
 
 
 def _extract_otp(message: str) -> str:
@@ -75,6 +85,24 @@ async def _seed_route_and_committed_trip() -> tuple[uuid.UUID, uuid.UUID]:
     return route_id, origin.id
 
 
+async def _seed_committed_trip() -> uuid.UUID:
+    """A scheduled trip on a fresh route, committed so the app's own
+    request-scoped sessions can see it. No driver is assigned."""
+    route_id, _ = await _seed_route_and_committed_trip()
+    async with get_session_factory()() as session:
+        trip = await TripService(session).create_trip(
+            route_id=route_id,
+            route_schedule_id=None,
+            scheduled_departure_at=datetime.now(UTC) + timedelta(hours=1),
+            scheduled_arrival_at=None,
+            fare_amount=Decimal("25.00"),
+            created_by=None,
+        )
+        trip_id = trip.id
+        await session.commit()
+    return trip_id
+
+
 class TestPublicSearchApi:
     async def test_list_routes_and_get_route_detail(
         self, client: AsyncClient, seed_identity_data: None
@@ -100,7 +128,7 @@ class TestDriverTripLifecycleApi:
     async def test_non_driver_cannot_start_a_trip(
         self, client: AsyncClient, seed_identity_data: None
     ) -> None:
-        token = await _register_and_login(client, "0561234567", "A Passenger", "passenger")
+        token = await _register_and_login(client, _fresh_phone(), "A Passenger", "passenger")
         response = await client.post(
             f"/api/v1/driver-trips/{uuid.uuid4()}/start",
             headers={"Authorization": f"Bearer {token}"},
@@ -110,9 +138,12 @@ class TestDriverTripLifecycleApi:
     async def test_driver_start_requires_active_assignment(
         self, client: AsyncClient, seed_identity_data: None
     ) -> None:
-        token = await _register_and_login(client, "0561234568", "A Driver", "driver")
+        token = await _register_and_login(client, _fresh_phone(), "A Driver", "driver")
+        # A real trip, so the request gets past "trip not found" (404) to
+        # the assignment guard.
+        trip_id = await _seed_committed_trip()
         response = await client.post(
-            f"/api/v1/driver-trips/{uuid.uuid4()}/start",
+            f"/api/v1/driver-trips/{trip_id}/start",
             headers={"Authorization": f"Bearer {token}"},
         )
         # No driver profile has been created yet for this account.

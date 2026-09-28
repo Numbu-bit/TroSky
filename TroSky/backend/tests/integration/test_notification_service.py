@@ -70,7 +70,8 @@ class TestNotify:
     ) -> None:
         user_id = await _make_user(db_session, "0571111102")
         preferences = NotificationPreferenceRepository(db_session)
-        pref = await preferences.create_default(user_id)
+        pref = await preferences.get_for_user(user_id)  # created at registration
+        assert pref is not None
         await preferences.update(pref, sms_enabled=False)
 
         service = NotificationService(db_session)
@@ -84,7 +85,8 @@ class TestNotify:
     ) -> None:
         user_id = await _make_user(db_session, "0571111103")
         preferences = NotificationPreferenceRepository(db_session)
-        pref = await preferences.create_default(user_id)
+        pref = await preferences.get_for_user(user_id)  # created at registration
+        assert pref is not None
         await preferences.update(pref, sms_enabled=False)
 
         service = NotificationService(db_session)

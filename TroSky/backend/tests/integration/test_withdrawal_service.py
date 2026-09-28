@@ -21,8 +21,11 @@ from app.services.withdrawal_service import WithdrawalService
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
 
 
-async def _funded_user(session: AsyncSession, *, amount: Decimal = Decimal("100.00")) -> uuid.UUID:
-    user_id = uuid.uuid4()
+async def _funded_user(
+    session: AsyncSession, make_user, *, amount: Decimal = Decimal("100.00")
+) -> uuid.UUID:
+    # wallets.user_id is a foreign key to users.id, so the owner must exist.
+    user_id = (await make_user()).id
     await WalletService(session).credit(
         user_id,
         amount=amount,
@@ -34,8 +37,10 @@ async def _funded_user(session: AsyncSession, *, amount: Decimal = Decimal("100.
 
 
 class TestRequestWithdrawal:
-    async def test_request_within_balance_succeeds(self, db_session: AsyncSession) -> None:
-        user_id = await _funded_user(db_session)
+    async def test_request_within_balance_succeeds(
+        self, db_session: AsyncSession, make_user
+    ) -> None:
+        user_id = await _funded_user(db_session, make_user)
         service = WithdrawalService(db_session)
         withdrawal = await service.request_withdrawal(
             user_id,
@@ -45,8 +50,10 @@ class TestRequestWithdrawal:
         )
         assert withdrawal.status == WithdrawalStatus.PENDING
 
-    async def test_request_does_not_touch_balance_yet(self, db_session: AsyncSession) -> None:
-        user_id = await _funded_user(db_session)
+    async def test_request_does_not_touch_balance_yet(
+        self, db_session: AsyncSession, make_user
+    ) -> None:
+        user_id = await _funded_user(db_session, make_user)
         service = WithdrawalService(db_session)
         await service.request_withdrawal(
             user_id,
@@ -57,8 +64,10 @@ class TestRequestWithdrawal:
         balance = await WalletService(db_session).get_balance(user_id)
         assert balance == Decimal("100.00")  # unchanged until approval
 
-    async def test_request_exceeding_balance_rejected(self, db_session: AsyncSession) -> None:
-        user_id = await _funded_user(db_session, amount=Decimal("10.00"))
+    async def test_request_exceeding_balance_rejected(
+        self, db_session: AsyncSession, make_user
+    ) -> None:
+        user_id = await _funded_user(db_session, make_user, amount=Decimal("10.00"))
         service = WithdrawalService(db_session)
         with pytest.raises(ConflictError):
             await service.request_withdrawal(
@@ -68,8 +77,10 @@ class TestRequestWithdrawal:
                 destination_phone_number="0244000001",
             )
 
-    async def test_request_below_minimum_rejected(self, db_session: AsyncSession) -> None:
-        user_id = await _funded_user(db_session)
+    async def test_request_below_minimum_rejected(
+        self, db_session: AsyncSession, make_user
+    ) -> None:
+        user_id = await _funded_user(db_session, make_user)
         service = WithdrawalService(db_session)
         with pytest.raises(ConflictError):
             await service.request_withdrawal(
@@ -79,8 +90,8 @@ class TestRequestWithdrawal:
                 destination_phone_number="0244000001",
             )
 
-    async def test_wallet_channel_rejected(self, db_session: AsyncSession) -> None:
-        user_id = await _funded_user(db_session)
+    async def test_wallet_channel_rejected(self, db_session: AsyncSession, make_user) -> None:
+        user_id = await _funded_user(db_session, make_user)
         service = WithdrawalService(db_session)
         with pytest.raises(ConflictError):
             await service.request_withdrawal(
@@ -92,8 +103,8 @@ class TestRequestWithdrawal:
 
 
 class TestWithdrawalDecisions:
-    async def test_approve_debits_wallet(self, db_session: AsyncSession) -> None:
-        user_id = await _funded_user(db_session)
+    async def test_approve_debits_wallet(self, db_session: AsyncSession, make_user) -> None:
+        user_id = await _funded_user(db_session, make_user)
         service = WithdrawalService(db_session)
         withdrawal = await service.request_withdrawal(
             user_id,
@@ -101,14 +112,16 @@ class TestWithdrawalDecisions:
             channel=PaymentChannel.MTN_MOMO,
             destination_phone_number="0244000001",
         )
-        approved = await service.approve(withdrawal.id, reviewer_id=uuid.uuid4(), notes="OK")
+        approved = await service.approve(
+            withdrawal.id, reviewer_id=(await make_user()).id, notes="OK"
+        )
         assert approved.status == WithdrawalStatus.APPROVED
 
         balance = await WalletService(db_session).get_balance(user_id)
         assert balance == Decimal("50.00")
 
-    async def test_reject_never_touches_balance(self, db_session: AsyncSession) -> None:
-        user_id = await _funded_user(db_session)
+    async def test_reject_never_touches_balance(self, db_session: AsyncSession, make_user) -> None:
+        user_id = await _funded_user(db_session, make_user)
         service = WithdrawalService(db_session)
         withdrawal = await service.request_withdrawal(
             user_id,
@@ -116,14 +129,16 @@ class TestWithdrawalDecisions:
             channel=PaymentChannel.MTN_MOMO,
             destination_phone_number="0244000001",
         )
-        rejected = await service.reject(withdrawal.id, reviewer_id=uuid.uuid4(), notes="No")
+        rejected = await service.reject(
+            withdrawal.id, reviewer_id=(await make_user()).id, notes="No"
+        )
         assert rejected.status == WithdrawalStatus.REJECTED
 
         balance = await WalletService(db_session).get_balance(user_id)
         assert balance == Decimal("100.00")
 
-    async def test_complete_after_approval(self, db_session: AsyncSession) -> None:
-        user_id = await _funded_user(db_session)
+    async def test_complete_after_approval(self, db_session: AsyncSession, make_user) -> None:
+        user_id = await _funded_user(db_session, make_user)
         service = WithdrawalService(db_session)
         withdrawal = await service.request_withdrawal(
             user_id,
@@ -131,15 +146,17 @@ class TestWithdrawalDecisions:
             channel=PaymentChannel.MTN_MOMO,
             destination_phone_number="0244000001",
         )
-        await service.approve(withdrawal.id, reviewer_id=uuid.uuid4(), notes=None)
+        await service.approve(withdrawal.id, reviewer_id=(await make_user()).id, notes=None)
         completed = await service.complete(
-            withdrawal.id, reviewer_id=uuid.uuid4(), provider_reference="manual-txn-1"
+            withdrawal.id, reviewer_id=(await make_user()).id, provider_reference="manual-txn-1"
         )
         assert completed.status == WithdrawalStatus.COMPLETED
         assert completed.provider_reference == "manual-txn-1"
 
-    async def test_fail_after_approval_reverses_debit(self, db_session: AsyncSession) -> None:
-        user_id = await _funded_user(db_session)
+    async def test_fail_after_approval_reverses_debit(
+        self, db_session: AsyncSession, make_user
+    ) -> None:
+        user_id = await _funded_user(db_session, make_user)
         service = WithdrawalService(db_session)
         withdrawal = await service.request_withdrawal(
             user_id,
@@ -147,17 +164,19 @@ class TestWithdrawalDecisions:
             channel=PaymentChannel.MTN_MOMO,
             destination_phone_number="0244000001",
         )
-        await service.approve(withdrawal.id, reviewer_id=uuid.uuid4(), notes=None)
+        await service.approve(withdrawal.id, reviewer_id=(await make_user()).id, notes=None)
         failed = await service.mark_failed(
-            withdrawal.id, reviewer_id=uuid.uuid4(), reason="Wrong number"
+            withdrawal.id, reviewer_id=(await make_user()).id, reason="Wrong number"
         )
         assert failed.status == WithdrawalStatus.FAILED
 
         balance = await WalletService(db_session).get_balance(user_id)
         assert balance == Decimal("100.00")  # reversed
 
-    async def test_cannot_approve_a_rejected_withdrawal(self, db_session: AsyncSession) -> None:
-        user_id = await _funded_user(db_session)
+    async def test_cannot_approve_a_rejected_withdrawal(
+        self, db_session: AsyncSession, make_user
+    ) -> None:
+        user_id = await _funded_user(db_session, make_user)
         service = WithdrawalService(db_session)
         withdrawal = await service.request_withdrawal(
             user_id,
@@ -165,6 +184,6 @@ class TestWithdrawalDecisions:
             channel=PaymentChannel.MTN_MOMO,
             destination_phone_number="0244000001",
         )
-        await service.reject(withdrawal.id, reviewer_id=uuid.uuid4(), notes=None)
+        await service.reject(withdrawal.id, reviewer_id=(await make_user()).id, notes=None)
         with pytest.raises(InvalidStateTransitionError):
-            await service.approve(withdrawal.id, reviewer_id=uuid.uuid4(), notes=None)
+            await service.approve(withdrawal.id, reviewer_id=(await make_user()).id, notes=None)

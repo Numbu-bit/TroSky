@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import Field
 
@@ -48,6 +49,13 @@ class TripSearchResultResponse(ApiModel):
     available_seats: int
     vehicle_registration_number: str | None
     vehicle_type: VehicleType | None
+    # Where this passenger boards this trip. For a GPS search it is the
+    # nearest stop the trip actually serves, which is not always the
+    # nearest stop overall -- so it is reported per trip.
+    pickup_stop_id: uuid.UUID | None = None
+    pickup_stop_name: str | None = None
+    pickup_distance_m: float | None = None
+    pickup_source: Literal["gps", "manual"] | None = None
 
 
 class AssignTripDriverRequest(RequestModel):

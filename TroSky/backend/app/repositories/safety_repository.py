@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.safety import (
@@ -64,8 +64,10 @@ class IncidentRepository:
         stmt = select(Incident)
         if status is not None:
             stmt = stmt.where(Incident.status == status)
-        count_result = await self._session.execute(select(Incident.id).select_from(stmt.subquery()))
-        total = len(count_result.scalars().all())
+        count_result = await self._session.execute(
+            select(func.count()).select_from(stmt.subquery())
+        )
+        total = count_result.scalar_one()
         result = await self._session.execute(
             stmt.order_by(Incident.created_at.desc()).limit(limit).offset(offset)
         )
@@ -126,8 +128,10 @@ class SosAlertRepository:
         stmt = select(SosAlert)
         if status is not None:
             stmt = stmt.where(SosAlert.status == status)
-        count_result = await self._session.execute(select(SosAlert.id).select_from(stmt.subquery()))
-        total = len(count_result.scalars().all())
+        count_result = await self._session.execute(
+            select(func.count()).select_from(stmt.subquery())
+        )
+        total = count_result.scalar_one()
         result = await self._session.execute(
             stmt.order_by(SosAlert.created_at.desc()).limit(limit).offset(offset)
         )

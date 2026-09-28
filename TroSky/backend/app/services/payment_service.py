@@ -123,7 +123,16 @@ class PaymentService:
         booking = await self._bookings.get_for_update(booking_id)
         if booking is None or booking.passenger_id != user_id:
             raise NotFoundError("Booking not found.")
-        if booking.status != BookingStatus.PENDING:
+        # A retry of a payment already made for this booking has, by
+        # definition, moved the booking past PENDING — it must still get its
+        # original payment back rather than a conflict.
+        replay = (
+            await self._payments.get_by_idempotency_key(user_id, idempotency_key)
+            if idempotency_key is not None
+            else None
+        )
+        is_replay = replay is not None and replay.booking_id == booking.id
+        if booking.status != BookingStatus.PENDING and not is_replay:
             raise ConflictError(
                 f"Booking is not awaiting payment (status: {booking.status.value}).",
                 code="BOOKING_NOT_PAYABLE",

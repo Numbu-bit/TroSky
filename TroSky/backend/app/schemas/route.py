@@ -33,6 +33,12 @@ class StopResponse(ApiModel):
     longitude: float
 
 
+class NearbyStopResponse(StopResponse):
+    distance_m: float = Field(
+        ..., description="Walking-scale distance from the given point, metres."
+    )
+
+
 class RouteCreateRequest(RequestModel):
     name: str = Field(..., min_length=2, max_length=200)
     origin_stop_id: uuid.UUID

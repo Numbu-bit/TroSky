@@ -20,6 +20,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from app.api import dependencies as api_dependencies
 from app.api.health import router as health_router
 from app.api.router import api_router
+from app.core.background import drain_background_jobs
 from app.core.config import Settings, get_settings
 from app.core.database import dispose_engine, get_engine
 from app.core.exceptions import register_exception_handlers
@@ -50,6 +51,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     get_redis_client()
     yield
     logger.info("application_shutting_down")
+    await drain_background_jobs(timeout_seconds=10)
     await dispose_engine()
     await close_redis()
 

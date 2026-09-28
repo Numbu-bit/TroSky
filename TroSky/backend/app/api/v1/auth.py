@@ -43,7 +43,12 @@ async def register(body: RegisterRequest, auth: AuthServiceDep) -> RegisterRespo
     """Register a passenger, driver, or fleet-owner account. Never creates
     an administrator account — see README security notes."""
     user, otp_target = await auth.register(body)
-    return RegisterResponse(user_id=user.id, phone_number=user.phone_number, otp_sent_to=otp_target)
+    response = RegisterResponse(
+        user_id=user.id, phone_number=user.phone_number, otp_sent_to=otp_target
+    )
+    if "@" in otp_target:  # codes go by email (OTP_DELIVERY_CHANNEL=email)
+        response.message = "Registration successful. Verify your email address with the code sent."
+    return response
 
 
 @router.post(
@@ -66,7 +71,13 @@ async def verify_otp(body: VerifyOtpRequest, auth: AuthServiceDep) -> MessageRes
 )
 async def resend_otp(body: ResendOtpRequest, auth: AuthServiceDep) -> MessageResponse:
     """Request a new OTP for a given target and purpose (registration,
-    login, phone/email verification, or password reset)."""
+    login, phone/email verification, or password reset).
+
+    The target may be written in any form (``0241234567`` or
+    ``+233241234567``). A code is only sent to a registered account; for
+    any other target the response is identical but nothing is sent. When
+    the server sends codes by email (``OTP_DELIVERY_CHANNEL=email``), the
+    code goes to the account's email address whatever channel is asked for."""
     await auth.resend_otp(body.target, body.purpose, body.channel)
     return MessageResponse(message="A new verification code has been sent.")
 

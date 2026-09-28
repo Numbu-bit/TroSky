@@ -16,7 +16,7 @@ import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -122,16 +122,14 @@ class BookingRepository:
     async def list_for_passenger(
         self, passenger_id: uuid.UUID, *, limit: int, offset: int
     ) -> tuple[list[Booking], int]:
-        count_result = await self._session.execute(
-            select(Booking.id).where(Booking.passenger_id == passenger_id)
-        )
-        total = len(count_result.scalars().all())
+        stmt = select(Booking).where(Booking.passenger_id == passenger_id)
+        # COUNT(*) in the database: fetching every matching id just to len()
+        # them costs memory and transfer proportional to the whole history.
+        total = (
+            await self._session.execute(select(func.count()).select_from(stmt.subquery()))
+        ).scalar_one()
         result = await self._session.execute(
-            select(Booking)
-            .where(Booking.passenger_id == passenger_id)
-            .order_by(Booking.created_at.desc())
-            .limit(limit)
-            .offset(offset)
+            stmt.order_by(Booking.created_at.desc()).limit(limit).offset(offset)
         )
         return list(result.scalars().all()), total
 
@@ -141,8 +139,9 @@ class BookingRepository:
         stmt = select(Booking)
         if status is not None:
             stmt = stmt.where(Booking.status == status)
-        count_result = await self._session.execute(select(Booking.id).select_from(stmt.subquery()))
-        total = len(count_result.scalars().all())
+        total = (
+            await self._session.execute(select(func.count()).select_from(stmt.subquery()))
+        ).scalar_one()
         result = await self._session.execute(
             stmt.order_by(Booking.created_at.desc()).limit(limit).offset(offset)
         )
@@ -364,9 +363,9 @@ class BookingRepository:
         if status is not None:
             stmt = stmt.where(CancellationRequest.status == status)
         count_result = await self._session.execute(
-            select(CancellationRequest.id).select_from(stmt.subquery())
+            select(func.count()).select_from(stmt.subquery())
         )
-        total = len(count_result.scalars().all())
+        total = count_result.scalar_one()
         result = await self._session.execute(
             stmt.order_by(CancellationRequest.created_at.desc()).limit(limit).offset(offset)
         )

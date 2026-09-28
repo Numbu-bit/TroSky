@@ -74,8 +74,10 @@ class AnalyticsRepository:
         )
         completed_trips = completed_trips_result.scalar_one()
 
+        # The fleet's revenue is the fare it earns, not what the passenger
+        # paid: total_amount also carries TroSky's platform fee.
         revenue_result = await self._session.execute(
-            select(func.coalesce(func.sum(Booking.total_amount), 0)).where(
+            select(func.coalesce(func.sum(Booking.fare_amount), 0)).where(
                 Booking.trip_id.in_(trip_ids), Booking.status == BookingStatus.COMPLETED
             )
         )

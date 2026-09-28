@@ -103,6 +103,12 @@ class AccountSuspendedError(AppError):
     message = "This account has been suspended."
 
 
+class AccountNotVerifiedError(AppError):
+    code = "ACCOUNT_NOT_VERIFIED"
+    status_code = status.HTTP_403_FORBIDDEN
+    message = "Verify your account with the code sent to you first."
+
+
 class IdempotencyConflictError(AppError):
     code = "IDEMPOTENCY_KEY_REUSED"
     status_code = status.HTTP_409_CONFLICT
@@ -161,6 +167,23 @@ class InvalidStateTransitionError(AppError):
     code = "INVALID_STATE_TRANSITION"
     status_code = status.HTTP_409_CONFLICT
     message = "This action is not valid for the current status."
+
+
+class NoPickupNearbyError(AppError):
+    """The passenger's location resolved to no stop within walking distance.
+
+    Raised instead of silently picking a far-away stop: the client should
+    fall back to letting the passenger search for a pickup point by name."""
+
+    code = "NO_PICKUP_NEARBY"
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    message = "No pickup point is within walking distance of your location."
+
+
+class StopNotOnRouteError(AppError):
+    code = "STOP_NOT_ON_ROUTE"
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    message = "The selected stop is not on this trip's route."
 
 
 class SeatNotAvailableError(AppError):
@@ -295,7 +318,9 @@ def register_exception_handlers(app: FastAPI) -> None:
             content=_error_body(
                 code=code,
                 message=str(exc.detail),
-                details={},
+                # e.g. PayloadTooLargeError carries max_bytes, so a limit
+                # hit mid-stream reports the same details as a declared one.
+                details=getattr(exc, "details", None) or {},
                 request_id=request_id,
             ),
         )

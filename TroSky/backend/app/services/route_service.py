@@ -13,13 +13,15 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
+from collections.abc import Collection, Sequence
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ConflictError, NotFoundError
+from app.core.config import Settings, get_settings
+from app.core.exceptions import ConflictError, NoPickupNearbyError, NotFoundError
 from app.models.routes import DayOfWeek, Route, RouteSchedule, Stop
 from app.models.trips import Trip, TripStatus
 from app.models.vehicles import Vehicle, VehicleSeat
@@ -28,14 +30,18 @@ from app.repositories.route_repository import RouteRepository, StopRepository
 from app.repositories.trip_repository import TripRepository
 from app.repositories.vehicle_repository import VehicleRepository
 from app.services.trip_service import TripService
+from app.utilities.geo import stop_offsets_km, wkb_to_latlng
 
 _SEARCH_CACHE_TTL_SECONDS = 60
 
 
 class RouteService:
-    def __init__(self, session: AsyncSession, redis: Redis | None = None) -> None:
+    def __init__(
+        self, session: AsyncSession, redis: Redis | None = None, settings: Settings | None = None
+    ) -> None:
         self._session = session
         self._redis = redis
+        self._settings = settings or get_settings()
         self._stops = StopRepository(session)
         self._routes = RouteRepository(session)
         self._trips = TripRepository(session)
@@ -72,8 +78,76 @@ class RouteService:
             raise NotFoundError("Stop not found.")
         return stop
 
+    async def find_stop(self, stop_id: uuid.UUID) -> Stop | None:
+        return await self._stops.get_by_id(stop_id)
+
     async def list_stops(self, *, limit: int, offset: int) -> tuple[list[Stop], int]:
         return await self._stops.list_all(limit=limit, offset=offset)
+
+    async def search_stops(self, query: str, *, limit: int) -> list[Stop]:
+        """Name search -- the passenger's way to choose a pickup by hand
+        instead of accepting the one resolved from their location."""
+        return await self._stops.search_by_name(query.strip(), limit=limit)
+
+    async def find_nearby_stops(
+        self,
+        *,
+        latitude: float,
+        longitude: float,
+        radius_m: int | None = None,
+        limit: int | None = None,
+    ) -> list[tuple[Stop, float]]:
+        return await self._stops.find_nearby(
+            latitude=latitude,
+            longitude=longitude,
+            radius_m=radius_m or self._settings.PICKUP_MAX_WALK_METERS,
+            limit=limit or self._settings.PICKUP_NEARBY_LIMIT,
+        )
+
+    async def pickup_candidates(
+        self, *, latitude: float, longitude: float
+    ) -> list[tuple[Stop, float]]:
+        """Stops the passenger could walk to from where they stand.
+
+        Raises rather than returning nothing: an empty result would read as
+        "no trips today" when the real answer is "you are not near a stop",
+        and those need different next steps in the app.
+        """
+        candidates = await self.find_nearby_stops(latitude=latitude, longitude=longitude)
+        if not candidates:
+            raise NoPickupNearbyError(
+                details={
+                    "max_walk_meters": self._settings.PICKUP_MAX_WALK_METERS,
+                    "hint": "Search for a pickup point by name instead.",
+                }
+            )
+        return candidates
+
+    async def pickup_for_trip(
+        self,
+        trip: Trip,
+        candidates: Sequence[tuple[Stop, float]],
+        destination_stop_id: uuid.UUID | None,
+    ) -> tuple[Stop, float] | None:
+        """The nearest of ``candidates`` this trip can actually pick up at.
+
+        Candidates arrive nearest first, but the nearest stop may not be on
+        this trip's route, or may come after the passenger's destination,
+        so each is checked against the route's stop order.
+        """
+        route = await self._routes.get_by_id(trip.route_id)
+        if route is None:
+            return None
+        order = await self._routes.stop_order(route)
+        last = max(order.values())
+        alight_at = order.get(destination_stop_id) if destination_stop_id else last
+        if alight_at is None:
+            return None
+        for stop, distance in candidates:
+            board_at = order.get(stop.id)
+            if board_at is not None and board_at < alight_at and stop.id != destination_stop_id:
+                return stop, distance
+        return None
 
     # ------------------------------------------------------------------
     # Routes
@@ -94,6 +168,22 @@ class RouteService:
         if await self._stops.get_by_id(destination_stop_id) is None:
             raise NotFoundError("Destination stop not found.")
 
+        stop_sequence = [origin_stop_id, *intermediate_stop_ids, destination_stop_id]
+        stops = []
+        for stop_id in stop_sequence:
+            stop = await self._stops.get_by_id(stop_id)
+            if stop is None:
+                raise NotFoundError("Stop not found.", details={"stop_id": str(stop_id)})
+            stops.append(stop)
+        # How far along the route each stop is: what prices a ride between
+        # two stops as its share of the route (see FareService). Without it
+        # every rider would pay the full fare.
+        offsets = stop_offsets_km(
+            [wkb_to_latlng(stop.location) for stop in stops], route_km=distance_km
+        )
+        if distance_km is None and offsets is not None:
+            distance_km = offsets[-1]
+
         route = await self._routes.create(
             name=name,
             origin_stop_id=origin_stop_id,
@@ -103,14 +193,18 @@ class RouteService:
             created_by=created_by,
         )
 
-        stop_sequence = [origin_stop_id, *intermediate_stop_ids, destination_stop_id]
         for sequence_number, stop_id in enumerate(stop_sequence):
+            offset = offsets[sequence_number] if offsets is not None else None
             await self._routes.add_route_stop(
                 route_id=route.id,
                 stop_id=stop_id,
                 sequence_number=sequence_number,
-                distance_from_origin_km=None,
-                estimated_offset_minutes=None,
+                distance_from_origin_km=offset,
+                estimated_offset_minutes=(
+                    round(estimated_duration_minutes * offset / distance_km)
+                    if offset is not None and estimated_duration_minutes and distance_km
+                    else None
+                ),
             )
         return route
 
@@ -124,10 +218,22 @@ class RouteService:
         return await self._routes.list_all(limit=limit, offset=offset)
 
     async def get_route_stops(self, route_id: uuid.UUID) -> list[Stop]:
+        """The route's stops in travel order.
+
+        A route with no ``route_stops`` rows still serves its origin and
+        destination -- search and booking treat it that way (see
+        ``RouteRepository.stop_order``) -- so the detail view shows those
+        two rather than an empty list that contradicts them.
+        """
         route_stops = await self._routes.list_route_stops(route_id)
+        stop_ids = [rs.stop_id for rs in route_stops]
+        if not stop_ids:
+            route = await self._routes.get_by_id(route_id)
+            if route is not None:
+                stop_ids = [route.origin_stop_id, route.destination_stop_id]
         stops = []
-        for route_stop in route_stops:
-            stop = await self._stops.get_by_id(route_stop.stop_id)
+        for stop_id in stop_ids:
+            stop = await self._stops.get_by_id(stop_id)
             if stop is not None:
                 stops.append(stop)
         return stops
@@ -186,7 +292,7 @@ class RouteService:
     async def search_trips(
         self,
         *,
-        origin_stop_id: uuid.UUID | None,
+        origin_stop_ids: Collection[uuid.UUID] | None,
         destination_stop_id: uuid.UUID | None,
         travel_date: date,
         departure_after: time | None,
@@ -198,7 +304,7 @@ class RouteService:
         window_end = datetime.combine(travel_date, departure_before or time.max, tzinfo=UTC)
 
         cache_key = self._search_cache_key(
-            origin_stop_id, destination_stop_id, window_start, window_end, limit, offset
+            origin_stop_ids, destination_stop_id, window_start, window_end, limit, offset
         )
         if self._redis is not None:
             cached = await self._redis.get(cache_key)
@@ -210,7 +316,7 @@ class RouteService:
                 return found_trips, int(payload["total"])
 
         trips, total = await self._trips.search(
-            origin_stop_id=origin_stop_id,
+            origin_stop_ids=origin_stop_ids,
             destination_stop_id=destination_stop_id,
             departure_after=window_start,
             departure_before=window_end,
@@ -227,14 +333,18 @@ class RouteService:
 
     @staticmethod
     def _search_cache_key(
-        origin_stop_id: uuid.UUID | None,
+        origin_stop_ids: Collection[uuid.UUID] | None,
         destination_stop_id: uuid.UUID | None,
         window_start: datetime,
         window_end: datetime,
         limit: int,
         offset: int,
     ) -> str:
-        raw = f"{origin_stop_id}:{destination_stop_id}:{window_start}:{window_end}:{limit}:{offset}"
+        # Keyed on the resolved stops, never the raw coordinates: two people
+        # standing near the same stops share a cache entry, and no location
+        # is written into Redis.
+        origins = ",".join(sorted(str(i) for i in origin_stop_ids)) if origin_stop_ids else None
+        raw = f"{origins}:{destination_stop_id}:{window_start}:{window_end}:{limit}:{offset}"
         digest = hashlib.sha256(raw.encode()).hexdigest()
         return f"trip_search:{digest}"
 

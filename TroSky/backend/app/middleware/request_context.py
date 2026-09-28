@@ -6,9 +6,11 @@ from __future__ import annotations
 import time
 import uuid
 
+from starlette.exceptions import HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.config import Settings
 from app.core.logging import get_logger, request_id_ctx
@@ -58,32 +60,105 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
         return response
 
 
-class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
-    """Rejects requests whose declared ``Content-Length`` exceeds the
-    configured maximum, before the body is read into memory."""
+_TOO_LARGE_MESSAGE = "Request body exceeds the maximum allowed size."
 
-    def __init__(self, app, settings: Settings) -> None:  # type: ignore[no-untyped-def]
-        super().__init__(app)
+
+class PayloadTooLargeError(HTTPException):
+    """Raised mid-stream once a request body passes the size limit.
+
+    Deliberately a Starlette ``HTTPException``: FastAPI's body parser
+    re-raises those unchanged, but converts any other exception into a
+    generic 400 ("There was an error parsing the body"), which would hide
+    the real cause from the client. ``details`` is picked up by the app's
+    HTTP exception handler so this and the declared-length rejection
+    produce the same error body.
+    """
+
+    def __init__(self, max_bytes: int) -> None:
+        super().__init__(status_code=413, detail=_TOO_LARGE_MESSAGE)
+        self.details = {"max_bytes": max_bytes}
+
+
+def _declared_length(scope: Scope) -> int | None:
+    for name, value in scope.get("headers", []):
+        if name == b"content-length":
+            try:
+                return int(value)
+            except ValueError:
+                return None
+    return None
+
+
+class RequestSizeLimitMiddleware:
+    """Caps request bodies at ``MAX_REQUEST_BODY_BYTES``.
+
+    Two checks, because what a client *declares* and what it *sends* can
+    differ:
+
+    * a declared ``Content-Length`` over the limit is refused before a
+      single byte is read;
+    * every body chunk is counted as it arrives, so a chunked request with
+      no ``Content-Length`` -- or one that sends more than it declared -- is
+      stopped the moment it passes the limit instead of being buffered.
+
+    Pure ASGI rather than ``BaseHTTPMiddleware``: counting has to wrap the
+    ``receive`` channel itself, which that base class does not expose.
+    """
+
+    def __init__(self, app: ASGIApp, settings: Settings) -> None:
+        self.app = app
         self._max_bytes = settings.MAX_REQUEST_BODY_BYTES
 
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        content_length = request.headers.get("content-length")
-        if content_length is not None:
-            try:
-                declared_size = int(content_length)
-            except ValueError:
-                declared_size = None
-            if declared_size is not None and declared_size > self._max_bytes:
-                request_id = getattr(request.state, "request_id", "unknown")
-                return JSONResponse(
-                    status_code=413,
-                    content={
-                        "error": {
-                            "code": "PAYLOAD_TOO_LARGE",
-                            "message": "Request body exceeds the maximum allowed size.",
-                            "details": {"max_bytes": self._max_bytes},
-                            "request_id": request_id,
-                        }
-                    },
-                )
-        return await call_next(request)
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        declared = _declared_length(scope)
+        if declared is not None and declared > self._max_bytes:
+            await self._refuse(scope, receive, send)
+            return
+
+        received = 0
+        response_started = False
+
+        async def counted_receive() -> Message:
+            nonlocal received
+            message = await receive()
+            if message["type"] == "http.request":
+                received += len(message.get("body", b""))
+                if received > self._max_bytes:
+                    raise PayloadTooLargeError(self._max_bytes)
+            return message
+
+        async def tracked_send(message: Message) -> None:
+            nonlocal response_started
+            if message["type"] == "http.response.start":
+                response_started = True
+            await send(message)
+
+        try:
+            await self.app(scope, counted_receive, tracked_send)
+        except PayloadTooLargeError:
+            # Normally the app's HTTPException handler has already answered
+            # 413 and this is never reached; it covers a body read outside
+            # FastAPI's own handling. A response already under way cannot be
+            # replaced, so the connection is left to fail instead.
+            if response_started:
+                raise
+            await self._refuse(scope, receive, send)
+
+    async def _refuse(self, scope: Scope, receive: Receive, send: Send) -> None:
+        request_id = scope.get("state", {}).get("request_id", "unknown")
+        response = JSONResponse(
+            status_code=413,
+            content={
+                "error": {
+                    "code": "PAYLOAD_TOO_LARGE",
+                    "message": _TOO_LARGE_MESSAGE,
+                    "details": {"max_bytes": self._max_bytes},
+                    "request_id": request_id,
+                }
+            },
+        )
+        await response(scope, receive, send)

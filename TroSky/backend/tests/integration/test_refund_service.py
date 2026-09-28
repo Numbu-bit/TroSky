@@ -86,7 +86,8 @@ class TestCancellationOpensRefundRequest:
         assert refund_request is not None
         assert refund_request.status == RefundStatus.PENDING
         assert refund_request.payment_id == payment_id
-        assert refund_request.amount == Decimal("20.00")
+        # The whole amount paid comes back: the fare plus the platform fee.
+        assert refund_request.amount == booking.total_amount
 
     async def test_creating_refund_request_twice_is_idempotent(
         self, db_session: AsyncSession, make_user
@@ -175,8 +176,10 @@ class TestRefundApproval:
         )
         assert first.status == second.status == RefundStatus.COMPLETED
 
+        # Topped up 100.00, paid the booking, refunded once: back to 100.00.
+        # A second credit would leave 100.00 + refund_request.amount.
         balance = await WalletService(db_session).get_balance(passenger_id)
-        assert balance == refund_request.amount  # credited exactly once
+        assert balance == Decimal("100.00")
 
     async def test_rejecting_a_refund_request(self, db_session: AsyncSession, make_user) -> None:
         passenger_id = (await make_user()).id

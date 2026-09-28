@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -165,9 +165,17 @@ class UserRepository:
         stmt = select(User).options(selectinload(User.profile)).where(User.deleted_at.is_(None))
         if search:
             like = f"%{search}%"
-            stmt = stmt.where(User.phone_number.ilike(like) | User.email.ilike(like))
-        count_result = await self._session.execute(select(User.id).select_from(stmt.subquery()))
-        total = len(count_result.scalars().all())
+            condition = User.phone_number.ilike(like) | User.email.ilike(like)
+            digits = search.replace(" ", "").replace("-", "")
+            if digits.startswith("0") and digits[1:].isdigit():
+                # Numbers are stored as +233..., so "024 555 0101" -- the way
+                # people write them -- must match without its leading 0.
+                condition = condition | User.phone_number.ilike(f"%+233{digits[1:]}%")
+            stmt = stmt.where(condition)
+        count_result = await self._session.execute(
+            select(func.count()).select_from(stmt.subquery())
+        )
+        total = count_result.scalar_one()
         result = await self._session.execute(
             stmt.order_by(User.created_at.desc()).limit(limit).offset(offset)
         )
