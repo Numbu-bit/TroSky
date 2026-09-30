@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mobile/main.dart';
+import 'package:mobile/debug/design_gallery.dart';
+import 'package:trosky_ui/trosky_ui.dart';
 
 void main() {
-  testWidgets('the debug gallery opens and builds every section', (
-    tester,
-  ) async {
-    await tester.pumpWidget(const TroskyMobileApp());
-    await tester.tap(find.text('Design gallery'));
-    await tester.pump();
+  testWidgets('the debug gallery builds every section', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(theme: TroskyTheme.light(), home: const DesignGallery()),
+    );
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('Buttons'), findsOneWidget);

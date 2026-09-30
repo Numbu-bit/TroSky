@@ -1,59 +1,39 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'dart:async';
+
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
-import 'debug/design_gallery.dart';
+import 'app/trosky_mobile_app.dart';
 
-void main() {
-  runApp(const TroskyMobileApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Draw behind the status and navigation bars; each screen picks the
+  // icon colour.
+  unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge));
+  // Decode the splash logo while the native launch screen is still up, so
+  // the logo card never draws empty.
+  await _precache(
+    const AssetImage(TroskyLogo.brightAsset, package: TroskyLogo.package),
+  );
+  runApp(const ProviderScope(child: TroskyMobileApp()));
 }
 
-final GoRouter _router = GoRouter(
-  routes: [
-    GoRoute(path: '/', builder: (context, state) => const _SetupPlaceholder()),
-    // Debug builds only: every trosky_ui token and component.
-    if (kDebugMode)
-      GoRoute(
-        path: '/_gallery',
-        builder: (context, state) => const DesignGallery(),
-      ),
-  ],
-);
-
-class TroskyMobileApp extends StatelessWidget {
-  const TroskyMobileApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'TroSky',
-      theme: TroskyTheme.light(),
-      routerConfig: _router,
-    );
+/// Loads [image] into the image cache. A failure is ignored: the image then
+/// loads when it is first shown.
+Future<void> _precache(ImageProvider image) {
+  final loaded = Completer<void>();
+  final stream = image.resolve(ImageConfiguration.empty);
+  late final ImageStreamListener listener;
+  void done() {
+    if (loaded.isCompleted) return;
+    loaded.complete();
+    // The image cache keeps the decoded image after the listener goes.
+    stream.removeListener(listener);
   }
-}
 
-/// Placeholder until the first screens land.
-class _SetupPlaceholder extends StatelessWidget {
-  const _SetupPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('TroSky Mobile — setup OK'),
-            if (kDebugMode)
-              TextButton(
-                onPressed: () => context.go('/_gallery'),
-                child: const Text('Design gallery'),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
+  listener = ImageStreamListener((_, _) => done(), onError: (_, _) => done());
+  stream.addListener(listener);
+  return loaded.future;
 }

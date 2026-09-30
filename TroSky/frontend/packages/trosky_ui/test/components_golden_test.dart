@@ -9,13 +9,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
 /// Serves `packages/trosky_ui/...` asset keys from disk. A package's own
-/// tests only bundle its assets without that prefix.
+/// tests only bundle its assets without that prefix. Other keys, such as
+/// the asset manifest images look up, come from the test bundle.
 class _PackageAssetBundle extends CachingAssetBundle {
+  static const _prefix = 'packages/trosky_ui/';
+
   @override
   Future<ByteData> load(String key) async {
-    final bytes = await File(
-      key.replaceFirst('packages/trosky_ui/', ''),
-    ).readAsBytes();
+    if (!key.startsWith(_prefix)) return rootBundle.load(key);
+    final bytes = await File(key.substring(_prefix.length)).readAsBytes();
     return ByteData.sublistView(bytes);
   }
 }
@@ -324,16 +326,12 @@ void main() {
               child: const TroskyLogo.bright(),
             ),
             const SizedBox(height: 40),
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                TroskyLogo.mark(height: 20),
-                SizedBox(width: 16),
-                TroskyLogo.mark(height: 24),
-                SizedBox(width: 16),
-                TroskyLogo.mark(height: 36),
-              ],
-            ),
+            // The heights the designs use: 20 (P15), 28 and 36 (admin).
+            const TroskyLogo.mark(height: 20),
+            const SizedBox(height: 16),
+            const TroskyLogo.mark(height: 28),
+            const SizedBox(height: 16),
+            const TroskyLogo.mark(height: 36),
           ],
         ),
       ),

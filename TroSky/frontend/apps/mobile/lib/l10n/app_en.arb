@@ -1,0 +1,15 @@
+{
+  "@@locale": "en",
+  "splashTagline": "Your Journey. On Time.",
+  "@splashTagline": {
+    "description": "Heading under the logo on the splash screen (S-01)."
+  },
+  "splashSubtitle": "Ghana's Shared Transport Platform",
+  "@splashSubtitle": {
+    "description": "Line under the splash heading (S-01)."
+  },
+  "splashLoading": "Loading",
+  "@splashLoading": {
+    "description": "Screen reader label for the animated loading dots on the splash screen."
+  }
+}

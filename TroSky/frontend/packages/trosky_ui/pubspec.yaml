@@ -48,5 +48,8 @@ flutter:
           weight: 600
         - asset: assets/fonts/inter/Inter-Bold.ttf
           weight: 700
+  # Only the Figma logo images are bundled. The SVGs next to them are not the
+  # brand logo and are not used (docs/design-decisions.md, decision 1).
   assets:
-    - assets/logo/
+    - assets/logo/trosky_logo_bright.png
+    - assets/logo/trosky_logo_small.jpg

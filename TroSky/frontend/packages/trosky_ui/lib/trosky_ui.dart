@@ -3,6 +3,7 @@
 library;
 
 export 'src/components/decorative.dart';
+export 'src/components/loading_dots.dart';
 export 'src/components/page_dots.dart';
 export 'src/components/section_label.dart';
 export 'src/components/skip_text.dart';

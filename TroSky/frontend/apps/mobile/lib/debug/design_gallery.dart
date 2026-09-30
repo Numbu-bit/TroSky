@@ -303,17 +303,13 @@ class _Logos extends StatelessWidget {
             ),
             child: const TroskyLogo.bright(),
           ),
+          // The small logo is about 3:1, so the three heights stack.
           const SizedBox(height: 24),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TroskyLogo.mark(height: 20),
-              SizedBox(width: 16),
-              TroskyLogo.mark(height: 28),
-              SizedBox(width: 16),
-              TroskyLogo.mark(height: 36),
-            ],
-          ),
+          const TroskyLogo.mark(height: 20),
+          const SizedBox(height: 16),
+          const TroskyLogo.mark(height: 28),
+          const SizedBox(height: 16),
+          const TroskyLogo.mark(height: 36),
         ],
       ),
     );

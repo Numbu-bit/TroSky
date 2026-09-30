@@ -22,7 +22,7 @@ This is the only source for visual values. The brand identity PDF is **supersede
 
 - `PhoneFrame` in `Shared.tsx` draws a **320 × 694** phone with a 4 px bezel (`inset: 4`), so the screen the designs are drawn on is **312 × 686**. All sizes in the code are relative to a 312 px wide screen. The earlier note here said 390 × 844; that was wrong.
 - A few elements were authored for a 390 px width and overflow the 312 px screen: the Home map overlay (`<svg width="390">`, P5), the Sign Up header wave (`viewBox="0 0 390 24"`, P4) and the `AcraMap` overlay (`viewBox="0 0 390 240"`, scaled with `slice`).
-- How sizes map from 312 to real phones (360–430 px) is **not decided yet**: either scale everything by screen width ÷ 312, or use the values as-is and let layouts stretch. The tokens hold the raw Figma values either way.
+- How sizes map from 312 to real phones (360–430 px) is **decided**: values are used as-is (1 CSS px = 1 logical px) and layouts stretch horizontally. See decision 2 in `design-decisions.md`.
 - Device chrome is not tokenised: `StatusBar`, `HomeBar` and `PhoneFrame` mock the iPhone, and the real OS draws those. `StatusBar light` marks screens that need light status-bar icons.
 - Light screens: Sign Up, Home and most inner screens. Dark screens inside the light app: Splash and Onboarding 1 (green), Onboarding 2–3 (navy), live tracking (P8), SOS (P15), QR scanner (D6).
 
@@ -584,7 +584,7 @@ Inline transitions (CSS `ease`): 0.15s (P10 plan cards), 0.2s (P7 seats, D1 onli
 | ✓ ● ○ ⚠ ✕ ↗ • | Text symbols in status chips (admin), "↗ Send" (P9), password dots (A:Login) |
 
 ## What the tokens can't reproduce exactly
-- **Logo:** the Figma screens show raster images (`troSkyLogoBright` PNG, `troSkyLogo` JPEG); `TroskyLogo` uses the SVGs in `design/assets` instead, and those are a **different artwork** (navy pin with a side-view bus and an upright wordmark, versus the green pin with a front-view bus and an italic wordmark in the screenshots). In the SVG, "Sky" is placed for Arial Black metrics, so with Plus Jakarta Sans there is a gap ("Tro Sky"). The package copy has its text converted to outlines and the tagline typo "Tiine" corrected to "Time".
+- **Logo:** the Figma screens show raster images (`troSkyLogoBright` PNG, `troSkyLogo` JPEG), and `TroskyLogo` uses those images. The SVGs in `design/assets` are a **different artwork** (navy pin with a side-view bus and an upright wordmark, versus the green pin with a front-view bus and an italic wordmark in the screenshots). In the SVG, "Sky" is placed for Arial Black metrics, so with Plus Jakarta Sans there is a gap ("Tro Sky"). The package copy has its text converted to outlines and the tagline typo "Tiine" corrected to "Time". **Decided:** the Figma raster logo is the official logo, and the SVGs are not used. See decision 1 in `design-decisions.md`.
 - **Pressed, disabled and loading states** are not designed. The buttons use the one disabled pattern in the code (D1: opacity 0.7, no shadow), drop the shadow when pressed (green buttons also switch to greenDark), and show a spinner in the label colour when loading.
 - **Weights 900 and Inter 800** render at 800 and 700, as they do in the browser.
 - **Monospace** uses the platform font; CSS `monospace` also varies by browser.

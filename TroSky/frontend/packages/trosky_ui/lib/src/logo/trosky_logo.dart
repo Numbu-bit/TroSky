@@ -1,35 +1,55 @@
 import 'package:flutter/widgets.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
-/// The TroSky logo, from the SVGs in design/assets.
+/// The TroSky logo, from the raster images in the Figma Make file (the
+/// official logo; see docs/design-decisions.md).
 ///
-/// The Figma Make code shows the logo from two raster images:
-/// `troSkyLogoBright` (the full logo on the white splash card) and
-/// `troSkyLogo` (the pin mark on its own, e.g. inside the QR code). This
-/// widget draws the vector versions of both.
+/// TODO(logo): replace with designer-exported SVG.
 class TroskyLogo extends StatelessWidget {
-  /// Full logo: pin mark, "TroSky" wordmark and tagline. Figma's
-  /// `troSkyLogoBright`; the splash card shows it 200 px wide.
-  const TroskyLogo.bright({super.key, this.width = 200, this.height})
-    : _asset = 'assets/logo/trosky-logo.svg';
+  /// Full logo on a white background. Figma's `troSkyLogoBright`
+  /// (`Screenshot_2026-08-02_124000.png`); the splash card shows it 200 px
+  /// wide.
+  const TroskyLogo.bright({super.key, double this.width = 200})
+    : height = null,
+      _asset = brightAsset,
+      _aspectRatio = _brightAspectRatio;
 
-  /// Pin mark only. Figma's `troSkyLogo`, shown 20–36 px tall.
+  /// Full logo on its dark background. Figma's `troSkyLogo`
+  /// (`WhatsApp_Image_2026-07-29_at_16.20.47.jpeg`), shown 20–36 px tall.
   const TroskyLogo.mark({super.key, required double this.height})
     : width = null,
-      _asset = 'assets/logo/trosky-icon.svg';
+      _asset = smallAsset,
+      _aspectRatio = _smallAspectRatio;
+
+  /// Asset key of the bright logo, inside this package.
+  static const String brightAsset = 'assets/logo/trosky_logo_bright.png';
+
+  /// Asset key of the small logo, inside this package.
+  static const String smallAsset = 'assets/logo/trosky_logo_small.jpg';
+
+  static const String package = 'trosky_ui';
+
+  // Pixel sizes of the images: 611 x 277 and 853 x 271. The box is sized
+  // from these so the layout doesn't jump when the image finishes decoding.
+  static const double _brightAspectRatio = 611 / 277;
+  static const double _smallAspectRatio = 853 / 271;
 
   final double? width;
   final double? height;
   final String _asset;
+  final double _aspectRatio;
 
   @override
   Widget build(BuildContext context) {
-    return SvgPicture.asset(
+    final w = width ?? height! * _aspectRatio;
+    final h = height ?? width! / _aspectRatio;
+    return Image.asset(
       _asset,
-      package: 'trosky_ui',
-      width: width,
-      height: height,
-      semanticsLabel: 'TroSky',
+      package: package,
+      width: w,
+      height: h,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.medium,
+      semanticLabel: 'TroSky',
     );
   }
 }
