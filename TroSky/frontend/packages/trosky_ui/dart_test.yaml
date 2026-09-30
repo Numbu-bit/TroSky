@@ -1,0 +1,7 @@
+tags:
+  golden:
+    # Goldens are generated on Windows. Linux rasterises text differently, so
+    # the Linux CI runner skips them rather than failing on anti-aliasing.
+    on_os:
+      linux:
+        skip: "Goldens are generated on Windows; run them on Windows."
