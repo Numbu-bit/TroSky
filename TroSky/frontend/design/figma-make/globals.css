@@ -1,0 +1,61 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+:root {
+  --green: #0E9E6D;
+  --green-dk: #0B7E57;
+  --green-lt: rgba(14,158,109,0.12);
+  --blue: #1F6FB2;
+  --navy: #12263B;
+  --ink: #1D2027;
+  --amber: #F4B333;
+  --red: #E23D3D;
+  --success: #16A34A;
+  --txt: #1D2027;
+  --txt-2: #5B6472;
+  --border: #E4E8EE;
+  --surface: #FFFFFF;
+  --bg: #F5F7FA;
+  --heading: 'Plus Jakarta Sans', sans-serif;
+  --body: 'Inter', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; font-family: var(--body); -webkit-font-smoothing: antialiased; }
+h1,h2,h3,h4,h5 { font-family: var(--heading); margin: 0; }
+button { cursor: pointer; border: none; background: none; padding: 0; font-family: var(--body); }
+input,textarea { font-family: var(--body); outline: none; }
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+
+@keyframes pulse-dot {
+  0%,100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.6); opacity: 0.3; }
+}
+@keyframes slide-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes float {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes price-flash {
+  0%,100% { color: var(--ink); }
+  40% { color: var(--green); transform: scale(1.05); }
+}
+@keyframes ripple {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(3); opacity: 0; }
+}
+.anim-pulse { animation: pulse-dot 2s ease-in-out infinite; }
+.anim-slide { animation: slide-up 0.4s cubic-bezier(0.16,1,0.3,1) forwards; }
+.anim-float { animation: float 3s ease-in-out infinite; }
+.anim-price { animation: price-flash 0.5s ease; }
