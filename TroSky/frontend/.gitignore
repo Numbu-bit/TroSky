@@ -1,0 +1,14 @@
+# Workspace-level ignores. Each app and package keeps its own Flutter
+# .gitignore for platform-specific output.
+
+.dart_tool/
+build/
+coverage/
+.flutter-plugins-dependencies
+*.iml
+.idea/
+
+# Env files may hold real endpoints; only the *.example.json templates are
+# committed. Copy one to env/<name>.json and edit it locally.
+env/*.json
+!env/*.example.json

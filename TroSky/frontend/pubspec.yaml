@@ -1,0 +1,57 @@
+name: trosky_workspace
+description: Pub workspace root for the TroSky Flutter apps and shared packages.
+publish_to: none
+
+environment:
+  sdk: ^3.12.0
+  flutter: ">=3.44.0"
+
+workspace:
+  - apps/mobile
+  - apps/admin_web
+  - apps/fleet_web
+  - packages/trosky_ui
+  - packages/trosky_core
+  - packages/trosky_api
+  - packages/trosky_auth
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  melos: ^8.9.0
+
+# Melos 8 reads its configuration from here (there is no melos.yaml).
+# Scripts named like a built-in command (analyze, test, format) replace it, so
+# `melos analyze` and `melos run analyze` run the same thing.
+melos:
+  scripts:
+    analyze:
+      description: Analyze every package. Infos and warnings fail the run.
+      run: dart analyze --fatal-infos --fatal-warnings .
+
+    test:
+      description: Run the tests of every package that has a test folder.
+      exec:
+        command: flutter test --no-pub
+        concurrency: 1
+      packageFilters:
+        dirExists: test
+
+    format:
+      description: Format all Dart code in the workspace.
+      run: dart format .
+
+    gen:
+      description: Run build_runner in every package that depends on it.
+      exec:
+        command: dart run build_runner build --delete-conflicting-outputs
+        concurrency: 1
+      packageFilters:
+        dependsOn: build_runner
+
+    golden-update:
+      description: Regenerate golden files in every package that has tests.
+      exec:
+        command: flutter test --no-pub --update-goldens
+        concurrency: 1
+      packageFilters:
+        dirExists: test

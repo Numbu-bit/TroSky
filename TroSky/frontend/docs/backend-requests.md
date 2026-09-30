@@ -113,3 +113,23 @@ Also add `?reference_type=` as a filter on `GET /wallet/transactions`.
 | G17 | Optional Ghana Card verification | Fields exist, but there's no verification endpoint |
 
 Mubarik will confirm these with the team and update this file.
+
+---
+
+## CI
+
+**`TroSky/.github/workflows/ci.yml` has never run.** GitHub only runs workflows from `.github/workflows/` at the repository root. In this repo that folder sits one level down, inside `TroSky/`, so GitHub ignores it and no lint, tests, scans or image builds happen on push or PR. The frontend workflow is at the root (`.github/workflows/frontend.yml`) and does run; it only triggers on `TroSky/frontend/**`, so it won't touch the backend.
+
+To fix it:
+1. Move the file to the root: `git mv TroSky/.github/workflows/ci.yml .github/workflows/backend.yml`
+2. Paths are then relative to the repo root, so prefix them with `TroSky/`:
+   - `defaults.run.working-directory: TroSky/backend`
+   - `cache-dependency-path: TroSky/backend/pyproject.toml` (both `setup-python` steps that set it)
+   - Trivy `scan-ref: TroSky/backend/requirements.lock.txt`
+   - coverage upload `path: TroSky/backend/coverage.xml`
+3. Two paths are wrong regardless of the move, because every `run:` step already executes inside the backend folder while `uses:` steps resolve from the repo root:
+   - `docker build ... --target runtime backend` should end in `.` (as written it points at `backend/backend`).
+   - The image upload should use `path: TroSky/backend/image.tar`, since `docker save -o image.tar` writes it inside the backend folder.
+4. Optional: add `paths: ["TroSky/backend/**", ".github/workflows/backend.yml"]` to the `push` and `pull_request` triggers so frontend-only commits don't run the backend pipeline.
+
+Because the workflow has never run, expect the first run to surface a few failures of its own.

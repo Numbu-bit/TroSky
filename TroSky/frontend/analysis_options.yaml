@@ -1,0 +1,13 @@
+# Shared by every app and package in the workspace; each member's
+# analysis_options.yaml includes this file.
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "**/build/**"
