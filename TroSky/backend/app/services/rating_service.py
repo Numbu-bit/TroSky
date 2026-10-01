@@ -35,6 +35,7 @@ class RatingService:
         passenger_id: uuid.UUID,
         score: int,
         comment: str | None,
+        categories: dict[str, int | None] | None = None,
     ) -> Rating:
         booking = await self._bookings.get_by_id(booking_id)
         if booking is None or booking.passenger_id != passenger_id:
@@ -53,6 +54,7 @@ class RatingService:
                 driver_id=driver_id,
                 score=score,
                 comment=comment,
+                categories=categories,
             )
         except RatingAlreadyExistsError as exc:
             raise ConflictError(
@@ -64,6 +66,9 @@ class RatingService:
 
     async def get_rating_for_booking(self, booking_id: uuid.UUID) -> Rating | None:
         return await self._ratings.get_by_booking_id(booking_id)
+
+    async def get_driver_category_averages(self, driver_id: uuid.UUID) -> dict[str, Decimal | None]:
+        return await self._ratings.get_driver_category_averages(driver_id)
 
     async def get_driver_average_rating(self, driver_id: uuid.UUID) -> tuple[Decimal | None, int]:
         return await self._ratings.get_driver_average(driver_id)

@@ -32,6 +32,8 @@ api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
 api_router.include_router(drivers.onboarding_router, prefix="/drivers", tags=["drivers"])
 api_router.include_router(drivers.router, prefix="/drivers", tags=["drivers"])
+# Before the fleet routers: see tracking.vehicles_router.
+api_router.include_router(tracking.vehicles_router, tags=["tracking"])
 # fleets.router declares its own full paths (/fleet-owners, /fleets, /vehicles)
 # rather than sharing one resource prefix, so it is mounted with none here.
 api_router.include_router(fleets.onboarding_router, tags=["fleets"])

@@ -14,8 +14,17 @@ import asyncio
 import time
 import uuid
 from collections.abc import Awaitable, Callable
+from typing import Annotated
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, WebSocketException, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+    WebSocketException,
+    status,
+)
 from redis.asyncio.client import PubSub
 
 from app.api.dependencies import CurrentPrincipal, TrackingServiceDep, resolve_principal
@@ -24,14 +33,18 @@ from app.core.database import get_session_factory
 from app.core.exceptions import AppError, ForbiddenError, NotFoundError
 from app.core.logging import get_logger
 from app.core.permissions import Principal
+from app.core.ratelimit import rate_limit
 from app.core.redis import get_redis_client
 from app.core.telemetry import ACTIVE_WEBSOCKET_CONNECTIONS
-from app.schemas.tracking import EtaResponse, LiveLocationResponse
+from app.schemas.tracking import EtaResponse, LiveLocationResponse, NearbyVehicleResponse
 from app.services.tracking_service import TrackingService, channel_name
 
 logger = get_logger(__name__)
 
 router = APIRouter()
+# Mounted before the fleet routes: their fleet-owner-only
+# /vehicles/{vehicle_id} would otherwise take "nearby" for a vehicle id.
+vehicles_router = APIRouter()
 
 # RFC 6455 caps a close frame's reason at 123 bytes.
 _MAX_CLOSE_REASON = 120
@@ -175,3 +188,42 @@ async def track_trip(websocket: WebSocket, trip_id: uuid.UUID) -> None:
         await pubsub.unsubscribe(channel_name(trip_id))
         # redis-py's own inline types omit a signature for aclose().
         await pubsub.aclose()  # type: ignore[no-untyped-call]
+
+
+@vehicles_router.get(
+    "/vehicles/nearby",
+    response_model=list[NearbyVehicleResponse],
+    dependencies=[Depends(rate_limit("tracking:nearby"))],
+)
+async def list_nearby_vehicles(
+    principal: CurrentPrincipal,
+    tracking: TrackingServiceDep,
+    latitude: Annotated[float, Query(ge=-90, le=90)],
+    longitude: Annotated[float, Query(ge=-180, le=180)],
+    radius_m: Annotated[int, Query(ge=50, le=20_000)] = 2_000,
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+) -> list[NearbyVehicleResponse]:
+    """Vehicles out on a trip within ``radius_m`` of the point, nearest
+    first, with their route and free seats -- for the Home map. Based on
+    each vehicle's last GPS ping; pings more than a few minutes old are
+    left out."""
+    nearby = await tracking.find_nearby_vehicles(
+        latitude=latitude, longitude=longitude, radius_m=radius_m, limit=limit
+    )
+    return [
+        NearbyVehicleResponse(
+            trip_id=vehicle.summary.trip_id,
+            vehicle_id=vehicle.summary.vehicle_id,
+            vehicle_registration_number=vehicle.summary.vehicle_registration_number,
+            vehicle_type=vehicle.summary.vehicle_type,
+            route_id=vehicle.summary.route_id,
+            route_name=vehicle.summary.route_name,
+            latitude=vehicle.location.latitude,
+            longitude=vehicle.location.longitude,
+            heading=vehicle.location.heading_degrees,
+            distance_m=round(vehicle.distance_m, 1),
+            available_seats=vehicle.summary.available_seats,
+            updated_at=vehicle.location.recorded_at,
+        )
+        for vehicle in nearby
+    ]

@@ -12,7 +12,9 @@ application logic.
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from collections.abc import Collection
+from dataclasses import replace
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,8 +34,19 @@ from app.models.trips import Trip, TripEventType, TripStatus
 from app.repositories.booking_repository import BookingRepository
 from app.repositories.driver_repository import DriverRepository
 from app.repositories.trip_repository import TripRepository
+from app.repositories.trip_view_repository import (
+    ManifestEntry,
+    TripSummary,
+    TripViewRepository,
+    day_window,
+)
 from app.repositories.vehicle_repository import VehicleRepository
 from app.services.wallet_service import WalletService
+from app.utilities.phone import (
+    InvalidPhoneNumberError,
+    mask_phone_number,
+    normalize_phone_number,
+)
 
 logger = get_logger(__name__)
 
@@ -61,6 +74,7 @@ class TripService:
         self._vehicles = VehicleRepository(session)
         self._bookings = BookingRepository(session)
         self._wallets = WalletService(session)
+        self._views = TripViewRepository(session)
 
     # ------------------------------------------------------------------
     # Scheduling
@@ -166,6 +180,40 @@ class TripService:
         if assignment is None or assignment.driver_id != driver.id:
             raise ForbiddenError("You are not the assigned driver for this trip.")
         return driver.id
+
+    async def get_manifest(self, trip_id: uuid.UUID, user_id: uuid.UUID) -> list[ManifestEntry]:
+        """The trip's passenger list, for its assigned driver only. Phone
+        numbers are masked: the driver sees enough to confirm a passenger,
+        not enough to call them."""
+        if await self._trips.get_by_id(trip_id) is None:
+            raise NotFoundError("Trip not found.")
+        await self._resolve_assigned_driver_id(trip_id, user_id)
+        return [
+            replace(entry, phone_number=mask_phone_number(_international(entry.phone_number)))
+            for entry in await self._views.list_manifest(trip_id)
+        ]
+
+    async def list_trips(
+        self,
+        *,
+        statuses: Collection[TripStatus] | None,
+        on_date: date | None,
+        route_id: uuid.UUID | None,
+        driver_id: uuid.UUID | None,
+        limit: int,
+        offset: int,
+    ) -> tuple[list[TripSummary], int]:
+        """Every trip matching the filters, soonest departure first."""
+        departure_from, departure_before = day_window(on_date)
+        return await self._views.list_summaries(
+            statuses=statuses,
+            departure_from=departure_from,
+            departure_before=departure_before,
+            route_id=route_id,
+            driver_id=driver_id,
+            limit=limit,
+            offset=offset,
+        )
 
     async def assert_is_assigned_driver(self, trip_id: uuid.UUID, user_id: uuid.UUID) -> uuid.UUID:
         """Public wrapper around :meth:`_resolve_assigned_driver_id` — the
@@ -317,3 +365,12 @@ class TripService:
             raise InvalidStateTransitionError(
                 f"Cannot transition a trip from '{current.value}' to '{target.value}'."
             )
+
+
+def _international(phone: str) -> str:
+    """``+233...`` form, so masking keeps the same digits whichever way the
+    number was typed at booking."""
+    try:
+        return normalize_phone_number(phone)
+    except InvalidPhoneNumberError:
+        return phone

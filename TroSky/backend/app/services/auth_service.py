@@ -8,13 +8,12 @@ no HTTP-status-code decisions live in ``app.api.v1.auth`` — only here.
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from redis.asyncio import Redis
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.background import run_in_background
 from app.core.config import Settings, get_settings
 from app.core.exceptions import (
     AccountLockedError,
@@ -23,6 +22,7 @@ from app.core.exceptions import (
     ConflictError,
     InvalidCredentialsError,
     NotFoundError,
+    OtpNotFoundError,
     PasswordResetTokenInvalidError,
     TokenReuseDetectedError,
     UnauthorizedError,
@@ -34,7 +34,6 @@ from app.core.security import (
     TokenType,
     create_token,
     decode_token,
-    generate_opaque_token,
     hash_opaque_token,
     hash_password,
     verify_password,
@@ -346,12 +345,7 @@ class AuthService:
         self._assert_login_allowed(user)
 
         challenge = await self._otp.verify_otp(target=target, purpose=OtpPurpose.LOGIN, code=code)
-        # The code reached the user, which proves the contact it went to -- so
-        # this also completes an account that never finished verifying.
-        if challenge.channel == OtpChannel.EMAIL and user.email_verified_at is None:
-            await self._users.mark_email_verified(user)
-        elif challenge.channel == OtpChannel.SMS and user.phone_verified_at is None:
-            await self._users.mark_phone_verified(user)
+        await self._mark_contact_verified(user, challenge.channel)
         await self._users.record_login_success(user)
         return await self._issue_token_pair(user, device, ip_address)
 
@@ -487,52 +481,71 @@ class AuthService:
     # Password reset
     # ------------------------------------------------------------------
     async def forgot_password(self, identifier: str) -> None:
+        """Send a 6-digit reset code for the account behind ``identifier``:
+        to its email when codes go by email (or an email was typed), else by
+        SMS. Complete the reset with :meth:`reset_password_with_code`.
+
+        Like :meth:`resend_otp`, an identifier with no account -- or an
+        account with no email when codes go by email -- gets the same answer
+        and cooldown as a real request, but nothing is sent.
+        """
         user = await self._resolve_user(identifier)
-        if user is None:
-            # Do not reveal whether an account exists.
-            return
         by_email = self._codes_by_email or "@" in identifier
-        if by_email and user.email is None:
-            # Codes go by email and this account has none: nothing to send.
-            logger.warning("password_reset_not_sent_no_email", user_id=str(user.id))
+        deliver_to = None
+        if user is not None:
+            deliver_to = user.email if by_email else user.phone_number
+        if user is None or deliver_to is None:
+            await self._otp.hold_cooldown(target=identifier, purpose=OtpPurpose.PASSWORD_RESET)
+            if user is not None:
+                logger.warning("password_reset_not_sent_no_email", user_id=str(user.id))
             return
-
-        raw_token = generate_opaque_token()
-        await self._otp_repo.create_password_reset_token(
+        await self._otp.request_otp(
+            target=identifier,
+            channel=OtpChannel.EMAIL if by_email else OtpChannel.SMS,
+            purpose=OtpPurpose.PASSWORD_RESET,
             user_id=user.id,
-            token_hash=hash_opaque_token(raw_token),
-            expires_at=datetime.now(UTC)
-            + timedelta(seconds=self._settings.PASSWORD_RESET_TOKEN_TTL_SECONDS),
+            deliver_to=deliver_to,
         )
-        message = f"Your TroSky password reset code is {raw_token}. It expires in 30 minutes."
-        # Plain values, not the ORM object: a background send runs after the
-        # request's session has closed.
-        email_to = user.email if by_email else None
-        phone_to = user.phone_number
-
-        async def deliver() -> None:
-            if email_to is not None:
-                await self._email_provider.send_email(
-                    email_to, "Reset your TroSky password", message
-                )
-            else:
-                await self._sms_provider.send_sms(phone_to, message)
-
-        if self._settings.OTP_SEND_IN_BACKGROUND:
-            run_in_background(deliver(), name="password-reset")
-        else:
-            await deliver()
         logger.info("password_reset_requested", user_id=str(user.id))
 
-    async def reset_password(self, raw_token: str, new_password: str) -> None:
+    async def reset_password_with_code(self, target: str, code: str, new_password: str) -> None:
+        """Set a new password with the code ``forgot_password`` sent for
+        ``target``. Signs out every session, as a token reset does."""
+        self._enforce_password_policy(new_password)
+        user = await self._resolve_user(target)
+        if user is None:
+            # Indistinguishable from a wrong or expired code.
+            raise OtpNotFoundError()
+        challenge = await self._otp.verify_otp(
+            target=target, purpose=OtpPurpose.PASSWORD_RESET, code=code
+        )
+        await self._mark_contact_verified(user, challenge.channel)
+        await self._users.update_password(user, hash_password(new_password))
+        await self._sessions.revoke_all_sessions_for_user(user.id, reason="password_reset")
+        logger.info("password_reset_completed", user_id=str(user.id), method="code")
+
+    def _enforce_password_policy(self, password: str) -> None:
         try:
-            validate_password_policy(new_password, self._settings)
+            validate_password_policy(password, self._settings)
         except PasswordPolicyError as exc:
             raise ConflictError(
                 "Password does not meet the required policy.",
                 code="PASSWORD_POLICY_VIOLATION",
                 details={"violations": exc.violations},
             ) from None
+
+    async def _mark_contact_verified(self, user: User, channel: OtpChannel) -> None:
+        """A code that reached the user proves the contact it was sent to,
+        which also completes an account that never finished verifying."""
+        if channel == OtpChannel.EMAIL and user.email_verified_at is None:
+            await self._users.mark_email_verified(user)
+        elif channel == OtpChannel.SMS and user.phone_verified_at is None:
+            await self._users.mark_phone_verified(user)
+
+    async def reset_password(self, raw_token: str, new_password: str) -> None:
+        """Set a new password with a long reset token -- the older form of
+        reset, still honoured for tokens issued before codes replaced it."""
+        self._enforce_password_policy(new_password)
 
         token_hash = hash_opaque_token(raw_token)
         token_record = await self._otp_repo.get_active_password_reset_token(token_hash)

@@ -164,6 +164,9 @@ class UserProfile(UUIDAuditBase):
     gender: Mapped[str | None] = mapped_column(String(20), nullable=True)
     preferred_language: Mapped[str] = mapped_column(String(10), nullable=False, default="en")
     avatar_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    # An uploaded photo in the private bucket; served through a short-lived
+    # signed URL, so the URL itself is never stored.
+    avatar_storage_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
     ghana_card_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     ghana_card_verified_at: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True), nullable=True
@@ -338,6 +341,34 @@ class EmergencyContact(UUIDAuditBase, SoftDeleteMixin):
     is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     __table_args__ = (Index("ix_emergency_contacts_user_id", "user_id"),)
+
+
+class FavouriteRoute(UUIDAuditBase):
+    """A journey a user pinned to the Home screen: board at one stop, get
+    off at another."""
+
+    __tablename__ = "favourite_routes"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    origin_stop_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("stops.id", ondelete="RESTRICT"), nullable=False
+    )
+    destination_stop_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("stops.id", ondelete="RESTRICT"), nullable=False
+    )
+    label: Mapped[str | None] = mapped_column(String(60), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "origin_stop_id",
+            "destination_stop_id",
+            name="uq_favourite_routes_user_journey",
+        ),
+        CheckConstraint("origin_stop_id <> destination_stop_id", name="distinct_stops"),
+    )
 
 
 class NotificationPreference(UUIDAuditBase):

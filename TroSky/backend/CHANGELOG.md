@@ -1097,3 +1097,65 @@ This is the final phase. See `README.md#known-limitations` for the
 consolidated, still-honest list of what remains unfinished after all 11
 phases, and `docs/production-readiness-checklist.md` for what's owed
 before an actual production launch.
+
+## [0.12.0] - 2026-10-01 - Frontend requests (mobile app, admin web, fleet web)
+
+The gaps in "Backend Requests from the Frontend Team" (30 Sep 2026), built to
+the shapes the frontend mocks against. All are listed in `/openapi.json`.
+
+- **G1 done** — `POST /auth/password/forgot` now sends a 6-digit code (by
+  email or SMS, as other codes). `POST /auth/password/reset` takes
+  `{target, code, new_password}`; the older `{token, new_password}` is still
+  accepted.
+- **G2 done** — `GET /drivers/me/trips?status=a,b&date=YYYY-MM-DD`
+  (paginated): route, end stops, times, status, vehicle, `seats_total`,
+  `seats_booked` (paid seats, i.e. the manifest), `boarded_count`.
+- **G3 done** — `GET /driver-trips/{trip_id}/passengers`: the manifest for
+  the assigned driver only (403 otherwise), in pickup order, phones masked
+  (`+23324•••4567`); `boarded`/`boarded_at` follow ticket scans.
+- **G4 done** — `GET/POST/DELETE /users/me/favourite-routes`, returning stop
+  names; 409 `FAVOURITE_ROUTE_EXISTS` / `FAVOURITE_ROUTES_LIMIT` (20).
+- **G5 done** — `POST /users/me/avatar` (multipart `file`, JPEG/PNG ≤ 5 MB)
+  → `UserResponse`; `avatar_url` is a signed link valid for an hour.
+- **G7 done** — `GET /drivers/me/earnings?period=day|week|month&from=&to=`
+  with a bucket for every period (weeks start Monday); `?reference_type=` on
+  `GET /wallet/transactions`.
+- **G8 done** — `GET /admin/trips` (paginated; filters `status`, `date`,
+  `route_id`, `driver_id`), `GET /admin/live-trips`,
+  `GET /fleets/{fleet_id}/live-trips`.
+- **G9 done** — `PATCH/DELETE /admin/stops/{id}` and
+  `PATCH/DELETE /admin/routes/{id}`. DELETE deactivates (history is kept);
+  409 `STOP_IN_USE` / `ROUTE_HAS_ACTIVE_TRIPS` while still in use. Moving a
+  stop or changing a route's length re-measures the distances that price
+  partial rides.
+- **G10 done** — `GET /fleets/{fleet_id}/drivers`,
+  `GET /fleets/driver-lookup?phone=` (approved drivers only, else 404).
+- **G12 done** — `GET /bookings?status=a,b&upcoming=true|false`; every
+  `BookingResponse` now embeds `trip {scheduled_departure_at, route_name,
+  origin_stop_name, destination_stop_name, status,
+  vehicle_registration_number}`, plus `boarding_stop_name` /
+  `alighting_stop_name` (the booking's own stops, which differ from the
+  route's for a partial ride).
+- **G13 done** — optional `safety`, `cleanliness`, `professionalism`,
+  `timeliness` (1–5) on `RateBookingRequest` and `RatingResponse`; averages
+  in the admin driver rating summary.
+- **G16 done** — `GET /vehicles/nearby?latitude=&longitude=&radius_m=`:
+  vehicles out on trips near the point, from GPS pings at most 5 minutes
+  old, with route and free seats.
+- **G14, G15, G17, G18** — not built: awaiting the product decisions the
+  request lists. Note for G15: fares are already shared by distance — each
+  new booking pays its distance's share of the trip fare, so the price
+  falls as seats fill (see `app/services/fare_service.py`).
+
+Also changed this cycle (affects the app's sign-up and sign-in screens):
+
+- Verification codes go by **email** while no SMS provider is paid for
+  (`OTP_DELIVERY_CHANNEL=email`), sent after the response returns.
+- Registration requires a **Gmail** address (`EMAIL_REQUIRED`,
+  `EMAIL_DOMAIN_NOT_ALLOWED`; `REGISTRATION_EMAIL_DOMAINS`).
+- Password login and booking require a **verified** account
+  (`ACCOUNT_NOT_VERIFIED`, with `details.target` to send a new code to);
+  logging in with an emailed code verifies the account.
+
+Migration `20260930_0013`: `favourite_routes`, `user_profiles.avatar_storage_key`,
+and the four optional rating columns — additive only.

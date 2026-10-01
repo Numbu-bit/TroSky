@@ -156,6 +156,23 @@ class TripRepository:
         )
         return list(result.scalars().all()), total
 
+    async def count_unfinished_for_route(self, route_id: uuid.UUID) -> int:
+        """Trips on the route that are yet to run or still running."""
+        result = await self._session.execute(
+            select(func.count(Trip.id)).where(
+                Trip.route_id == route_id,
+                Trip.status.in_(
+                    [
+                        TripStatus.SCHEDULED,
+                        TripStatus.BOARDING,
+                        TripStatus.IN_PROGRESS,
+                        TripStatus.PAUSED,
+                    ]
+                ),
+            )
+        )
+        return int(result.scalar_one())
+
     async def set_status(
         self,
         trip: Trip,

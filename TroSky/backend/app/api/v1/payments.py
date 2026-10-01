@@ -24,7 +24,7 @@ from app.api.dependencies import (
 from app.core.config import from_minor_units
 from app.core.permissions import Permission
 from app.core.ratelimit import rate_limit
-from app.models.payments import Payment
+from app.models.payments import Payment, WalletReferenceType
 from app.providers.payments.base import PaymentChannel
 from app.schemas.common import MessageResponse, PaginatedResponse
 from app.schemas.payment import (
@@ -119,10 +119,18 @@ async def get_wallet(principal: CurrentPrincipal, service: WalletServiceDep) -> 
 
 @router.get("/wallet/transactions", response_model=PaginatedResponse[WalletTransactionResponse])
 async def list_wallet_transactions(
-    principal: CurrentPrincipal, service: WalletServiceDep, pagination: Pagination
+    principal: CurrentPrincipal,
+    service: WalletServiceDep,
+    pagination: Pagination,
+    reference_type: WalletReferenceType | None = None,
 ) -> PaginatedResponse[WalletTransactionResponse]:
+    """Newest first. ``reference_type`` narrows to one kind of entry --
+    ``trip_earning`` lists a driver's earnings."""
     transactions, total = await service.list_transactions(
-        principal.user_id, limit=pagination.limit, offset=pagination.offset
+        principal.user_id,
+        reference_type=reference_type,
+        limit=pagination.limit,
+        offset=pagination.offset,
     )
     items = [
         WalletTransactionResponse(

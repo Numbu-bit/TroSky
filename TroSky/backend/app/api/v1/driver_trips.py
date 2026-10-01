@@ -22,7 +22,12 @@ from app.core.permissions import SystemRole, require_roles
 from app.core.ratelimit import rate_limit
 from app.schemas.ticket import TicketResponse, ValidateTicketRequest
 from app.schemas.tracking import LiveLocationResponse, LocationPingRequest
-from app.schemas.trip import EndTripRequest, PauseTripRequest, TripResponse
+from app.schemas.trip import (
+    EndTripRequest,
+    ManifestEntryResponse,
+    PauseTripRequest,
+    TripResponse,
+)
 
 router = APIRouter(dependencies=[Depends(require_roles(SystemRole.DRIVER))])
 
@@ -139,3 +144,16 @@ async def validate_ticket(
         validated_at=ticket.validated_at,
         qr_token=tickets.get_qr_token(ticket),
     )
+
+
+@router.get("/{trip_id}/passengers", response_model=list[ManifestEntryResponse])
+async def list_trip_passengers(
+    trip_id: uuid.UUID, principal: CurrentPrincipal, trips: TripServiceDep
+) -> list[ManifestEntryResponse]:
+    """The trip's passenger manifest, in pickup order along the route. Only
+    the trip's assigned driver may see it (403 otherwise). ``boarded``
+    becomes true once the passenger's ticket is scanned with
+    ``POST /driver-trips/{trip_id}/tickets/validate``. Phone numbers are
+    masked."""
+    entries = await trips.get_manifest(trip_id, principal.user_id)
+    return [ManifestEntryResponse.model_validate(entry) for entry in entries]

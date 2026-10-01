@@ -9,7 +9,7 @@ from enum import StrEnum
 from sqlalchemy import CheckConstraint, ForeignKey, Index, UniqueConstraint
 from sqlalchemy import Enum as PgEnum
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.types import TIMESTAMP, Integer, String
+from sqlalchemy.types import TIMESTAMP, Integer, SmallInteger, String
 
 from app.models.base import UUIDAuditBase, enum_values
 
@@ -48,10 +48,25 @@ class Rating(UUIDAuditBase):
     )
     score: Mapped[int] = mapped_column(Integer, nullable=False)
     comment: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    # Optional 1-5 scores for particular aspects of the trip; ``score``
+    # stays the overall rating.
+    safety: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    cleanliness: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    professionalism: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    timeliness: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
 
     __table_args__ = (
         UniqueConstraint("booking_id", name="uq_ratings_booking_id"),
         CheckConstraint("score >= 1 AND score <= 5", name="score_between_1_and_5"),
+        CheckConstraint("safety >= 1 AND safety <= 5", name="safety_between_1_and_5"),
+        CheckConstraint(
+            "cleanliness >= 1 AND cleanliness <= 5", name="cleanliness_between_1_and_5"
+        ),
+        CheckConstraint(
+            "professionalism >= 1 AND professionalism <= 5",
+            name="professionalism_between_1_and_5",
+        ),
+        CheckConstraint("timeliness >= 1 AND timeliness <= 5", name="timeliness_between_1_and_5"),
         Index("ix_ratings_driver_id", "driver_id"),
         Index("ix_ratings_trip_id", "trip_id"),
     )

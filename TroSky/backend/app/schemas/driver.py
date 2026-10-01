@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
+from typing import Literal
 
 from pydantic import Field
 
@@ -67,3 +69,20 @@ class DriverAssignmentResponse(ApiModel):
     fleet_id: uuid.UUID
     is_active: bool
     assigned_at: datetime
+
+
+class EarningsBucketResponse(ApiModel):
+    start: date = Field(..., description="First day of the period (weeks start on Monday).")
+    total: Decimal
+    trips_count: int
+
+
+class EarningsSummaryResponse(ApiModel):
+    period: Literal["day", "week", "month"]
+    currency: str
+    total: Decimal
+    trips_count: int
+    pending_withdrawals_total: Decimal = Field(
+        ..., description="Withdrawals requested but not yet paid out."
+    )
+    buckets: list[EarningsBucketResponse]

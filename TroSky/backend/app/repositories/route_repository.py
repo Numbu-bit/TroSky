@@ -7,7 +7,7 @@ from collections.abc import Collection
 from datetime import time
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.routes import DayOfWeek, Route, RouteSchedule, RouteStop, Stop
@@ -35,6 +35,22 @@ class StopRepository:
             .offset(offset)
         )
         return list(result.scalars().all()), total
+
+    async def list_by_ids(self, stop_ids: Collection[uuid.UUID]) -> dict[uuid.UUID, Stop]:
+        """Stops by id, active or not."""
+        if not stop_ids:
+            return {}
+        result = await self._session.execute(select(Stop).where(Stop.id.in_(list(stop_ids))))
+        return {stop.id: stop for stop in result.scalars().all()}
+
+    async def names_by_ids(self, stop_ids: Collection[uuid.UUID]) -> dict[uuid.UUID, str]:
+        """Stop names, including deactivated stops (history still names them)."""
+        if not stop_ids:
+            return {}
+        result = await self._session.execute(
+            select(Stop.id, Stop.name).where(Stop.id.in_(list(stop_ids)))
+        )
+        return {row.id: row.name for row in result.all()}
 
     async def search_by_name(self, query: str, *, limit: int = 20) -> list[Stop]:
         result = await self._session.execute(
@@ -188,6 +204,29 @@ class RouteRepository:
             order[route_stop.stop_id] = route_stop.sequence_number
         order.setdefault(route.destination_stop_id, max(order.values()) + 1)
         return order
+
+    async def list_active_routes_with_stop(self, stop_id: uuid.UUID) -> list[Route]:
+        """Active routes that start, end or stop at ``stop_id``."""
+        served = select(RouteStop.route_id).where(RouteStop.stop_id == stop_id)
+        result = await self._session.execute(
+            select(Route)
+            .where(
+                Route.is_active.is_(True),
+                or_(
+                    Route.origin_stop_id == stop_id,
+                    Route.destination_stop_id == stop_id,
+                    Route.id.in_(served),
+                ),
+            )
+            .order_by(Route.name)
+        )
+        return list(result.scalars().all())
+
+    async def deactivate_schedules(self, route_id: uuid.UUID) -> None:
+        """Stop a route's timetable from producing new trips."""
+        await self._session.execute(
+            update(RouteSchedule).where(RouteSchedule.route_id == route_id).values(is_active=False)
+        )
 
     async def list_route_stops(self, route_id: uuid.UUID) -> list[RouteStop]:
         result = await self._session.execute(

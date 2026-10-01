@@ -8,6 +8,7 @@ from decimal import Decimal
 
 from pydantic import Field
 
+from app.models.vehicles import VehicleType
 from app.schemas.common import ApiModel, RequestModel
 
 
@@ -38,3 +39,20 @@ class EtaResponse(ApiModel):
     distance_km: Decimal
     duration_minutes: int
     eta_at: datetime
+
+
+class NearbyVehicleResponse(ApiModel):
+    """A vehicle out on a trip near the given point, from its last GPS ping."""
+
+    trip_id: uuid.UUID
+    vehicle_id: uuid.UUID
+    vehicle_registration_number: str
+    vehicle_type: VehicleType
+    route_id: uuid.UUID
+    route_name: str
+    latitude: float
+    longitude: float
+    heading: Decimal | None
+    distance_m: float
+    available_seats: int
+    updated_at: datetime

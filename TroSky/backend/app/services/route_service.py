@@ -18,6 +18,7 @@ from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 
 from redis.asyncio import Redis
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
@@ -30,7 +31,7 @@ from app.repositories.route_repository import RouteRepository, StopRepository
 from app.repositories.trip_repository import TripRepository
 from app.repositories.vehicle_repository import VehicleRepository
 from app.services.trip_service import TripService
-from app.utilities.geo import stop_offsets_km, wkb_to_latlng
+from app.utilities.geo import latlng_to_wkt, stop_offsets_km, wkb_to_latlng
 
 _SEARCH_CACHE_TTL_SECONDS = 60
 
@@ -207,6 +208,135 @@ class RouteService:
                 ),
             )
         return route
+
+    async def update_stop(
+        self,
+        stop_id: uuid.UUID,
+        *,
+        name: str | None = None,
+        code: str | None = None,
+        latitude: float | None = None,
+        longitude: float | None = None,
+        address: str | None = None,
+        city: str | None = None,
+        region: str | None = None,
+    ) -> Stop:
+        """Change the given fields. Moving the stop re-measures how far along
+        each active route every stop is, so partial fares stay right."""
+        stop = await self._stops.get_by_id(stop_id)
+        if stop is None:
+            raise NotFoundError("Stop not found.")
+        for field, value in (
+            ("name", name),
+            ("code", code),
+            ("address", address),
+            ("city", city),
+            ("region", region),
+        ):
+            if value is not None:
+                setattr(stop, field, value)
+        moved = latitude is not None and longitude is not None
+        if latitude is not None and longitude is not None:
+            stop.location = latlng_to_wkt(latitude, longitude)
+        await self._flush_unique("Another stop already uses this code.", code="STOP_CODE_TAKEN")
+        if moved:
+            for route in await self._routes.list_active_routes_with_stop(stop.id):
+                await self._remeasure_route(route)
+        return stop
+
+    async def deactivate_stop(self, stop_id: uuid.UUID) -> None:
+        """Retire a stop: it disappears from search and new bookings, while
+        past bookings keep their history. Refused while an active route
+        still uses it."""
+        stop = await self._stops.get_by_id(stop_id)
+        if stop is None:
+            raise NotFoundError("Stop not found.")
+        routes = await self._routes.list_active_routes_with_stop(stop.id)
+        if routes:
+            raise ConflictError(
+                "This stop is on active routes. Deactivate those routes first.",
+                code="STOP_IN_USE",
+                details={"routes": [route.name for route in routes]},
+            )
+        stop.is_active = False
+        await self._session.flush()
+
+    async def update_route(
+        self,
+        route_id: uuid.UUID,
+        *,
+        name: str | None = None,
+        distance_km: Decimal | None = None,
+        estimated_duration_minutes: int | None = None,
+    ) -> Route:
+        """Change the given fields. A new length or duration re-measures the
+        distance and time to each stop along the route."""
+        route = await self._routes.get_by_id(route_id)
+        if route is None:
+            raise NotFoundError("Route not found.")
+        if name is not None:
+            route.name = name
+        if distance_km is not None:
+            route.distance_km = distance_km
+        if estimated_duration_minutes is not None:
+            route.estimated_duration_minutes = estimated_duration_minutes
+        await self._flush_unique("Another route already has this name.", code="ROUTE_NAME_TAKEN")
+        if distance_km is not None or estimated_duration_minutes is not None:
+            await self._remeasure_route(route)
+        return route
+
+    async def deactivate_route(self, route_id: uuid.UUID) -> None:
+        """Retire a route and its timetable. Refused while it still has
+        trips to run -- cancel or finish those first."""
+        route = await self._routes.get_by_id(route_id)
+        if route is None:
+            raise NotFoundError("Route not found.")
+        unfinished = await self._trips.count_unfinished_for_route(route.id)
+        if unfinished:
+            raise ConflictError(
+                "This route still has trips scheduled or under way. "
+                "Cancel or finish them first.",
+                code="ROUTE_HAS_ACTIVE_TRIPS",
+                details={"unfinished_trips": unfinished},
+            )
+        route.is_active = False
+        await self._routes.deactivate_schedules(route.id)
+        await self._session.flush()
+
+    async def _flush_unique(self, message: str, *, code: str) -> None:
+        """Flush, reporting a unique-constraint clash as a 409."""
+        try:
+            async with self._session.begin_nested():
+                await self._session.flush()
+        except IntegrityError as exc:
+            raise ConflictError(message, code=code) from exc
+
+    async def _remeasure_route(self, route: Route) -> None:
+        """Recompute each stop's distance and time along ``route`` from the
+        stops' current locations, keeping the route's length and duration."""
+        route_stops = await self._routes.list_route_stops(route.id)
+        if len(route_stops) < 2:
+            return
+        stops = await self._stops.list_by_ids([rs.stop_id for rs in route_stops])
+        offsets = stop_offsets_km(
+            [
+                wkb_to_latlng(stops[rs.stop_id].location) if rs.stop_id in stops else None
+                for rs in route_stops
+            ],
+            route_km=route.distance_km,
+        )
+        if offsets is None:
+            return
+        if route.distance_km is None:
+            route.distance_km = offsets[-1]
+        distance_km = route.distance_km
+        minutes = route.estimated_duration_minutes
+        for route_stop, offset in zip(route_stops, offsets, strict=True):
+            route_stop.distance_from_origin_km = offset
+            route_stop.estimated_offset_minutes = (
+                round(minutes * offset / distance_km) if minutes and distance_km else None
+            )
+        await self._session.flush()
 
     async def get_route(self, route_id: uuid.UUID) -> Route:
         route = await self._routes.get_by_id(route_id)

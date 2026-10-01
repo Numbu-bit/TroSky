@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Collection
 from datetime import datetime
 from decimal import Decimal
 
@@ -48,6 +49,20 @@ class TripLocationRepository:
             .limit(1)
         )
         return result.scalar_one_or_none()
+
+    async def latest_for_trips(
+        self, trip_ids: Collection[uuid.UUID]
+    ) -> dict[uuid.UUID, TripLocation]:
+        """Each trip's most recent GPS point, in one query."""
+        if not trip_ids:
+            return {}
+        result = await self._session.execute(
+            select(TripLocation)
+            .where(TripLocation.trip_id.in_(list(trip_ids)))
+            .order_by(TripLocation.trip_id, TripLocation.recorded_at.desc())
+            .distinct(TripLocation.trip_id)
+        )
+        return {location.trip_id: location for location in result.scalars().all()}
 
     async def purge_older_than(self, cutoff: datetime, *, limit: int = 5000) -> int:
         """Deletes raw pings older than ``cutoff`` in bounded batches so a

@@ -30,6 +30,7 @@ class RatingRepository:
         driver_id: uuid.UUID | None,
         score: int,
         comment: str | None,
+        categories: dict[str, int | None] | None = None,
     ) -> Rating:
         rating = Rating(
             booking_id=booking_id,
@@ -38,6 +39,7 @@ class RatingRepository:
             driver_id=driver_id,
             score=score,
             comment=comment,
+            **(categories or {}),
         )
         try:
             async with self._session.begin_nested():
@@ -50,6 +52,21 @@ class RatingRepository:
     async def get_by_booking_id(self, booking_id: uuid.UUID) -> Rating | None:
         result = await self._session.execute(select(Rating).where(Rating.booking_id == booking_id))
         return result.scalar_one_or_none()
+
+    async def get_driver_category_averages(self, driver_id: uuid.UUID) -> dict[str, Decimal | None]:
+        """Average of each optional rating category, over the ratings that
+        gave one (None when none did)."""
+        columns = (Rating.safety, Rating.cleanliness, Rating.professionalism, Rating.timeliness)
+        result = await self._session.execute(
+            select(*(func.avg(column) for column in columns)).where(Rating.driver_id == driver_id)
+        )
+        averages = result.one()
+        return {
+            column.key: (
+                Decimal(str(average)).quantize(Decimal("0.01")) if average is not None else None
+            )
+            for column, average in zip(columns, averages, strict=True)
+        }
 
     async def get_driver_average(self, driver_id: uuid.UUID) -> tuple[Decimal | None, int]:
         result = await self._session.execute(

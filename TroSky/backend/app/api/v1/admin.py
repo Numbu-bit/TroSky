@@ -8,8 +8,10 @@ schedule/trip management, and read-only booking review.
 from __future__ import annotations
 
 import uuid
+from datetime import date
+from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query, status
 
 from app.api.dependencies import (
     AdminServiceDep,
@@ -25,19 +27,21 @@ from app.api.dependencies import (
     RefundServiceDep,
     RouteServiceDep,
     SafetyServiceDep,
+    TrackingServiceDep,
     TripServiceDep,
     WithdrawalServiceDep,
 )
+from app.api.v1.views import booking_responses, live_trip_response
 from app.core.permissions import Permission, require_permissions
 from app.models.bookings import BookingStatus, CancellationStatus
 from app.models.feedback import ComplaintStatus
 from app.models.payments import RefundStatus, WithdrawalStatus
 from app.models.routes import Stop
 from app.models.safety import IncidentStatus, SosAlertStatus
+from app.models.trips import TripStatus
 from app.schemas.admin import AdminUserSummaryResponse, SuspendUserRequest
 from app.schemas.analytics import PlatformOverviewResponse
 from app.schemas.booking import (
-    BookingPassengerResponse,
     BookingResponse,
     CancellationRequestResponse,
 )
@@ -59,9 +63,11 @@ from app.schemas.route import (
     RouteResponse,
     RouteScheduleCreateRequest,
     RouteScheduleResponse,
+    RouteUpdateRequest,
     ScheduleTripRequest,
     StopCreateRequest,
     StopResponse,
+    StopUpdateRequest,
 )
 from app.schemas.safety import (
     IncidentDecisionRequest,
@@ -70,9 +76,11 @@ from app.schemas.safety import (
     SosDecisionRequest,
 )
 from app.schemas.trip import (
+    AdminTripSummaryResponse,
     AssignTripDriverRequest,
     AssignTripVehicleRequest,
     CancelTripRequest,
+    LiveTripResponse,
     TripCreateRequest,
     TripResponse,
 )
@@ -83,6 +91,7 @@ from app.schemas.withdrawal import (
     WithdrawalResponse,
 )
 from app.utilities.geo import wkb_to_latlng
+from app.utilities.query_params import parse_enum_list
 
 router = APIRouter()
 
@@ -273,9 +282,114 @@ async def create_route_schedule(
     return RouteScheduleResponse.model_validate(schedule)
 
 
+@router.patch(
+    "/stops/{stop_id}",
+    response_model=StopResponse,
+    dependencies=[Depends(require_permissions(Permission.ROUTES_MANAGE))],
+)
+async def update_stop(
+    stop_id: uuid.UUID, body: StopUpdateRequest, service: RouteServiceDep
+) -> StopResponse:
+    """Change the fields sent. Moving a stop re-measures distances along
+    every active route that uses it. 409 STOP_CODE_TAKEN on a duplicate
+    code."""
+    stop = await service.update_stop(stop_id, **body.model_dump(exclude_unset=True))
+    return _stop_response(stop)
+
+
+@router.delete(
+    "/stops/{stop_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+    dependencies=[Depends(require_permissions(Permission.ROUTES_MANAGE))],
+)
+async def deactivate_stop(stop_id: uuid.UUID, service: RouteServiceDep) -> None:
+    """Retire a stop: it disappears from search and new bookings; past
+    bookings keep it. 409 STOP_IN_USE while an active route uses it."""
+    await service.deactivate_stop(stop_id)
+
+
+@router.patch(
+    "/routes/{route_id}",
+    response_model=RouteResponse,
+    dependencies=[Depends(require_permissions(Permission.ROUTES_MANAGE))],
+)
+async def update_route(
+    route_id: uuid.UUID, body: RouteUpdateRequest, service: RouteServiceDep
+) -> RouteResponse:
+    """Change the name, length or duration. A new length or duration
+    re-measures the distance and time to each stop. 409 ROUTE_NAME_TAKEN on
+    a duplicate name."""
+    route = await service.update_route(route_id, **body.model_dump(exclude_unset=True))
+    return RouteResponse.model_validate(route)
+
+
+@router.delete(
+    "/routes/{route_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+    dependencies=[Depends(require_permissions(Permission.ROUTES_MANAGE))],
+)
+async def deactivate_route(route_id: uuid.UUID, service: RouteServiceDep) -> None:
+    """Retire a route and its timetable. 409 ROUTE_HAS_ACTIVE_TRIPS while it
+    still has trips scheduled or under way -- cancel or finish them first."""
+    await service.deactivate_route(route_id)
+
+
 # ---------------------------------------------------------------------------
 # Trips
 # ---------------------------------------------------------------------------
+@router.get(
+    "/trips",
+    response_model=PaginatedResponse[AdminTripSummaryResponse],
+    dependencies=[
+        Depends(require_permissions(Permission.TRIPS_MANAGE, Permission.TRIPS_MONITOR_LIVE))
+    ],
+)
+async def list_trips(
+    pagination: Pagination,
+    service: TripServiceDep,
+    status_filter: Annotated[
+        str | None,
+        Query(alias="status", description="Comma-separated trip statuses."),
+    ] = None,
+    on_date: Annotated[
+        date | None, Query(alias="date", description="Departing on this day (YYYY-MM-DD).")
+    ] = None,
+    route_id: uuid.UUID | None = None,
+    driver_id: uuid.UUID | None = None,
+) -> PaginatedResponse[AdminTripSummaryResponse]:
+    """Trips matching every filter given, soonest departure first."""
+    summaries, total = await service.list_trips(
+        statuses=parse_enum_list(status_filter, TripStatus, param="status"),
+        on_date=on_date,
+        route_id=route_id,
+        driver_id=driver_id,
+        limit=pagination.limit,
+        offset=pagination.offset,
+    )
+    return PaginatedResponse(
+        items=[AdminTripSummaryResponse.model_validate(s) for s in summaries],
+        total=total,
+        limit=pagination.limit,
+        offset=pagination.offset,
+    )
+
+
+@router.get(
+    "/live-trips",
+    response_model=list[LiveTripResponse],
+    dependencies=[
+        Depends(require_permissions(Permission.TRIPS_MONITOR_LIVE, Permission.TRIPS_MANAGE))
+    ],
+)
+async def list_live_trips(tracking: TrackingServiceDep) -> list[LiveTripResponse]:
+    """Every trip out on the road now (boarding, in progress, paused) with
+    its last GPS position -- null until the driver's phone reports one."""
+    live = await tracking.list_live_trips()
+    return [live_trip_response(summary, location) for summary, location in live]
+
+
 @router.post(
     "/trips",
     response_model=TripResponse,
@@ -372,26 +486,7 @@ async def list_all_bookings(
     records, total = await service.list_all_bookings(
         status=booking_status, limit=pagination.limit, offset=pagination.offset
     )
-    items = []
-    for booking in records:
-        passengers = await service.get_booking_passengers(booking.id)
-        items.append(
-            BookingResponse(
-                id=booking.id,
-                booking_reference=booking.booking_reference,
-                trip_id=booking.trip_id,
-                status=booking.status,
-                passenger_count=booking.passenger_count,
-                origin_stop_id=booking.origin_stop_id,
-                destination_stop_id=booking.destination_stop_id,
-                fare_amount=booking.fare_amount,
-                platform_fee=booking.platform_fee,
-                total_amount=booking.total_amount,
-                expires_at=booking.expires_at,
-                created_at=booking.created_at,
-                passengers=[BookingPassengerResponse.model_validate(p) for p in passengers],
-            )
-        )
+    items = await booking_responses(service, records)
     return PaginatedResponse(
         items=items, total=total, limit=pagination.limit, offset=pagination.offset
     )
@@ -444,22 +539,8 @@ async def review_cancellation_request(
     await payments.create_refund_request_for_cancelled_booking(
         booking, requested_by=principal.user_id
     )
-    passengers = await bookings.get_booking_passengers(booking.id)
-    return BookingResponse(
-        id=booking.id,
-        booking_reference=booking.booking_reference,
-        trip_id=booking.trip_id,
-        status=booking.status,
-        passenger_count=booking.passenger_count,
-        origin_stop_id=booking.origin_stop_id,
-        destination_stop_id=booking.destination_stop_id,
-        fare_amount=booking.fare_amount,
-        platform_fee=booking.platform_fee,
-        total_amount=booking.total_amount,
-        expires_at=booking.expires_at,
-        created_at=booking.created_at,
-        passengers=[BookingPassengerResponse.model_validate(p) for p in passengers],
-    )
+    [response] = await booking_responses(bookings, [booking])
+    return response
 
 
 # ---------------------------------------------------------------------------
@@ -687,8 +768,15 @@ async def get_driver_rating_summary(
     driver_id: uuid.UUID, ratings: RatingServiceDep
 ) -> DriverRatingSummaryResponse:
     average, count = await ratings.get_driver_average_rating(driver_id)
+    categories = await ratings.get_driver_category_averages(driver_id)
     return DriverRatingSummaryResponse(
-        driver_id=driver_id, average_score=average, rating_count=count
+        driver_id=driver_id,
+        average_score=average,
+        rating_count=count,
+        safety_average=categories["safety"],
+        cleanliness_average=categories["cleanliness"],
+        professionalism_average=categories["professionalism"],
+        timeliness_average=categories["timeliness"],
     )
 
 

@@ -13,8 +13,20 @@ from app.schemas.common import ApiModel, RequestModel
 
 
 class RateBookingRequest(RequestModel):
-    score: int = Field(..., ge=1, le=5)
+    score: int = Field(..., ge=1, le=5, description="The overall rating.")
     comment: str | None = Field(default=None, max_length=1000)
+    safety: int | None = Field(default=None, ge=1, le=5)
+    cleanliness: int | None = Field(default=None, ge=1, le=5)
+    professionalism: int | None = Field(default=None, ge=1, le=5)
+    timeliness: int | None = Field(default=None, ge=1, le=5)
+
+    def categories(self) -> dict[str, int | None]:
+        return {
+            "safety": self.safety,
+            "cleanliness": self.cleanliness,
+            "professionalism": self.professionalism,
+            "timeliness": self.timeliness,
+        }
 
 
 class RatingResponse(ApiModel):
@@ -24,6 +36,10 @@ class RatingResponse(ApiModel):
     driver_id: uuid.UUID | None
     score: int
     comment: str | None
+    safety: int | None = None
+    cleanliness: int | None = None
+    professionalism: int | None = None
+    timeliness: int | None = None
     created_at: datetime
 
 
@@ -31,6 +47,10 @@ class DriverRatingSummaryResponse(ApiModel):
     driver_id: uuid.UUID
     average_score: Decimal | None
     rating_count: int
+    safety_average: Decimal | None = None
+    cleanliness_average: Decimal | None = None
+    professionalism_average: Decimal | None = None
+    timeliness_average: Decimal | None = None
 
 
 class FileComplaintRequest(RequestModel):

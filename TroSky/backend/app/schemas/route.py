@@ -6,7 +6,7 @@ import uuid
 from datetime import date, datetime, time
 from decimal import Decimal
 
-from pydantic import Field, ValidationInfo, field_validator
+from pydantic import Field, ValidationInfo, field_validator, model_validator
 
 from app.models.routes import DayOfWeek
 from app.schemas.common import ApiModel, RequestModel
@@ -92,3 +92,31 @@ class ScheduleTripRequest(RequestModel):
 
     schedule_id: uuid.UUID
     travel_date: date
+
+
+class StopUpdateRequest(RequestModel):
+    """Change only the fields sent. Moving a stop re-measures the distances
+    along every active route that uses it."""
+
+    name: str | None = Field(default=None, min_length=2, max_length=200)
+    code: str | None = Field(default=None, max_length=20)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    address: str | None = Field(default=None, max_length=500)
+    city: str | None = Field(default=None, max_length=100)
+    region: str | None = Field(default=None, max_length=100)
+
+    @model_validator(mode="after")
+    def _location_is_complete(self) -> StopUpdateRequest:
+        if (self.latitude is None) != (self.longitude is None):
+            raise ValueError("Send latitude and longitude together.")
+        return self
+
+
+class RouteUpdateRequest(RequestModel):
+    """Change only the fields sent. The stops a route serves cannot be
+    changed here (bookings refer to them); create a new route instead."""
+
+    name: str | None = Field(default=None, min_length=2, max_length=200)
+    distance_km: Decimal | None = Field(default=None, gt=0, max_digits=8, decimal_places=2)
+    estimated_duration_minutes: int | None = Field(default=None, gt=0)

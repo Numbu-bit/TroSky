@@ -12,12 +12,22 @@ here, not a uniqueness constraint.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, literal_column, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.payments import Wallet, WalletEntryType, WalletReferenceType, WalletTransaction
+from app.models.bookings import Booking
+from app.models.payments import (
+    Wallet,
+    WalletEntryType,
+    WalletReferenceType,
+    WalletTransaction,
+    WithdrawalRequest,
+    WithdrawalStatus,
+)
 
 
 class WalletRepository:
@@ -97,17 +107,61 @@ class WalletRepository:
         return transaction
 
     async def list_transactions(
-        self, wallet_id: uuid.UUID, *, limit: int, offset: int
+        self,
+        wallet_id: uuid.UUID,
+        *,
+        reference_type: WalletReferenceType | None = None,
+        limit: int,
+        offset: int,
     ) -> tuple[list[WalletTransaction], int]:
-        count_result = await self._session.execute(
-            select(WalletTransaction.id).where(WalletTransaction.wallet_id == wallet_id)
-        )
-        total = len(count_result.scalars().all())
+        stmt = select(WalletTransaction).where(WalletTransaction.wallet_id == wallet_id)
+        if reference_type is not None:
+            stmt = stmt.where(WalletTransaction.reference_type == reference_type)
+        total = (
+            await self._session.execute(select(func.count()).select_from(stmt.subquery()))
+        ).scalar_one()
         result = await self._session.execute(
-            select(WalletTransaction)
-            .where(WalletTransaction.wallet_id == wallet_id)
-            .order_by(WalletTransaction.created_at.desc())
-            .limit(limit)
-            .offset(offset)
+            stmt.order_by(WalletTransaction.created_at.desc()).limit(limit).offset(offset)
         )
         return list(result.scalars().all()), total
+
+    async def earnings_by_period_and_trip(
+        self, user_id: uuid.UUID, *, period: str, start: datetime, end: datetime
+    ) -> list[tuple[datetime, uuid.UUID | None, int]]:
+        """Trip earnings credited to ``user_id`` in ``[start, end)``, summed
+        per trip within each ``period`` ("day", "week" or "month"; UTC,
+        weeks starting Monday). Returns ``(period_start, trip_id, minor_units)``.
+        """
+        if period not in ("day", "week", "month"):
+            raise ValueError(f"Unsupported period: {period!r}")
+        period_start = func.date_trunc(
+            period, func.timezone("UTC", WalletTransaction.created_at)
+        ).label("period_start")
+        result = await self._session.execute(
+            select(period_start, Booking.trip_id, func.sum(WalletTransaction.amount_minor_units))
+            .select_from(WalletTransaction)
+            .join(Wallet, Wallet.id == WalletTransaction.wallet_id)
+            # Trip earnings reference the booking they were earned on.
+            .outerjoin(Booking, Booking.id == WalletTransaction.reference_id)
+            .where(
+                Wallet.user_id == user_id,
+                WalletTransaction.reference_type == WalletReferenceType.TRIP_EARNING,
+                WalletTransaction.entry_type == WalletEntryType.CREDIT,
+                WalletTransaction.created_at >= start,
+                WalletTransaction.created_at < end,
+            )
+            # By output name: repeating the expression would bind its
+            # arguments afresh, and Postgres would not see them as the same.
+            .group_by(literal_column("period_start"), Booking.trip_id)
+        )
+        return [(row[0], row[1], int(row[2])) for row in result.all()]
+
+    async def pending_withdrawals_total(self, user_id: uuid.UUID) -> Decimal:
+        """Withdrawals requested but not yet paid out or turned down."""
+        result = await self._session.execute(
+            select(func.coalesce(func.sum(WithdrawalRequest.amount), 0)).where(
+                WithdrawalRequest.user_id == user_id,
+                WithdrawalRequest.status.in_([WithdrawalStatus.PENDING, WithdrawalStatus.APPROVED]),
+            )
+        )
+        return Decimal(result.scalar_one())

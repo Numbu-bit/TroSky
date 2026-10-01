@@ -94,3 +94,57 @@ class TripSeatsResponse(ApiModel):
     total_seats: int
     available_seats: int
     seats: list[TripSeatResponse]
+
+
+class TripSummaryResponse(ApiModel):
+    """A trip as a list shows it (driver's trips, admin trip list)."""
+
+    trip_id: uuid.UUID
+    route_id: uuid.UUID
+    route_name: str
+    origin_stop_name: str
+    destination_stop_name: str
+    scheduled_departure_at: datetime
+    scheduled_arrival_at: datetime | None
+    status: TripStatus
+    vehicle_id: uuid.UUID | None
+    vehicle_registration_number: str | None
+    seats_total: int
+    seats_booked: int = Field(..., description="Paid seats: the passengers on the trip's manifest.")
+    boarded_count: int = Field(..., description="Passengers whose ticket has been scanned.")
+
+
+class AdminTripSummaryResponse(TripSummaryResponse):
+    driver_id: uuid.UUID | None
+    driver_name: str | None
+    available_seats: int = Field(..., description="Seats nobody holds, paid or awaiting payment.")
+
+
+class LiveTripResponse(ApiModel):
+    """An active trip with its last reported GPS position (null until the
+    driver's phone first reports one)."""
+
+    trip_id: uuid.UUID
+    route_name: str
+    vehicle_registration_number: str | None
+    driver_name: str | None
+    status: TripStatus
+    latitude: float | None
+    longitude: float | None
+    heading: Decimal | None
+    updated_at: datetime | None
+    is_stale: bool | None = Field(
+        default=None, description="True when the last position is too old to trust."
+    )
+
+
+class ManifestEntryResponse(ApiModel):
+    ticket_id: uuid.UUID
+    booking_reference: str
+    seat_id: uuid.UUID
+    seat_label: str
+    passenger_full_name: str
+    phone_number: str = Field(..., description="Masked, e.g. +23324•••4567.")
+    pickup_stop_name: str
+    boarded: bool
+    boarded_at: datetime | None

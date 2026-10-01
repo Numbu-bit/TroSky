@@ -23,11 +23,11 @@ from __future__ import annotations
 
 import json
 import uuid
-from collections.abc import Awaitable
+from collections.abc import Awaitable, Collection, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import cast
+from typing import Any, cast
 
 from redis.asyncio import Redis
 from sqlalchemy import select
@@ -46,6 +46,11 @@ from app.repositories.driver_repository import DriverRepository
 from app.repositories.route_repository import RouteRepository, StopRepository
 from app.repositories.tracking_repository import TripLocationRepository
 from app.repositories.trip_repository import TripRepository
+from app.repositories.trip_view_repository import (
+    ACTIVE_TRIP_STATUSES,
+    TripSummary,
+    TripViewRepository,
+)
 from app.utilities.geo import haversine_distance_km, wkb_to_latlng
 
 logger = get_logger(__name__)
@@ -54,6 +59,9 @@ _GEO_SET_KEY = "trips:live-geo"
 # Generous relative to GPS_STALE_THRESHOLD_SECONDS — a garbage-collection
 # safety net for abandoned trips, not the staleness signal itself.
 _LIVE_KEY_TTL_MULTIPLIER = 20
+
+# More active trips than this at once is beyond one screen's map anyway.
+_LIVE_TRIPS_LIMIT = 500
 
 _ACTIVE_BOOKING_STATUSES = (
     BookingStatus.PENDING,
@@ -83,6 +91,10 @@ class LiveLocation:
     recorded_at: datetime
     is_stale: bool
 
+    @property
+    def age_seconds(self) -> float:
+        return (datetime.now(UTC) - self.recorded_at).total_seconds()
+
     def to_publish_payload(self) -> str:
         return json.dumps(
             {
@@ -98,6 +110,13 @@ class LiveLocation:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class NearbyVehicle:
+    summary: TripSummary
+    location: LiveLocation
+    distance_m: float
+
+
 class TrackingService:
     def __init__(
         self, session: AsyncSession, redis: Redis, settings: Settings | None = None
@@ -110,6 +129,7 @@ class TrackingService:
         self._stops = StopRepository(session)
         self._drivers = DriverRepository(session)
         self._locations = TripLocationRepository(session)
+        self._views = TripViewRepository(session)
         self._maps: MapsProvider = get_maps_provider(self._settings)
 
     # ------------------------------------------------------------------
@@ -208,8 +228,9 @@ class TrackingService:
 
     async def _get_cached_location(self, trip_id: uuid.UUID) -> LiveLocation | None:
         data = await cast(Awaitable[dict[str, str]], self._redis.hgetall(_live_key(trip_id)))
-        if not data:
-            return None
+        return self._parse_cached(trip_id, data) if data else None
+
+    def _parse_cached(self, trip_id: uuid.UUID, data: dict[str, str]) -> LiveLocation:
         recorded_at = datetime.fromisoformat(data["recorded_at"])
         return LiveLocation(
             trip_id=trip_id,
@@ -237,21 +258,101 @@ class TrackingService:
 
         # Redis miss (cold cache, restart, TTL expiry) — durable fallback.
         latest = await self._locations.get_latest_for_trip(trip_id)
-        if latest is None:
-            return None
-        latlng = wkb_to_latlng(latest.location)
+        return self._from_record(latest) if latest is not None else None
+
+    def _from_record(self, record: Any) -> LiveLocation | None:
+        latlng = wkb_to_latlng(record.location)
         if latlng is None:
             return None
         latitude, longitude = latlng
         return LiveLocation(
-            trip_id=trip_id,
+            trip_id=record.trip_id,
             latitude=latitude,
             longitude=longitude,
-            speed_kmh=latest.speed_kmh,
-            heading_degrees=latest.heading_degrees,
-            recorded_at=latest.recorded_at,
-            is_stale=self._is_stale(latest.recorded_at),
+            speed_kmh=record.speed_kmh,
+            heading_degrees=record.heading_degrees,
+            recorded_at=record.recorded_at,
+            is_stale=self._is_stale(record.recorded_at),
         )
+
+    async def _cached_locations(
+        self, trip_ids: Sequence[uuid.UUID]
+    ) -> dict[uuid.UUID, LiveLocation]:
+        """Cached live locations for many trips in one Redis round trip."""
+        if not trip_ids:
+            return {}
+        async with self._redis.pipeline(transaction=False) as pipe:
+            for trip_id in trip_ids:
+                pipe.hgetall(_live_key(trip_id))
+            cached = cast(list[dict[str, str]], await pipe.execute())
+        return {
+            trip_id: self._parse_cached(trip_id, data)
+            for trip_id, data in zip(trip_ids, cached, strict=True)
+            if data
+        }
+
+    async def get_live_locations(
+        self, trip_ids: Collection[uuid.UUID]
+    ) -> dict[uuid.UUID, LiveLocation]:
+        """Latest known location per trip: Redis first, then the database
+        for trips the cache has lost."""
+        ordered = list(trip_ids)
+        found = await self._cached_locations(ordered)
+        missing = [trip_id for trip_id in ordered if trip_id not in found]
+        for trip_id, record in (await self._locations.latest_for_trips(missing)).items():
+            live = self._from_record(record)
+            if live is not None:
+                found[trip_id] = live
+        return found
+
+    async def list_live_trips(
+        self, *, fleet_id: uuid.UUID | None = None
+    ) -> list[tuple[TripSummary, LiveLocation | None]]:
+        """Trips out on the road (boarding, in progress, paused) with their
+        last position -- all of them, or one fleet's."""
+        summaries, _ = await self._views.list_summaries(
+            statuses=ACTIVE_TRIP_STATUSES, fleet_id=fleet_id, limit=_LIVE_TRIPS_LIMIT, offset=0
+        )
+        locations = await self.get_live_locations([s.trip_id for s in summaries])
+        return [(summary, locations.get(summary.trip_id)) for summary in summaries]
+
+    async def find_nearby_vehicles(
+        self, *, latitude: float, longitude: float, radius_m: int, limit: int
+    ) -> list[NearbyVehicle]:
+        """Vehicles out on a trip whose last GPS ping lies within
+        ``radius_m`` of the point, nearest first.
+
+        Searches the Redis geo index every ping updates. Pings older than
+        ``NEARBY_VEHICLES_MAX_AGE_SECONDS`` are left out, and trips whose
+        cached position has expired are pruned from the index on the way.
+        """
+        hits = await self._redis.geosearch(
+            _GEO_SET_KEY,
+            longitude=longitude,
+            latitude=latitude,
+            radius=radius_m,
+            unit="m",
+            withdist=True,
+            sort="ASC",
+            count=min(limit * 5, 500),
+        )
+        distances = {uuid.UUID(str(member)): float(distance) for member, distance in hits}
+        if not distances:
+            return []
+        cached = await self._cached_locations(list(distances))
+        expired = [str(trip_id) for trip_id in distances if trip_id not in cached]
+        if expired:
+            await cast(Awaitable[object], self._redis.zrem(_GEO_SET_KEY, *expired))
+        max_age = self._settings.NEARBY_VEHICLES_MAX_AGE_SECONDS
+        fresh = {tid: live for tid, live in cached.items() if live.age_seconds <= max_age}
+        summaries = await self._views.summaries_by_ids(list(fresh))
+        nearby = [
+            NearbyVehicle(summary=summary, location=fresh[trip_id], distance_m=distances[trip_id])
+            for trip_id, summary in summaries.items()
+            if summary.status in ACTIVE_TRIP_STATUSES and summary.vehicle_id is not None
+        ]
+        nearby.sort(key=lambda vehicle: vehicle.distance_m)
+        return nearby[:limit]
 
     async def get_eta(
         self, trip_id: uuid.UUID, *, destination_stop_id: uuid.UUID | None = None

@@ -13,10 +13,11 @@ from __future__ import annotations
 import secrets
 import string
 import uuid
+from collections.abc import Collection
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import func, not_, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,6 +31,8 @@ from app.models.bookings import (
     ReservationStatus,
     SeatReservation,
 )
+from app.models.trips import Trip
+from app.repositories.trip_view_repository import ACTIVE_TRIP_STATUSES
 
 _REFERENCE_ALPHABET = string.ascii_uppercase + string.digits
 
@@ -120,17 +123,41 @@ class BookingRepository:
         return result.scalar_one_or_none()
 
     async def list_for_passenger(
-        self, passenger_id: uuid.UUID, *, limit: int, offset: int
+        self,
+        passenger_id: uuid.UUID,
+        *,
+        statuses: Collection[BookingStatus] | None = None,
+        upcoming: bool | None = None,
+        limit: int,
+        offset: int,
     ) -> tuple[list[Booking], int]:
+        """A passenger's bookings, optionally narrowed to some statuses and
+        to trips still ahead (``upcoming=True``) or behind them (``False``).
+
+        "Upcoming" means the trip has not finished: it departs now or later,
+        or is under way (boarding, in progress, paused). Upcoming bookings
+        come soonest first, past ones most recent first, and unfiltered ones
+        newest booking first.
+        """
         stmt = select(Booking).where(Booking.passenger_id == passenger_id)
+        if statuses:
+            stmt = stmt.where(Booking.status.in_(list(statuses)))
+        order_by = [Booking.created_at.desc()]
+        if upcoming is not None:
+            stmt = stmt.join(Trip, Trip.id == Booking.trip_id)
+            ahead = or_(
+                Trip.scheduled_departure_at >= datetime.now(UTC),
+                Trip.status.in_(ACTIVE_TRIP_STATUSES),
+            )
+            stmt = stmt.where(ahead if upcoming else not_(ahead))
+            departure = Trip.scheduled_departure_at
+            order_by = [departure.asc() if upcoming else departure.desc(), *order_by]
         # COUNT(*) in the database: fetching every matching id just to len()
         # them costs memory and transfer proportional to the whole history.
         total = (
             await self._session.execute(select(func.count()).select_from(stmt.subquery()))
         ).scalar_one()
-        result = await self._session.execute(
-            stmt.order_by(Booking.created_at.desc()).limit(limit).offset(offset)
-        )
+        result = await self._session.execute(stmt.order_by(*order_by).limit(limit).offset(offset))
         return list(result.scalars().all()), total
 
     async def list_all(
@@ -199,6 +226,24 @@ class BookingRepository:
     # ------------------------------------------------------------------
     # Seat reservations (concurrency-critical)
     # ------------------------------------------------------------------
+    async def list_passengers_for_bookings(
+        self, booking_ids: Collection[uuid.UUID]
+    ) -> dict[uuid.UUID, list[BookingPassenger]]:
+        """Passengers for a page of bookings, in one query."""
+        grouped: dict[uuid.UUID, list[BookingPassenger]] = {
+            booking_id: [] for booking_id in booking_ids
+        }
+        if not grouped:
+            return grouped
+        result = await self._session.execute(
+            select(BookingPassenger)
+            .where(BookingPassenger.booking_id.in_(list(grouped)))
+            .order_by(BookingPassenger.created_at, BookingPassenger.id)
+        )
+        for passenger in result.scalars().all():
+            grouped[passenger.booking_id].append(passenger)
+        return grouped
+
     async def create_seat_reservation(
         self,
         *,

@@ -135,8 +135,10 @@ async def logout_all(principal: CurrentPrincipal, auth: AuthServiceDep) -> None:
     dependencies=[Depends(rate_limit("auth:password_reset"))],
 )
 async def forgot_password(body: ForgotPasswordRequest, auth: AuthServiceDep) -> MessageResponse:
-    """Request a password reset code. Always returns success, whether or
-    not an account exists for the given identifier (prevents enumeration)."""
+    """Send a 6-digit password reset code to the account behind
+    ``identifier`` (a phone number or email). Always the same answer, whether
+    or not such an account exists. Then call ``/password/reset`` with the
+    code."""
     await auth.forgot_password(body.identifier)
     return MessageResponse(message="If an account exists, a reset code has been sent.")
 
@@ -147,9 +149,14 @@ async def forgot_password(body: ForgotPasswordRequest, auth: AuthServiceDep) -> 
     dependencies=[Depends(rate_limit("auth:password_reset"))],
 )
 async def reset_password(body: ResetPasswordRequest, auth: AuthServiceDep) -> MessageResponse:
-    """Complete a password reset with the code from ``/password/forgot``.
-    Revokes every existing session on success."""
-    await auth.reset_password(body.token, body.new_password)
+    """Set a new password with the code ``/password/forgot`` sent --
+    ``{"target", "code", "new_password"}``, where ``target`` is the phone or
+    email the code was requested for -- or with an older long ``token``.
+    Signs out every session on success."""
+    if body.token is not None:
+        await auth.reset_password(body.token, body.new_password)
+    elif body.target is not None and body.code is not None:
+        await auth.reset_password_with_code(body.target, body.code, body.new_password)
     return MessageResponse(message="Password reset successfully. Please log in again.")
 
 

@@ -14,7 +14,8 @@ from __future__ import annotations
 
 import hashlib
 import uuid
-from collections.abc import Awaitable
+from collections.abc import Awaitable, Collection, Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import cast
@@ -48,6 +49,7 @@ from app.models.trips import Trip, TripStatus
 from app.repositories.booking_repository import BookingRepository, SeatAlreadyReservedError
 from app.repositories.route_repository import RouteRepository, StopRepository
 from app.repositories.trip_repository import TripRepository
+from app.repositories.trip_view_repository import TripSummary, TripViewRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.vehicle_repository import VehicleRepository
 from app.schemas.booking import BookingCreateRequest
@@ -69,6 +71,17 @@ _TERMINAL_BOOKING_STATUSES = frozenset(
 
 def _held_seats_key(trip_id: uuid.UUID) -> str:
     return f"trip:{trip_id}:held_seats"
+
+
+@dataclass(frozen=True, slots=True)
+class BookingView:
+    """A booking with what a booking card shows alongside it."""
+
+    booking: Booking
+    passengers: list[BookingPassenger]
+    trip: TripSummary | None
+    boarding_stop_name: str | None
+    alighting_stop_name: str | None
 
 
 class BookingService:
@@ -343,9 +356,57 @@ class BookingService:
         return booking
 
     async def list_own_bookings(
-        self, passenger_id: uuid.UUID, *, limit: int, offset: int
+        self,
+        passenger_id: uuid.UUID,
+        *,
+        statuses: Collection[BookingStatus] | None = None,
+        upcoming: bool | None = None,
+        limit: int,
+        offset: int,
     ) -> tuple[list[Booking], int]:
-        return await self._bookings.list_for_passenger(passenger_id, limit=limit, offset=offset)
+        return await self._bookings.list_for_passenger(
+            passenger_id, statuses=statuses, upcoming=upcoming, limit=limit, offset=offset
+        )
+
+    async def describe(self, bookings: Sequence[Booking]) -> list[BookingView]:
+        """Passengers, trip summary and boarding/alighting stop names for a
+        page of bookings -- three queries however long the page is."""
+        passengers = await self._bookings.list_passengers_for_bookings([b.id for b in bookings])
+        trips = await TripViewRepository(self._session).summaries_by_ids(
+            {b.trip_id for b in bookings}
+        )
+        stop_ids = {
+            stop_id
+            for b in bookings
+            for stop_id in (b.origin_stop_id, b.destination_stop_id)
+            if stop_id is not None
+        }
+        names = await self._stops.names_by_ids(stop_ids)
+        views = []
+        for booking in bookings:
+            trip = trips.get(booking.trip_id)
+            views.append(
+                BookingView(
+                    booking=booking,
+                    passengers=passengers.get(booking.id, []),
+                    trip=trip,
+                    boarding_stop_name=(
+                        names.get(booking.origin_stop_id)
+                        if booking.origin_stop_id is not None
+                        else trip.origin_stop_name
+                        if trip is not None
+                        else None
+                    ),
+                    alighting_stop_name=(
+                        names.get(booking.destination_stop_id)
+                        if booking.destination_stop_id is not None
+                        else trip.destination_stop_name
+                        if trip is not None
+                        else None
+                    ),
+                )
+            )
+        return views
 
     async def list_all_bookings(
         self, *, status: BookingStatus | None, limit: int, offset: int
