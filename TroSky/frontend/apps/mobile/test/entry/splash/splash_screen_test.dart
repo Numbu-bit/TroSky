@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mobile/entry/onboarding/presentation/onboarding_screen.dart';
 import 'package:mobile/entry/splash/presentation/launch_destination_provider.dart';
 import 'package:mobile/entry/splash/presentation/splash_screen.dart';
 import 'package:trosky_ui/trosky_ui.dart';
@@ -15,7 +16,7 @@ void main() {
       WidgetTester tester, {
       required bool onboardingSeen,
       required bool hasSession,
-      required String route,
+      required Finder destination,
     }) async {
       await tester.pumpWidget(
         testApp(
@@ -31,10 +32,12 @@ void main() {
       );
       expect(find.byType(SplashScreen), findsOneWidget);
 
+      // Past the route transition. Not pumpAndSettle: onboarding's
+      // illustrations float forever.
       await tester.pump(const Duration(milliseconds: 1));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 1));
       expect(find.byType(SplashScreen), findsNothing);
-      expect(find.text(route), findsOneWidget);
+      expect(destination, findsOneWidget);
     }
 
     testWidgets('onboarding not seen goes to onboarding', (tester) async {
@@ -42,7 +45,7 @@ void main() {
         tester,
         onboardingSeen: false,
         hasSession: false,
-        route: 'onboarding',
+        destination: find.byType(OnboardingScreen),
       );
     });
 
@@ -51,7 +54,7 @@ void main() {
         tester,
         onboardingSeen: true,
         hasSession: false,
-        route: 'signIn',
+        destination: find.text('signIn'),
       );
     });
 
@@ -60,19 +63,23 @@ void main() {
         tester,
         onboardingSeen: true,
         hasSession: true,
-        route: 'home',
+        destination: find.text('home'),
       );
     });
   });
 
   testWidgets('status bar: light icons on the splash, dark on the next '
       'screen', (tester) async {
-    await tester.pumpWidget(testApp(onboarding: FakeOnboardingStore()));
+    // Onboarding seen and no session: the next screen is the light sign-in
+    // placeholder.
+    await tester.pumpWidget(
+      testApp(onboarding: FakeOnboardingStore(seen: true)),
+    );
     expect(SystemChrome.latestStyle, TroskySystemUi.lightIcons);
 
     await tester.pump(splashMinimumDuration);
     await tester.pumpAndSettle();
-    expect(find.text('onboarding'), findsOneWidget);
+    expect(find.text('signIn'), findsOneWidget);
     expect(SystemChrome.latestStyle, TroskySystemUi.darkIcons);
   });
 

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../debug/design_gallery.dart';
+import '../entry/onboarding/presentation/onboarding_screen.dart';
 import '../entry/splash/presentation/splash_screen.dart';
 import 'placeholder_screen.dart';
 
@@ -13,6 +14,7 @@ enum AppRoute {
   splash('/'),
   onboarding('/onboarding'),
   signIn('/sign-in'),
+  signUp('/sign-up'),
   home('/home'),
 
   /// Debug builds only: every trosky_ui token and component. Open it with
@@ -33,8 +35,13 @@ GoRouter router(Ref ref) {
         name: AppRoute.splash.name,
         builder: (context, state) => const SplashScreen(),
       ),
+      GoRoute(
+        path: AppRoute.onboarding.path,
+        name: AppRoute.onboarding.name,
+        builder: (context, state) => const OnboardingScreen(),
+      ),
       // Placeholders until these screens are built.
-      for (final route in [AppRoute.onboarding, AppRoute.signIn, AppRoute.home])
+      for (final route in [AppRoute.signIn, AppRoute.signUp, AppRoute.home])
         GoRoute(
           path: route.path,
           name: route.name,

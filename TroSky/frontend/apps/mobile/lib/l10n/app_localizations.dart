@@ -111,6 +111,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Loading'**
   String get splashLoading;
+
+  /// Top-right link on every onboarding page (S-02); skips to Sign Up.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get onboardingSkip;
+
+  /// Button on onboarding pages 1 and 2 (S-02).
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get onboardingNext;
+
+  /// Button on the last onboarding page (S-02); goes to Sign Up.
+  ///
+  /// In en, this message translates to:
+  /// **'Get Started'**
+  String get onboardingGetStarted;
+
+  /// Screen reader label for the onboarding page dots (S-02).
+  ///
+  /// In en, this message translates to:
+  /// **'Page {page} of {count}'**
+  String onboardingPageOf(int page, int count);
+
+  /// Onboarding page 1 heading (S-02). The line break is part of the design.
+  ///
+  /// In en, this message translates to:
+  /// **'Book a Seat,\nNot a Whole Car'**
+  String get onboarding1Title;
+
+  /// Onboarding page 1 text (S-02).
+  ///
+  /// In en, this message translates to:
+  /// **'Find a shared vehicle going your way, book a single seat, and split the fare with fellow riders.'**
+  String get onboarding1Body;
+
+  /// Onboarding page 2 heading (S-02). The line break is part of the design.
+  ///
+  /// In en, this message translates to:
+  /// **'Share the Ride,\nSplit the Fare'**
+  String get onboarding2Title;
+
+  /// Onboarding page 2 text (S-02).
+  ///
+  /// In en, this message translates to:
+  /// **'As more passengers board, the cost splits between you, so you pay a fraction of what a private ride would cost.'**
+  String get onboarding2Body;
+
+  /// Onboarding page 3 heading (S-02). The line break is part of the design.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribe Your\nDaily Commute'**
+  String get onboarding3Title;
+
+  /// Onboarding page 3 text (S-02).
+  ///
+  /// In en, this message translates to:
+  /// **'Set up a recurring commute, your vehicle, guaranteed, every morning and evening.'**
+  String get onboarding3Body;
 }
 
 class _AppLocalizationsDelegate

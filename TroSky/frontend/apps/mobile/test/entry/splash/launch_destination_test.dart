@@ -4,7 +4,7 @@ import 'package:fake_async/fake_async.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/app/session_store_provider.dart';
-import 'package:mobile/entry/splash/data/onboarding_store.dart';
+import 'package:mobile/entry/onboarding/data/onboarding_store.dart';
 import 'package:mobile/entry/splash/domain/launch_destination.dart';
 import 'package:mobile/entry/splash/presentation/launch_destination_provider.dart';
 

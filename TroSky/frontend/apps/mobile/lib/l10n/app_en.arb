@@ -11,5 +11,53 @@
   "splashLoading": "Loading",
   "@splashLoading": {
     "description": "Screen reader label for the animated loading dots on the splash screen."
+  },
+  "onboardingSkip": "Skip",
+  "@onboardingSkip": {
+    "description": "Top-right link on every onboarding page (S-02); skips to Sign Up."
+  },
+  "onboardingNext": "Next",
+  "@onboardingNext": {
+    "description": "Button on onboarding pages 1 and 2 (S-02)."
+  },
+  "onboardingGetStarted": "Get Started",
+  "@onboardingGetStarted": {
+    "description": "Button on the last onboarding page (S-02); goes to Sign Up."
+  },
+  "onboardingPageOf": "Page {page} of {count}",
+  "@onboardingPageOf": {
+    "description": "Screen reader label for the onboarding page dots (S-02).",
+    "placeholders": {
+      "page": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "onboarding1Title": "Book a Seat,\nNot a Whole Car",
+  "@onboarding1Title": {
+    "description": "Onboarding page 1 heading (S-02). The line break is part of the design."
+  },
+  "onboarding1Body": "Find a shared vehicle going your way, book a single seat, and split the fare with fellow riders.",
+  "@onboarding1Body": {
+    "description": "Onboarding page 1 text (S-02)."
+  },
+  "onboarding2Title": "Share the Ride,\nSplit the Fare",
+  "@onboarding2Title": {
+    "description": "Onboarding page 2 heading (S-02). The line break is part of the design."
+  },
+  "onboarding2Body": "As more passengers board, the cost splits between you, so you pay a fraction of what a private ride would cost.",
+  "@onboarding2Body": {
+    "description": "Onboarding page 2 text (S-02)."
+  },
+  "onboarding3Title": "Subscribe Your\nDaily Commute",
+  "@onboarding3Title": {
+    "description": "Onboarding page 3 heading (S-02). The line break is part of the design."
+  },
+  "onboarding3Body": "Set up a recurring commute, your vehicle, guaranteed, every morning and evening.",
+  "@onboarding3Body": {
+    "description": "Onboarding page 3 text (S-02)."
   }
 }

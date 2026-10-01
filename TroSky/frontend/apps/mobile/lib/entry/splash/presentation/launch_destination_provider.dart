@@ -2,7 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/session_store_provider.dart';
-import '../data/onboarding_store.dart';
+import '../../onboarding/data/onboarding_store.dart';
 import '../domain/launch_destination.dart';
 
 part 'launch_destination_provider.g.dart';
