@@ -38,14 +38,16 @@ class _FlakyAuth implements AuthRepository {
 void main() {
   late MockBackend backend;
   late InMemoryRefreshTokenStore store;
+  late InMemoryUserCache cache;
 
   setUp(() {
     backend = MockBackend();
     store = InMemoryRefreshTokenStore();
+    cache = InMemoryUserCache();
   });
 
   ProviderContainer start({List<Object> extra = const []}) =>
-      appContainer(backend: backend, store: store, extra: extra);
+      appContainer(backend: backend, store: store, cache: cache, extra: extra);
 
   Future<SessionState> session(ProviderContainer c) =>
       c.read(sessionControllerProvider.future);
@@ -96,29 +98,58 @@ void main() {
       expect(store.token, isNull);
     });
 
-    test('offline: an error that keeps the session, then a retry', () async {
-      await signInAsPassenger(start());
-      // The app starts again, offline.
+    ProviderContainer offlineStart(
+      _FlakyAuth Function(SessionTokens Function()) make,
+    ) {
       late final ProviderContainer container;
-      final flaky = _FlakyAuth(
-        MockAuthRepository(
-          backend,
-          tokens: () => container.read(tokenManagerProvider),
-        ),
-      );
+      final flaky = make(() => container.read(tokenManagerProvider));
       container = start(
         extra: [authRepositoryProvider.overrideWithValue(flaky)],
       );
+      return container;
+    }
 
-      await expectLater(session(container), throwsA(isA<NetworkFailure>()));
+    test('offline: opens as the last user seen, then checks again', () async {
+      await signInAsPassenger(start());
+      late _FlakyAuth flaky;
+      final container = offlineStart(
+        (tokens) =>
+            flaky = _FlakyAuth(MockAuthRepository(backend, tokens: tokens)),
+      );
+
+      final offline = await session(container);
+      expect(offline, isA<SessionAuthenticated>());
+      expect((offline as SessionAuthenticated).offline, isTrue);
+      expect(offline.user.profile?.fullName, 'Ama Mensah');
       expect(store.token, isNotNull);
 
       flaky.offline = false;
       await controller(container).restore();
-      expect(
-        container.read(sessionControllerProvider).value,
-        isA<SessionAuthenticated>(),
+      final online = container.read(sessionControllerProvider).value;
+      expect((online! as SessionAuthenticated).offline, isFalse);
+    });
+
+    test('offline with nothing cached: an error, the session kept', () async {
+      await signInAsPassenger(start());
+      cache.user = null;
+      final container = offlineStart(
+        (tokens) => _FlakyAuth(MockAuthRepository(backend, tokens: tokens)),
       );
+
+      await expectLater(session(container), throwsA(isA<NetworkFailure>()));
+      expect(store.token, isNotNull);
+    });
+
+    test('a suspended account is signed out on start', () async {
+      await signInAsPassenger(start());
+      backend.suspend('0241234567');
+
+      final state = await session(start());
+
+      expect(state, isA<SessionExpired>());
+      expect((state as SessionExpired).reason, isA<AccountSuspendedFailure>());
+      expect(store.token, isNull);
+      expect(cache.user, isNull);
     });
   });
 
@@ -173,7 +204,7 @@ void main() {
       return controller(c).verifyRegistration(
         otpTarget: registered.valueOrNull!.otpSentTo,
         code: MockBackend.otpCode,
-        phone: '055 123 4567',
+        identifier: '055 123 4567',
         password: 'Kumasi2026',
       );
     }
@@ -214,7 +245,7 @@ void main() {
       final result = await controller(c).verifyRegistration(
         otpTarget: registered.valueOrNull!.otpSentTo,
         code: '000000',
-        phone: '0551234567',
+        identifier: '0551234567',
         password: 'Kumasi2026',
       );
       expect(result.failureOrNull?.code, 'OTP_INVALID');

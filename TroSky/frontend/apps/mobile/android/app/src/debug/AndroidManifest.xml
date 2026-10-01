@@ -4,4 +4,7 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Lets a debug build talk plain HTTP to localhost only (live mode
+         against the local backend). Release builds don't get this. -->
+    <application android:networkSecurityConfig="@xml/network_security_config" />
 </manifest>

@@ -21,6 +21,7 @@ ProviderContainer appContainer({
   required MockBackend backend,
   required RefreshTokenStore store,
   AppModeStore? modeStore,
+  UserCache? cache,
   List<Object> extra = const [],
 }) {
   final container = ProviderContainer(
@@ -34,6 +35,7 @@ ProviderContainer appContainer({
       appModeStoreProvider.overrideWithValue(
         modeStore ?? InMemoryAppModeStore(),
       ),
+      userCacheProvider.overrideWithValue(cache ?? InMemoryUserCache()),
       ...extra.cast(),
     ],
   );

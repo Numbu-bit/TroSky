@@ -101,11 +101,11 @@ Use the **Screen ID** as the screenshot filename (e.g. `S-04.png`). "Figma" is t
 |---|---|---|---|
 | S-01 | Splash | `GET /users/me` (if a token is stored) | ✅ |
 | S-02 | Onboarding slides | none | ✅ |
-| S-03 | **Role chooser** (Passenger / Driver) | none | ✅ |
-| S-04 | Sign in (phone or email + password) | `POST /auth/login` → `GET /users/me` | ✅ |
-| S-05 | Sign in with OTP | `POST /auth/resend-otp` (purpose `login`) → `POST /auth/otp-login` | ✅ |
-| S-06 | Sign up (phone, **email**, name, password) | `POST /auth/register` (role from S-03) | ✅ G18 decided: Welcome (phone) → "Your details" (name, Gmail, password) → OTP (design-decisions.md, decision 6) |
-| S-07 | OTP verification (target = `otp_sent_to`) | `POST /auth/verify-otp`, `POST /auth/resend-otp` | ✅ |
+| ~~S-03~~ | ~~Role chooser~~: none, replaced by the Welcome screen's driver link (decision 7) | — | — |
+| S-04 | **Welcome** (phone; P4 Sign Up). Built 1 Oct 2026 | none (checked on the device) | ✅ |
+| S-05 | **Sign in**: phone or email + password, plus "Sign in with a code" (decision 10). Built 1 Oct 2026 | `POST /auth/login`, `POST /auth/resend-otp` (purpose `login`) → `POST /auth/otp-login`, then `GET /users/me` | ✅ |
+| S-06 | **Your details**: name, Gmail, password (not in Figma; decision 6). Built 1 Oct 2026 | `POST /auth/register` (role from the app mode) | ✅ |
+| S-07 | **Code verification** (target = `otp_sent_to`). Built 1 Oct 2026 | `POST /auth/verify-otp`, `POST /auth/resend-otp`, then a silent `POST /auth/login` | ✅ |
 | S-08 | Forgot password | `POST /auth/password/forgot` | ✅ |
 | S-09 | Reset password | `POST /auth/password/reset` | ❌ G1 |
 | S-10 | Wrong-role sheet with "Become a driver", which leads to D-01 | `POST /drivers/me` | ✅ |

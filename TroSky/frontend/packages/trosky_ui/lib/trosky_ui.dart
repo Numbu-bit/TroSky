@@ -2,7 +2,9 @@
 /// Figma Make code in design/figma-make.
 library;
 
+export 'src/components/auth_header.dart';
 export 'src/components/decorative.dart';
+export 'src/components/form_fields.dart';
 export 'src/components/loading_dots.dart';
 export 'src/components/page_dots.dart';
 export 'src/components/section_label.dart';

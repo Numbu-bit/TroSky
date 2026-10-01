@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mobile/entry/auth/presentation/welcome_screen.dart';
 import 'package:mobile/entry/onboarding/presentation/onboarding_screen.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
@@ -38,7 +39,7 @@ void main() {
     expect(find.text('Get Started'), findsOneWidget);
   });
 
-  group('leaving onboarding saves the flag and opens Sign Up', () {
+  group('leaving onboarding saves the flag and opens Welcome', () {
     for (final page in [0, 1, 2]) {
       testWidgets('Skip on page ${page + 1}', (tester) async {
         final store = FakeOnboardingStore();
@@ -51,7 +52,7 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(seconds: 1));
         expect(store.seen, isTrue);
-        expect(find.text('signUp'), findsOneWidget);
+        expect(find.byType(WelcomeScreen), findsOneWidget);
       });
     }
 
@@ -65,7 +66,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
       expect(store.seen, isTrue);
-      expect(find.text('signUp'), findsOneWidget);
+      expect(find.byType(WelcomeScreen), findsOneWidget);
     });
   });
 

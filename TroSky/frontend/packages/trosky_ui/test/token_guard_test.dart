@@ -26,16 +26,27 @@ List<String> _violations(String path, List<String> lines) {
   return found;
 }
 
+/// Dart files under [dir], never entering build output (whose Gradle paths
+/// can be too long for Windows to list) or tool caches.
+Iterable<File> _dartFiles(Directory dir) sync* {
+  for (final entry in dir.listSync()) {
+    if (entry is Directory) {
+      final name = entry.uri.pathSegments.lastWhere((s) => s.isNotEmpty);
+      if (name == 'build' || name.startsWith('.')) continue;
+      yield* _dartFiles(entry);
+    } else if (entry is File && entry.path.endsWith('.dart')) {
+      yield entry;
+    }
+  }
+}
+
 void main() {
   test('no raw colours or font sizes outside trosky_ui tokens', () {
     // Tests run from packages/trosky_ui; the workspace root is two levels up.
     final root = Directory('../..').absolute;
     final violations = <String>[];
     for (final top in ['apps', 'packages']) {
-      final files = Directory('${root.path}/$top')
-          .listSync(recursive: true)
-          .whereType<File>()
-          .where((file) => file.path.endsWith('.dart'));
+      final files = _dartFiles(Directory('${root.path}/$top'));
       for (final file in files) {
         final path = file.path.replaceAll(r'\', '/');
         if (path.contains('/.dart_tool/') ||

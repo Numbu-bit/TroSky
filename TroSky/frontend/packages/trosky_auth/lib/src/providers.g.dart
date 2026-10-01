@@ -359,3 +359,90 @@ final class UserRepositoryProvider
 }
 
 String _$userRepositoryHash() => r'444b702a418c33fe3de015e594c95859feec23e4';
+
+@ProviderFor(driverRepository)
+final driverRepositoryProvider = DriverRepositoryProvider._();
+
+final class DriverRepositoryProvider
+    extends
+        $FunctionalProvider<
+          DriverRepository,
+          DriverRepository,
+          DriverRepository
+        >
+    with $Provider<DriverRepository> {
+  DriverRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'driverRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$driverRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<DriverRepository> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  DriverRepository create(Ref ref) {
+    return driverRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(DriverRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<DriverRepository>(value),
+    );
+  }
+}
+
+String _$driverRepositoryHash() => r'3ab08914ea9fe4807f573b420f3a52b08f4f824f';
+
+@ProviderFor(userCache)
+final userCacheProvider = UserCacheProvider._();
+
+final class UserCacheProvider
+    extends $FunctionalProvider<UserCache, UserCache, UserCache>
+    with $Provider<UserCache> {
+  UserCacheProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'userCacheProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$userCacheHash();
+
+  @$internal
+  @override
+  $ProviderElement<UserCache> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  UserCache create(Ref ref) {
+    return userCache(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(UserCache value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<UserCache>(value),
+    );
+  }
+}
+
+String _$userCacheHash() => r'ccb739315751dc7bf5dd9ef316147703d92c5408';

@@ -2,8 +2,10 @@ import 'package:trosky_core/trosky_core.dart';
 
 import '../client/interceptors.dart';
 import '../dto/auth_dto.dart';
+import '../dto/driver_dto.dart';
 import '../dto/user_dto.dart';
 import '../repositories/auth_repository.dart';
+import '../repositories/driver_repository.dart';
 import '../repositories/user_repository.dart';
 import 'mock_backend.dart';
 
@@ -90,4 +92,21 @@ class MockUserRepository implements UserRepository {
   @override
   Future<Result<UserResponse>> getMe() =>
       _authenticated(_tokens(), latency, _backend.getMe);
+}
+
+/// [DriverRepository] on a [MockBackend] (`API_MODE=mock`).
+class MockDriverRepository implements DriverRepository {
+  MockDriverRepository(
+    this._backend, {
+    required this._tokens,
+    this.latency = Duration.zero,
+  });
+
+  final MockBackend _backend;
+  final SessionTokens Function() _tokens;
+  final Duration latency;
+
+  @override
+  Future<Result<DriverResponse>> getMe() =>
+      _authenticated(_tokens(), latency, _backend.getDriverMe);
 }

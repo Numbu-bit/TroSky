@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mobile/entry/auth/presentation/sign_in_screen.dart';
 import 'package:mobile/entry/onboarding/presentation/onboarding_screen.dart';
 import 'package:mobile/entry/splash/presentation/launch_destination_provider.dart';
 import 'package:mobile/entry/splash/presentation/splash_screen.dart';
@@ -54,7 +55,7 @@ void main() {
         tester,
         onboardingSeen: true,
         hasSession: false,
-        destination: find.text('signIn'),
+        destination: find.byType(SignInScreen),
       );
     });
 
@@ -70,16 +71,15 @@ void main() {
 
   testWidgets('status bar: light icons on the splash, dark on the next '
       'screen', (tester) async {
-    // Onboarding seen and no session: the next screen is the light sign-in
-    // placeholder.
+    // Signed in: the next screen is the light home placeholder.
     await tester.pumpWidget(
-      testApp(onboarding: FakeOnboardingStore(seen: true)),
+      testApp(onboarding: FakeOnboardingStore(seen: true), signedIn: true),
     );
     expect(SystemChrome.latestStyle, TroskySystemUi.lightIcons);
 
     await tester.pump(splashMinimumDuration);
     await tester.pumpAndSettle();
-    expect(find.text('signIn'), findsOneWidget);
+    expect(find.text('home'), findsOneWidget);
     expect(SystemChrome.latestStyle, TroskySystemUi.darkIcons);
   });
 

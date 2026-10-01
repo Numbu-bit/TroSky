@@ -6,6 +6,7 @@ import 'package:trosky_ui/trosky_ui.dart';
 
 import '../../../app/routes.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../auth/presentation/post_sign_in_navigation.dart';
 import '../domain/launch_destination.dart';
 import 'launch_destination_provider.dart';
 
@@ -21,9 +22,17 @@ class SplashScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.listen(launchDestinationProvider, (_, next) {
-      if (next case AsyncData(:final value)) {
-        context.goNamed(_routeFor(value).name);
+    ref.listen(launchDestinationProvider, (_, next) async {
+      switch (next) {
+        case AsyncData(value: LaunchDestination.home):
+          // A restored session goes where a fresh sign-in would.
+          final failure = await goAfterSignIn(context, ref);
+          if (failure != null && context.mounted) {
+            context.goNamed(AppRoute.home.name);
+          }
+        case AsyncData(:final value):
+          context.goNamed(_routeFor(value).name);
+        default:
       }
     });
 

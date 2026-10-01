@@ -338,4 +338,93 @@ void main() {
       gradient: TroskyGradients.splash,
     );
   });
+
+  testWidgets('Auth header (P4) with and without the back button', (
+    tester,
+  ) async {
+    await _golden(
+      tester,
+      'auth_header',
+      Column(
+        children: [
+          const TroskyAuthHeader(
+            title: 'Welcome to TroSky',
+            subtitle: 'Your journey. On time. Every time.',
+          ),
+          TroskyAuthHeader(
+            title: 'Your details',
+            subtitle: 'A few more details to create your account.',
+            onBack: () {},
+          ),
+        ],
+      ),
+    );
+  });
+
+  testWidgets('Form fields: phone, plain, error, helper, divider, note, '
+      'links, checklist, code', (tester) async {
+    await _golden(
+      tester,
+      'form_fields',
+      Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SectionLabel('PHONE NUMBER'),
+            const SizedBox(height: 8),
+            TroskyInputField(
+              controller: TextEditingController(),
+              label: 'PHONE NUMBER',
+              hintText: 'XX XXX XXXX',
+              prefix: const TroskyPhonePrefix(),
+            ),
+            const SizedBox(height: 16),
+            TroskyInputField(
+              controller: TextEditingController(text: 'Efua Owusu'),
+              label: 'FULL NAME',
+            ),
+            const SizedBox(height: 16),
+            TroskyInputField(
+              controller: TextEditingController(text: 'efua@yahoo.com'),
+              label: 'EMAIL',
+              errorText: 'Use your Gmail address (@gmail.com).',
+            ),
+            const SizedBox(height: 16),
+            TroskyInputField(
+              controller: TextEditingController(),
+              label: 'EMAIL',
+              hintText: 'you@gmail.com',
+              helperText: 'Use your Gmail address',
+            ),
+            const SizedBox(height: 16),
+            const TroskyTextDivider('or continue with'),
+            const SizedBox(height: 16),
+            const TroskyInfoNote(
+              emoji: '🪪',
+              before: 'Optionally verify your ',
+              highlight: 'Ghana Card',
+              after: ' for extra trust and higher wallet limits.',
+            ),
+            TroskyTextLink(
+              prompt: 'Already have an account?',
+              action: 'Sign in',
+              onPressed: () {},
+            ),
+            const TroskyChecklist(
+              items: [
+                ('At least 8 characters', true),
+                ('An upper-case letter', false),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TroskyOtpInput(
+              controller: TextEditingController(text: '123'),
+              label: '6-digit code',
+            ),
+          ],
+        ),
+      ),
+    );
+  });
 }

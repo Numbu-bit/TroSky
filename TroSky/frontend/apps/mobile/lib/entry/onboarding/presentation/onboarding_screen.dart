@@ -67,7 +67,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       // A failed save only means onboarding shows again next launch; it
       // must not keep the user here.
     }
-    if (mounted) context.goNamed(AppRoute.signUp.name);
+    if (mounted) context.goNamed(AppRoute.welcome.name);
   }
 
   @override

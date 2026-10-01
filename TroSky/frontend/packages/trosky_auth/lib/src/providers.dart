@@ -1,10 +1,12 @@
 import 'package:dio/dio.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trosky_api/trosky_api.dart';
 import 'package:trosky_core/trosky_core.dart';
 
 import 'token_manager.dart';
 import 'token_storage.dart';
+import 'user_cache.dart';
 
 part 'providers.g.dart';
 
@@ -68,3 +70,18 @@ UserRepository userRepository(Ref ref) =>
         latency: ref.watch(mockLatencyProvider),
       ),
     };
+
+@Riverpod(keepAlive: true)
+DriverRepository driverRepository(Ref ref) =>
+    switch (ref.watch(envProvider).apiMode) {
+      ApiMode.live => LiveDriverRepository(ref.watch(apiClientProvider)),
+      ApiMode.mock => MockDriverRepository(
+        ref.watch(mockBackendProvider),
+        tokens: () => ref.read(tokenManagerProvider),
+        latency: ref.watch(mockLatencyProvider),
+      ),
+    };
+
+@Riverpod(keepAlive: true)
+UserCache userCache(Ref ref) =>
+    SharedPreferencesUserCache(SharedPreferencesAsync());

@@ -1,6 +1,7 @@
 import 'package:trosky_core/trosky_core.dart';
 
 import '../dto/auth_dto.dart';
+import '../dto/driver_dto.dart';
 import '../dto/user_dto.dart';
 
 /// An in-memory stand-in for the backend's auth and user endpoints, for
@@ -12,8 +13,8 @@ import '../dto/user_dto.dart';
 ///
 /// Fixed data:
 /// * Every code is [otpCode] (`123456`).
-/// * `0241234567` is an existing passenger and `0201234567` an existing
-///   driver, both verified, both with the password [seedPassword].
+/// * `0241234567` is an existing passenger and `0201234567` an existing,
+///   approved driver, both verified, both with the password [seedPassword].
 /// * Any other phone number is a new user.
 class MockBackend {
   MockBackend({DateTime Function()? clock, this.codesByEmail = false})
@@ -54,6 +55,7 @@ class MockBackend {
   final Map<String, _Session> _sessions = {};
   final Map<String, _RefreshToken> _refreshTokens = {};
   final Map<String, _AccessToken> _accessTokens = {};
+  final Map<String, DriverResponse> _driverProfiles = {};
   int _counter = 0;
 
   /// Codes "sent" so far, newest last: what an SMS or email would carry.
@@ -84,6 +86,16 @@ class MockBackend {
           createdAt: created,
         )..phoneVerifiedAt = created,
       );
+    _driverProfiles['8c4d2a91-3b7e-4f60-a2d5-9e1b6c7f0a28'] = DriverResponse(
+      id: '5a1e9c37-2d4b-4c8f-9e60-1b7d3f2a8c94',
+      userId: '8c4d2a91-3b7e-4f60-a2d5-9e1b6c7f0a28',
+      licenseNumber: 'GHA-DL-0482913',
+      licenseExpiry: DateTime.utc(2029, 3, 31),
+      licenseClass: 'C',
+      yearsOfExperience: 9,
+      status: ApprovalStatus.approved,
+      createdAt: created,
+    );
   }
 
   // ---------------------------------------------------------------------
@@ -389,6 +401,29 @@ class MockBackend {
     return Ok(user.toResponse());
   }
 
+  /// `GET /drivers/me`: driver role required, then a profile.
+  Result<DriverResponse> getDriverMe(String? accessToken) {
+    final auth = _authenticate(accessToken);
+    if (auth case Err(:final failure)) return Err(failure);
+    final user = _users.firstWhere((u) => u.id == auth.valueOrNull!.userId);
+    if (!user.roles.contains('driver')) {
+      return _error(
+        403,
+        'FORBIDDEN',
+        'You do not have permission to perform this action.',
+      );
+    }
+    final profile = _driverProfiles[user.id];
+    if (profile == null) {
+      return _error(
+        404,
+        'NOT_FOUND',
+        'No driver profile exists for this account.',
+      );
+    }
+    return Ok(profile);
+  }
+
   // ---------------------------------------------------------------------
   // Test controls
   // ---------------------------------------------------------------------
@@ -396,6 +431,20 @@ class MockBackend {
   /// Suspends the account with [phone], as an admin would.
   void suspend(String phone, {String reason = 'Under review'}) =>
       _byPhone(normalizePhoneNumber(phone))!.suspendedReason = reason;
+
+  /// Gives the account with [phone] a driver profile in [status], as
+  /// `POST /drivers/me` and an admin review would.
+  void setDriverStatus(String phone, ApprovalStatus status) {
+    final user = _byPhone(normalizePhoneNumber(phone))!;
+    _driverProfiles[user.id] = DriverResponse(
+      id: _uuid(),
+      userId: user.id,
+      licenseNumber: 'GHA-DL-${user.phone.substring(user.phone.length - 7)}',
+      licenseExpiry: DateTime.utc(2030),
+      status: status,
+      createdAt: _now().toUtc(),
+    );
+  }
 
   /// Makes every access token expire, as 15 minutes passing would.
   void expireAccessTokens() {

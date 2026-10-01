@@ -11,8 +11,9 @@ part of 'session.dart';
 /// The session: restores it on app start and signs in and out.
 ///
 /// On start, a saved refresh token is exchanged for a new pair and the user
-/// is loaded. If the network is down the state is an error (the saved
-/// session is kept); [restore] tries again.
+/// is loaded. Without a network the app still opens, signed in as the last
+/// user seen ([SessionAuthenticated.offline]); [restore] checks again. Only
+/// the backend rejecting the session signs the user out (decision 9).
 
 @ProviderFor(SessionController)
 final sessionControllerProvider = SessionControllerProvider._();
@@ -20,15 +21,17 @@ final sessionControllerProvider = SessionControllerProvider._();
 /// The session: restores it on app start and signs in and out.
 ///
 /// On start, a saved refresh token is exchanged for a new pair and the user
-/// is loaded. If the network is down the state is an error (the saved
-/// session is kept); [restore] tries again.
+/// is loaded. Without a network the app still opens, signed in as the last
+/// user seen ([SessionAuthenticated.offline]); [restore] checks again. Only
+/// the backend rejecting the session signs the user out (decision 9).
 final class SessionControllerProvider
     extends $AsyncNotifierProvider<SessionController, SessionState> {
   /// The session: restores it on app start and signs in and out.
   ///
   /// On start, a saved refresh token is exchanged for a new pair and the user
-  /// is loaded. If the network is down the state is an error (the saved
-  /// session is kept); [restore] tries again.
+  /// is loaded. Without a network the app still opens, signed in as the last
+  /// user seen ([SessionAuthenticated.offline]); [restore] checks again. Only
+  /// the backend rejecting the session signs the user out (decision 9).
   SessionControllerProvider._()
     : super(
         from: null,
@@ -48,13 +51,14 @@ final class SessionControllerProvider
   SessionController create() => SessionController();
 }
 
-String _$sessionControllerHash() => r'7c12804462a55a0426f9c65500e7d8f0b568b87b';
+String _$sessionControllerHash() => r'c803f974039d71ba760831549ffd22790277fba7';
 
 /// The session: restores it on app start and signs in and out.
 ///
 /// On start, a saved refresh token is exchanged for a new pair and the user
-/// is loaded. If the network is down the state is an error (the saved
-/// session is kept); [restore] tries again.
+/// is loaded. Without a network the app still opens, signed in as the last
+/// user seen ([SessionAuthenticated.offline]); [restore] checks again. Only
+/// the backend rejecting the session signs the user out (decision 9).
 
 abstract class _$SessionController extends $AsyncNotifier<SessionState> {
   FutureOr<SessionState> build();

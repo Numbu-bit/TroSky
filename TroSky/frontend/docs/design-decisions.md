@@ -12,6 +12,9 @@ Product decisions that settle questions the Figma Make file leaves open. These r
 | 6 | Sign-up flow | 1 Oct 2026 | Decided; built in Step 7 |
 | 7 | Driver entry | 1 Oct 2026 | Decided; built in Step 7 |
 | 8 | Onboarding quirks | 1 Oct 2026 | Kept as designed; to raise with the designer |
+| 9 | Offline start | 1 Oct 2026 | In force (`SessionController`) |
+| 10 | OTP sign-in | 1 Oct 2026 | In force (Sign in screen) |
+| 11 | Welcome button label | 1 Oct 2026 | In force (Welcome screen) |
 
 ## 1. Logo
 
@@ -88,3 +91,23 @@ The reference implementation is `OnboardingScreen`. In code that is `max(design 
 The quirks in the onboarding illustrations and layout stay as designed. They are listed in the Step 5 report, for example "YOUR SEAT" being wider than its pill and every weekday being ticked. They will be raised with the designer later.
 
 The illustration labels ("YOUR SEAT", "price drops", "July 2026" and so on) stay untranslated for now.
+
+## 9. Offline start
+
+**When the app starts with a saved session but no network, it opens Home in an offline state.** The last `GET /users/me` is cached on the device so Home can show who is signed in. Home is a placeholder for now, with an offline banner.
+
+The app signs the user out **only when the backend rejects the session**:
+- 401 on refresh (including `REFRESH_TOKEN_REUSE_DETECTED`)
+- `ACCOUNT_SUSPENDED`
+
+It **never signs out because of a network error**. Timeouts, no connection and server errors keep the session.
+
+## 10. OTP sign-in
+
+Signing in with a one-time code is kept as a **secondary** option. It is reached from the Sign in screen through **"Forgot password? Sign in with a code"**. This is the only way to recover an account until backend gap G1 (password reset) is fixed.
+
+The backend sends nothing to a number with no account but answers the same way (see the Step 6 report). So once the 60 s resend cooldown ends, the code screen shows **"No code? Check this number has a TroSky account."**
+
+## 11. Welcome button label
+
+The Welcome screen's main button says **"Continue"** instead of the design's "Send OTP", because no code is sent at that step. The code is only sent after "Your details" (decision 6). Everything else on the Welcome screen follows the design.

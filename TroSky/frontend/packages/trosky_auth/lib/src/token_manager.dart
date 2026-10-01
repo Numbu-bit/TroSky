@@ -77,17 +77,12 @@ class TokenManager implements SessionTokens {
     }
   }
 
-  /// Whether [failure] from a refresh means the session cannot continue.
-  /// Network and server trouble do not: the saved token is kept to try
-  /// again.
-  static bool endsSession(AppFailure failure) => switch (failure) {
-    UnauthorizedFailure() ||
-    ForbiddenFailure() ||
-    AccountSuspendedFailure() ||
-    AccountLockedFailure() ||
-    ValidationFailure() => true,
-    _ => false,
-  };
+  /// Whether [failure] means the backend rejected the session: a 401
+  /// (`UNAUTHORIZED`, `REFRESH_TOKEN_REUSE_DETECTED`) or `ACCOUNT_SUSPENDED`.
+  /// Anything else, network trouble above all, keeps the saved session
+  /// (docs/design-decisions.md, decision 9).
+  static bool endsSession(AppFailure failure) =>
+      failure is UnauthorizedFailure || failure is AccountSuspendedFailure;
 
   Future<void> dispose() => _ended.close();
 }
