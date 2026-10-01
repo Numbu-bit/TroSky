@@ -21,7 +21,7 @@ void main() {
       await tester.pumpWidget(
         testApp(
           onboarding: FakeOnboardingStore(seen: onboardingSeen),
-          session: FakeSessionStore(hasSession: hasSession),
+          signedIn: hasSession,
         ),
       );
       expect(find.byType(SplashScreen), findsOneWidget);

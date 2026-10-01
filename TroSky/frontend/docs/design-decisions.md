@@ -8,6 +8,10 @@ Product decisions that settle questions the Figma Make file leaves open. These r
 | 2 | Sizing | 30 Sep 2026 | In force |
 | 3 | Button states | 30 Sep 2026 | In force (`TroskyButton`) |
 | 4 | Splash timing | 1 Oct 2026 | In force (`launchDestinationProvider`) |
+| 5 | Insets | 1 Oct 2026 | In force (reference: Onboarding) |
+| 6 | Sign-up flow | 1 Oct 2026 | Decided; built in Step 7 |
+| 7 | Driver entry | 1 Oct 2026 | Decided; built in Step 7 |
+| 8 | Onboarding quirks | 1 Oct 2026 | Kept as designed; to raise with the designer |
 
 ## 1. Logo
 
@@ -56,3 +60,31 @@ The Figma code defines no pressed, disabled or loading state for buttons. The st
 The splash's 1.5 s minimum is a **soft target**. The timer starts when Flutter reports that its first frame is drawn (`firstFrameShown` in `launchDestinationProvider`). Android removes its own launch screen a little after that and fades it out, and Flutter can't see either step.
 
 Measured on a TECNO BG6 (Android 13) on 1 Oct 2026, the splash was on screen for about 1.3 s: a 0.18 s fade-in, then about 1.1 s fully visible. **This is accepted.** Don't add a native Android hook to stretch it to a full 1.5 s.
+
+## 5. Insets
+
+This is the standard for every screen. **The phone's real status bar and home bar replace the bars drawn in the Figma frames.**
+
+- **Top:** keep the design's spacing. The drawn `StatusBar` is 48 px, so content starts 48 px from the top, unless the phone's own status bar is taller.
+- **Bottom:** keep the design's bottom padding (for example `pb-6` = 24 px under the last button), unless the phone's own bottom inset is larger, such as with three-button navigation.
+
+The reference implementation is `OnboardingScreen`. In code that is `max(design spacing, MediaQuery.viewPadding)` for the top and for the bottom.
+
+## 6. Sign-up flow
+
+**The backend stays as it is.** The frontend adapts to its endpoints.
+
+1. **Welcome** (Sign Up, S-06): phone number, as designed.
+2. **Your details:** full name, email and password. This screen is not in Figma, so it is built from existing `trosky_ui` components.
+3. **OTP:** the code sent to the phone.
+4. **Signed in.**
+
+## 7. Driver entry
+
+**There is no role-chooser screen.** The Welcome screen gets one small link: "Driving for TroSky? Sign up as a driver". The link switches the app mode to driver and runs the same sign-up flow with `role=driver`.
+
+## 8. Onboarding quirks
+
+The quirks in the onboarding illustrations and layout stay as designed. They are listed in the Step 5 report, for example "YOUR SEAT" being wider than its pill and every weekday being ticked. They will be raised with the designer later.
+
+The illustration labels ("YOUR SEAT", "price drops", "July 2026" and so on) stay untranslated for now.

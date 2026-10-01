@@ -12,6 +12,7 @@ resolution: workspace
 dependencies:
   flutter:
     sdk: flutter
+  phone_numbers_parser: ^9.0.27
 
 dev_dependencies:
   flutter_test:

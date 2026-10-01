@@ -2,7 +2,7 @@
 
 **For:** the TroSky backend developer
 **From:** frontend (Flutter mobile app, admin web, fleet web)
-**Status as of:** 30 Sep 2026
+**Status as of:** 30 Sep 2026 (bugs section added 1 Oct 2026)
 
 The frontend is being built now against **mock data that follows the contracts below**. When an endpoint lands in the repo, the frontend switches from mock to live. So the most helpful thing is to **agree the request/response shape early**, even before the code exists. If you want a different shape, change it here (or tell us) before building, and we'll update our mocks.
 
@@ -19,6 +19,31 @@ When you finish one, please:
 3. Make sure `/openapi.json` shows it. The frontend reads the OpenAPI spec to stay in sync.
 
 ---
+
+## Bugs found while connecting the app
+
+### B1: three security safeguards never take effect (rollback on error)
+
+`get_db` (app/core/database.py) rolls back the request's transaction on any exception. Three safeguards write to the database and then raise an `AppError`, so their writes are rolled back:
+
+| Safeguard | Write that is lost | What happens instead |
+|---|---|---|
+| Login lockout (`login_password`) | `record_login_failure` increments `failed_login_attempts` / sets `locked_until` | `ACCOUNT_LOCKED` never happens; passwords can be guessed at the rate limit (10 per 5 minutes per IP) |
+| OTP attempt limit (`OtpService.verify_otp`) | `increment_attempts` | `OTP_ATTEMPTS_EXCEEDED` never happens; codes can be guessed at the rate limit |
+| Refresh-token reuse (`refresh_tokens`) | `revoke_all_sessions_for_user` | `REFRESH_TOKEN_REUSE_DETECTED` is returned, but every other session stays valid |
+
+**Seen on the local docker stack on 1 Oct 2026** (frontend `packages/trosky_api/test/live/live_smoke_test.dart`, run with `TROSKY_LIVE_API=http://localhost:8000/api/v1`):
+- After 5 wrong passwords, the right one still signs in.
+- Six wrong codes all return `OTP_INVALID`.
+- After a reused refresh token, another session's access token still gets 200 from `GET /users/me`.
+
+**Suggested fix:** commit these writes even though the request fails. For example, do the write in its own session or transaction that commits before raising. Another option is to let `get_db` commit for errors that carry intentional side effects. The integration tests skip without Postgres, which is probably why this went unnoticed.
+
+**Frontend impact:** none. The app already handles `ACCOUNT_LOCKED`, `OTP_ATTEMPTS_EXCEEDED` and `REFRESH_TOKEN_REUSE_DETECTED`, and the mock follows the intended behaviour.
+
+### B2: registration answers 500 until roles are seeded
+
+On a fresh database, `POST /auth/register` fails with `500 INTERNAL_SERVER_ERROR` (`RuntimeError: Role 'passenger' is not seeded`). `make seed` fixes it. Consider running the seed from the docker-compose `api` command after `alembic upgrade head`, so a fresh stack works on its own.
 
 ## P0: blocks the driver app and password reset
 
@@ -107,7 +132,7 @@ Also add `?reference_type=` as a filter on `GET /wallet/transactions`.
 
 | ID | The Figma design shows | Backend today |
 |---|---|---|
-| G18 | Sign up with **phone → OTP only** (no password; email optional) | Requires phone + Gmail address + name + password |
+| G18 | Sign up with **phone → OTP only** (no password; email optional) | Requires phone + Gmail address + name + password. **Decided 1 Oct 2026: the backend stays as it is.** The app adds a "Your details" screen for name, email and password (frontend `docs/design-decisions.md`, decision 6) |
 | G14 | **Subscribe your commute** (monthly plan, "save up to 40%") | No subscriptions |
 | G15 | **Fare splitting**: price drops as more riders board | One fixed `fare_amount` per trip |
 | G17 | Optional Ghana Card verification | Fields exist, but there's no verification endpoint |

@@ -52,14 +52,14 @@ final class FirstFrameShownProvider
 
 String _$firstFrameShownHash() => r'29240b72f72b9bd2e8d0e264b82d6cbafe3fdf51';
 
-/// Reads the onboarding flag and looks for a saved session while the splash
-/// is shown for [splashMinimumDuration], then picks where to go.
+/// Reads the onboarding flag and restores the saved session while the
+/// splash is shown for [splashMinimumDuration], then picks where to go.
 
 @ProviderFor(launchDestination)
 final launchDestinationProvider = LaunchDestinationProvider._();
 
-/// Reads the onboarding flag and looks for a saved session while the splash
-/// is shown for [splashMinimumDuration], then picks where to go.
+/// Reads the onboarding flag and restores the saved session while the
+/// splash is shown for [splashMinimumDuration], then picks where to go.
 
 final class LaunchDestinationProvider
     extends
@@ -71,8 +71,8 @@ final class LaunchDestinationProvider
     with
         $FutureModifier<LaunchDestination>,
         $FutureProvider<LaunchDestination> {
-  /// Reads the onboarding flag and looks for a saved session while the splash
-  /// is shown for [splashMinimumDuration], then picks where to go.
+  /// Reads the onboarding flag and restores the saved session while the
+  /// splash is shown for [splashMinimumDuration], then picks where to go.
   LaunchDestinationProvider._()
     : super(
         from: null,
@@ -99,4 +99,4 @@ final class LaunchDestinationProvider
   }
 }
 
-String _$launchDestinationHash() => r'6562f1be70fe03a3e900d590e1823f6f0087ed44';
+String _$launchDestinationHash() => r'47ac164c8072454883e79947c84af784d3f5f158';

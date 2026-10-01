@@ -3,10 +3,10 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mobile/app/session_store_provider.dart';
 import 'package:mobile/app/trosky_mobile_app.dart';
 import 'package:mobile/entry/onboarding/data/onboarding_store.dart';
 import 'package:mobile/entry/splash/presentation/launch_destination_provider.dart';
+import 'package:trosky_api/trosky_api.dart';
 import 'package:trosky_auth/trosky_auth.dart';
 
 /// Answers `isSeen` with [seen]; a pending store never answers and keeps the
@@ -27,25 +27,37 @@ class FakeOnboardingStore implements OnboardingStore {
   Future<void> markSeen() async => seen = true;
 }
 
-class FakeSessionStore implements SessionStore {
-  const FakeSessionStore({this.hasSession = false});
+/// A session that is already restored: signed in as a passenger, or not.
+class FakeSessionController extends SessionController {
+  FakeSessionController({this.signedIn = false});
 
-  final bool hasSession;
+  final bool signedIn;
 
   @override
-  Future<bool> hasSavedSession() async => hasSession;
+  Future<SessionState> build() async => signedIn
+      ? SessionAuthenticated(
+          UserResponse(
+            id: '2f6b1c0e-7d3a-4b8e-9c1a-5e2f7a9b3c41',
+            phoneNumber: MockBackend.passengerPhone,
+            isActive: true,
+            phoneVerified: true,
+            emailVerified: false,
+            roles: const ['passenger'],
+            createdAt: DateTime.utc(2026, 7),
+          ),
+        )
+      : const SessionUnauthenticated();
 }
 
 /// The whole app with its storage replaced by fakes. The test binding never
 /// reports a rasterized frame, so the splash counts as shown straight away.
-Widget testApp({
-  required OnboardingStore onboarding,
-  SessionStore session = const FakeSessionStore(),
-}) {
+Widget testApp({required OnboardingStore onboarding, bool signedIn = false}) {
   return ProviderScope(
     overrides: [
       onboardingStoreProvider.overrideWithValue(onboarding),
-      sessionStoreProvider.overrideWithValue(session),
+      sessionControllerProvider.overrideWith(
+        () => FakeSessionController(signedIn: signedIn),
+      ),
       firstFrameShownProvider.overrideWith((ref) async {}),
     ],
     child: const TroskyMobileApp(),

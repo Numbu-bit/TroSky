@@ -1,0 +1,339 @@
+import 'dart:async';
+
+import 'package:dio/dio.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:trosky_api/trosky_api.dart';
+import 'package:trosky_core/trosky_core.dart';
+
+import 'support/fake_adapter.dart';
+
+final _env = Env.parse(
+  apiBaseUrl: 'http://api.test/api/v1',
+  wsBaseUrl: '',
+  apiMode: 'live',
+);
+
+/// Refreshes by swapping 'old' for 'new' after a short wait, so concurrent
+/// requests overlap the refresh.
+class _FakeTokens implements SessionTokens {
+  _FakeTokens({this.result});
+
+  @override
+  String? accessToken = 'old';
+
+  int refreshCalls = 0;
+  Result<String>? result;
+
+  @override
+  Future<Result<String>> refresh() async {
+    refreshCalls++;
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    final outcome = result ?? const Ok('new');
+    if (outcome case Ok(:final value)) accessToken = value;
+    return outcome;
+  }
+}
+
+String? _bearer(RequestOptions options) =>
+    options.headers['Authorization'] as String?;
+
+void main() {
+  group('single-flight refresh', () {
+    test('5 parallel 401s → exactly 1 refresh, all 5 retried', () async {
+      final tokens = _FakeTokens();
+      final adapter = FakeAdapter(
+        (options) async => _bearer(options) == 'Bearer new'
+            ? const FakeReply(200, {'ok': true})
+            : FakeReply(401, errorBody('UNAUTHORIZED')),
+      );
+      final dio = createApiClient(
+        env: _env,
+        tokens: () => tokens,
+        adapter: adapter,
+      );
+
+      final responses = await Future.wait([
+        for (var i = 0; i < 5; i++) dio.get<Object?>('/users/me'),
+      ]);
+
+      expect(tokens.refreshCalls, 1);
+      expect(responses.map((r) => r.statusCode), everyElement(200));
+      final sent = adapter.sentHeaders.map((h) => h['Authorization']).toList();
+      expect(sent.where((b) => b == 'Bearer old'), hasLength(5));
+      expect(sent.where((b) => b == 'Bearer new'), hasLength(5));
+    });
+
+    test('a 401 arriving after the refresh reuses the new token', () async {
+      final tokens = _FakeTokens();
+      final slow = Completer<void>();
+      final adapter = FakeAdapter((options) async {
+        if (_bearer(options) == 'Bearer new') {
+          return const FakeReply(200, {'ok': true});
+        }
+        // The second request's 401 is held back until the first has
+        // refreshed.
+        if (options.path == '/slow') await slow.future;
+        return FakeReply(401, errorBody('UNAUTHORIZED'));
+      });
+      final dio = createApiClient(
+        env: _env,
+        tokens: () => tokens,
+        adapter: adapter,
+      );
+
+      final slowRequest = dio.get<Object?>('/slow');
+      await dio.get<Object?>('/fast');
+      slow.complete();
+      await slowRequest;
+
+      expect(tokens.refreshCalls, 1);
+    });
+
+    test(
+      'a failed refresh fails the waiting requests with its failure',
+      () async {
+        final tokens = _FakeTokens(
+          result: Err(
+            AppFailure.fromResponse(
+              statusCode: 401,
+              body: errorBody('REFRESH_TOKEN_REUSE_DETECTED'),
+            ),
+          ),
+        );
+        final dio = createApiClient(
+          env: _env,
+          tokens: () => tokens,
+          adapter: FakeAdapter(
+            (_) async => FakeReply(401, errorBody('UNAUTHORIZED')),
+          ),
+        );
+        final repo = LiveUserRepository(dio);
+
+        final results = await Future.wait([repo.getMe(), repo.getMe()]);
+
+        expect(tokens.refreshCalls, 1);
+        for (final result in results) {
+          expect(result.failureOrNull?.code, 'REFRESH_TOKEN_REUSE_DETECTED');
+        }
+      },
+    );
+
+    test('wrong credentials are not "fixed" by a refresh', () async {
+      final tokens = _FakeTokens();
+      final dio = createApiClient(
+        env: _env,
+        tokens: () => tokens,
+        adapter: FakeAdapter(
+          (_) async => FakeReply(401, errorBody('INVALID_CREDENTIALS')),
+        ),
+      );
+
+      final result = await LiveAuthRepository(
+        dio,
+      ).login(const LoginRequest(identifier: '0241234567', password: 'x'));
+
+      expect(result.failureOrNull, isA<UnauthorizedFailure>());
+      expect(result.failureOrNull?.code, 'INVALID_CREDENTIALS');
+      expect(tokens.refreshCalls, 0);
+    });
+  });
+
+  group('auth header', () {
+    test('public endpoints send no token; logout and /users/me do', () async {
+      final adapter = FakeAdapter((options) async {
+        return switch (options.path) {
+          '/auth/logout' => const FakeReply(204),
+          '/users/me' => const FakeReply(200, _userJson),
+          _ => const FakeReply(200, {'message': 'ok'}),
+        };
+      });
+      final dio = createApiClient(
+        env: _env,
+        tokens: _FakeTokens.new,
+        adapter: adapter,
+      );
+      final auth = LiveAuthRepository(dio);
+
+      await auth.resendOtp(
+        const ResendOtpRequest(target: '0241234567', purpose: OtpPurpose.login),
+      );
+      await auth.logout();
+      await LiveUserRepository(dio).getMe();
+
+      expect(_bearer(adapter.requests[0]), isNull);
+      expect(_bearer(adapter.requests[1]), 'Bearer old');
+      expect(_bearer(adapter.requests[2]), 'Bearer old');
+    });
+  });
+
+  test('every request carries a UUID X-Request-ID', () async {
+    final adapter = FakeAdapter((_) async => const FakeReply(200, _userJson));
+    final dio = createApiClient(
+      env: _env,
+      tokens: _FakeTokens.new,
+      adapter: adapter,
+    );
+    await LiveUserRepository(dio).getMe();
+    await LiveUserRepository(dio).getMe();
+
+    final ids = adapter.requests.map((r) => r.headers[requestIdHeader]);
+    for (final id in ids) {
+      expect(
+        id,
+        matches(
+          RegExp(
+            r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+          ),
+        ),
+      );
+    }
+    expect(ids.toSet(), hasLength(2));
+  });
+
+  group('retry', () {
+    Dio client(FakeAdapter adapter) => createApiClient(
+      env: _env,
+      tokens: _FakeTokens.new,
+      adapter: adapter,
+      retryDelays: const [Duration.zero, Duration.zero],
+    );
+
+    test(
+      'a GET is retried twice on connection errors, same request ID',
+      () async {
+        var calls = 0;
+        final adapter = FakeAdapter((options) async {
+          calls++;
+          if (calls < 3) {
+            return FakeReply.fail(
+              DioException.connectionError(
+                requestOptions: options,
+                reason: 'offline',
+              ),
+            );
+          }
+          return const FakeReply(200, _userJson);
+        });
+
+        final result = await LiveUserRepository(client(adapter)).getMe();
+
+        expect(result.isOk, isTrue);
+        expect(calls, 3);
+        final ids = adapter.requests.map((r) => r.headers[requestIdHeader]);
+        expect(ids.toSet(), hasLength(1));
+      },
+    );
+
+    test('gives up with a NetworkFailure after the last retry', () async {
+      final adapter = FakeAdapter(
+        (options) async => FakeReply.fail(
+          DioException.connectionError(requestOptions: options, reason: 'x'),
+        ),
+      );
+
+      final result = await LiveUserRepository(client(adapter)).getMe();
+
+      expect(result.failureOrNull, isA<NetworkFailure>());
+      expect(adapter.requests, hasLength(3));
+    });
+
+    test('503 is retried, 500 is not', () async {
+      final unavailable = FakeAdapter(
+        (_) async => FakeReply(503, errorBody('SERVICE_UNAVAILABLE')),
+      );
+      await LiveUserRepository(client(unavailable)).getMe();
+      expect(unavailable.requests, hasLength(3));
+
+      final broken = FakeAdapter(
+        (_) async => FakeReply(500, errorBody('INTERNAL_SERVER_ERROR')),
+      );
+      final result = await LiveUserRepository(client(broken)).getMe();
+      expect(broken.requests, hasLength(1));
+      expect(result.failureOrNull, isA<ServerFailure>());
+    });
+
+    test('a POST is never retried', () async {
+      final adapter = FakeAdapter(
+        (options) async => FakeReply.fail(
+          DioException.connectionError(requestOptions: options, reason: 'x'),
+        ),
+      );
+
+      final result = await LiveAuthRepository(client(adapter)).login(
+        const LoginRequest(identifier: '0241234567', password: 'TroSky2026'),
+      );
+
+      expect(adapter.requests, hasLength(1));
+      expect(result.failureOrNull, isA<NetworkFailure>());
+    });
+  });
+
+  test('timeouts become TimeoutFailure', () async {
+    final adapter = FakeAdapter(
+      (options) async => FakeReply.fail(
+        DioException.receiveTimeout(
+          timeout: const Duration(seconds: 30),
+          requestOptions: options,
+        ),
+      ),
+    );
+    final result = await LiveAuthRepository(
+      createApiClient(env: _env, tokens: _FakeTokens.new, adapter: adapter),
+    ).refresh(RefreshRequest(refreshToken: 'x' * 30));
+    expect(result.failureOrNull, isA<TimeoutFailure>());
+  });
+
+  test('requests use the backend field names', () async {
+    final adapter = FakeAdapter(
+      (_) async => const FakeReply(201, {
+        'user_id': 'u1',
+        'phone_number': '+233241234567',
+        'otp_sent_to': '+233241234567',
+        'message': 'Registration successful.',
+      }),
+    );
+    final result =
+        await LiveAuthRepository(
+          createApiClient(env: _env, tokens: _FakeTokens.new, adapter: adapter),
+        ).register(
+          const RegisterRequest(
+            phoneNumber: '0241234567',
+            email: 'ama.mensah@gmail.com',
+            password: 'TroSky2026',
+            fullName: 'Ama Mensah',
+            role: RegistrableRole.driver,
+          ),
+        );
+
+    expect(adapter.requests.single.path, '/auth/register');
+    expect(adapter.requests.single.data, {
+      'phone_number': '0241234567',
+      'email': 'ama.mensah@gmail.com',
+      'password': 'TroSky2026',
+      'full_name': 'Ama Mensah',
+      'role': 'driver',
+      'preferred_language': 'en',
+    });
+    expect(result.valueOrNull?.otpSentTo, '+233241234567');
+  });
+}
+
+const _userJson = {
+  'id': '2f6b1c0e-7d3a-4b8e-9c1a-5e2f7a9b3c41',
+  'phone_number': '+233241234567',
+  'email': 'ama.mensah@gmail.com',
+  'is_active': true,
+  'phone_verified': true,
+  'email_verified': false,
+  'roles': ['passenger'],
+  'created_at': '2026-07-01T08:00:00+00:00',
+  'profile': {
+    'full_name': 'Ama Mensah',
+    'date_of_birth': null,
+    'gender': null,
+    'preferred_language': 'en',
+    'avatar_url': null,
+    'ghana_card_number': null,
+    'ghana_card_verified': false,
+  },
+};

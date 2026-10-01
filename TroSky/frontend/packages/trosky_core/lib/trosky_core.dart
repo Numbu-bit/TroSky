@@ -1,7 +1,8 @@
-/// Core utilities shared by the TroSky apps.
-///
-/// Skeleton: exports only its own name until real code lands.
+/// Core building blocks shared by the TroSky apps: results and failures,
+/// phone numbers, and build-time settings.
 library;
 
-/// The name of this package.
-const String troskyCorePackageName = 'trosky_core';
+export 'src/app_failure.dart';
+export 'src/env.dart';
+export 'src/phone.dart';
+export 'src/result.dart';

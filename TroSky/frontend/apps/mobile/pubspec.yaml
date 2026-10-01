@@ -20,8 +20,12 @@ dependencies:
   intl: ^0.20.2
   riverpod_annotation: ^4.0.7
   shared_preferences: ^2.5.5
+  trosky_api:
+    path: ../../packages/trosky_api
   trosky_auth:
     path: ../../packages/trosky_auth
+  trosky_core:
+    path: ../../packages/trosky_core
   trosky_ui:
     path: ../../packages/trosky_ui
 

@@ -104,7 +104,7 @@ Use the **Screen ID** as the screenshot filename (e.g. `S-04.png`). "Figma" is t
 | S-03 | **Role chooser** (Passenger / Driver) | none | ✅ |
 | S-04 | Sign in (phone or email + password) | `POST /auth/login` → `GET /users/me` | ✅ |
 | S-05 | Sign in with OTP | `POST /auth/resend-otp` (purpose `login`) → `POST /auth/otp-login` | ✅ |
-| S-06 | Sign up (phone, **email**, name, password) | `POST /auth/register` (role from S-03) | ⚠️ G18 (the design is phone-only) |
+| S-06 | Sign up (phone, **email**, name, password) | `POST /auth/register` (role from S-03) | ✅ G18 decided: Welcome (phone) → "Your details" (name, Gmail, password) → OTP (design-decisions.md, decision 6) |
 | S-07 | OTP verification (target = `otp_sent_to`) | `POST /auth/verify-otp`, `POST /auth/resend-otp` | ✅ |
 | S-08 | Forgot password | `POST /auth/password/forgot` | ✅ |
 | S-09 | Reset password | `POST /auth/password/reset` | ❌ G1 |
@@ -220,7 +220,7 @@ Ranked by how badly each blocks the frontend. Most are small additions to router
 | **G15** | **Fare splitting**: onboarding 2 says "as more passengers board, the cost splits", with per-seat prices changing | Each trip has one fixed `fare_amount` | Is the fare dynamic? If yes, this is a pricing change in the backend |
 | G16 | Home map with **nearby vehicle clusters** (badges 5, 2) | Only per-trip location (`/trips/{id}/location`) | Add a "vehicles near me" endpoint, or show nearby **stops** (which exist) instead |
 | G17 | Sign-up card: "Optionally verify your Ghana Card" | `ghana_card_number` and `ghana_card_verified` fields exist, but no verification endpoint | Hide the card for the MVP, or add an endpoint |
-| **G18** | **Sign up is phone → Send OTP only** (passwordless) with a "Continue with Email" option | Register requires phone + **Gmail** email + name + password, *then* the OTP | See Q4 |
+| **G18** | **Sign up is phone → Send OTP only** (passwordless) with a "Continue with Email" option | Register requires phone + **Gmail** email + name + password, *then* the OTP | Decided 1 Oct 2026: keep the backend; see design-decisions.md, decision 6 |
 
 ---
 
@@ -248,8 +248,8 @@ I'll ask for these one batch at a time. Each batch is built, tested and committe
 - ~~Q1. Can one person be both passenger and driver?~~ **Answered: yes.** See §2.
 - **Q2.** Should drivers see the onboarding slides, or go straight from the role chooser to sign in?
 - **Q3.** Do the admin and fleet owner web apps have their own Figma screens in the Make file, or only the mobile app?
-- **Q4. Sign-up flow (G18).** The design is phone → OTP. The backend needs phone, email, name and password. Options:
+- **Q4. Sign-up flow (G18).** *Answered 1 Oct 2026: (a). The "Your details" step is built from existing components (design-decisions.md, decision 6).* The design is phone → OTP. The backend needs phone, email, name and password. Options:
   - (a) Keep the backend. The design's first screen stays as it is, and a second "Your details" step collects name, email and password before the code is sent. This needs a design for that step.
   - (b) Change the backend to phone-OTP sign-up (no password, email optional), which matches the design.
-- **Q5.** Is there a **role chooser** (Passenger / Driver) screen in Figma? It isn't in the Passenger App list. Without one we would have to invent it, which the rules forbid.
+- **Q5.** Is there a **role chooser** (Passenger / Driver) screen in Figma? It isn't in the Passenger App list. Without one we would have to invent it, which the rules forbid. *Answered 1 Oct 2026: there is no chooser. The Welcome screen has a "Driving for TroSky? Sign up as a driver" link (design-decisions.md, decision 7).*
 - **Q6.** G14 subscriptions and G15 fare-split: MVP features or not?

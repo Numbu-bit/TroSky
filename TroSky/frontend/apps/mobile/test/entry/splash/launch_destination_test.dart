@@ -3,10 +3,10 @@ import 'dart:async';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mobile/app/session_store_provider.dart';
 import 'package:mobile/entry/onboarding/data/onboarding_store.dart';
 import 'package:mobile/entry/splash/domain/launch_destination.dart';
 import 'package:mobile/entry/splash/presentation/launch_destination_provider.dart';
+import 'package:trosky_auth/trosky_auth.dart';
 
 import '../../helpers/fakes.dart';
 
@@ -39,8 +39,8 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           onboardingStoreProvider.overrideWithValue(onboarding),
-          sessionStoreProvider.overrideWithValue(
-            const FakeSessionStore(hasSession: true),
+          sessionControllerProvider.overrideWith(
+            () => FakeSessionController(signedIn: true),
           ),
           firstFrameShownProvider.overrideWith(
             (ref) => firstFrameShown ?? Future.value(),

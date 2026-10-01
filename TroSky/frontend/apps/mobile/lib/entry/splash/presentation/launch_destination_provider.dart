@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:trosky_auth/trosky_auth.dart';
 
-import '../../../app/session_store_provider.dart';
 import '../../onboarding/data/onboarding_store.dart';
 import '../domain/launch_destination.dart';
 
@@ -18,17 +18,17 @@ const Duration splashMinimumDuration = Duration(milliseconds: 1500);
 Future<void> firstFrameShown(Ref ref) =>
     WidgetsBinding.instance.waitUntilFirstFrameRasterized;
 
-/// Reads the onboarding flag and looks for a saved session while the splash
-/// is shown for [splashMinimumDuration], then picks where to go.
+/// Reads the onboarding flag and restores the saved session while the
+/// splash is shown for [splashMinimumDuration], then picks where to go.
 @riverpod
 Future<LaunchDestination> launchDestination(Ref ref) async {
   final onboarding = ref.watch(onboardingStoreProvider);
-  final session = ref.watch(sessionStoreProvider);
+  final session = ref.watch(sessionControllerProvider.future);
   final shown = ref.watch(firstFrameShownProvider.future);
 
   final (onboardingSeen, hasSession, _) = await (
     _falseOnError(onboarding.isSeen),
-    _falseOnError(session.hasSavedSession),
+    _falseOnError(() async => await session is SessionAuthenticated),
     shown.then((_) => Future<void>.delayed(splashMinimumDuration)),
   ).wait;
 
