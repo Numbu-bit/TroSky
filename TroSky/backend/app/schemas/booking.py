@@ -9,6 +9,7 @@ from decimal import Decimal
 from pydantic import Field, field_validator, model_validator
 
 from app.models.bookings import BookingStatus, CancellationStatus
+from app.models.trips import TripStatus
 from app.schemas.common import ApiModel, RequestModel
 
 
@@ -62,6 +63,17 @@ class BookingPassengerResponse(ApiModel):
     phone_number: str | None
 
 
+class BookingTripSummaryResponse(ApiModel):
+    """The trip a booking is for, enough for a booking card."""
+
+    scheduled_departure_at: datetime
+    route_name: str
+    origin_stop_name: str = Field(..., description="Where the trip's route starts.")
+    destination_stop_name: str = Field(..., description="Where the trip's route ends.")
+    status: TripStatus
+    vehicle_registration_number: str | None
+
+
 class BookingResponse(ApiModel):
     id: uuid.UUID
     booking_reference: str
@@ -76,6 +88,15 @@ class BookingResponse(ApiModel):
     expires_at: datetime | None
     created_at: datetime
     passengers: list[BookingPassengerResponse]
+    trip: BookingTripSummaryResponse | None = None
+    boarding_stop_name: str | None = Field(
+        default=None,
+        description="Where this booking boards: its origin stop, or the route's start.",
+    )
+    alighting_stop_name: str | None = Field(
+        default=None,
+        description="Where this booking gets off: its destination stop, or the route's end.",
+    )
 
 
 class CancelBookingRequest(RequestModel):

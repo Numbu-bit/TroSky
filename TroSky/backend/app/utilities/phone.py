@@ -29,3 +29,16 @@ def normalize_phone_number(raw: str, *, default_region: str = DEFAULT_REGION) ->
         raise InvalidPhoneNumberError(f"'{raw}' is not a valid phone number")
 
     return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+
+
+def mask_phone_number(phone: str) -> str:
+    """Hide the middle of a phone number: ``+233244564567`` becomes
+    ``+23324•••4567``.
+
+    Keeps the country code and network prefix, enough to recognise the
+    number, and the last four digits, enough to confirm it -- nothing that
+    would let someone call it.
+    """
+    if len(phone) <= 10:
+        return f"•••{phone[-2:]}" if len(phone) > 2 else "•••"
+    return f"{phone[:6]}•••{phone[-4:]}"

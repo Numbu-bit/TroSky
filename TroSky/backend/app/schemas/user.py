@@ -6,7 +6,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import Field
+from pydantic import Field, field_validator, model_validator
 
 from app.schemas.common import ApiModel, RequestModel
 
@@ -81,3 +81,30 @@ class NotificationPreferencesUpdateRequest(RequestModel):
 class AccountDeletionRequest(RequestModel):
     password: str = Field(..., min_length=1, max_length=128)
     reason: str | None = Field(default=None, max_length=500)
+
+
+class FavouriteRouteCreateRequest(RequestModel):
+    origin_stop_id: uuid.UUID
+    destination_stop_id: uuid.UUID
+    label: str | None = Field(default=None, max_length=60, examples=["Home to work"])
+
+    @field_validator("label")
+    @classmethod
+    def _blank_label_is_none(cls, value: str | None) -> str | None:
+        return value.strip() or None if value is not None else None
+
+    @model_validator(mode="after")
+    def _distinct_stops(self) -> FavouriteRouteCreateRequest:
+        if self.origin_stop_id == self.destination_stop_id:
+            raise ValueError("origin_stop_id and destination_stop_id must be different.")
+        return self
+
+
+class FavouriteRouteResponse(ApiModel):
+    id: uuid.UUID
+    origin_stop_id: uuid.UUID
+    origin_stop_name: str
+    destination_stop_id: uuid.UUID
+    destination_stop_name: str
+    label: str | None
+    created_at: datetime

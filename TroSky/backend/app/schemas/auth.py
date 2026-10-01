@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import EmailStr, Field, field_validator
+from pydantic import EmailStr, Field, field_validator, model_validator
 
 from app.models.identity import DevicePlatform, OtpChannel, OtpPurpose
 from app.schemas.common import ApiModel, RequestModel
@@ -102,8 +102,28 @@ class ForgotPasswordRequest(RequestModel):
 
 
 class ResetPasswordRequest(RequestModel):
-    token: str = Field(..., min_length=20)
+    """Prove it is you with the 6-digit ``code`` sent by ``/password/forgot``
+    (plus the ``target`` you asked it for), or with an older long ``token``."""
+
+    target: str | None = Field(
+        default=None,
+        description="The phone number or email the code was requested for.",
+        examples=["+233241234567"],
+    )
+    code: str | None = Field(default=None, min_length=4, max_length=10, examples=["482913"])
+    token: str | None = Field(
+        default=None, min_length=20, description="Older reset links' long token."
+    )
     new_password: str = Field(..., min_length=8, max_length=128)
+
+    @model_validator(mode="after")
+    def _one_proof(self) -> ResetPasswordRequest:
+        with_code = self.target is not None or self.code is not None
+        if self.token is not None and with_code:
+            raise ValueError("Send either target and code, or token -- not both.")
+        if self.token is None and (self.target is None or self.code is None):
+            raise ValueError("Send target and code (or the older token).")
+        return self
 
 
 class SessionResponse(ApiModel):

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, date, datetime
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +20,8 @@ from app.models.drivers import (
     DriverDocument,
     DriverStatusHistory,
 )
+from app.models.identity import User, UserProfile
+from app.models.vehicles import Vehicle
 
 
 class DriverRepository:
@@ -205,3 +208,39 @@ class DriverRepository:
         assignment.is_active = False
         assignment.unassigned_at = datetime.now(UTC)
         await self._session.flush()
+
+    async def list_active_for_fleet(self, fleet_id: uuid.UUID) -> list[Any]:
+        """One row per driver-vehicle pairing currently active in the fleet:
+        driver id/status/name/phone plus the vehicle and when it was
+        assigned."""
+        result = await self._session.execute(
+            select(
+                Driver.id.label("driver_id"),
+                Driver.status,
+                User.phone_number,
+                UserProfile.full_name,
+                Vehicle.id.label("vehicle_id"),
+                Vehicle.registration_number,
+                DriverAssignment.assigned_at,
+            )
+            .select_from(DriverAssignment)
+            .join(Driver, Driver.id == DriverAssignment.driver_id)
+            .join(User, User.id == Driver.user_id)
+            .outerjoin(UserProfile, UserProfile.user_id == User.id)
+            .join(Vehicle, Vehicle.id == DriverAssignment.vehicle_id)
+            .where(DriverAssignment.fleet_id == fleet_id, DriverAssignment.is_active.is_(True))
+            .order_by(UserProfile.full_name, Driver.id, Vehicle.registration_number)
+        )
+        return list(result.all())
+
+    async def find_by_phone(self, phone_number: str) -> tuple[Driver, User, str | None] | None:
+        """The driver profile, account and name behind a (normalized) phone
+        number, if that account has a driver profile."""
+        result = await self._session.execute(
+            select(Driver, User, UserProfile.full_name)
+            .join(User, User.id == Driver.user_id)
+            .outerjoin(UserProfile, UserProfile.user_id == User.id)
+            .where(User.phone_number == phone_number, User.deleted_at.is_(None))
+        )
+        row = result.first()
+        return (row[0], row[1], row[2]) if row is not None else None

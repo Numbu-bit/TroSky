@@ -9,8 +9,9 @@ existence isn't leaked, unless the caller holds ``bookings:view_any``
 from __future__ import annotations
 
 import uuid
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 
 from app.api.dependencies import (
     BookingServiceDep,
@@ -21,13 +22,13 @@ from app.api.dependencies import (
     RatingServiceDep,
     TicketServiceDep,
 )
+from app.api.v1.views import booking_responses
 from app.core.exceptions import NotFoundError
 from app.core.permissions import Permission
 from app.core.ratelimit import rate_limit
-from app.models.bookings import Booking
+from app.models.bookings import Booking, BookingStatus
 from app.schemas.booking import (
     BookingCreateRequest,
-    BookingPassengerResponse,
     BookingResponse,
     CancelBookingRequest,
 )
@@ -36,27 +37,14 @@ from app.schemas.feedback import RateBookingRequest, RatingResponse
 from app.schemas.payment import PayBookingRequest, PaymentResponse
 from app.schemas.ticket import TicketResponse
 from app.services.booking_service import BookingService
+from app.utilities.query_params import parse_enum_list
 
 router = APIRouter()
 
 
 async def _booking_response(service: BookingService, booking: Booking) -> BookingResponse:
-    passengers = await service.get_booking_passengers(booking.id)
-    return BookingResponse(
-        id=booking.id,
-        booking_reference=booking.booking_reference,
-        trip_id=booking.trip_id,
-        status=booking.status,
-        passenger_count=booking.passenger_count,
-        origin_stop_id=booking.origin_stop_id,
-        destination_stop_id=booking.destination_stop_id,
-        fare_amount=booking.fare_amount,
-        platform_fee=booking.platform_fee,
-        total_amount=booking.total_amount,
-        expires_at=booking.expires_at,
-        created_at=booking.created_at,
-        passengers=[BookingPassengerResponse.model_validate(p) for p in passengers],
-    )
+    [response] = await booking_responses(service, [booking])
+    return response
 
 
 @router.post("", response_model=BookingResponse, status_code=status.HTTP_201_CREATED)
@@ -75,12 +63,36 @@ async def create_booking(
 
 @router.get("", response_model=PaginatedResponse[BookingResponse])
 async def list_my_bookings(
-    principal: CurrentPrincipal, service: BookingServiceDep, pagination: Pagination
+    principal: CurrentPrincipal,
+    service: BookingServiceDep,
+    pagination: Pagination,
+    status_filter: Annotated[
+        str | None,
+        Query(
+            alias="status",
+            description="Comma-separated booking statuses, e.g. confirmed,completed.",
+        ),
+    ] = None,
+    upcoming: Annotated[
+        bool | None,
+        Query(
+            description=(
+                "true: trips still ahead -- departing now or later, or under way "
+                "(soonest first). false: trips behind you (most recent first). "
+                "Omit for both (newest booking first)."
+            )
+        ),
+    ] = None,
 ) -> PaginatedResponse[BookingResponse]:
+    """Your bookings, each with a short summary of its trip."""
     bookings, total = await service.list_own_bookings(
-        principal.user_id, limit=pagination.limit, offset=pagination.offset
+        principal.user_id,
+        statuses=parse_enum_list(status_filter, BookingStatus, param="status"),
+        upcoming=upcoming,
+        limit=pagination.limit,
+        offset=pagination.offset,
     )
-    items = [await _booking_response(service, b) for b in bookings]
+    items = await booking_responses(service, bookings)
     return PaginatedResponse(
         items=items, total=total, limit=pagination.limit, offset=pagination.offset
     )
@@ -193,9 +205,14 @@ async def rate_booking(
 ) -> RatingResponse:
     """Rates the trip once the booking has completed — see
     ``TripService.end_trip``, the only thing that ever moves a booking to
-    ``COMPLETED``."""
+    ``COMPLETED``. ``score`` is the overall rating; ``safety``,
+    ``cleanliness``, ``professionalism`` and ``timeliness`` are optional."""
     rating = await service.rate_booking(
-        booking_id, passenger_id=principal.user_id, score=body.score, comment=body.comment
+        booking_id,
+        passenger_id=principal.user_id,
+        score=body.score,
+        comment=body.comment,
+        categories=body.categories(),
     )
     return RatingResponse.model_validate(rating)
 

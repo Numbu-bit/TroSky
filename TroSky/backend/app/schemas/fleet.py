@@ -124,3 +124,26 @@ class SeatLayoutResponse(ApiModel):
 
 class AssignDriverRequest(RequestModel):
     driver_id: uuid.UUID
+
+
+class FleetDriverVehicleResponse(ApiModel):
+    vehicle_id: uuid.UUID
+    registration_number: str
+    assigned_at: datetime
+
+
+class FleetDriverResponse(ApiModel):
+    """A driver currently assigned to one or more of the fleet's vehicles."""
+
+    driver_id: uuid.UUID
+    full_name: str | None
+    phone_number: str
+    approval_status: ApprovalStatus
+    vehicles: list[FleetDriverVehicleResponse]
+
+
+class DriverLookupResponse(ApiModel):
+    driver_id: uuid.UUID
+    full_name: str | None
+    phone_number: str = Field(..., description="Masked, e.g. +23324•••4567.")
+    approval_status: ApprovalStatus

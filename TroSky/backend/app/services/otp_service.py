@@ -34,6 +34,16 @@ from app.utilities.phone import InvalidPhoneNumberError, normalize_phone_number
 logger = get_logger(__name__)
 
 _OTP_MESSAGE_TEMPLATE = "Your TroSky verification code is {code}. It expires in {minutes} minutes."
+# (subject, message) by purpose, so a reset code does not read like a
+# sign-up one.
+_MESSAGES: dict[OtpPurpose, tuple[str, str]] = {
+    OtpPurpose.PASSWORD_RESET: (
+        "Reset your TroSky password",
+        "Your TroSky password reset code is {code}. It expires in {minutes} minutes. "
+        "If you did not ask to reset your password, ignore this message.",
+    ),
+}
+_DEFAULT_MESSAGE = ("Your TroSky verification code", _OTP_MESSAGE_TEMPLATE)
 
 
 def normalize_otp_target(target: str) -> str:
@@ -117,11 +127,15 @@ class OtpService:
             max_attempts=self._settings.OTP_MAX_ATTEMPTS,
         )
 
-        message = _OTP_MESSAGE_TEMPLATE.format(
-            code=code, minutes=self._settings.OTP_EXPIRATION_SECONDS // 60
-        )
+        subject, template = _MESSAGES.get(purpose, _DEFAULT_MESSAGE)
+        message = template.format(code=code, minutes=self._settings.OTP_EXPIRATION_SECONDS // 60)
         delivery = self._deliver(
-            channel, deliver_to or target, message, target=target, purpose=purpose
+            channel,
+            deliver_to or target,
+            message,
+            subject=subject,
+            target=target,
+            purpose=purpose,
         )
         if self._settings.OTP_SEND_IN_BACKGROUND:
             run_in_background(delivery, name=f"otp-{purpose.value}-{channel.value}")
@@ -137,6 +151,7 @@ class OtpService:
         address: str,
         message: str,
         *,
+        subject: str,
         target: str,
         purpose: OtpPurpose,
     ) -> None:
@@ -144,9 +159,7 @@ class OtpService:
             if channel == OtpChannel.SMS:
                 await self._sms_provider.send_sms(address, message)
             else:
-                await self._email_provider.send_email(
-                    address, "Your TroSky verification code", message
-                )
+                await self._email_provider.send_email(address, subject, message)
         except Exception:
             # Nothing was delivered, so asking again must not have to wait
             # out the cooldown.

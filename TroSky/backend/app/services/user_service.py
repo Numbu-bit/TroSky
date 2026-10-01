@@ -6,7 +6,14 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import InvalidCredentialsError, NotFoundError
+from app.core.config import Settings, get_settings
+from app.core.exceptions import (
+    ConflictError,
+    FileValidationError,
+    InvalidCredentialsError,
+    NotFoundError,
+)
+from app.core.logging import get_logger
 from app.core.security import verify_password
 from app.models.identity import (
     DevicePlatform,
@@ -15,11 +22,17 @@ from app.models.identity import (
     NotificationPreference,
     User,
 )
+from app.providers.storage.base import ObjectStorageProvider
+from app.providers.storage.malware_scan import MalwareScanner
 from app.repositories.profile_repository import (
     DeviceRepository,
     EmergencyContactRepository,
+    FavouriteRouteExistsError,
+    FavouriteRouteRepository,
+    FavouriteRouteView,
     NotificationPreferenceRepository,
 )
+from app.repositories.route_repository import StopRepository
 from app.repositories.session_repository import SessionRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.user import (
@@ -28,7 +41,12 @@ from app.schemas.user import (
     NotificationPreferencesUpdateRequest,
     UserProfileUpdateRequest,
 )
+from app.services.document_service import store_uploaded_document
 from app.utilities.phone import normalize_phone_number
+
+logger = get_logger(__name__)
+
+_AVATAR_TYPES = {"image/jpeg", "image/png"}
 
 
 class UserService:
@@ -39,6 +57,7 @@ class UserService:
         self._preferences = NotificationPreferenceRepository(session)
         self._sessions = SessionRepository(session)
         self._devices = DeviceRepository(session)
+        self._favourites = FavouriteRouteRepository(session)
 
     async def get_user_with_roles(self, user_id: uuid.UUID) -> tuple[User, list[str]]:
         user = await self._users.get_by_id(user_id)
@@ -51,7 +70,11 @@ class UserService:
         user = await self._users.get_by_id(user_id)
         if user is None or user.profile is None:
             raise NotFoundError("User not found.")
-        await self._users.update_profile(user.profile, **request.model_dump(exclude_unset=True))
+        fields = request.model_dump(exclude_unset=True)
+        if fields.get("avatar_url") is not None:
+            # A photo URL set by hand replaces an uploaded one.
+            user.profile.avatar_storage_key = None
+        await self._users.update_profile(user.profile, **fields)
         return user
 
     async def delete_account(self, user_id: uuid.UUID, password: str) -> None:
@@ -128,3 +151,96 @@ class UserService:
         return await self._devices.upsert(
             user_id=user_id, device_id=device_id, platform=platform, push_token=push_token
         )
+
+    # ------------------------------------------------------------------
+    # Favourite routes (Home screen shortcuts)
+    # ------------------------------------------------------------------
+    async def list_favourite_routes(self, user_id: uuid.UUID) -> list[FavouriteRouteView]:
+        return await self._favourites.list_for_user(user_id)
+
+    async def add_favourite_route(
+        self,
+        user_id: uuid.UUID,
+        *,
+        origin_stop_id: uuid.UUID,
+        destination_stop_id: uuid.UUID,
+        label: str | None,
+    ) -> FavouriteRouteView:
+        stops = StopRepository(self._session)
+        for stop_id in (origin_stop_id, destination_stop_id):
+            if await stops.get_by_id(stop_id) is None:
+                raise NotFoundError("Stop not found.", details={"stop_id": str(stop_id)})
+        limit = get_settings().FAVOURITE_ROUTES_MAX_PER_USER
+        if await self._favourites.count_for_user(user_id) >= limit:
+            raise ConflictError(
+                f"You can save up to {limit} favourite routes. Remove one first.",
+                code="FAVOURITE_ROUTES_LIMIT",
+            )
+        try:
+            favourite = await self._favourites.create(
+                user_id=user_id,
+                origin_stop_id=origin_stop_id,
+                destination_stop_id=destination_stop_id,
+                label=label,
+            )
+        except FavouriteRouteExistsError:
+            raise ConflictError(
+                "This journey is already in your favourites.", code="FAVOURITE_ROUTE_EXISTS"
+            ) from None
+        [view] = await self._favourites.list_for_user(user_id, favourite_id=favourite.id)
+        return view
+
+    async def delete_favourite_route(self, user_id: uuid.UUID, favourite_id: uuid.UUID) -> None:
+        favourite = await self._favourites.get_for_user(user_id, favourite_id)
+        if favourite is None:
+            raise NotFoundError("Favourite route not found.")
+        await self._favourites.delete(favourite)
+
+    # ------------------------------------------------------------------
+    # Profile photo
+    # ------------------------------------------------------------------
+    async def set_avatar(
+        self,
+        user_id: uuid.UUID,
+        *,
+        filename: str,
+        content_type: str,
+        data: bytes,
+        storage: ObjectStorageProvider,
+        scanner: MalwareScanner,
+        settings: Settings | None = None,
+    ) -> None:
+        """Store an uploaded JPEG/PNG as the user's profile photo, replacing
+        (and deleting) any earlier upload."""
+        settings = settings or get_settings()
+        if content_type not in _AVATAR_TYPES:
+            raise FileValidationError(
+                "Upload a JPEG or PNG image.", details={"allowed_types": sorted(_AVATAR_TYPES)}
+            )
+        if len(data) > settings.AVATAR_MAX_SIZE_BYTES:
+            raise FileValidationError(
+                "The photo is too large.",
+                details={"max_bytes": settings.AVATAR_MAX_SIZE_BYTES, "actual_bytes": len(data)},
+            )
+        user = await self._users.get_by_id(user_id)
+        if user is None or user.profile is None:
+            raise NotFoundError("User not found.")
+        uploaded = await store_uploaded_document(
+            storage=storage,
+            scanner=scanner,
+            settings=settings,
+            key_prefix=f"avatars/{user_id}",
+            filename=filename,
+            content_type=content_type,
+            data=data,
+        )
+        previous = user.profile.avatar_storage_key
+        user.profile.avatar_storage_key = uploaded.storage_key
+        user.profile.avatar_url = None
+        await self._session.flush()
+        if previous and previous != uploaded.storage_key:
+            try:
+                await storage.delete_object(previous)
+            except Exception:
+                # Only costs storage: the old photo is no longer referenced.
+                logger.warning("avatar_previous_object_not_deleted", user_id=str(user_id))

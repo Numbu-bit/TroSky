@@ -233,6 +233,13 @@ class Settings(BaseSettings):
     # Accounts must prove their phone or email (by entering a code sent to
     # it) before they can log in with a password or book a seat.
     REQUIRE_VERIFIED_ACCOUNT: bool = True
+    # Profile photos (POST /users/me/avatar): JPEG/PNG up to this size,
+    # served through signed URLs valid for this long.
+    AVATAR_MAX_SIZE_BYTES: int = Field(default=5 * 1024 * 1024, gt=0)
+    AVATAR_URL_TTL_SECONDS: int = Field(default=3600, gt=0, le=604800)
+    FAVOURITE_ROUTES_MAX_PER_USER: int = Field(default=20, gt=0)
+    # Vehicles near me: ignore GPS positions older than this.
+    NEARBY_VEHICLES_MAX_AGE_SECONDS: int = Field(default=300, gt=0)
     PASSWORD_RESET_TOKEN_TTL_SECONDS: int = Field(default=1800, gt=0)
     LOGIN_MAX_FAILED_ATTEMPTS: int = Field(default=5, gt=0)
     LOGIN_LOCKOUT_SECONDS: int = Field(default=900, gt=0)

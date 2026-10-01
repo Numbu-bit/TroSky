@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Collection
+from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,9 +25,15 @@ from app.models.drivers import (
     DriverAssignment,
     DriverDocument,
 )
+from app.models.trips import TripStatus
 from app.providers.storage.base import ObjectStorageProvider
 from app.providers.storage.malware_scan import MalwareScanner
 from app.repositories.driver_repository import DriverRepository
+from app.repositories.trip_view_repository import (
+    TripSummary,
+    TripViewRepository,
+    day_window,
+)
 from app.schemas.driver import DriverRegisterRequest, DriverUpdateRequest
 from app.services.document_service import store_uploaded_document
 from app.services.role_service import grant_role
@@ -84,6 +92,27 @@ class DriverService:
         if driver is None:
             raise NotFoundError("No driver profile exists for this account.")
         return driver
+
+    async def list_own_trips(
+        self,
+        user_id: uuid.UUID,
+        *,
+        statuses: Collection[TripStatus] | None,
+        on_date: date | None,
+        limit: int,
+        offset: int,
+    ) -> tuple[list[TripSummary], int]:
+        """Trips this driver is currently assigned to, soonest first."""
+        driver = await self.get_own_profile(user_id)
+        departure_from, departure_before = day_window(on_date)
+        return await TripViewRepository(self._session).list_summaries(
+            driver_id=driver.id,
+            statuses=statuses,
+            departure_from=departure_from,
+            departure_before=departure_before,
+            limit=limit,
+            offset=offset,
+        )
 
     async def update_own_profile(self, user_id: uuid.UUID, request: DriverUpdateRequest) -> Driver:
         driver = await self.get_own_profile(user_id)

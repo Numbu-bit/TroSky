@@ -9,19 +9,29 @@ guarantee.
 from __future__ import annotations
 
 import uuid
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 
-from app.api.dependencies import AnalyticsServiceDep, CurrentPrincipal, FleetServiceDep
+from app.api.dependencies import (
+    AnalyticsServiceDep,
+    CurrentPrincipal,
+    FleetServiceDep,
+    TrackingServiceDep,
+)
+from app.api.v1.views import live_trip_response
 from app.core.config import get_settings
 from app.core.permissions import SystemRole, require_roles
+from app.core.ratelimit import rate_limit
 from app.models.drivers import DocumentType
 from app.schemas.analytics import FleetSummaryResponse
 from app.schemas.driver import DocumentDownloadUrlResponse
 from app.schemas.driver import DriverDocumentResponse as VehicleDocumentResponse
 from app.schemas.fleet import (
     AssignDriverRequest,
+    DriverLookupResponse,
     FleetCreateRequest,
+    FleetDriverResponse,
     FleetOwnerRegisterRequest,
     FleetOwnerResponse,
     FleetResponse,
@@ -33,6 +43,7 @@ from app.schemas.fleet import (
     VehicleResponse,
     VehicleUpdateRequest,
 )
+from app.schemas.trip import LiveTripResponse
 
 router = APIRouter(dependencies=[Depends(require_roles(SystemRole.FLEET_OWNER))])
 
@@ -82,6 +93,46 @@ async def list_my_fleets(
 ) -> list[FleetResponse]:
     records = await fleets.list_own_fleets(principal.user_id)
     return [FleetResponse.model_validate(f) for f in records]
+
+
+# Registered before /fleets/{fleet_id}, which would otherwise take
+# "driver-lookup" for a fleet id.
+@router.get(
+    "/fleets/driver-lookup",
+    response_model=DriverLookupResponse,
+    dependencies=[Depends(rate_limit("fleets:driver_lookup"))],
+)
+async def lookup_driver(
+    fleets: FleetServiceDep,
+    phone: Annotated[str, Query(description="The driver's phone number, local or +233 form.")],
+) -> DriverLookupResponse:
+    """Find an approved driver by phone number, to assign to a vehicle. 404
+    when no approved driver uses the number; the number comes back masked."""
+    found = await fleets.lookup_driver(phone)
+    return DriverLookupResponse.model_validate(found)
+
+
+@router.get("/fleets/{fleet_id}/drivers", response_model=list[FleetDriverResponse])
+async def list_fleet_drivers(
+    fleet_id: uuid.UUID, principal: CurrentPrincipal, fleets: FleetServiceDep
+) -> list[FleetDriverResponse]:
+    """Drivers currently assigned to this fleet's vehicles, each with the
+    vehicles they drive."""
+    drivers = await fleets.list_fleet_drivers(principal.user_id, fleet_id)
+    return [FleetDriverResponse.model_validate(d) for d in drivers]
+
+
+@router.get("/fleets/{fleet_id}/live-trips", response_model=list[LiveTripResponse])
+async def list_fleet_live_trips(
+    fleet_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    fleets: FleetServiceDep,
+    tracking: TrackingServiceDep,
+) -> list[LiveTripResponse]:
+    """This fleet's vehicles out on trips now, with their last GPS position."""
+    fleet = await fleets.get_own_fleet(principal.user_id, fleet_id)
+    live = await tracking.list_live_trips(fleet_id=fleet.id)
+    return [live_trip_response(summary, location) for summary, location in live]
 
 
 @router.get("/fleets/{fleet_id}", response_model=FleetResponse)

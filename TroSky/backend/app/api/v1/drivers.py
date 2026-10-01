@@ -9,13 +9,23 @@ role unreachable for anyone who registered as a passenger."""
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, date, datetime
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 
-from app.api.dependencies import CurrentPrincipal, DriverServiceDep
+from app.api.dependencies import (
+    CurrentPrincipal,
+    DriverServiceDep,
+    Pagination,
+    WalletServiceDep,
+)
 from app.core.config import get_settings
+from app.core.exceptions import ValidationAppError
 from app.core.permissions import SystemRole, require_roles
 from app.models.drivers import DocumentType
+from app.models.trips import TripStatus
+from app.schemas.common import PaginatedResponse
 from app.schemas.driver import (
     DocumentDownloadUrlResponse,
     DriverAssignmentResponse,
@@ -23,7 +33,11 @@ from app.schemas.driver import (
     DriverRegisterRequest,
     DriverResponse,
     DriverUpdateRequest,
+    EarningsSummaryResponse,
 )
+from app.schemas.trip import TripSummaryResponse
+from app.services.wallet_service import period_start
+from app.utilities.query_params import parse_enum_list
 
 router = APIRouter(dependencies=[Depends(require_roles(SystemRole.DRIVER))])
 
@@ -111,3 +125,65 @@ async def list_my_assignments(
     assignments are added to this response from Phase 4 onward."""
     assignments = await drivers.list_own_assignments(principal.user_id)
     return [DriverAssignmentResponse.model_validate(a) for a in assignments]
+
+
+@router.get("/me/trips", response_model=PaginatedResponse[TripSummaryResponse])
+async def list_my_trips(
+    principal: CurrentPrincipal,
+    drivers: DriverServiceDep,
+    pagination: Pagination,
+    status_filter: Annotated[
+        str | None,
+        Query(
+            alias="status",
+            description="Comma-separated trip statuses, e.g. scheduled,boarding.",
+        ),
+    ] = None,
+    on_date: Annotated[
+        date | None,
+        Query(alias="date", description="Only trips departing on this day (YYYY-MM-DD)."),
+    ] = None,
+) -> PaginatedResponse[TripSummaryResponse]:
+    """Trips this driver is assigned to, soonest departure first.
+    ``seats_booked`` counts paid seats (the manifest); ``boarded_count`` the
+    tickets scanned so far."""
+    summaries, total = await drivers.list_own_trips(
+        principal.user_id,
+        statuses=parse_enum_list(status_filter, TripStatus, param="status"),
+        on_date=on_date,
+        limit=pagination.limit,
+        offset=pagination.offset,
+    )
+    return PaginatedResponse(
+        items=[TripSummaryResponse.model_validate(s) for s in summaries],
+        total=total,
+        limit=pagination.limit,
+        offset=pagination.offset,
+    )
+
+
+@router.get("/me/earnings", response_model=EarningsSummaryResponse)
+async def get_my_earnings(
+    principal: CurrentPrincipal,
+    wallets: WalletServiceDep,
+    period: Literal["day", "week", "month"] = "week",
+    from_date: Annotated[
+        date | None,
+        Query(alias="from", description="First day to include. Default: start of the period."),
+    ] = None,
+    to_date: Annotated[
+        date | None, Query(alias="to", description="Last day to include. Default: today.")
+    ] = None,
+) -> EarningsSummaryResponse:
+    """Trip earnings between ``from`` and ``to`` (inclusive, UTC -- Ghana
+    time), totalled per day, week (from Monday) or month. Every period in
+    the range has a bucket, empty ones included. With no dates, covers the
+    current day/week/month up to today."""
+    end = to_date or datetime.now(UTC).date()
+    start = from_date or period_start(end, period)
+    if start > end:
+        raise ValidationAppError("'from' must not be after 'to'.")
+    if (end - start).days > 366:
+        raise ValidationAppError("Ask for at most 366 days at a time.")
+    summary = await wallets.earnings_summary(principal.user_id, period=period, start=start, end=end)
+    return EarningsSummaryResponse.model_validate(summary)

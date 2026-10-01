@@ -6,6 +6,7 @@ sandbox SMS/email providers (no real vendor is ever called).
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from redis.asyncio import Redis
@@ -20,17 +21,24 @@ from app.core.exceptions import (
     ConflictError,
     InvalidCredentialsError,
     OtpInvalidError,
+    OtpNotFoundError,
     ProviderError,
     RateLimitExceededError,
     TokenReuseDetectedError,
     ValidationAppError,
 )
-from app.core.security import TokenType, decode_token
+from app.core.security import (
+    TokenType,
+    decode_token,
+    generate_opaque_token,
+    hash_opaque_token,
+)
 from app.models.identity import DevicePlatform, OtpChannel, OtpPurpose
 from app.providers.email.sandbox import SandboxEmailProvider
 from app.providers.sms.sandbox import SandboxSmsProvider
 from app.repositories.otp_repository import OtpRepository
 from app.repositories.profile_repository import DeviceRepository
+from app.repositories.session_repository import SessionRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import DeviceContext, RegisterRequest
 from app.services.auth_service import AuthService
@@ -767,3 +775,109 @@ class TestVerificationRequired:
         with pytest.raises(AccountNotVerifiedError) as exc_info:
             await service.login_password(_PHONE, "Str0ngPass", None, "127.0.0.1")
         assert exc_info.value.details["target"] == _PHONE_E164
+
+
+class TestPasswordResetWithCode:
+    """Frontend request G1: a 6-digit reset code a person can type."""
+
+    async def test_the_texted_code_resets_the_password_and_signs_everyone_out(
+        self, db_session: AsyncSession, seeded_roles, require_redis: None
+    ) -> None:
+        service = _auth_service(db_session, await _get_redis(require_redis))
+        await service.register(_ama())
+        before = await service.login_password(_PHONE, "Str0ngPass", None, "127.0.0.1")
+        SandboxSmsProvider.clear()
+
+        await service.forgot_password(_PHONE)
+        message = SandboxSmsProvider.get_last_message(_PHONE_E164)
+        assert message is not None
+        assert "password reset code" in message
+        code = _code_from(message)
+        assert len(code) == 6
+
+        await service.reset_password_with_code(_PHONE, code, "N3wPassword")
+
+        assert (await service.login_password(_PHONE, "N3wPassword", None, "127.0.0.1")).access_token
+        with pytest.raises(InvalidCredentialsError):
+            await service.login_password(_PHONE, "Str0ngPass", None, "127.0.0.1")
+        assert await SessionRepository(db_session).get_active_session(before.session_id) is None
+
+    async def test_the_target_may_be_written_either_way(
+        self, db_session: AsyncSession, seeded_roles, require_redis: None
+    ) -> None:
+        service = _auth_service(db_session, await _get_redis(require_redis))
+        await service.register(_ama())
+        await service.forgot_password(_PHONE)
+        code = _code_from(SandboxSmsProvider.get_last_message(_PHONE_E164))
+
+        await service.reset_password_with_code(_PHONE_E164, code, "N3wPassword")
+
+    async def test_a_wrong_code_is_refused(
+        self, db_session: AsyncSession, seeded_roles, require_redis: None
+    ) -> None:
+        service = _auth_service(db_session, await _get_redis(require_redis))
+        await service.register(_ama())
+        await service.forgot_password(_PHONE)
+        with pytest.raises(OtpInvalidError):
+            await service.reset_password_with_code(_PHONE, "000000", "N3wPassword")
+
+    async def test_an_unknown_account_looks_like_a_wrong_code(
+        self, db_session: AsyncSession, seeded_roles, require_redis: None
+    ) -> None:
+        service = _auth_service(db_session, await _get_redis(require_redis))
+        with pytest.raises(OtpNotFoundError):
+            await service.reset_password_with_code(_UNREGISTERED, "123456", "N3wPassword")
+
+    async def test_a_weak_password_does_not_use_up_the_code(
+        self, db_session: AsyncSession, seeded_roles, require_redis: None
+    ) -> None:
+        service = _auth_service(db_session, await _get_redis(require_redis))
+        await service.register(_ama())
+        await service.forgot_password(_PHONE)
+        code = _code_from(SandboxSmsProvider.get_last_message(_PHONE_E164))
+
+        with pytest.raises(ConflictError) as exc_info:
+            await service.reset_password_with_code(_PHONE, code, "weakpassword")
+        assert exc_info.value.code == "PASSWORD_POLICY_VIOLATION"
+        await service.reset_password_with_code(_PHONE, code, "N3wPassword")
+
+    async def test_an_emailed_code_also_verifies_the_email(
+        self, db_session: AsyncSession, seeded_roles, require_redis: None
+    ) -> None:
+        service = _email_mode(db_session, await _get_redis(require_redis))
+        user, _ = await service.register(_ama_with_email())
+        SandboxEmailProvider.clear()
+
+        await service.forgot_password(_PHONE)
+        sent = SandboxEmailProvider.get_last_email(_EMAIL)
+        assert sent is not None
+        assert sent.subject == "Reset your TroSky password"
+        await service.reset_password_with_code(_PHONE, _code_from(sent.body_text), "N3wPassword")
+
+        refreshed = await UserRepository(db_session).get_by_id(user.id)
+        assert refreshed is not None
+        assert refreshed.email_verified_at is not None
+
+    async def test_older_reset_tokens_still_work(
+        self, db_session: AsyncSession, seeded_roles, require_redis: None
+    ) -> None:
+        service = _auth_service(db_session, await _get_redis(require_redis))
+        user, _ = await service.register(_ama())
+        raw_token = generate_opaque_token()
+        await OtpRepository(db_session).create_password_reset_token(
+            user_id=user.id,
+            token_hash=hash_opaque_token(raw_token),
+            expires_at=datetime.now(UTC) + timedelta(minutes=30),
+        )
+
+        await service.reset_password(raw_token, "N3wPassword")
+        assert (await service.login_password(_PHONE, "N3wPassword", None, "127.0.0.1")).access_token
+
+    async def test_an_unknown_account_is_sent_nothing_but_holds_the_cooldown(
+        self, db_session: AsyncSession, seeded_roles, require_redis: None
+    ) -> None:
+        service = _auth_service(db_session, await _get_redis(require_redis))
+        await service.forgot_password(_UNREGISTERED)
+        assert SandboxSmsProvider.get_sent_messages(_UNREGISTERED_E164) == []
+        with pytest.raises(RateLimitExceededError):
+            await service.forgot_password(_UNREGISTERED)

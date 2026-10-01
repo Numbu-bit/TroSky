@@ -58,6 +58,11 @@ DEFAULT_RULES: dict[str, RateLimitRule] = {
     "tracking:location_publish": RateLimitRule(
         "tracking:location_publish", limit=30, window_seconds=60
     ),
+    # Maps poll this; generous, but bounded.
+    "tracking:nearby": RateLimitRule("tracking:nearby", limit=60, window_seconds=60),
+    # Phone number -> driver name: slow enough that it cannot be used to
+    # walk the phone-number space.
+    "fleets:driver_lookup": RateLimitRule("fleets:driver_lookup", limit=30, window_seconds=300),
 }
 
 

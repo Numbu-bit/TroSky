@@ -10,6 +10,8 @@ belonging to another owner is reported as :class:`NotFoundError` (never
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
+from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +21,7 @@ from app.core.exceptions import (
     ForbiddenError,
     InvalidStateTransitionError,
     NotFoundError,
+    ValidationAppError,
 )
 from app.core.logging import get_logger
 from app.core.permissions import SystemRole
@@ -46,11 +49,40 @@ from app.schemas.fleet import (
 )
 from app.services.document_service import store_uploaded_document
 from app.services.role_service import grant_role
+from app.utilities.phone import (
+    InvalidPhoneNumberError,
+    mask_phone_number,
+    normalize_phone_number,
+)
 
 logger = get_logger(__name__)
 
 # Only vehicles in this status may ever be assigned to an active trip.
 OPERATIONAL_STATUS = ApprovalStatus.APPROVED
+
+
+@dataclass(frozen=True, slots=True)
+class FleetDriverVehicle:
+    vehicle_id: uuid.UUID
+    registration_number: str
+    assigned_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class FleetDriver:
+    driver_id: uuid.UUID
+    full_name: str | None
+    phone_number: str
+    approval_status: ApprovalStatus
+    vehicles: list[FleetDriverVehicle]
+
+
+@dataclass(frozen=True, slots=True)
+class DriverLookup:
+    driver_id: uuid.UUID
+    full_name: str | None
+    phone_number: str  # masked
+    approval_status: ApprovalStatus
 
 
 class FleetService:
@@ -275,6 +307,53 @@ class FleetService:
     # ------------------------------------------------------------------
     # Driver assignment (non-trip)
     # ------------------------------------------------------------------
+    async def list_fleet_drivers(
+        self, user_id: uuid.UUID, fleet_id: uuid.UUID
+    ) -> list[FleetDriver]:
+        """Drivers currently assigned to the fleet's vehicles, each with the
+        vehicles they are assigned to."""
+        fleet = await self.get_own_fleet(user_id, fleet_id)
+        drivers: dict[uuid.UUID, FleetDriver] = {}
+        for row in await self._drivers.list_active_for_fleet(fleet.id):
+            driver = drivers.setdefault(
+                row.driver_id,
+                FleetDriver(
+                    driver_id=row.driver_id,
+                    full_name=row.full_name,
+                    phone_number=row.phone_number,
+                    approval_status=row.status,
+                    vehicles=[],
+                ),
+            )
+            driver.vehicles.append(
+                FleetDriverVehicle(
+                    vehicle_id=row.vehicle_id,
+                    registration_number=row.registration_number,
+                    assigned_at=row.assigned_at,
+                )
+            )
+        return list(drivers.values())
+
+    async def lookup_driver(self, phone: str) -> DriverLookup:
+        """Find an approved driver by phone number, to assign to a vehicle.
+        Unknown numbers and drivers not (yet) approved are both 404."""
+        try:
+            normalized = normalize_phone_number(phone)
+        except InvalidPhoneNumberError:
+            raise ValidationAppError(
+                "Enter a valid phone number.", details={"param": "phone"}
+            ) from None
+        found = await self._drivers.find_by_phone(normalized)
+        if found is None or found[0].status != ApprovalStatus.APPROVED:
+            raise NotFoundError("No approved driver uses this phone number.")
+        driver, user, full_name = found
+        return DriverLookup(
+            driver_id=driver.id,
+            full_name=full_name,
+            phone_number=mask_phone_number(user.phone_number),
+            approval_status=driver.status,
+        )
+
     async def assign_driver(
         self, user_id: uuid.UUID, vehicle_id: uuid.UUID, driver_id: uuid.UUID
     ) -> None:
