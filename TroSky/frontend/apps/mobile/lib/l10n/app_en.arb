@@ -1,0 +1,465 @@
+{
+  "@@locale": "en",
+  "splashTagline": "Your Journey. On Time.",
+  "@splashTagline": {
+    "description": "Heading under the logo on the splash screen (S-01)."
+  },
+  "splashSubtitle": "Ghana's Shared Transport Platform",
+  "@splashSubtitle": {
+    "description": "Line under the splash heading (S-01)."
+  },
+  "splashLoading": "Loading",
+  "@splashLoading": {
+    "description": "Screen reader label for the animated loading dots on the splash screen."
+  },
+  "onboardingSkip": "Skip",
+  "@onboardingSkip": {
+    "description": "Top-right link on every onboarding page (S-02); skips to Sign Up."
+  },
+  "onboardingNext": "Next",
+  "@onboardingNext": {
+    "description": "Button on onboarding pages 1 and 2 (S-02)."
+  },
+  "onboardingGetStarted": "Get Started",
+  "@onboardingGetStarted": {
+    "description": "Button on the last onboarding page (S-02); goes to Sign Up."
+  },
+  "onboardingPageOf": "Page {page} of {count}",
+  "@onboardingPageOf": {
+    "description": "Screen reader label for the onboarding page dots (S-02).",
+    "placeholders": {
+      "page": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "onboarding1Title": "Book a Seat,\nNot a Whole Car",
+  "@onboarding1Title": {
+    "description": "Onboarding page 1 heading (S-02). The line break is part of the design."
+  },
+  "onboarding1Body": "Find a shared vehicle going your way, book a single seat, and split the fare with fellow riders.",
+  "@onboarding1Body": {
+    "description": "Onboarding page 1 text (S-02)."
+  },
+  "onboarding2Title": "Share the Ride,\nSplit the Fare",
+  "@onboarding2Title": {
+    "description": "Onboarding page 2 heading (S-02). The line break is part of the design."
+  },
+  "onboarding2Body": "As more passengers board, the cost splits between you, so you pay a fraction of what a private ride would cost.",
+  "@onboarding2Body": {
+    "description": "Onboarding page 2 text (S-02)."
+  },
+  "onboarding3Title": "Subscribe Your\nDaily Commute",
+  "@onboarding3Title": {
+    "description": "Onboarding page 3 heading (S-02). The line break is part of the design."
+  },
+  "onboarding3Body": "Set up a recurring commute, your vehicle, guaranteed, every morning and evening.",
+  "@onboarding3Body": {
+    "description": "Onboarding page 3 text (S-02)."
+  },
+  "welcomeTitle": "Welcome to TroSky",
+  "@welcomeTitle": {
+    "description": "Welcome screen (S-04, P4_SignUp) heading, as designed."
+  },
+  "welcomeSubtitle": "Your journey. On time. Every time.",
+  "@welcomeSubtitle": {
+    "description": "Welcome screen (S-04, P4_SignUp) subtitle, as designed."
+  },
+  "phoneLabel": "PHONE NUMBER",
+  "@phoneLabel": {
+    "description": "Label above the phone field, in capitals as designed."
+  },
+  "phoneHint": "XX XXX XXXX",
+  "@phoneHint": {
+    "description": "Placeholder in the phone field, as designed."
+  },
+  "phoneCountry": "Country: Ghana, +233",
+  "@phoneCountry": {
+    "description": "Screen reader label for the country prefix."
+  },
+  "countrySheetTitle": "Country",
+  "@countrySheetTitle": {
+    "description": "Title of the one-item country sheet."
+  },
+  "countryGhana": "Ghana (+233)",
+  "@countryGhana": {
+    "description": "The only country in the sheet."
+  },
+  "countryOnlyGhana": "TroSky is only in Ghana for now.",
+  "@countryOnlyGhana": {
+    "description": "Note under the country list."
+  },
+  "welcomeContinue": "Continue",
+  "@welcomeContinue": {
+    "description": "Welcome screen (S-04, P4_SignUp) button. 'Continue' instead of the design's 'Send OTP' (decision 11)."
+  },
+  "welcomeOrContinueWith": "or continue with",
+  "@welcomeOrContinueWith": {
+    "description": "Welcome screen (S-04, P4_SignUp) divider, as designed."
+  },
+  "welcomeContinueWithEmail": "Continue with Email",
+  "@welcomeContinueWithEmail": {
+    "description": "Welcome screen (S-04, P4_SignUp) email button, as designed."
+  },
+  "welcomeGhanaCardBefore": "Optionally verify your ",
+  "@welcomeGhanaCardBefore": {
+    "description": "Ghana Card note, before the green words."
+  },
+  "welcomeGhanaCardHighlight": "Ghana Card",
+  "@welcomeGhanaCardHighlight": {
+    "description": "Ghana Card note, the green bold words."
+  },
+  "welcomeGhanaCardAfter": " for extra trust and higher wallet limits.",
+  "@welcomeGhanaCardAfter": {
+    "description": "Ghana Card note, after the green words."
+  },
+  "welcomeHaveAccount": "Already have an account?",
+  "@welcomeHaveAccount": {
+    "description": "Welcome screen (S-04, P4_SignUp) link prompt (not in Figma)."
+  },
+  "welcomeSignIn": "Sign in",
+  "@welcomeSignIn": {
+    "description": "Welcome screen (S-04, P4_SignUp) link action."
+  },
+  "welcomeDriverPrompt": "Driving for TroSky?",
+  "@welcomeDriverPrompt": {
+    "description": "Welcome screen (S-04, P4_SignUp) driver link prompt (decision 7)."
+  },
+  "welcomeDriverAction": "Sign up as a driver",
+  "@welcomeDriverAction": {
+    "description": "Welcome screen (S-04, P4_SignUp) driver link action; switches to driver mode."
+  },
+  "welcomeDriverModePrompt": "Signing up as a driver.",
+  "@welcomeDriverModePrompt": {
+    "description": "Welcome screen (S-04, P4_SignUp) shown in driver mode."
+  },
+  "welcomeDriverModeAction": "Sign up as a passenger instead",
+  "@welcomeDriverModeAction": {
+    "description": "Welcome screen (S-04, P4_SignUp) switches back to passenger mode."
+  },
+  "detailsTitle": "Your details",
+  "@detailsTitle": {
+    "description": "Your details screen (S-06, not in Figma) heading."
+  },
+  "detailsSubtitle": "A few more details to create your account.",
+  "@detailsSubtitle": {
+    "description": "Your details screen (S-06, not in Figma) subtitle."
+  },
+  "detailsSubtitleDriver": "A few more details to create your driver account.",
+  "@detailsSubtitleDriver": {
+    "description": "Your details screen (S-06, not in Figma) subtitle in driver mode."
+  },
+  "nameLabel": "FULL NAME",
+  "@nameLabel": {
+    "description": "Label above the name field."
+  },
+  "nameHint": "e.g. Ama Mensah",
+  "@nameHint": {
+    "description": "Placeholder in the name field."
+  },
+  "emailLabel": "EMAIL",
+  "@emailLabel": {
+    "description": "Label above the email field."
+  },
+  "emailHint": "you@gmail.com",
+  "@emailHint": {
+    "description": "Placeholder in the email field."
+  },
+  "emailHelper": "Use your Gmail address",
+  "@emailHelper": {
+    "description": "Your details screen (S-06, not in Figma) helper under the email field."
+  },
+  "passwordLabel": "PASSWORD",
+  "@passwordLabel": {
+    "description": "Label above the password field."
+  },
+  "passwordHint": "At least 8 characters",
+  "@passwordHint": {
+    "description": "Placeholder in the password field."
+  },
+  "passwordShow": "Show",
+  "@passwordShow": {
+    "description": "Button that shows the password."
+  },
+  "passwordHide": "Hide",
+  "@passwordHide": {
+    "description": "Button that hides the password."
+  },
+  "passwordRuleLength": "At least 8 characters",
+  "@passwordRuleLength": {
+    "description": "Password rule."
+  },
+  "passwordRuleUpper": "An upper-case letter",
+  "@passwordRuleUpper": {
+    "description": "Password rule."
+  },
+  "passwordRuleLower": "A lower-case letter",
+  "@passwordRuleLower": {
+    "description": "Password rule."
+  },
+  "passwordRuleDigit": "A number",
+  "@passwordRuleDigit": {
+    "description": "Password rule."
+  },
+  "detailsCreateAccount": "Create account",
+  "@detailsCreateAccount": {
+    "description": "Your details screen (S-06, not in Figma) button."
+  },
+  "codeTitle": "Enter the code",
+  "@codeTitle": {
+    "description": "Code verification screen (S-07, not in Figma) heading."
+  },
+  "codeSentByText": "Code sent by text to {target}",
+  "@codeSentByText": {
+    "description": "Code verification screen (S-07, not in Figma) subtitle; target is masked.",
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "codeSentByEmail": "Code sent by email to {target}",
+  "@codeSentByEmail": {
+    "description": "Code verification screen (S-07, not in Figma) subtitle; target is masked.",
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "codeFieldLabel": "6-digit code",
+  "@codeFieldLabel": {
+    "description": "Screen reader label for the code boxes."
+  },
+  "codeVerify": "Verify",
+  "@codeVerify": {
+    "description": "Code verification screen (S-07, not in Figma) button."
+  },
+  "codeResend": "Resend code",
+  "@codeResend": {
+    "description": "Code verification screen (S-07, not in Figma) resend link."
+  },
+  "codeResendPrompt": "Didn't get it?",
+  "@codeResendPrompt": {
+    "description": "Code verification screen (S-07, not in Figma) before the resend link."
+  },
+  "codeResendIn": "Resend code in {seconds} s",
+  "@codeResendIn": {
+    "description": "Code verification screen (S-07, not in Figma) while the resend cooldown runs.",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "codeResent": "A new code is on its way.",
+  "@codeResent": {
+    "description": "Code verification screen (S-07, not in Figma) after resending."
+  },
+  "codeNoAccountHint": "No code? Check this number has a TroSky account.",
+  "@codeNoAccountHint": {
+    "description": "Code verification screen (S-07, not in Figma) after the cooldown, for sign-in codes (decision 10)."
+  },
+  "signInTitle": "Welcome back",
+  "@signInTitle": {
+    "description": "Sign in screen (S-05, not in Figma) heading."
+  },
+  "signInSubtitle": "Sign in to continue your journey.",
+  "@signInSubtitle": {
+    "description": "Sign in screen (S-05, not in Figma) subtitle."
+  },
+  "signInUseEmail": "Use email instead",
+  "@signInUseEmail": {
+    "description": "Sign in screen (S-05, not in Figma) switches to email."
+  },
+  "signInUsePhone": "Use phone instead",
+  "@signInUsePhone": {
+    "description": "Sign in screen (S-05, not in Figma) switches to phone."
+  },
+  "signInButton": "Sign in",
+  "@signInButton": {
+    "description": "Sign in screen (S-05, not in Figma) button."
+  },
+  "signInForgotPrompt": "Forgot password?",
+  "@signInForgotPrompt": {
+    "description": "Sign in screen (S-05, not in Figma) before the code link."
+  },
+  "signInWithCode": "Sign in with a code",
+  "@signInWithCode": {
+    "description": "Sign in screen (S-05, not in Figma) code link (decision 10)."
+  },
+  "signInNewPrompt": "New to TroSky?",
+  "@signInNewPrompt": {
+    "description": "Sign in screen (S-05, not in Figma) before the create-account link."
+  },
+  "signInCreateAccount": "Create account",
+  "@signInCreateAccount": {
+    "description": "Sign in screen (S-05, not in Figma) create-account link."
+  },
+  "signInCodeTitle": "Sign in with a code",
+  "@signInCodeTitle": {
+    "description": "Sign in screen (S-05, not in Figma) heading in code mode."
+  },
+  "signInCodeSubtitle": "We'll text a code to your phone.",
+  "@signInCodeSubtitle": {
+    "description": "Sign in screen (S-05, not in Figma) subtitle in code mode."
+  },
+  "signInSendCode": "Send code",
+  "@signInSendCode": {
+    "description": "Sign in screen (S-05, not in Figma) button in code mode."
+  },
+  "signInUsePassword": "Use my password instead",
+  "@signInUsePassword": {
+    "description": "Sign in screen (S-05, not in Figma) leaves code mode."
+  },
+  "backLabel": "Back",
+  "@backLabel": {
+    "description": "Screen reader label for back buttons."
+  },
+  "errorPhoneInvalid": "Enter a valid Ghana phone number.",
+  "@errorPhoneInvalid": {
+    "description": "Error message"
+  },
+  "errorNameRequired": "Enter your full name.",
+  "@errorNameRequired": {
+    "description": "Error message"
+  },
+  "errorEmailInvalid": "Enter a valid email address.",
+  "@errorEmailInvalid": {
+    "description": "Error message"
+  },
+  "errorEmailDomain": "Use your Gmail address ({domains}).",
+  "@errorEmailDomain": {
+    "description": "Error message",
+    "placeholders": {
+      "domains": {
+        "type": "String"
+      }
+    }
+  },
+  "errorEmailTaken": "This email already has a TroSky account.",
+  "@errorEmailTaken": {
+    "description": "Error message"
+  },
+  "errorPhoneTaken": "This number already has a TroSky account.",
+  "@errorPhoneTaken": {
+    "description": "Error message"
+  },
+  "errorPasswordRules": "Your password needs all four of these.",
+  "@errorPasswordRules": {
+    "description": "Error message"
+  },
+  "errorPasswordRequired": "Enter your password.",
+  "@errorPasswordRequired": {
+    "description": "Error message"
+  },
+  "errorInvalidCredentials": "That phone number, email or password isn't right.",
+  "@errorInvalidCredentials": {
+    "description": "Error message"
+  },
+  "errorAccountLocked": "Too many wrong passwords. Try again after {time}.",
+  "@errorAccountLocked": {
+    "description": "Error message",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "errorAccountSuspended": "This account is suspended. Contact TroSky support.",
+  "@errorAccountSuspended": {
+    "description": "Error message"
+  },
+  "errorRateLimited": "Too many tries. Wait {seconds} s and try again.",
+  "@errorRateLimited": {
+    "description": "Error message",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "errorRateLimitedNoTime": "Too many tries. Wait a moment and try again.",
+  "@errorRateLimitedNoTime": {
+    "description": "Error message"
+  },
+  "errorNetwork": "No connection. Check your internet and try again.",
+  "@errorNetwork": {
+    "description": "Error message"
+  },
+  "errorTimeout": "The network is slow right now. Try again.",
+  "@errorTimeout": {
+    "description": "Error message"
+  },
+  "errorGeneric": "Something went wrong. Try again.",
+  "@errorGeneric": {
+    "description": "Error message"
+  },
+  "errorCodeInvalid": "That code isn't right. Check it and try again.",
+  "@errorCodeInvalid": {
+    "description": "Error message"
+  },
+  "errorCodeExpired": "Code expired — resend",
+  "@errorCodeExpired": {
+    "description": "Error message (wording from the Step 7 brief)."
+  },
+  "errorCodeAttempts": "Too many wrong codes. Resend a new code.",
+  "@errorCodeAttempts": {
+    "description": "Error message"
+  },
+  "errorCodeMissing": "This code is no longer valid. Resend a new one.",
+  "@errorCodeMissing": {
+    "description": "Error message"
+  },
+  "errorNoAccount": "No account for this number",
+  "@errorNoAccount": {
+    "description": "Error message after OTP sign-in 404."
+  },
+  "roleNotDriverTitle": "This account isn't a driver account yet",
+  "@roleNotDriverTitle": {
+    "description": "Post-sign-in sheet (S-10)."
+  },
+  "roleNotDriverBody": "Become a driver to start driving with TroSky, or carry on as a passenger.",
+  "@roleNotDriverBody": {
+    "description": "Post-sign-in sheet (S-10)."
+  },
+  "roleBecomeDriver": "Become a driver",
+  "@roleBecomeDriver": {
+    "description": "Post-sign-in sheet (S-10) primary button."
+  },
+  "roleContinuePassenger": "Continue as passenger",
+  "@roleContinuePassenger": {
+    "description": "Post-sign-in sheet (S-10) second button."
+  },
+  "roleDriverAccountTitle": "This is a driver account",
+  "@roleDriverAccountTitle": {
+    "description": "Post-sign-in sheet for a driver-only account in passenger mode."
+  },
+  "roleDriverAccountBody": "Switch to driver mode to continue.",
+  "@roleDriverAccountBody": {
+    "description": "Post-sign-in sheet"
+  },
+  "roleSwitchToDriver": "Switch to driver mode",
+  "@roleSwitchToDriver": {
+    "description": "Post-sign-in sheet button."
+  },
+  "roleUseAnotherAccount": "Use another account",
+  "@roleUseAnotherAccount": {
+    "description": "Post-sign-in sheet second button: signs out."
+  },
+  "offlineBanner": "You're offline. Showing your last saved details.",
+  "@offlineBanner": {
+    "description": "Banner on Home after an offline start (decision 9)."
+  },
+  "offlineRetry": "Retry",
+  "@offlineRetry": {
+    "description": "Banner button that checks the session again."
+  },
+  "signOut": "Sign out",
+  "@signOut": {
+    "description": "Sign out button on the placeholder home screens."
+  }
+}

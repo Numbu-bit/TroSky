@@ -1,0 +1,30 @@
+name: trosky_api
+description: "Client for the TroSky backend API."
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.12.0
+  flutter: ">=3.44.0"
+
+resolution: workspace
+
+dependencies:
+  dio: ^5.11.1
+  flutter:
+    sdk: flutter
+  freezed_annotation: ^3.1.0
+  json_annotation: ^4.12.0
+  trosky_core:
+    path: ../trosky_core
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.15.1
+  # Pre-release on purpose: no stable freezed supports both Dart 3.12 (the
+  # pinned Flutter 3.44.2) and the analyzer riverpod_generator 4 needs. Move
+  # to freezed 4.0.x stable once Flutter ships Dart 3.13.
+  freezed: 4.0.0-dev.3
+  json_serializable: ^6.14.1

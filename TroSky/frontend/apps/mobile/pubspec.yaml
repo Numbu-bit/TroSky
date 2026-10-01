@@ -1,0 +1,65 @@
+name: mobile
+description: "TroSky mobile app for passengers and drivers (Android, iOS)."
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.0
+  flutter: ">=3.44.0"
+
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  flutter_riverpod: ^3.4.3
+  go_router: ^18.0.2
+  intl: ^0.20.2
+  riverpod_annotation: ^4.0.7
+  shared_preferences: ^2.5.5
+  trosky_api:
+    path: ../../packages/trosky_api
+  trosky_auth:
+    path: ../../packages/trosky_auth
+  trosky_core:
+    path: ../../packages/trosky_core
+  trosky_ui:
+    path: ../../packages/trosky_ui
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  build_runner: ^2.15.1
+  fake_async: ^1.3.3
+  flutter_lints: ^6.0.0
+  # Generates the native launch screens (config below). The app never calls
+  # it at runtime, so it is a dev dependency.
+  flutter_native_splash: ^2.4.8
+  riverpod_generator: ^4.0.9
+  shared_preferences_platform_interface: ^2.4.2
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+# Native launch screen, shown until Flutter draws the Splash screen (S-01) on
+# top of it. Regenerate after editing: dart run flutter_native_splash:create
+#
+# The colour is TroskyColors.green, the middle stop of the splash gradient.
+# There is no logo, but every image slot gets a fully transparent PNG: with
+# no image, Android 12+ shows the launcher icon and iOS gets an opaque black
+# pixel in the middle of the screen.
+flutter_native_splash:
+  color: "#0E9E6D"
+  color_dark: "#0E9E6D"
+  image: assets/launch/blank.png
+  image_dark: assets/launch/blank.png
+  android_12:
+    color: "#0E9E6D"
+    color_dark: "#0E9E6D"
+    image: assets/launch/blank.png
+    image_dark: assets/launch/blank.png
+  web: false

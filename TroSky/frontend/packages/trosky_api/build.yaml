@@ -1,0 +1,11 @@
+targets:
+  $default:
+    builders:
+      json_serializable:
+        options:
+          # The backend's JSON uses snake_case field names.
+          field_rename: snake
+          explicit_to_json: true
+          # Request schemas forbid unknown fields; leaving out unset optional
+          # ones also keeps requests small on slow networks.
+          include_if_null: false

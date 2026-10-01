@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 116" fill="none">
+  <path d="M50 2 C27.91 2 10 19.91 10 42 C10 57.8 19.1 71.4 32.4 78.6 L50 112 L67.6 78.6 C80.9 71.4 90 57.8 90 42 C90 19.91 72.09 2 50 2 Z" fill="#12263B"/>
+  <circle cx="50" cy="40" r="28" fill="#0E9E6D"/>
+  <rect x="32" y="30" width="36" height="21" rx="3.5" fill="white"/>
+  <rect x="34" y="26.5" width="32" height="6" rx="2.5" fill="white"/>
+  <rect x="34.5" y="32" width="7.5" height="6" rx="1.5" fill="#0E9E6D"/>
+  <rect x="44" y="32" width="7.5" height="6" rx="1.5" fill="#0E9E6D"/>
+  <rect x="53.5" y="32" width="7.5" height="6" rx="1.5" fill="#0E9E6D"/>
+  <rect x="60" y="37" width="6" height="10" rx="1.5" fill="#0E9E6D"/>
+  <rect x="66" y="36" width="3.5" height="3.5" rx="1" fill="#F4B333"/>
+  <circle cx="39" cy="52" r="4.5" fill="#12263B"/>
+  <circle cx="39" cy="52" r="2.5" fill="white"/>
+  <circle cx="62" cy="52" r="4.5" fill="#12263B"/>
+  <circle cx="62" cy="52" r="2.5" fill="white"/>
+  <path d="M24 74 Q34 66 50 68 Q66 66 76 74 L67.6 78.6 L50 112 L32.4 78.6 Z" fill="#1A3350"/>
+  <path d="M28 73 Q37 65 50 67" stroke="#F4B333" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M72 73 Q63 65 50 67" stroke="#F4B333" stroke-width="3.5" stroke-linecap="round"/>
+  <line x1="50" y1="67" x2="50" y2="82" stroke="white" stroke-width="1.8" stroke-dasharray="3.5 3.5" stroke-linecap="round"/>
+</svg>

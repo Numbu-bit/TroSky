@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 120" fill="none">
+  <g transform="translate(8, 6)">
+    <path d="M52 4 C30.46 4 13 21.46 13 43 C13 58.2 21.6 71.4 34.2 78.4 L52 104 L69.8 78.4 C82.4 71.4 91 58.2 91 43 C91 21.46 73.54 4 52 4 Z" fill="#12263B"/>
+    <circle cx="52" cy="41" r="28" fill="#0E9E6D"/>
+    <rect x="35" y="32" width="34" height="20" rx="3" fill="white"/>
+    <rect x="37" y="29" width="30" height="5" rx="2" fill="white"/>
+    <rect x="37" y="34" width="7" height="5" rx="1" fill="#0E9E6D"/>
+    <rect x="46" y="34" width="7" height="5" rx="1" fill="#0E9E6D"/>
+    <rect x="55" y="34" width="7" height="5" rx="1" fill="#0E9E6D"/>
+    <rect x="62" y="38" width="5" height="9" rx="1" fill="#0E9E6D"/>
+    <circle cx="41" cy="53" r="4" fill="#12263B"/>
+    <circle cx="41" cy="53" r="2.2" fill="white"/>
+    <circle cx="63" cy="53" r="4" fill="#12263B"/>
+    <circle cx="63" cy="53" r="2.2" fill="white"/>
+    <rect x="67" y="38" width="3" height="3" rx="1" fill="#F4B333"/>
+    <path d="M26 75 Q38 68 52 70 Q66 68 78 75 L69.8 78.4 L52 104 L34.2 78.4 Z" fill="#1A3350"/>
+    <path d="M32 74 Q40 66 52 68" stroke="#F4B333" stroke-width="3" stroke-linecap="round"/>
+    <path d="M72 74 Q64 66 52 68" stroke="#F4B333" stroke-width="3" stroke-linecap="round"/>
+    <line x1="52" y1="68" x2="52" y2="80" stroke="white" stroke-width="1.5" stroke-dasharray="3 3" stroke-linecap="round"/>
+  </g>
+  <text x="112" y="68" font-family="'Plus Jakarta Sans','Arial Black',sans-serif" font-weight="800" font-size="52" fill="#0E9E6D" letter-spacing="-1">Tro</text>
+  <text x="197" y="68" font-family="'Plus Jakarta Sans','Arial Black',sans-serif" font-weight="800" font-size="52" fill="#12263B" letter-spacing="-1">Sky</text>
+  <text x="113" y="90" font-family="'Plus Jakarta Sans',Arial,sans-serif" font-weight="600" font-size="12.5" fill="#F4B333" letter-spacing="0.3">Your Journey. On Tiine. Every Tiine.</text>
+</svg>
