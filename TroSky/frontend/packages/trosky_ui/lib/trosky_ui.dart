@@ -12,6 +12,7 @@ export 'src/components/trosky_chip.dart';
 export 'src/css/css_conversions.dart';
 export 'src/icons/trosky_icons.dart';
 export 'src/logo/trosky_logo.dart';
+export 'src/theme/trosky_system_ui.dart';
 export 'src/theme/trosky_theme.dart';
 export 'src/tokens/trosky_borders.dart';
 export 'src/tokens/trosky_colors.dart';

@@ -19,16 +19,6 @@ class SplashScreen extends ConsumerWidget {
   /// `bottom: 60` on the loading dots.
   static const double _dotsBottom = 60;
 
-  /// Light status bar icons over the gradient, drawn edge to edge.
-  static const SystemUiOverlayStyle _systemUi = SystemUiOverlayStyle(
-    statusBarColor: TroskyColors.transparent,
-    statusBarIconBrightness: Brightness.light,
-    statusBarBrightness: Brightness.dark,
-    systemNavigationBarColor: TroskyColors.transparent,
-    systemNavigationBarIconBrightness: Brightness.light,
-    systemNavigationBarContrastEnforced: false,
-  );
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.listen(launchDestinationProvider, (_, next) {
@@ -38,8 +28,9 @@ class SplashScreen extends ConsumerWidget {
     });
 
     final l10n = AppLocalizations.of(context);
+    // Light status bar icons over the gradient, drawn edge to edge.
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: _systemUi,
+      value: TroskySystemUi.lightIcons,
       child: Scaffold(
         body: DecoratedBox(
           decoration: BoxDecoration(gradient: TroskyGradients.splash),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
@@ -16,6 +17,12 @@ class TroskyMobileApp extends ConsumerWidget {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: ref.watch(routerProvider),
+      // Dark status bar icons unless the screen on top declares its own
+      // style; the innermost AnnotatedRegion wins.
+      builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+        value: TroskySystemUi.darkIcons,
+        child: child!,
+      ),
     );
   }
 }

@@ -46,6 +46,7 @@ The backend is built by a different developer and changes over time. Before any 
 - Widgets only talk to providers. Only repositories touch the API.
 - Every repository has a mock twin with realistic Ghanaian data. `--dart-define=API_MODE=mock|live` chooses between them.
 - Every async screen has four states: loading (skeleton), empty, error (message + retry), and data.
+- Every screen declares its status bar style with AnnotatedRegion: light icons on dark/green/navy backgrounds, dark icons on light backgrounds. Use `TroskySystemUi.lightIcons` or `TroskySystemUi.darkIcons` from `trosky_ui`, never imperative `SystemChrome` style calls. The app's default is dark icons.
 - **Mobile app modes:** the role chooser sets the `passenger` or `driver` mode and persists it. go_router has separate shells per mode. Guards check `/users/me.roles` against the mode. A driver stays gated behind onboarding and the approval screen until approved.
 
 ## Ghana and low-bandwidth rules

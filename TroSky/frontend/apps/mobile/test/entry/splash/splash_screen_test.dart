@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/entry/splash/presentation/launch_destination_provider.dart';
 import 'package:mobile/entry/splash/presentation/splash_screen.dart';
@@ -63,6 +63,17 @@ void main() {
         route: 'home',
       );
     });
+  });
+
+  testWidgets('status bar: light icons on the splash, dark on the next '
+      'screen', (tester) async {
+    await tester.pumpWidget(testApp(onboarding: FakeOnboardingStore()));
+    expect(SystemChrome.latestStyle, TroskySystemUi.lightIcons);
+
+    await tester.pump(splashMinimumDuration);
+    await tester.pumpAndSettle();
+    expect(find.text('onboarding'), findsOneWidget);
+    expect(SystemChrome.latestStyle, TroskySystemUi.darkIcons);
   });
 
   group('loading dots', () {

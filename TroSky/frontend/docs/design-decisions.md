@@ -7,6 +7,7 @@ Product decisions that settle questions the Figma Make file leaves open. These r
 | 1 | Logo | 30 Sep 2026 | In force (`TroskyLogo`), until a designer-exported SVG replaces the images |
 | 2 | Sizing | 30 Sep 2026 | In force |
 | 3 | Button states | 30 Sep 2026 | In force (`TroskyButton`) |
+| 4 | Splash timing | 1 Oct 2026 | In force (`launchDestinationProvider`) |
 
 ## 1. Logo
 
@@ -49,3 +50,9 @@ The Figma code defines no pressed, disabled or loading state for buttons. The st
 | Pressed | The shadow is removed. The green variants switch to `greenDark`. |
 | Disabled (`onPressed` is null) | 70 % opacity (`TroskyOpacity.disabled`) and no shadow, following the "Go Offline" button in D1. |
 | Loading | A spinner in the label colour replaces the label, and taps are ignored. Screen readers hear "<label>, loading". |
+
+## 4. Splash timing
+
+The splash's 1.5 s minimum is a **soft target**. The timer starts when Flutter reports that its first frame is drawn (`firstFrameShown` in `launchDestinationProvider`). Android removes its own launch screen a little after that and fades it out, and Flutter can't see either step.
+
+Measured on a TECNO BG6 (Android 13) on 1 Oct 2026, the splash was on screen for about 1.3 s: a 0.18 s fade-in, then about 1.1 s fully visible. **This is accepted.** Don't add a native Android hook to stretch it to a full 1.5 s.
