@@ -724,11 +724,293 @@ abstract class AppLocalizations {
   /// **'Retry'**
   String get offlineRetry;
 
-  /// Sign out button on the placeholder home screens.
+  /// Sign out button on the Profile tab and the driver placeholder screens.
   ///
   /// In en, this message translates to:
   /// **'Sign out'**
   String get signOut;
+
+  /// Passenger tab bar: Home tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get tabHome;
+
+  /// Passenger tab bar: Trips tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Trips'**
+  String get tabTrips;
+
+  /// Passenger tab bar: Wallet tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallet'**
+  String get tabWallet;
+
+  /// Passenger tab bar: Profile tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get tabProfile;
+
+  /// Home header greeting before noon.
+  ///
+  /// In en, this message translates to:
+  /// **'Good morning'**
+  String get homeGreetingMorning;
+
+  /// Home header greeting from noon to 5 pm.
+  ///
+  /// In en, this message translates to:
+  /// **'Good afternoon'**
+  String get homeGreetingAfternoon;
+
+  /// Home header greeting from 5 pm to 5 am.
+  ///
+  /// In en, this message translates to:
+  /// **'Good evening'**
+  String get homeGreetingEvening;
+
+  /// Home header: the passenger's full name and a waving hand, as designed.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} 👋'**
+  String homeName(String name);
+
+  /// Home header when the account has no name yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome 👋'**
+  String get homeNameFallback;
+
+  /// Home location chip when location is off or no stop is near.
+  ///
+  /// In en, this message translates to:
+  /// **'Accra'**
+  String get homeLocationFallback;
+
+  /// Screen reader label for the Home location chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Your area: {place}'**
+  String homeLocationLabel(String place);
+
+  /// Screen reader label for the Home location chip while it loads.
+  ///
+  /// In en, this message translates to:
+  /// **'Finding your area'**
+  String get homeLocationLoading;
+
+  /// Screen reader label for the bell on Home.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get homeNotifications;
+
+  /// Home search bar prompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Where are you going?'**
+  String get homeSearchHint;
+
+  /// Home search bar: travel time, now.
+  ///
+  /// In en, this message translates to:
+  /// **'Now'**
+  String get homeSearchNow;
+
+  /// Screen reader label for the my-location map button.
+  ///
+  /// In en, this message translates to:
+  /// **'My location'**
+  String get homeMyLocation;
+
+  /// Text on the red SOS map button.
+  ///
+  /// In en, this message translates to:
+  /// **'SOS'**
+  String get homeSos;
+
+  /// Screen reader label for the SOS map button.
+  ///
+  /// In en, this message translates to:
+  /// **'SOS, emergency help'**
+  String get homeSosLabel;
+
+  /// Screen reader label for the passenger's dot on the map.
+  ///
+  /// In en, this message translates to:
+  /// **'You are here'**
+  String get homeYouAreHere;
+
+  /// Screen reader label for a vehicle on the Home map.
+  ///
+  /// In en, this message translates to:
+  /// **'{route}, {seats, plural, =1{1 seat free} other{{seats} seats free}}'**
+  String homeVehicle(String route, int seats);
+
+  /// Small note on the map when vehicles failed to load; next to Retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load vehicles'**
+  String get homeVehiclesError;
+
+  /// Screen reader label for the map while it loads.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading map'**
+  String get homeMapLoading;
+
+  /// Home sheet heading.
+  ///
+  /// In en, this message translates to:
+  /// **'Favourite Routes'**
+  String get homeFavouriteRoutes;
+
+  /// Home sheet link to all favourite routes.
+  ///
+  /// In en, this message translates to:
+  /// **'See all'**
+  String get homeSeeAll;
+
+  /// A favourite route chip on Home.
+  ///
+  /// In en, this message translates to:
+  /// **'{origin} → {destination}'**
+  String homeRoute(String origin, String destination);
+
+  /// Home sheet line when the passenger has no favourite routes (decision 15).
+  ///
+  /// In en, this message translates to:
+  /// **'No favourite routes yet.'**
+  String get homeFavouritesEmpty;
+
+  /// Home sheet line when favourites failed to load; next to Retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your favourite routes.'**
+  String get homeFavouritesError;
+
+  /// Screen reader label for the favourites skeleton.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading favourite routes'**
+  String get homeFavouritesLoading;
+
+  /// Small label on the Home subscribe banner.
+  ///
+  /// In en, this message translates to:
+  /// **'NEW FEATURE'**
+  String get homePromoEyebrow;
+
+  /// Home subscribe banner title (decision 16).
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribe your commute'**
+  String get homePromoTitle;
+
+  /// Home subscribe banner line.
+  ///
+  /// In en, this message translates to:
+  /// **'Save up to 40% with a monthly plan'**
+  String get homePromoBody;
+
+  /// Home subscribe banner button.
+  ///
+  /// In en, this message translates to:
+  /// **'Try it'**
+  String get homePromoAction;
+
+  /// Title of the sheet asking for location, shown once on Home.
+  ///
+  /// In en, this message translates to:
+  /// **'See rides near you'**
+  String get homeLocationPromptTitle;
+
+  /// Body of the location sheet on Home.
+  ///
+  /// In en, this message translates to:
+  /// **'TroSky uses your location to show the nearest stop and the vehicles around you. You can still search for trips without it.'**
+  String get homeLocationPromptBody;
+
+  /// Location sheet button; then the phone asks for permission.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow location'**
+  String get homeLocationAllow;
+
+  /// Location sheet button; Home centres on Accra.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get homeLocationNotNow;
+
+  /// Message when the passenger taps my-location after refusing location for good.
+  ///
+  /// In en, this message translates to:
+  /// **'Location is off for TroSky. Turn it on in Settings.'**
+  String get homeLocationBlocked;
+
+  /// Message when the phone's location service is off.
+  ///
+  /// In en, this message translates to:
+  /// **'Your phone\'s location is off.'**
+  String get homeLocationServiceOff;
+
+  /// Message when the phone gives no position in time.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t find your location.'**
+  String get homeLocationNotFound;
+
+  /// Action that opens the phone settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get homeOpenSettings;
+
+  /// Title of the Search placeholder (P-02).
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get placeholderSearch;
+
+  /// Search placeholder, filled in from a favourite route.
+  ///
+  /// In en, this message translates to:
+  /// **'From {origin} to {destination}'**
+  String placeholderSearchRoute(String origin, String destination);
+
+  /// Title of the Notifications placeholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get placeholderNotifications;
+
+  /// Title of the Favourite Routes placeholder (P-14).
+  ///
+  /// In en, this message translates to:
+  /// **'Favourite Routes'**
+  String get placeholderFavouriteRoutes;
+
+  /// Title of the Subscribe placeholder (P-10).
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribe'**
+  String get placeholderSubscribe;
+
+  /// Title of the SOS placeholder (P-15).
+  ///
+  /// In en, this message translates to:
+  /// **'SOS'**
+  String get placeholderSos;
+
+  /// Line on every placeholder screen.
+  ///
+  /// In en, this message translates to:
+  /// **'This screen is coming soon.'**
+  String get placeholderSoon;
 }
 
 class _AppLocalizationsDelegate

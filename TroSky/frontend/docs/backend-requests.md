@@ -4,6 +4,8 @@
 **From:** frontend (Flutter mobile app, admin web, fleet web)
 **Status as of:** 30 Sep 2026 (bugs section added 1 Oct 2026)
 
+**Update 1 Oct 2026 (backend 0.12.0, `6bcfd43`):** G1, G2, G3, G4, G5, G7, G8, G9, G10, G12, G13 and G16 are **done** (see the backend `CHANGELOG.md`). G14, G15, G17 and G18 wait for product decisions. B1 and B2 are still open. G19 is new.
+
 The frontend is being built now against **mock data that follows the contracts below**. When an endpoint lands in the repo, the frontend switches from mock to live. So the most helpful thing is to **agree the request/response shape early**, even before the code exists. If you want a different shape, change it here (or tell us) before building, and we'll update our mocks.
 
 All proposals follow the existing backend conventions:
@@ -23,6 +25,8 @@ When you finish one, please:
 ## Bugs found while connecting the app
 
 ### B1: three security safeguards never take effect (rollback on error)
+
+**Still open in 0.12.0:** `app/core/database.py` is unchanged.
 
 `get_db` (app/core/database.py) rolls back the request's transaction on any exception. Three safeguards write to the database and then raise an `AppError`, so their writes are rolled back:
 
@@ -47,7 +51,7 @@ On a fresh database, `POST /auth/register` fails with `500 INTERNAL_SERVER_ERROR
 
 ## P0: blocks the driver app and password reset
 
-### G2 — Driver's assigned trips
+### G2 — Driver's assigned trips (done in 0.12.0)
 The driver app has no way to find out which trips a driver has, so it can't start one. `/drivers/me/assignments` returns vehicles only.
 
 `GET /drivers/me/trips?status=<TripStatus,...>&date=YYYY-MM-DD` · role `driver` · paginated
@@ -62,7 +66,7 @@ The driver app has no way to find out which trips a driver has, so it can't star
   "total": 1, "limit": 20, "offset": 0 }
 ```
 
-### G3 — Passenger manifest for a trip
+### G3 — Passenger manifest for a trip (done in 0.12.0)
 The driver's "Passenger List" screen.
 
 `GET /driver-trips/{trip_id}/passengers` · only the driver assigned to that trip (403 otherwise)
@@ -75,7 +79,7 @@ The driver's "Passenger List" screen.
 ```
 `boarded` should flip to `true` when `POST /driver-trips/{id}/tickets/validate` succeeds.
 
-### G1 — Password reset with a typeable code
+### G1 — Password reset with a typeable code (done in 0.12.0)
 Today the reset "code" is a 43-character token, which nobody can type from an SMS.
 
 Proposal: send a 6-digit OTP (`purpose=password_reset`), and let `POST /auth/password/reset` also accept:
@@ -88,7 +92,7 @@ Keep the existing `{token, new_password}` form so nothing else breaks.
 
 ## P1: needed for full screens (the frontend has workarounds for now)
 
-### G12 — Upcoming / past bookings
+### G12 — Upcoming / past bookings (done in 0.12.0)
 `GET /bookings?status=<BookingStatus,...>&upcoming=true|false`, and embed a small trip summary in `BookingResponse`:
 ```json
 "trip": { "scheduled_departure_at": "…", "route_name": "…", "origin_stop_name": "…",
@@ -96,7 +100,7 @@ Keep the existing `{token, new_password}` form so nothing else breaks.
 ```
 Without it, the app makes one extra request per booking.
 
-### G7 — Driver earnings summary
+### G7 — Driver earnings summary (done in 0.12.0)
 `GET /drivers/me/earnings?period=day|week|month&from=&to=` · role `driver`
 ```json
 { "period": "week", "currency": "GHS", "total": "412.50", "trips_count": 23,
@@ -105,12 +109,12 @@ Without it, the app makes one extra request per booking.
 ```
 Also add `?reference_type=` as a filter on `GET /wallet/transactions`.
 
-### G8 — Trip lists for admin and fleet owners
+### G8 — Trip lists for admin and fleet owners (done in 0.12.0)
 - `GET /admin/trips?status=&date=&route_id=&driver_id=` (paginated)
 - `GET /admin/live-trips`: active trips with their last GPS position, `{trip_id, route_name, vehicle_registration_number, driver_name, status, latitude, longitude, heading, updated_at}`
 - `GET /fleets/{fleet_id}/live-trips`: the same, scoped to that fleet
 
-### G10 — Fleet owner finding a driver to assign
+### G10 — Fleet owner finding a driver to assign (done in 0.12.0)
 - `GET /fleets/{fleet_id}/drivers`: drivers currently assigned to the fleet's vehicles
 - `GET /fleets/driver-lookup?phone=`: returns an **approved** driver's `{driver_id, full_name, phone_number (masked), approval_status}`, or 404
 
@@ -120,11 +124,11 @@ Also add `?reference_type=` as a filter on `GET /wallet/transactions`.
 
 | ID | Request | Proposal |
 |---|---|---|
-| G4 | Favourite routes (shown on the Home screen) | `GET/POST/DELETE /users/me/favourite-routes` with `{id, origin_stop_id, destination_stop_id, label}`, returning stop names too |
-| G5 | Profile photo | `POST /users/me/avatar` (multipart, reuse the document S3 upload) → `UserResponse` |
-| G9 | Edit and delete routes and stops | `PATCH/DELETE /admin/stops/{id}`, `PATCH/DELETE /admin/routes/{id}` |
-| G16 | Vehicles near me (Home map clusters) | `GET /vehicles/nearby?latitude=&longitude=&radius_m=` → active vehicles with last position, route name and free seats |
-| G13 | Rating categories (only if the Figma "Rate Driver" screen shows them) | Optional `safety`, `cleanliness`, `professionalism`, `timeliness` (1–5) on `RateBookingRequest` |
+| G4 (done) | Favourite routes (shown on the Home screen) | `GET/POST/DELETE /users/me/favourite-routes` with `{id, origin_stop_id, destination_stop_id, label}`, returning stop names too |
+| G5 (done) | Profile photo | `POST /users/me/avatar` (multipart, reuse the document S3 upload) → `UserResponse` |
+| G9 (done) | Edit and delete routes and stops | `PATCH/DELETE /admin/stops/{id}`, `PATCH/DELETE /admin/routes/{id}` |
+| G16 (done) | Vehicles near me (Home map clusters) | `GET /vehicles/nearby?latitude=&longitude=&radius_m=` → active vehicles with last position, route name and free seats |
+| G13 (done) | Rating categories (only if the Figma "Rate Driver" screen shows them) | Optional `safety`, `cleanliness`, `professionalism`, `timeliness` (1–5) on `RateBookingRequest` |
 
 ---
 
@@ -138,6 +142,19 @@ Also add `?reference_type=` as a filter on `GET /wallet/transactions`.
 | G17 | Optional Ghana Card verification | Fields exist, but there's no verification endpoint |
 
 Mubarik will confirm these with the team and update this file.
+
+---
+
+## New requests
+
+### G19 — SOS without an active trip
+The Home screen (P5) shows an SOS button at all times, also when the passenger is not on a trip. Today an SOS needs a trip: `POST /trips/{trip_id}/sos`. Until this exists, SOS on Home opens the SOS screen but can't raise an alert outside a trip (frontend `docs/design-decisions.md`, decision 18).
+
+Proposal: `POST /sos` · any signed-in user
+```json
+{ "latitude": 5.6037, "longitude": -0.1870, "trip_id": null, "note": null }
+```
+→ `SosAlertResponse` with `trip_id` nullable. Admins see it in the existing SOS queue (`GET /admin/sos-alerts`). `trip_id` stays optional, so the app can send it when there is an active trip.
 
 ---
 

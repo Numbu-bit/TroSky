@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/entry/auth/presentation/details_screen.dart';
 import 'package:mobile/entry/auth/presentation/sign_in_screen.dart';
 import 'package:mobile/entry/auth/presentation/verify_code_screen.dart';
+import 'package:mobile/passenger/home/presentation/home_screen.dart';
 import 'package:mobile/entry/auth/presentation/welcome_screen.dart';
 import 'package:mobile/entry/splash/presentation/launch_destination_provider.dart';
 import 'package:trosky_api/trosky_api.dart';
@@ -89,7 +90,7 @@ void main() {
       await signIn(tester);
       await tapVisible(tester, find.text('Continue as passenger'));
       expect(world.modes.mode, AppMode.passenger);
-      expect(find.text('home'), findsOneWidget);
+      expect(find.byType(HomeScreen), findsOneWidget);
     });
 
     testWidgets('a driver awaiting approval', (tester) async {
@@ -156,7 +157,7 @@ void main() {
       await tester.pump(splashMinimumDuration);
       await tester.pumpAndSettle();
 
-      expect(find.text('home'), findsOneWidget);
+      expect(find.byType(HomeScreen), findsOneWidget);
       expect(
         find.text("You're offline. Showing your last saved details."),
         findsOneWidget,

@@ -1,7 +1,11 @@
+import 'dart:math' as math;
+
 import 'package:trosky_core/trosky_core.dart';
 
 import '../dto/auth_dto.dart';
 import '../dto/driver_dto.dart';
+import '../dto/route_dto.dart';
+import '../dto/tracking_dto.dart';
 import '../dto/user_dto.dart';
 
 /// An in-memory stand-in for the backend's auth and user endpoints, for
@@ -16,6 +20,12 @@ import '../dto/user_dto.dart';
 /// * `0241234567` is an existing passenger and `0201234567` an existing,
 ///   approved driver, both verified, both with the password [seedPassword].
 /// * Any other phone number is a new user.
+/// * [stops] are real Accra places, at approximate positions.
+/// * The seeded passenger has the four favourite routes the Home design
+///   shows; other accounts have none.
+/// * Three vehicles are always on the road around whatever point is asked
+///   about, where the Home design draws them (decision 14), unless
+///   [vehiclesOnTheRoad] is off.
 class MockBackend {
   MockBackend({DateTime Function()? clock, this.codesByEmail = false})
     : _now = clock ?? DateTime.now {
@@ -32,6 +42,8 @@ class MockBackend {
   static const String driverPhone = '+233201234567';
 
   // Backend defaults.
+  static const int pickupMaxWalkMeters = 1000;
+  static const int pickupNearbyLimit = 5;
   static const Duration otpTtl = Duration(seconds: 300);
   static const Duration otpCooldown = Duration(seconds: 60);
   static const int otpMaxAttempts = 5;
@@ -56,7 +68,28 @@ class MockBackend {
   final Map<String, _RefreshToken> _refreshTokens = {};
   final Map<String, _AccessToken> _accessTokens = {};
   final Map<String, DriverResponse> _driverProfiles = {};
+  final Map<String, List<FavouriteRouteResponse>> _favourites = {};
   int _counter = 0;
+
+  /// When off, `GET /vehicles/nearby` finds nothing, as when no trip is
+  /// running.
+  bool vehiclesOnTheRoad = true;
+
+  /// The stops, by name.
+  static final Map<String, MockStop> stops = {
+    for (final stop in const [
+      MockStop('Madina', 5.6731, -0.1661),
+      MockStop('Circle', 5.5713, -0.2069),
+      MockStop('Legon', 5.6508, -0.1870),
+      MockStop('Osu', 5.5560, -0.1820),
+      MockStop('Achimota', 5.6131, -0.2297),
+      MockStop('Tema', 5.6698, -0.0166),
+      MockStop('Kaneshie', 5.5667, -0.2333),
+      MockStop('Lapaz', 5.6060, -0.2500),
+      MockStop('Accra Central', 5.5490, -0.2090),
+    ])
+      stop.name: stop,
+  };
 
   /// Codes "sent" so far, newest last: what an SMS or email would carry.
   final List<SentCode> outbox = [];
@@ -96,6 +129,22 @@ class MockBackend {
       status: ApprovalStatus.approved,
       createdAt: created,
     );
+    _favourites['2f6b1c0e-7d3a-4b8e-9c1a-5e2f7a9b3c41'] = [
+      for (final (i, (from, to)) in const [
+        ('Madina', 'Circle'),
+        ('Legon', 'Osu'),
+        ('Achimota', 'Tema'),
+        ('Kaneshie', 'Lapaz'),
+      ].indexed)
+        FavouriteRouteResponse(
+          id: 'f${i + 1}0e8a5c-4b2d-4e9f-8a61-3c7d2b9e5f04',
+          originStopId: stops[from]!.id,
+          originStopName: from,
+          destinationStopId: stops[to]!.id,
+          destinationStopName: to,
+          createdAt: created.add(Duration(minutes: i)),
+        ),
+    ];
   }
 
   // ---------------------------------------------------------------------
@@ -424,9 +473,106 @@ class MockBackend {
     return Ok(profile);
   }
 
+  /// `GET /stops/nearby` (public): stops within [radiusM], nearest first.
+  Result<List<NearbyStopResponse>> nearbyStops({
+    required double latitude,
+    required double longitude,
+    int? radiusM,
+    int? limit,
+  }) {
+    final radius = radiusM ?? pickupMaxWalkMeters;
+    final near =
+        [
+            for (final stop in stops.values)
+              (
+                stop,
+                distanceMeters(
+                  latitude,
+                  longitude,
+                  stop.latitude,
+                  stop.longitude,
+                ),
+              ),
+          ].where((s) => s.$2 <= radius).toList()
+          ..sort((a, b) => a.$2.compareTo(b.$2));
+    return Ok([
+      for (final (stop, distance) in near.take(limit ?? pickupNearbyLimit))
+        NearbyStopResponse(
+          id: stop.id,
+          name: stop.name,
+          city: 'Accra',
+          region: 'Greater Accra',
+          latitude: stop.latitude,
+          longitude: stop.longitude,
+          distanceM: (distance * 10).roundToDouble() / 10,
+        ),
+    ]);
+  }
+
+  /// `GET /users/me/favourite-routes`.
+  Result<List<FavouriteRouteResponse>> listFavouriteRoutes(
+    String? accessToken,
+  ) {
+    final auth = _authenticate(accessToken);
+    if (auth case Err(:final failure)) return Err(failure);
+    return Ok([...?_favourites[auth.valueOrNull!.userId]]);
+  }
+
+  /// `GET /vehicles/nearby`: the three design vehicles around the point,
+  /// those within [radiusM], nearest first.
+  Result<List<NearbyVehicleResponse>> nearbyVehicles(
+    String? accessToken, {
+    required double latitude,
+    required double longitude,
+    required int radiusM,
+    int limit = 20,
+  }) {
+    final auth = _authenticate(accessToken);
+    if (auth case Err(:final failure)) return Err(failure);
+    if (!vehiclesOnTheRoad) return const Ok([]);
+    // Metres east and north of the point. P5 draws the pins at (80, 60),
+    // (310, 130) and (145, 190) around the map centre (195, 110); at the
+    // Home map's zoom (13) a pixel is about 19 m in Accra.
+    const designed = [
+      ('Madina → Circle', 'GR 2417-24', -2185.0, 950.0, 5),
+      ('Legon → Osu', 'GT 8830-23', 2185.0, -380.0, 8),
+      ('Achimota → Tema', 'GE 1196-25', -950.0, -1520.0, 2),
+    ];
+    final vehicles = <NearbyVehicleResponse>[];
+    for (final (i, (route, plate, east, north, seats)) in designed.indexed) {
+      final lat = latitude + north / _metersPerDegree;
+      final lng =
+          longitude +
+          east / (_metersPerDegree * math.cos(latitude * math.pi / 180));
+      final distance = distanceMeters(latitude, longitude, lat, lng);
+      if (distance > radiusM) continue;
+      vehicles.add(
+        NearbyVehicleResponse(
+          tripId: '7e${i}c4b1a-9d2f-4a8e-b6c3-1f5e8d2a7c90',
+          vehicleId: '3b${i}a9e2c-6f1d-4c7b-8e5a-2d9f1c6b4e83',
+          vehicleRegistrationNumber: plate,
+          vehicleType: VehicleType.minibus,
+          routeId: '9c${i}e3f7a-1b5d-4e2c-a8f6-4d1b7e9c3a52',
+          routeName: route,
+          latitude: lat,
+          longitude: lng,
+          distanceM: (distance * 10).roundToDouble() / 10,
+          availableSeats: seats,
+          updatedAt: _now().toUtc().subtract(const Duration(seconds: 20)),
+        ),
+      );
+    }
+    vehicles.sort((a, b) => a.distanceM.compareTo(b.distanceM));
+    return Ok(vehicles.take(limit).toList());
+  }
+
   // ---------------------------------------------------------------------
   // Test controls
   // ---------------------------------------------------------------------
+
+  /// Removes every favourite route of the account with [phone].
+  void clearFavouriteRoutes(String phone) =>
+      _favourites.remove(_byPhone(normalizePhoneNumber(phone))!.id);
 
   /// Suspends the account with [phone], as an admin would.
   void suspend(String phone, {String reason = 'Under review'}) =>
@@ -728,6 +874,40 @@ class MockBackend {
   String _uuid() {
     final n = (++_counter).toRadixString(16).padLeft(12, '0');
     return '00000000-0000-4000-8000-$n';
+  }
+}
+
+const double _metersPerDegree = 111320;
+
+/// Great-circle distance in metres between two points.
+double distanceMeters(double lat1, double lng1, double lat2, double lng2) {
+  const earthRadius = 6371008.8;
+  double rad(double degrees) => degrees * math.pi / 180;
+  final dLat = rad(lat2 - lat1);
+  final dLng = rad(lng2 - lng1);
+  final a =
+      math.pow(math.sin(dLat / 2), 2) +
+      math.cos(rad(lat1)) *
+          math.cos(rad(lat2)) *
+          math.pow(math.sin(dLng / 2), 2);
+  return 2 * earthRadius * math.asin(math.sqrt(a));
+}
+
+/// A stop of the mock backend.
+class MockStop {
+  const MockStop(this.name, this.latitude, this.longitude);
+
+  final String name;
+  final double latitude;
+  final double longitude;
+
+  /// A stable id made from the name, so favourites can point at the stop.
+  String get id {
+    final hex = name.codeUnits
+        .fold<int>(17, (hash, unit) => (hash * 31 + unit) & 0xffffffff)
+        .toRadixString(16)
+        .padLeft(8, '0');
+    return '$hex-5709-4000-8000-000000000000';
   }
 }
 

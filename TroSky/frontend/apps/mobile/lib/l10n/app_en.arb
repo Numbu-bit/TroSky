@@ -460,6 +460,236 @@
   },
   "signOut": "Sign out",
   "@signOut": {
-    "description": "Sign out button on the placeholder home screens."
+    "description": "Sign out button on the Profile tab and the driver placeholder screens."
+  },
+  "tabHome": "Home",
+  "@tabHome": {
+    "description": "Passenger tab bar: Home tab."
+  },
+  "tabTrips": "Trips",
+  "@tabTrips": {
+    "description": "Passenger tab bar: Trips tab."
+  },
+  "tabWallet": "Wallet",
+  "@tabWallet": {
+    "description": "Passenger tab bar: Wallet tab."
+  },
+  "tabProfile": "Profile",
+  "@tabProfile": {
+    "description": "Passenger tab bar: Profile tab."
+  },
+  "homeGreetingMorning": "Good morning",
+  "@homeGreetingMorning": {
+    "description": "Home header greeting before noon."
+  },
+  "homeGreetingAfternoon": "Good afternoon",
+  "@homeGreetingAfternoon": {
+    "description": "Home header greeting from noon to 5 pm."
+  },
+  "homeGreetingEvening": "Good evening",
+  "@homeGreetingEvening": {
+    "description": "Home header greeting from 5 pm to 5 am."
+  },
+  "homeName": "{name} 👋",
+  "@homeName": {
+    "description": "Home header: the passenger's full name and a waving hand, as designed.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Kwame Asante"
+      }
+    }
+  },
+  "homeNameFallback": "Welcome 👋",
+  "@homeNameFallback": {
+    "description": "Home header when the account has no name yet."
+  },
+  "homeLocationFallback": "Accra",
+  "@homeLocationFallback": {
+    "description": "Home location chip when location is off or no stop is near."
+  },
+  "homeLocationLabel": "Your area: {place}",
+  "@homeLocationLabel": {
+    "description": "Screen reader label for the Home location chip.",
+    "placeholders": {
+      "place": {
+        "type": "String",
+        "example": "Madina, Accra"
+      }
+    }
+  },
+  "homeLocationLoading": "Finding your area",
+  "@homeLocationLoading": {
+    "description": "Screen reader label for the Home location chip while it loads."
+  },
+  "homeNotifications": "Notifications",
+  "@homeNotifications": {
+    "description": "Screen reader label for the bell on Home."
+  },
+  "homeSearchHint": "Where are you going?",
+  "@homeSearchHint": {
+    "description": "Home search bar prompt."
+  },
+  "homeSearchNow": "Now",
+  "@homeSearchNow": {
+    "description": "Home search bar: travel time, now."
+  },
+  "homeMyLocation": "My location",
+  "@homeMyLocation": {
+    "description": "Screen reader label for the my-location map button."
+  },
+  "homeSos": "SOS",
+  "@homeSos": {
+    "description": "Text on the red SOS map button."
+  },
+  "homeSosLabel": "SOS, emergency help",
+  "@homeSosLabel": {
+    "description": "Screen reader label for the SOS map button."
+  },
+  "homeYouAreHere": "You are here",
+  "@homeYouAreHere": {
+    "description": "Screen reader label for the passenger's dot on the map."
+  },
+  "homeVehicle": "{route}, {seats, plural, =1{1 seat free} other{{seats} seats free}}",
+  "@homeVehicle": {
+    "description": "Screen reader label for a vehicle on the Home map.",
+    "placeholders": {
+      "route": {
+        "type": "String",
+        "example": "Madina → Circle"
+      },
+      "seats": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "homeVehiclesError": "Couldn't load vehicles",
+  "@homeVehiclesError": {
+    "description": "Small note on the map when vehicles failed to load; next to Retry."
+  },
+  "homeMapLoading": "Loading map",
+  "@homeMapLoading": {
+    "description": "Screen reader label for the map while it loads."
+  },
+  "homeFavouriteRoutes": "Favourite Routes",
+  "@homeFavouriteRoutes": {
+    "description": "Home sheet heading."
+  },
+  "homeSeeAll": "See all",
+  "@homeSeeAll": {
+    "description": "Home sheet link to all favourite routes."
+  },
+  "homeRoute": "{origin} → {destination}",
+  "@homeRoute": {
+    "description": "A favourite route chip on Home.",
+    "placeholders": {
+      "origin": {
+        "type": "String",
+        "example": "Madina"
+      },
+      "destination": {
+        "type": "String",
+        "example": "Circle"
+      }
+    }
+  },
+  "homeFavouritesEmpty": "No favourite routes yet.",
+  "@homeFavouritesEmpty": {
+    "description": "Home sheet line when the passenger has no favourite routes (decision 15)."
+  },
+  "homeFavouritesError": "Couldn't load your favourite routes.",
+  "@homeFavouritesError": {
+    "description": "Home sheet line when favourites failed to load; next to Retry."
+  },
+  "homeFavouritesLoading": "Loading favourite routes",
+  "@homeFavouritesLoading": {
+    "description": "Screen reader label for the favourites skeleton."
+  },
+  "homePromoEyebrow": "NEW FEATURE",
+  "@homePromoEyebrow": {
+    "description": "Small label on the Home subscribe banner."
+  },
+  "homePromoTitle": "Subscribe your commute",
+  "@homePromoTitle": {
+    "description": "Home subscribe banner title (decision 16)."
+  },
+  "homePromoBody": "Save up to 40% with a monthly plan",
+  "@homePromoBody": {
+    "description": "Home subscribe banner line."
+  },
+  "homePromoAction": "Try it",
+  "@homePromoAction": {
+    "description": "Home subscribe banner button."
+  },
+  "homeLocationPromptTitle": "See rides near you",
+  "@homeLocationPromptTitle": {
+    "description": "Title of the sheet asking for location, shown once on Home."
+  },
+  "homeLocationPromptBody": "TroSky uses your location to show the nearest stop and the vehicles around you. You can still search for trips without it.",
+  "@homeLocationPromptBody": {
+    "description": "Body of the location sheet on Home."
+  },
+  "homeLocationAllow": "Allow location",
+  "@homeLocationAllow": {
+    "description": "Location sheet button; then the phone asks for permission."
+  },
+  "homeLocationNotNow": "Not now",
+  "@homeLocationNotNow": {
+    "description": "Location sheet button; Home centres on Accra."
+  },
+  "homeLocationBlocked": "Location is off for TroSky. Turn it on in Settings.",
+  "@homeLocationBlocked": {
+    "description": "Message when the passenger taps my-location after refusing location for good."
+  },
+  "homeLocationServiceOff": "Your phone's location is off.",
+  "@homeLocationServiceOff": {
+    "description": "Message when the phone's location service is off."
+  },
+  "homeLocationNotFound": "Couldn't find your location.",
+  "@homeLocationNotFound": {
+    "description": "Message when the phone gives no position in time."
+  },
+  "homeOpenSettings": "Settings",
+  "@homeOpenSettings": {
+    "description": "Action that opens the phone settings."
+  },
+  "placeholderSearch": "Search",
+  "@placeholderSearch": {
+    "description": "Title of the Search placeholder (P-02)."
+  },
+  "placeholderSearchRoute": "From {origin} to {destination}",
+  "@placeholderSearchRoute": {
+    "description": "Search placeholder, filled in from a favourite route.",
+    "placeholders": {
+      "origin": {
+        "type": "String",
+        "example": "Madina"
+      },
+      "destination": {
+        "type": "String",
+        "example": "Circle"
+      }
+    }
+  },
+  "placeholderNotifications": "Notifications",
+  "@placeholderNotifications": {
+    "description": "Title of the Notifications placeholder."
+  },
+  "placeholderFavouriteRoutes": "Favourite Routes",
+  "@placeholderFavouriteRoutes": {
+    "description": "Title of the Favourite Routes placeholder (P-14)."
+  },
+  "placeholderSubscribe": "Subscribe",
+  "@placeholderSubscribe": {
+    "description": "Title of the Subscribe placeholder (P-10)."
+  },
+  "placeholderSos": "SOS",
+  "@placeholderSos": {
+    "description": "Title of the SOS placeholder (P-15)."
+  },
+  "placeholderSoon": "This screen is coming soon.",
+  "@placeholderSoon": {
+    "description": "Line on every placeholder screen."
   }
 }

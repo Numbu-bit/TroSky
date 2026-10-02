@@ -113,7 +113,7 @@ Use the **Screen ID** as the screenshot filename (e.g. `S-04.png`). "Figma" is t
 ### 4b. Passenger
 | ID | Screen | Endpoints | API |
 |---|---|---|---|
-| P-01 | Home (map, favourite routes, subscribe banner, SOS) | `GET /bookings` (upcoming), `GET /stops/nearby` | ⚠️ G12, G4, G14, G16 |
+| P-01 | **Home** (P5: map, favourite routes, subscribe banner, SOS) in the passenger tab bar (decision 12). Built 1 Oct 2026. P5 has no upcoming-trip card, so `GET /bookings` isn't used yet | `GET /stops/nearby`, `GET /users/me/favourite-routes` (G4), `GET /vehicles/nearby` (G16) | ✅ banner behind `subscriptions` (G14); SOS needs G19 |
 | P-02 | Search (from, to, date, pickup near me) | `GET /stops?q=`, `GET /stops/nearby` | ✅ |
 | P-03 | Search results (pickup stop + distance) | `GET /trips/search` (+ `pickup_latitude` / `pickup_longitude`) | ✅ |
 | P-04 | Trip details | `GET /trips/{id}`, `GET /routes/{id}` | ✅ |
@@ -138,7 +138,7 @@ Use the **Screen ID** as the screenshot filename (e.g. `S-04.png`). "Figma" is t
 | P-23 | Notification settings | `GET/PATCH /users/me/notification-preferences` | ✅ |
 | P-24 | Complaints (file + list) | `POST/GET /complaints` | ✅ |
 | P-25 | Settings (sessions, sign out, delete account, switch mode) | `/auth/sessions`, `/auth/logout`, `DELETE /users/me` | ✅ |
-| P-26 | Favourite routes | none | ❌ G4 |
+| P-26 | Favourite routes | `GET/POST/DELETE /users/me/favourite-routes` | ✅ (G4 done in backend 0.12.0) |
 | P-27 | Subscribe (recurring commute) | none | ❌ G14 |
 
 ### 4c. Driver
@@ -198,6 +198,8 @@ Use the **Screen ID** as the screenshot filename (e.g. `S-04.png`). "Figma" is t
 
 Ranked by how badly each blocks the frontend. Most are small additions to routers that already exist.
 
+**Backend 0.12.0 (1 Oct 2026) built G1, G2, G3, G4, G5, G7, G8, G9, G10, G12, G13 and G16**, to the shapes in `backend-requests.md`. G11 and the design gaps below remain; G19 is new.
+
 | ID | Gap | Blocks | Suggested fix |
 |---|---|---|---|
 | **G2** | **A driver can't list their assigned trips.** `/drivers/me/assignments` returns vehicles only, so the driver app has no `trip_id` to start | D-04, D-05, the whole driver flow | `GET /drivers/me/trips?status=&date=` |
@@ -212,6 +214,7 @@ Ranked by how badly each blocks the frontend. Most are small additions to router
 | G11 | Telecel, AirtelTigo and card payments are placeholders | P-07 | Already known; the UI shows "Coming soon" |
 | G12 | `GET /bookings` has no status or date filter, and bookings don't include departure time | P-01, P-15 (the app makes one extra request per booking) | `?status=&upcoming=true` and embed a trip summary |
 | G13 | The rating is a single score. The SRS asked for safety, cleanliness, professionalism and timeliness | P-14 (only if the Figma "Rate Driver" screen shows categories) | Optional category scores |
+| G19 | An SOS needs a trip (`POST /trips/{trip_id}/sos`), but Home shows SOS at all times | P-01's SOS button, P-12 outside a trip | `POST /sos` with an optional `trip_id` (decision 18) |
 
 ### Gaps the Figma design creates (it shows features the backend doesn't have)
 | ID | Design shows | Backend today | Decision needed |

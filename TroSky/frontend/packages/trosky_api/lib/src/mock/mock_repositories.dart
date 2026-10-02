@@ -3,9 +3,13 @@ import 'package:trosky_core/trosky_core.dart';
 import '../client/interceptors.dart';
 import '../dto/auth_dto.dart';
 import '../dto/driver_dto.dart';
+import '../dto/route_dto.dart';
+import '../dto/tracking_dto.dart';
 import '../dto/user_dto.dart';
 import '../repositories/auth_repository.dart';
 import '../repositories/driver_repository.dart';
+import '../repositories/route_repository.dart';
+import '../repositories/tracking_repository.dart';
 import '../repositories/user_repository.dart';
 import 'mock_backend.dart';
 
@@ -92,6 +96,10 @@ class MockUserRepository implements UserRepository {
   @override
   Future<Result<UserResponse>> getMe() =>
       _authenticated(_tokens(), latency, _backend.getMe);
+
+  @override
+  Future<Result<List<FavouriteRouteResponse>>> listFavouriteRoutes() =>
+      _authenticated(_tokens(), latency, _backend.listFavouriteRoutes);
 }
 
 /// [DriverRepository] on a [MockBackend] (`API_MODE=mock`).
@@ -109,4 +117,60 @@ class MockDriverRepository implements DriverRepository {
   @override
   Future<Result<DriverResponse>> getMe() =>
       _authenticated(_tokens(), latency, _backend.getDriverMe);
+}
+
+/// [RouteRepository] on a [MockBackend] (`API_MODE=mock`).
+class MockRouteRepository implements RouteRepository {
+  MockRouteRepository(this._backend, {this.latency = Duration.zero});
+
+  final MockBackend _backend;
+  final Duration latency;
+
+  @override
+  Future<Result<List<NearbyStopResponse>>> nearbyStops({
+    required double latitude,
+    required double longitude,
+    int? radiusM,
+    int? limit,
+  }) async {
+    if (latency > Duration.zero) await Future<void>.delayed(latency);
+    return _backend.nearbyStops(
+      latitude: latitude,
+      longitude: longitude,
+      radiusM: radiusM,
+      limit: limit,
+    );
+  }
+}
+
+/// [TrackingRepository] on a [MockBackend] (`API_MODE=mock`): invented
+/// vehicles, for mock mode only (decision 14).
+class MockTrackingRepository implements TrackingRepository {
+  MockTrackingRepository(
+    this._backend, {
+    required this._tokens,
+    this.latency = Duration.zero,
+  });
+
+  final MockBackend _backend;
+  final SessionTokens Function() _tokens;
+  final Duration latency;
+
+  @override
+  Future<Result<List<NearbyVehicleResponse>>> nearbyVehicles({
+    required double latitude,
+    required double longitude,
+    required int radiusM,
+    int limit = 20,
+  }) => _authenticated(
+    _tokens(),
+    latency,
+    (token) => _backend.nearbyVehicles(
+      token,
+      latitude: latitude,
+      longitude: longitude,
+      radiusM: radiusM,
+      limit: limit,
+    ),
+  );
 }

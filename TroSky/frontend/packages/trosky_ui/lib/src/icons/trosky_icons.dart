@@ -20,6 +20,19 @@ abstract final class TroskyIcons {
   static Widget chevronDown({required Color color}) =>
       _icon(_chevronDown, color, 12, 8);
 
+  /// Magnifier in the Home search bar (P5), 18 px.
+  static Widget search({required Color color, double size = 18}) =>
+      _icon(_search, color, size, size);
+
+  /// Crosshair on the my-location map button (P5), 16 px.
+  static Widget myLocation({required Color color, double size = 16}) =>
+      _icon(_myLocation, color, size, size);
+
+  /// The bus inside a map pin (`BusPin` in Shared.tsx), 16 × 10 px. The
+  /// window cut-outs share the body's winding, so like the browser it draws
+  /// as one rounded block.
+  static Widget bus({required Color color}) => _icon(_bus, color, 16, 10);
+
   static Widget _icon(String svg, Color color, double width, double height) {
     return SvgPicture.string(
       svg,
@@ -54,5 +67,29 @@ abstract final class TroskyIcons {
       '<svg viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">'
       '<path d="M1 1l5 5 5-5" stroke="currentColor" stroke-width="1.5" '
       'stroke-linecap="round"/>'
+      '</svg>';
+
+  static const String _search =
+      '<svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">'
+      '<circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.5"/>'
+      '<path d="M12.5 12.5l2.5 2.5" stroke="currentColor" stroke-width="1.5" '
+      'stroke-linecap="round"/>'
+      '</svg>';
+
+  static const String _myLocation =
+      '<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">'
+      '<circle cx="8" cy="8" r="3" fill="currentColor"/>'
+      '<circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/>'
+      '<line x1="8" y1="0" x2="8" y2="4" stroke="currentColor" '
+      'stroke-width="1.5" stroke-linecap="round"/>'
+      '<line x1="8" y1="12" x2="8" y2="16" stroke="currentColor" '
+      'stroke-width="1.5" stroke-linecap="round"/>'
+      '</svg>';
+
+  static const String _bus =
+      '<svg viewBox="-8 -5 16 10" xmlns="http://www.w3.org/2000/svg">'
+      '<path d="M-6,-5 h12 a2,2 0 0 1 2,2 v6 a2,2 0 0 1 -2,2 h-12 '
+      'a2,2 0 0 1 -2,-2 v-6 a2,2 0 0 1 2,-2 z M-5,-2 h3 v4 h-3 z '
+      'M1,-2 h3 v4 h-3 z" fill="currentColor" fill-opacity="0.9"/>'
       '</svg>';
 }

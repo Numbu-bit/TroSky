@@ -316,6 +316,96 @@ void main() {
     });
     expect(result.valueOrNull?.otpSentTo, '+233241234567');
   });
+
+  group('Home endpoints parse what the backend sends', () {
+    Dio dio(FakeAdapter adapter) =>
+        createApiClient(env: _env, tokens: _FakeTokens.new, adapter: adapter);
+
+    test('GET /stops/nearby is public and takes the query', () async {
+      final adapter = FakeAdapter(
+        (_) async => const FakeReply(200, [
+          {
+            'id': 's1',
+            'name': 'Madina Zongo Junction',
+            'code': null,
+            'address': null,
+            'city': 'Accra',
+            'region': 'Greater Accra',
+            'latitude': 5.6731,
+            'longitude': -0.1661,
+            'distance_m': 212.4,
+          },
+        ]),
+      );
+      final stops = await LiveRouteRepository(
+        dio(adapter),
+      ).nearbyStops(latitude: 5.67, longitude: -0.166, limit: 1);
+
+      final request = adapter.requests.single;
+      expect(request.path, '/stops/nearby');
+      expect(request.queryParameters, {
+        'latitude': 5.67,
+        'longitude': -0.166,
+        'limit': 1,
+      });
+      expect(request.headers['Authorization'], isNull);
+      expect(stops.valueOrNull?.single.name, 'Madina Zongo Junction');
+      expect(stops.valueOrNull?.single.distanceM, 212.4);
+    });
+
+    test('GET /vehicles/nearby: Decimal heading as a string, new types '
+        'as other', () async {
+      final adapter = FakeAdapter(
+        (_) async => const FakeReply(200, [
+          {
+            'trip_id': 't1',
+            'vehicle_id': 'v1',
+            'vehicle_registration_number': 'GR 1234-24',
+            'vehicle_type': 'trotro',
+            'route_id': 'r1',
+            'route_name': 'Madina → Circle',
+            'latitude': 5.6,
+            'longitude': -0.19,
+            'heading': '182.50',
+            'distance_m': 812.3,
+            'available_seats': 5,
+            'updated_at': '2026-10-01T09:00:00Z',
+          },
+        ]),
+      );
+      final vehicles = await LiveTrackingRepository(
+        dio(adapter),
+      ).nearbyVehicles(latitude: 5.6, longitude: -0.19, radiusM: 4000);
+
+      expect(adapter.requests.single.queryParameters['radius_m'], 4000);
+      final vehicle = vehicles.valueOrNull!.single;
+      expect(vehicle.heading, 182.5);
+      expect(vehicle.vehicleType, VehicleType.other);
+      expect(vehicle.availableSeats, 5);
+    });
+
+    test('GET /users/me/favourite-routes', () async {
+      final adapter = FakeAdapter(
+        (_) async => const FakeReply(200, [
+          {
+            'id': 'f1',
+            'origin_stop_id': 's1',
+            'origin_stop_name': 'Madina',
+            'destination_stop_id': 's2',
+            'destination_stop_name': 'Circle',
+            'label': null,
+            'created_at': '2026-10-01T09:00:00Z',
+          },
+        ]),
+      );
+      final routes = await LiveUserRepository(
+        dio(adapter),
+      ).listFavouriteRoutes();
+
+      expect(adapter.requests.single.path, '/users/me/favourite-routes');
+      expect(routes.valueOrNull?.single.destinationStopName, 'Circle');
+    });
+  });
 }
 
 const _userJson = {

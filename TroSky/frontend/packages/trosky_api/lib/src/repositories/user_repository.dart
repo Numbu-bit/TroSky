@@ -8,6 +8,9 @@ import '../dto/user_dto.dart';
 abstract interface class UserRepository {
   /// The signed-in user, with fresh roles.
   Future<Result<UserResponse>> getMe();
+
+  /// Journeys pinned to Home, oldest first (backend gap G4).
+  Future<Result<List<FavouriteRouteResponse>>> listFavouriteRoutes();
 }
 
 /// [UserRepository] against the backend.
@@ -20,5 +23,14 @@ class LiveUserRepository implements UserRepository {
   Future<Result<UserResponse>> getMe() => apiCall(
     () => _dio.get<Object?>('/users/me'),
     (data) => UserResponse.fromJson(jsonObject(data)),
+  );
+
+  @override
+  Future<Result<List<FavouriteRouteResponse>>> listFavouriteRoutes() => apiCall(
+    () => _dio.get<Object?>('/users/me/favourite-routes'),
+    (data) => [
+      for (final favourite in data! as List)
+        FavouriteRouteResponse.fromJson(jsonObject(favourite)),
+    ],
   );
 }

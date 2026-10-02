@@ -1,11 +1,18 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/widgets.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:mobile/app/app_providers.dart';
 import 'package:mobile/app/trosky_mobile_app.dart';
 import 'package:mobile/entry/onboarding/data/onboarding_store.dart';
 import 'package:mobile/entry/splash/presentation/launch_destination_provider.dart';
+import 'package:mobile/passenger/home/application/home_providers.dart';
+import 'package:mobile/passenger/home/data/home_store.dart';
+import 'package:mobile/passenger/home/data/location_service.dart';
 import 'package:trosky_api/trosky_api.dart';
 import 'package:trosky_auth/trosky_auth.dart';
 import 'package:trosky_core/trosky_core.dart';
@@ -63,13 +70,75 @@ class FakeSessionController extends SessionController {
       : const SessionUnauthenticated();
 }
 
+/// The phone's location, answering from fields. By default location was
+/// refused, so Home shows Accra.
+class FakeLocationService implements LocationService {
+  FakeLocationService({
+    this.permission = LocationPermissionStatus.denied,
+    this.dialogAnswer = LocationPermissionStatus.granted,
+    this.enabled = true,
+    this.position,
+  });
+
+  LocationPermissionStatus permission;
+
+  /// What the passenger answers in the phone's permission dialog.
+  LocationPermissionStatus dialogAnswer;
+  bool enabled;
+  LatLng? position;
+
+  int dialogs = 0;
+  int appSettingsOpened = 0;
+  int locationSettingsOpened = 0;
+
+  @override
+  Future<bool> serviceEnabled() async => enabled;
+
+  @override
+  Future<LocationPermissionStatus> checkPermission() async => permission;
+
+  @override
+  Future<LocationPermissionStatus> requestPermission() async {
+    dialogs++;
+    return permission = dialogAnswer;
+  }
+
+  @override
+  Future<LatLng?> lastKnownPosition() async => position;
+
+  @override
+  Future<LatLng?> currentPosition() async => position;
+
+  @override
+  Future<void> openAppSettings() async => appSettingsOpened++;
+
+  @override
+  Future<void> openLocationSettings() async => locationSettingsOpened++;
+}
+
+/// Map tiles in one flat colour (OpenStreetMap's land), from memory: tests
+/// never reach the tile server.
+class FlatTileProvider extends TileProvider {
+  static final MemoryImage _tile = MemoryImage(
+    base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP49P4lAAWhAstl'
+      '7N0JAAAAAElFTkSuQmCC',
+    ),
+  );
+
+  @override
+  ImageProvider getImage(TileCoordinates coordinates, TileLayer options) =>
+      _tile;
+}
+
 /// Everything a test app keeps between screens, in memory.
 class TestWorld {
   TestWorld({AppMode? mode, bool onboardingSeen = true})
     : modes = InMemoryAppModeStore(mode),
       onboarding = FakeOnboardingStore(seen: onboardingSeen);
 
-  /// The mock backend's clock; move it to expire codes.
+  /// The mock backend's clock, and the phone's; move it to expire codes or
+  /// change the time of day.
   DateTime now = DateTime.now();
 
   late final MockBackend backend = MockBackend(clock: () => now);
@@ -77,6 +146,21 @@ class TestWorld {
   final InMemoryUserCache cache = InMemoryUserCache();
   final InMemoryAppModeStore modes;
   final FakeOnboardingStore onboarding;
+  final FakeLocationService location = FakeLocationService();
+
+  /// Location was asked about already, so Home doesn't explain it again.
+  final InMemoryHomeStore home = InMemoryHomeStore(asked: true);
+
+  /// Signs in as the seeded passenger (Ama Mensah) on the mock backend and
+  /// keeps the refresh token, as a previous run of the app would.
+  void savePassengerSession({String phone = '0241234567'}) {
+    tokens.token = backend
+        .login(
+          LoginRequest(identifier: phone, password: MockBackend.seedPassword),
+        )
+        .valueOrNull!
+        .refreshToken;
+  }
 }
 
 /// The whole app in mock mode, with in-memory storage. With [signedIn] set,
@@ -88,13 +172,14 @@ Widget testApp({
   OnboardingStore? onboarding,
   bool? signedIn,
   TestWorld? world,
+  Env? env,
   List<Object> overrides = const [],
 }) {
   final w = world ?? TestWorld();
   return ProviderScope(
     overrides: [
       envProvider.overrideWithValue(
-        Env.parse(apiBaseUrl: '', wsBaseUrl: '', apiMode: 'mock'),
+        env ?? Env.parse(apiBaseUrl: '', wsBaseUrl: '', apiMode: 'mock'),
       ),
       mockBackendProvider.overrideWithValue(w.backend),
       mockLatencyProvider.overrideWithValue(Duration.zero),
@@ -107,6 +192,10 @@ Widget testApp({
           () => FakeSessionController(signedIn: signedIn),
         ),
       firstFrameShownProvider.overrideWith((ref) async {}),
+      clockProvider.overrideWithValue(() => w.now),
+      locationServiceProvider.overrideWithValue(w.location),
+      homeStoreProvider.overrideWithValue(w.home),
+      mapTileProviderFactoryProvider.overrideWithValue(FlatTileProvider.new),
       ...overrides.cast(),
     ],
     child: const TroskyMobileApp(),

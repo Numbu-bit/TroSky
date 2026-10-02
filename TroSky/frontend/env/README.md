@@ -1,7 +1,21 @@
 # Environments
 
-Each app reads `API_BASE_URL`, `WS_BASE_URL` and `API_MODE` (`mock` or `live`)
-as compile-time defines. To use one:
+Each app reads these compile-time defines:
+
+| Define | Meaning | Default |
+|---|---|---|
+| `API_BASE_URL` | Backend REST base URL | none (needed in live mode) |
+| `WS_BASE_URL` | Backend WebSocket base URL | none |
+| `API_MODE` | `mock` (built-in data) or `live` (the backend) | `mock` |
+| `MAP_TILE_URL` | Map tiles, with `{z}`, `{x}` and `{y}` | OpenStreetMap's public tiles |
+| `FEATURES` | Comma-separated features to switch on, e.g. `subscriptions`. Empty switches all off | `subscriptions` in mock mode, none in live mode |
+
+**OpenStreetMap's public tiles are for development only.** Their tile usage
+policy doesn't allow an app's production traffic, so staging and prod need a
+tile provider's URL before launch (frontend `docs/design-decisions.md`,
+decision 13).
+
+To use one:
 
 1. Copy a template: `cp env/dev.example.json env/dev.json` (real `env/*.json`
    files are gitignored).

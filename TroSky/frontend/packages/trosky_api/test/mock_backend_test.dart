@@ -25,6 +25,113 @@ void main() {
 
   String? code<T>(Result<T> result) => result.failureOrNull?.code;
 
+  String signIn(String phone) => backend
+      .login(
+        LoginRequest(identifier: phone, password: MockBackend.seedPassword),
+      )
+      .valueOrNull!
+      .accessToken;
+
+  group('Home (P5)', () {
+    test('nearby stops: within 1 km, nearest first', () {
+      final circle = MockBackend.stops['Circle']!;
+      final stops = backend
+          .nearbyStops(
+            latitude: circle.latitude + 0.001,
+            longitude: circle.longitude,
+          )
+          .valueOrNull!;
+      expect(stops.map((s) => s.name), ['Circle']);
+      expect(stops.single.distanceM, closeTo(111, 1));
+      expect(stops.single.city, 'Accra');
+    });
+
+    test('nearby stops: nothing near is an empty list, not an error', () {
+      // Kumasi.
+      final stops = backend.nearbyStops(latitude: 6.6885, longitude: -1.6244);
+      expect(stops.valueOrNull, isEmpty);
+    });
+
+    test('favourite routes: the seeded passenger has the design four', () {
+      final token = signIn('0241234567');
+      final routes = backend.listFavouriteRoutes(token).valueOrNull!;
+      expect(
+        routes.map((r) => '${r.originStopName} → ${r.destinationStopName}'),
+        [
+          'Madina → Circle',
+          'Legon → Osu',
+          'Achimota → Tema',
+          'Kaneshie → Lapaz',
+        ],
+      );
+      expect(routes.first.originStopId, MockBackend.stops['Madina']!.id);
+
+      backend.clearFavouriteRoutes('0241234567');
+      expect(backend.listFavouriteRoutes(token).valueOrNull, isEmpty);
+    });
+
+    test('favourite routes and vehicles need a session', () {
+      expect(code(backend.listFavouriteRoutes(null)), 'UNAUTHORIZED');
+      expect(
+        code(
+          backend.nearbyVehicles(
+            null,
+            latitude: 5.6,
+            longitude: -0.19,
+            radiusM: 4000,
+          ),
+        ),
+        'UNAUTHORIZED',
+      );
+    });
+
+    test('vehicles: three around the point, where the design draws them', () {
+      final token = signIn('0241234567');
+      final vehicles = backend
+          .nearbyVehicles(
+            token,
+            latitude: 5.6037,
+            longitude: -0.1870,
+            radiusM: 4000,
+          )
+          .valueOrNull!;
+      expect(vehicles.map((v) => v.availableSeats), [2, 8, 5]);
+      expect(
+        vehicles.map((v) => v.distanceM),
+        everyElement(lessThanOrEqualTo(4000)),
+      );
+      // The 5-seat one is up and to the left of the point.
+      final five = vehicles.firstWhere((v) => v.availableSeats == 5);
+      expect(five.latitude, greaterThan(5.6037));
+      expect(five.longitude, lessThan(-0.1870));
+
+      expect(
+        backend
+            .nearbyVehicles(
+              token,
+              latitude: 5.6037,
+              longitude: -0.1870,
+              radiusM: 2000,
+            )
+            .valueOrNull!
+            .map((v) => v.availableSeats),
+        [2],
+      );
+      backend.vehiclesOnTheRoad = false;
+      expect(
+        backend
+            .nearbyVehicles(
+              token,
+              latitude: 5.6037,
+              longitude: -0.1870,
+              radiusM: 4000,
+            )
+            .valueOrNull,
+        isEmpty,
+      );
+    });
+  });
+
   group('register', () {
     test('a new phone gets a code by SMS, sent to the E.164 number', () {
       final result = backend.register(newPassenger());
