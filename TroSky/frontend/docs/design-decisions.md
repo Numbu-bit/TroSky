@@ -22,6 +22,10 @@ Product decisions that settle questions the Figma Make file leaves open. These r
 | 16 | Subscribe banner | 1 Oct 2026 | In force (`Feature.subscriptions`) |
 | 17 | Emoji | 1 Oct 2026 | In force |
 | 18 | SOS on Home | 1 Oct 2026 | In force (SOS placeholder); backend gap G19 |
+| 19 | Search entry screen | 2 Oct 2026 | In force (`SearchScreen`, P-02) |
+| 20 | Fare display | 2 Oct 2026 | In force (`TripCard`); full design waits for G20 |
+| 21 | Approaching / passed | 2 Oct 2026 | In force (`SearchResultsScreen`); full design waits for G21 |
+| 22 | Filter pills | 2 Oct 2026 | In force (`SearchResultsScreen`) |
 
 ## 1. Logo
 
@@ -158,3 +162,35 @@ The design's emoji stay exactly as drawn (👋, 🔔, the tab bar's 🏠 🗺️
 
 The SOS button on the Home map opens the SOS screen (a placeholder for now). The backend can only raise an SOS for a trip (`POST /trips/{trip_id}/sos`), but the Home design shows SOS at all times, so backend gap G19 asks for an SOS without an active trip.
 
+## 19. Search entry screen
+
+The screen where the passenger enters a journey (P-02) **is not in Figma**. It is built from existing components in the style of the Search Results header (P6): the navy header with the round back button, the from/to block, and the filter-pill style for "Now" / "Schedule".
+
+- **From** is "Current location" by default: the search sends the phone's position (`pickup_latitude`/`pickup_longitude`) and the backend picks the stop to board at. The passenger can choose a stop instead. Without location permission, From must be a chosen stop.
+- **To** is required.
+- Stops are found by name (`GET /stops?q=`, 2 characters or more, after 300 ms without typing). Below the fields: favourite routes (a tap fills both fields), nearby stops, and the last 5 searches (kept on the phone).
+
+## 20. Fare display
+
+- **Live mode:** the backend's `fare_amount` is the main price. The crossed-out solo price and "Save X%" show only when the API provides a solo and a shared fare for the passenger's stretch (backend gap G20).
+- **Mock mode:** the full design: ₵38 crossed out, ₵14, "Save 63%".
+
+## 21. Approaching and passed vehicles
+
+The "Showing vehicles still approaching your stop" banner, the "~N min away · approaching your stop" badge, the "Passed" cards and the "Show N vehicles that already passed your stop" button appear **only when the API provides them** (backend gap G21).
+
+In live mode the badge slot shows where the passenger boards, from the search result, in the same badge style: **"Board at Accra Madina · 350 m away"**. It is left out when the result has no pickup stop. Mock mode shows the full design.
+
+## 22. Filter pills
+
+| Pill | Does |
+|---|---|
+| **Now** (default) | Departures from now, today |
+| **Schedule** | Pick a date and time; departures from then, that day |
+| **Cheapest** | Sorts the loaded results by price |
+| **Fastest** | Sorts the loaded results by arrival time (ETA), then departure |
+| **Minibus** | Shows only minibuses (`vehicle_type`) |
+
+Now and Schedule pick the time; Cheapest and Fastest pick the order (tap again for departure order); Minibus is an on/off filter. Several pills can be on at once.
+
+**"BEST MATCH"** is the first card after sorting that can still be booked (free seats, not passed).

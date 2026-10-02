@@ -143,31 +143,62 @@ class _BackButton extends StatelessWidget {
   final String label;
 
   @override
+  Widget build(BuildContext context) => Transform.translate(
+    // Keep the visible circle where the design puts it; the extra tap area
+    // spreads around it.
+    offset: const Offset(-6, 0),
+    child: TroskyHeaderIconButton(
+      semanticsLabel: label,
+      onPressed: onPressed,
+      child: TroskyIcons.back(color: TroskyColors.white),
+    ),
+  );
+}
+
+/// A round button on a dark header (P6, P7): a 36 px disc at 10 % white
+/// around [child], in a 48 px touch area.
+class TroskyHeaderIconButton extends StatelessWidget {
+  const TroskyHeaderIconButton({
+    super.key,
+    required this.semanticsLabel,
+    required this.onPressed,
+    required this.child,
+    this.selected,
+  });
+
+  final String semanticsLabel;
+  final VoidCallback? onPressed;
+  final Widget child;
+
+  /// For on/off buttons such as "save this route".
+  final bool? selected;
+
+  static const double touchSize = 48;
+
+  @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: label,
+      enabled: onPressed != null,
+      selected: selected,
+      label: semanticsLabel,
+      onTap: onPressed,
       excludeSemantics: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onPressed,
-        child: Transform.translate(
-          // Keep the visible circle where the design puts it; the extra
-          // tap area spreads around it.
-          offset: const Offset(-6, 0),
-          child: SizedBox.square(
-            dimension: 48,
-            child: Center(
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: TroskyColors.whiteA10,
-                ),
-                alignment: Alignment.center,
-                child: TroskyIcons.back(color: TroskyColors.white),
+        child: SizedBox.square(
+          dimension: touchSize,
+          child: Center(
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: TroskyColors.whiteA10,
               ),
+              alignment: Alignment.center,
+              child: child,
             ),
           ),
         ),

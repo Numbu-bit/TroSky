@@ -42,6 +42,19 @@ abstract class UserResponse with _$UserResponse {
       _$UserResponseFromJson(json);
 }
 
+/// `FavouriteRouteCreateRequest` for `POST /users/me/favourite-routes`.
+@freezed
+abstract class FavouriteRouteCreateRequest with _$FavouriteRouteCreateRequest {
+  const factory FavouriteRouteCreateRequest({
+    required String originStopId,
+    required String destinationStopId,
+    String? label,
+  }) = _FavouriteRouteCreateRequest;
+
+  factory FavouriteRouteCreateRequest.fromJson(Map<String, dynamic> json) =>
+      _$FavouriteRouteCreateRequestFromJson(json);
+}
+
 /// `FavouriteRouteResponse` from `GET /users/me/favourite-routes` (backend
 /// gap G4): a journey pinned to Home, from one stop to another.
 @freezed

@@ -114,8 +114,8 @@ Use the **Screen ID** as the screenshot filename (e.g. `S-04.png`). "Figma" is t
 | ID | Screen | Endpoints | API |
 |---|---|---|---|
 | P-01 | **Home** (P5: map, favourite routes, subscribe banner, SOS) in the passenger tab bar (decision 12). Built 1 Oct 2026. P5 has no upcoming-trip card, so `GET /bookings` isn't used yet | `GET /stops/nearby`, `GET /users/me/favourite-routes` (G4), `GET /vehicles/nearby` (G16) | ✅ banner behind `subscriptions` (G14); SOS needs G19 |
-| P-02 | Search (from, to, date, pickup near me) | `GET /stops?q=`, `GET /stops/nearby` | ✅ |
-| P-03 | Search results (pickup stop + distance) | `GET /trips/search` (+ `pickup_latitude` / `pickup_longitude`) | ✅ |
+| P-02 | **Search** (from, to, when; not in Figma, decision 19). Built 2 Oct 2026: Current location or a chosen stop, stop search, nearby stops, favourites, last 5 searches | `GET /stops?q=`, `GET /stops/nearby`, `GET /users/me/favourite-routes` | ✅ |
+| P-03 | **Search results** (P6). Built 2 Oct 2026: filter pills (decision 22), pages, save route. Live shows the trip fare and "Board at …" (decisions 20, 21) | `GET /trips/search` (+ `pickup_latitude` / `pickup_longitude`), `POST /users/me/favourite-routes` | ✅ full design waits for G20, G21 |
 | P-04 | Trip details | `GET /trips/{id}`, `GET /routes/{id}` | ✅ |
 | P-05 | Seat selection | `GET /trips/{id}/seats` | ✅ |
 | P-06 | Passenger details + booking review | `POST /bookings` | ✅ |

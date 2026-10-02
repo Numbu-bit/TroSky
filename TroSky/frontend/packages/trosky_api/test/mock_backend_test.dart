@@ -132,6 +132,167 @@ void main() {
     });
   });
 
+  group('Search (P-02, P-03)', () {
+    String id(String name) => MockBackend.stops[name]!.id;
+
+    TripSearchQuery fromNow({
+      String? origin,
+      double? lat,
+      double? lng,
+      String destination = 'Circle',
+      int offset = 0,
+    }) => TripSearchQuery(
+      originStopId: origin == null ? null : id(origin),
+      destinationStopId: id(destination),
+      pickupLatitude: lat,
+      pickupLongitude: lng,
+      travelDate: now,
+      departureAfter: Duration(hours: now.hour, minutes: now.minute),
+      offset: offset,
+    );
+
+    test('stop search: 2 characters or more, by name', () {
+      expect(code(backend.searchStops('m')), 'VALIDATION_ERROR');
+      expect(backend.searchStops('ma').valueOrNull!.map((s) => s.name), [
+        'Madina',
+        'Tema',
+      ]);
+      expect(backend.searchStops('A').failureOrNull?.statusCode, 422);
+      expect(backend.searchStops('ac').valueOrNull!.map((s) => s.name), [
+        'Accra Central',
+        'Achimota',
+      ]);
+    });
+
+    test('from now: the five P6 vehicles first, then every 15 minutes', () {
+      final page = backend.searchTrips(fromNow(origin: 'Madina')).valueOrNull!;
+      final first = page.items.take(5).toList();
+      expect(first.map((t) => t.vehicleRegistrationNumber), [
+        'GR-1190',
+        'GR-5531',
+        'GR-4821',
+        'GR-2204',
+        'GR-7743',
+      ]);
+      expect(first.map((t) => t.passedPickup), [
+        true,
+        true,
+        false,
+        false,
+        false,
+      ]);
+      expect(first.map((t) => t.pickupEtaMinutes), [null, null, 3, 7, 12]);
+      final best = first[2];
+      expect(best.scheduledDepartureAt, DateTime.utc(2026, 10, 1, 9, 3));
+      expect(best.scheduledArrivalAt, DateTime.utc(2026, 10, 1, 9, 53));
+      expect((best.soloFareAmount, best.sharedFareAmount), ('38.00', '14.00'));
+      expect(best.pickupSource, PickupSource.manual);
+      expect(best.pickupStopName, 'Madina');
+      // 09:30 onwards, every 15 minutes to 22:00.
+      expect(
+        page.items[5].scheduledDepartureAt,
+        DateTime.utc(2026, 10, 1, 9, 30),
+      );
+      expect(page.total, 5 + 51);
+      expect(page.items, hasLength(20));
+      expect(page.hasMore, isTrue);
+    });
+
+    test('pages follow on without repeats', () {
+      final a = backend.searchTrips(fromNow(origin: 'Madina')).valueOrNull!;
+      final b = backend
+          .searchTrips(fromNow(origin: 'Madina', offset: 20))
+          .valueOrNull!;
+      final c = backend
+          .searchTrips(fromNow(origin: 'Madina', offset: 40))
+          .valueOrNull!;
+      final ids = [...a.items, ...b.items, ...c.items].map((t) => t.tripId);
+      expect(ids.toSet(), hasLength(56));
+      expect(c.hasMore, isFalse);
+    });
+
+    test('a scheduled search: that day from that time, no G21 fields', () {
+      final page = backend
+          .searchTrips(
+            TripSearchQuery(
+              originStopId: id('Madina'),
+              destinationStopId: id('Circle'),
+              travelDate: DateTime.utc(2026, 10, 3),
+              departureAfter: const Duration(hours: 17),
+            ),
+          )
+          .valueOrNull!;
+      expect(
+        page.items.first.scheduledDepartureAt,
+        DateTime.utc(2026, 10, 3, 17),
+      );
+      expect(page.items.map((t) => t.passedPickup), everyElement(isNull));
+      expect(page.total, 21);
+    });
+
+    test('GPS pickup: the nearest stop within walking distance', () {
+      final madina = MockBackend.stops['Madina']!;
+      final page = backend
+          .searchTrips(
+            fromNow(lat: madina.latitude + 0.002, lng: madina.longitude),
+          )
+          .valueOrNull!;
+      expect(page.items.first.pickupSource, PickupSource.gps);
+      expect(page.items.first.pickupStopName, 'Madina');
+      expect(page.items.first.pickupDistanceM, closeTo(222, 2));
+    });
+
+    test('GPS pickup with no stop near: NO_PICKUP_NEARBY', () {
+      final result = backend.searchTrips(fromNow(lat: 6.6885, lng: -1.6244));
+      expect(code(result), 'NO_PICKUP_NEARBY');
+      expect(result.failureOrNull?.statusCode, 422);
+    });
+
+    test('same stop twice, or one coordinate only', () {
+      expect(
+        backend.searchTrips(fromNow(origin: 'Circle')).valueOrNull!.total,
+        0,
+      );
+      expect(code(backend.searchTrips(fromNow(lat: 5.6))), 'VALIDATION_ERROR');
+    });
+
+    test('saving a favourite route: created, then exists, then the limit', () {
+      final token = signIn('0241234567');
+      FavouriteRouteCreateRequest route(String from, String to) =>
+          FavouriteRouteCreateRequest(
+            originStopId: id(from),
+            destinationStopId: id(to),
+          );
+      final saved = backend.addFavouriteRoute(token, route('Osu', 'Tema'));
+      expect(saved.valueOrNull?.originStopName, 'Osu');
+      expect(
+        code(backend.addFavouriteRoute(token, route('Osu', 'Tema'))),
+        'FAVOURITE_ROUTE_EXISTS',
+      );
+      expect(
+        backend
+            .listFavouriteRoutes(token)
+            .valueOrNull!
+            .last
+            .destinationStopName,
+        'Tema',
+      );
+      // 5 saved; 15 more reach 20.
+      final names = MockBackend.stops.keys.toList();
+      var added = 0;
+      for (final from in names) {
+        for (final to in names) {
+          if (added == 15 || from == to) continue;
+          if (backend.addFavouriteRoute(token, route(from, to)).isOk) added++;
+        }
+      }
+      expect(
+        code(backend.addFavouriteRoute(token, route('Lapaz', 'Accra Central'))),
+        'FAVOURITE_ROUTES_LIMIT',
+      );
+    });
+  });
+
   group('register', () {
     test('a new phone gets a code by SMS, sent to the E.164 number', () {
       final result = backend.register(newPassenger());

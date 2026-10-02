@@ -6,6 +6,7 @@ export 'src/client/api_client.dart';
 export 'src/client/interceptors.dart';
 export 'src/dto/auth_dto.dart';
 export 'src/dto/driver_dto.dart';
+export 'src/dto/paginated.dart';
 export 'src/dto/route_dto.dart';
 export 'src/dto/tracking_dto.dart';
 export 'src/dto/user_dto.dart';

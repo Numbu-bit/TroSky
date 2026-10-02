@@ -42,8 +42,9 @@ Future<TestWorld> openHome(
 /// except vehicles, which come from [tracking].
 ({Env env, List<Object> overrides}) liveMode(
   TestWorld world,
-  TrackingRepository tracking,
-) => (
+  TrackingRepository tracking, {
+  RouteRepository? routes,
+}) => (
   env: Env.parse(
     apiBaseUrl: 'http://localhost:8000/api/v1',
     wsBaseUrl: '',
@@ -63,7 +64,7 @@ Future<TestWorld> openHome(
       ),
     ),
     routeRepositoryProvider.overrideWith(
-      (ref) => MockRouteRepository(world.backend),
+      (ref) => routes ?? MockRouteRepository(world.backend),
     ),
     driverRepositoryProvider.overrideWith(
       (ref) => MockDriverRepository(
@@ -125,6 +126,11 @@ class FlakyFavourites implements UserRepository {
 
   @override
   Future<Result<UserResponse>> getMe() => _inner.getMe();
+
+  @override
+  Future<Result<FavouriteRouteResponse>> addFavouriteRoute(
+    FavouriteRouteCreateRequest request,
+  ) => _inner.addFavouriteRoute(request);
 
   @override
   Future<Result<List<FavouriteRouteResponse>>> listFavouriteRoutes() async {

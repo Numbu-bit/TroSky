@@ -612,6 +612,275 @@ $UserProfileResponseCopyWith<$Res>? get profile {
 
 
 /// @nodoc
+mixin _$FavouriteRouteCreateRequest {
+
+ String get originStopId; String get destinationStopId; String? get label;
+/// Create a copy of FavouriteRouteCreateRequest
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$FavouriteRouteCreateRequestCopyWith<FavouriteRouteCreateRequest> get copyWith => _$FavouriteRouteCreateRequestCopyWithImpl<FavouriteRouteCreateRequest>(this as FavouriteRouteCreateRequest, _$identity);
+
+  /// Serializes this FavouriteRouteCreateRequest to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is FavouriteRouteCreateRequest&&(identical(other.originStopId, originStopId) || other.originStopId == originStopId)&&(identical(other.destinationStopId, destinationStopId) || other.destinationStopId == destinationStopId)&&(identical(other.label, label) || other.label == label));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,originStopId,destinationStopId,label);
+
+@override
+String toString() {
+  return 'FavouriteRouteCreateRequest(originStopId: $originStopId, destinationStopId: $destinationStopId, label: $label)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $FavouriteRouteCreateRequestCopyWith<$Res>  {
+  factory $FavouriteRouteCreateRequestCopyWith(FavouriteRouteCreateRequest value, $Res Function(FavouriteRouteCreateRequest) _then) = _$FavouriteRouteCreateRequestCopyWithImpl;
+@useResult
+$Res call({
+ String originStopId, String destinationStopId, String? label
+});
+
+
+
+
+}
+/// @nodoc
+class _$FavouriteRouteCreateRequestCopyWithImpl<$Res>
+    implements $FavouriteRouteCreateRequestCopyWith<$Res> {
+  _$FavouriteRouteCreateRequestCopyWithImpl(this._self, this._then);
+
+  final FavouriteRouteCreateRequest _self;
+  final $Res Function(FavouriteRouteCreateRequest) _then;
+
+/// Create a copy of FavouriteRouteCreateRequest
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? originStopId = null,Object? destinationStopId = null,Object? label = freezed,}) {
+  return _then(FavouriteRouteCreateRequest(
+originStopId: null == originStopId ? _self.originStopId : originStopId // ignore: cast_nullable_to_non_nullable
+as String,destinationStopId: null == destinationStopId ? _self.destinationStopId : destinationStopId // ignore: cast_nullable_to_non_nullable
+as String,label: freezed == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [FavouriteRouteCreateRequest].
+extension FavouriteRouteCreateRequestPatterns on FavouriteRouteCreateRequest {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _FavouriteRouteCreateRequest value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _FavouriteRouteCreateRequest() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _FavouriteRouteCreateRequest value)  $default,){
+final _that = this;
+switch (_that) {
+case _FavouriteRouteCreateRequest():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _FavouriteRouteCreateRequest value)?  $default,){
+final _that = this;
+switch (_that) {
+case _FavouriteRouteCreateRequest() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String originStopId,  String destinationStopId,  String? label)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _FavouriteRouteCreateRequest() when $default != null:
+return $default(_that.originStopId,_that.destinationStopId,_that.label);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String originStopId,  String destinationStopId,  String? label)  $default,) {final _that = this;
+switch (_that) {
+case _FavouriteRouteCreateRequest():
+return $default(_that.originStopId,_that.destinationStopId,_that.label);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String originStopId,  String destinationStopId,  String? label)?  $default,) {final _that = this;
+switch (_that) {
+case _FavouriteRouteCreateRequest() when $default != null:
+return $default(_that.originStopId,_that.destinationStopId,_that.label);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _FavouriteRouteCreateRequest implements FavouriteRouteCreateRequest {
+  const _FavouriteRouteCreateRequest({required this.originStopId, required this.destinationStopId, this.label});
+  factory _FavouriteRouteCreateRequest.fromJson(Map<String, dynamic> json) => _$FavouriteRouteCreateRequestFromJson(json);
+
+@override final  String originStopId;
+@override final  String destinationStopId;
+@override final  String? label;
+
+/// Create a copy of FavouriteRouteCreateRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$FavouriteRouteCreateRequestCopyWith<_FavouriteRouteCreateRequest> get copyWith => __$FavouriteRouteCreateRequestCopyWithImpl<_FavouriteRouteCreateRequest>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$FavouriteRouteCreateRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _FavouriteRouteCreateRequest&&(identical(other.originStopId, originStopId) || other.originStopId == originStopId)&&(identical(other.destinationStopId, destinationStopId) || other.destinationStopId == destinationStopId)&&(identical(other.label, label) || other.label == label));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,originStopId,destinationStopId,label);
+
+@override
+String toString() {
+  return 'FavouriteRouteCreateRequest(originStopId: $originStopId, destinationStopId: $destinationStopId, label: $label)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$FavouriteRouteCreateRequestCopyWith<$Res> implements $FavouriteRouteCreateRequestCopyWith<$Res> {
+  factory _$FavouriteRouteCreateRequestCopyWith(_FavouriteRouteCreateRequest value, $Res Function(_FavouriteRouteCreateRequest) _then) = __$FavouriteRouteCreateRequestCopyWithImpl;
+@override @useResult
+$Res call({
+ String originStopId, String destinationStopId, String? label
+});
+
+
+
+
+}
+/// @nodoc
+class __$FavouriteRouteCreateRequestCopyWithImpl<$Res>
+    implements _$FavouriteRouteCreateRequestCopyWith<$Res> {
+  __$FavouriteRouteCreateRequestCopyWithImpl(this._self, this._then);
+
+  final _FavouriteRouteCreateRequest _self;
+  final $Res Function(_FavouriteRouteCreateRequest) _then;
+
+/// Create a copy of FavouriteRouteCreateRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? originStopId = null,Object? destinationStopId = null,Object? label = freezed,}) {
+  return _then(_FavouriteRouteCreateRequest(
+originStopId: null == originStopId ? _self.originStopId : originStopId // ignore: cast_nullable_to_non_nullable
+as String,destinationStopId: null == destinationStopId ? _self.destinationStopId : destinationStopId // ignore: cast_nullable_to_non_nullable
+as String,label: freezed == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
 mixin _$FavouriteRouteResponse {
 
  String get id; String get originStopId; String get originStopName; String get destinationStopId; String get destinationStopName;/// The passenger's own name for it, e.g. "Home to work".

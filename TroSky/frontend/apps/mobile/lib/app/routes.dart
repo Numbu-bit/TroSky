@@ -12,6 +12,10 @@ import '../entry/onboarding/presentation/onboarding_screen.dart';
 import '../entry/splash/presentation/splash_screen.dart';
 import '../l10n/app_localizations.dart';
 import '../passenger/home/presentation/home_screen.dart';
+import '../passenger/search/domain/journey.dart';
+import '../passenger/search/presentation/search_results_screen.dart';
+import '../passenger/search/presentation/search_screen.dart';
+import '../passenger/search/presentation/trip_view.dart';
 import '../passenger/search/search_prefill.dart';
 import '../passenger/shell/passenger_shell.dart';
 import 'placeholder_screen.dart';
@@ -44,6 +48,12 @@ enum AppRoute {
   /// Opened over the tabs, from Home. Placeholders until built.
   /// Search (P-02); `extra` may be a [SearchPrefill].
   search('/search'),
+
+  /// Search Results (P-03); `extra` is a [JourneySearch].
+  searchResults('/search/results'),
+
+  /// Seat Selection (P-05, placeholder); `extra` is a [SeatSelectionArgs].
+  seatSelection('/seats'),
   notifications('/notifications'),
   favouriteRoutes('/favourite-routes'),
   subscribe('/subscribe'),
@@ -135,21 +145,42 @@ GoRouter router(Ref ref) {
           ),
         ],
       ),
-      route(AppRoute.search, (context, state) {
-        final prefill = state.extra is SearchPrefill
-            ? state.extra! as SearchPrefill
-            : null;
-        final l10n = AppLocalizations.of(context);
-        return PushedPlaceholder(
-          title: l10n.placeholderSearch,
-          detail: prefill == null
-              ? null
-              : l10n.placeholderSearchRoute(
-                  prefill.originStopName,
-                  prefill.destinationStopName,
-                ),
-        );
-      }),
+      route(
+        AppRoute.search,
+        (context, state) => SearchScreen(
+          prefill: state.extra is SearchPrefill
+              ? state.extra! as SearchPrefill
+              : null,
+        ),
+      ),
+      GoRoute(
+        path: AppRoute.searchResults.path,
+        name: AppRoute.searchResults.name,
+        // The search only travels in memory; without it, start again.
+        redirect: (context, state) =>
+            state.extra is JourneySearch ? null : AppRoute.search.path,
+        builder: (context, state) =>
+            SearchResultsScreen(search: state.extra! as JourneySearch),
+      ),
+      GoRoute(
+        path: AppRoute.seatSelection.path,
+        name: AppRoute.seatSelection.name,
+        redirect: (context, state) =>
+            state.extra is SeatSelectionArgs ? null : AppRoute.home.path,
+        builder: (context, state) {
+          final args = state.extra! as SeatSelectionArgs;
+          final l10n = AppLocalizations.of(context);
+          return PushedPlaceholder(
+            title: l10n.placeholderSeats,
+            detail: l10n.placeholderSeatsTrip(
+              vehicleLabel(l10n, args.trip.vehicleType),
+              clockTime(args.trip.scheduledDepartureAt),
+              args.boardingStopName,
+              args.alightingStop.name,
+            ),
+          );
+        },
+      ),
       for (final (pushed, title)
           in <(AppRoute, String Function(AppLocalizations))>[
             (AppRoute.notifications, (l10n) => l10n.placeholderNotifications),

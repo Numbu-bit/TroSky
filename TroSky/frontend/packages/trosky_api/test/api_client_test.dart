@@ -384,6 +384,123 @@ void main() {
       expect(vehicle.availableSeats, 5);
     });
 
+    test('GET /trips/search: query names and formats; Decimal fare as sent; '
+        'G20/G21 fields absent → null', () async {
+      final adapter = FakeAdapter(
+        (_) async => const FakeReply(200, {
+          'items': [
+            {
+              'trip_id': 't1',
+              'route_id': 'r1',
+              'route_name': 'Madina - Circle',
+              'origin_stop_id': 's1',
+              'destination_stop_id': 's4',
+              'scheduled_departure_at': '2026-10-02T07:15:00Z',
+              'scheduled_arrival_at': null,
+              'estimated_duration_minutes': 45,
+              'distance_km': '14.00',
+              'fare_amount': '8.00',
+              'status': 'scheduled',
+              'available_seats': 12,
+              'vehicle_registration_number': 'GT 4402-26',
+              'vehicle_type': 'minibus',
+              'pickup_stop_id': 's1',
+              'pickup_stop_name': 'Accra Madina',
+              'pickup_distance_m': 350.4,
+              'pickup_source': 'gps',
+            },
+          ],
+          'total': 21,
+          'limit': 20,
+          'offset': 0,
+        }),
+      );
+      final page = await LiveRouteRepository(dio(adapter)).searchTrips(
+        TripSearchQuery(
+          destinationStopId: 's4',
+          travelDate: DateTime.utc(2026, 10, 2),
+          departureAfter: const Duration(hours: 7, minutes: 5, seconds: 9),
+          pickupLatitude: 5.67,
+          pickupLongitude: -0.166,
+        ),
+      );
+
+      final request = adapter.requests.single;
+      expect(request.path, '/trips/search');
+      expect(request.queryParameters, {
+        'destination_stop_id': 's4',
+        'travel_date': '2026-10-02',
+        'departure_after': '07:05:09',
+        'pickup_latitude': 5.67,
+        'pickup_longitude': -0.166,
+        'limit': 20,
+        'offset': 0,
+      });
+      expect(request.headers['Authorization'], isNull);
+      final trip = page.valueOrNull!.items.single;
+      expect(trip.fareAmount, '8.00');
+      expect(trip.distanceKm, 14);
+      expect(trip.vehicleType, VehicleType.minibus);
+      expect(trip.pickupSource, PickupSource.gps);
+      expect(trip.soloFareAmount, isNull);
+      expect(trip.pickupEtaMinutes, isNull);
+      expect(page.valueOrNull!.hasMore, isTrue);
+    });
+
+    test('GET /stops?q= reads the page of stops', () async {
+      final adapter = FakeAdapter(
+        (_) async => const FakeReply(200, {
+          'items': [
+            {
+              'id': 's1',
+              'name': 'Accra Madina',
+              'code': 'ACC-MAD',
+              'address': null,
+              'city': 'Accra',
+              'region': null,
+              'latitude': 5.6687,
+              'longitude': -0.1664,
+            },
+          ],
+          'total': 1,
+          'limit': 20,
+          'offset': 0,
+        }),
+      );
+      final stops = await LiveRouteRepository(
+        dio(adapter),
+      ).searchStops(' mad ');
+      expect(adapter.requests.single.queryParameters, {
+        'q': 'mad',
+        'limit': 20,
+      });
+      expect(stops.valueOrNull?.single.code, 'ACC-MAD');
+    });
+
+    test('POST /users/me/favourite-routes sends only what is set', () async {
+      final adapter = FakeAdapter(
+        (_) async => const FakeReply(201, {
+          'id': 'f1',
+          'origin_stop_id': 's1',
+          'origin_stop_name': 'Accra Madina',
+          'destination_stop_id': 's4',
+          'destination_stop_name': 'Accra Circle',
+          'label': null,
+          'created_at': '2026-10-02T09:00:00Z',
+        }),
+      );
+      await LiveUserRepository(dio(adapter)).addFavouriteRoute(
+        const FavouriteRouteCreateRequest(
+          originStopId: 's1',
+          destinationStopId: 's4',
+        ),
+      );
+      expect(adapter.requests.single.data, {
+        'origin_stop_id': 's1',
+        'destination_stop_id': 's4',
+      });
+    });
+
     test('GET /users/me/favourite-routes', () async {
       final adapter = FakeAdapter(
         (_) async => const FakeReply(200, [

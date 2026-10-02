@@ -12,3 +12,6 @@ coverage/
 # committed. Copy one to env/<name>.json and edit it locally.
 env/*.json
 !env/*.example.json
+
+# Images flutter_test writes when a golden doesn't match.
+**/test/failures/
