@@ -4,6 +4,7 @@ import 'package:mobile/entry/auth/presentation/sign_in_screen.dart';
 import 'package:mobile/entry/onboarding/presentation/onboarding_screen.dart';
 import 'package:mobile/entry/splash/presentation/launch_destination_provider.dart';
 import 'package:mobile/entry/splash/presentation/splash_screen.dart';
+import 'package:mobile/passenger/home/presentation/home_screen.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
 import '../../helpers/fakes.dart';
@@ -64,14 +65,13 @@ void main() {
         tester,
         onboardingSeen: true,
         hasSession: true,
-        destination: find.text('home'),
+        destination: find.byType(HomeScreen),
       );
     });
   });
 
-  testWidgets('status bar: light icons on the splash, dark on the next '
-      'screen', (tester) async {
-    // Signed in: the next screen is the light home placeholder.
+  testWidgets('status bar: light icons on the splash and on Home; Home\'s '
+      'white tab bar makes the navigation bar icons dark', (tester) async {
     await tester.pumpWidget(
       testApp(onboarding: FakeOnboardingStore(seen: true), signedIn: true),
     );
@@ -79,8 +79,12 @@ void main() {
 
     await tester.pump(splashMinimumDuration);
     await tester.pumpAndSettle();
-    expect(find.text('home'), findsOneWidget);
-    expect(SystemChrome.latestStyle, TroskySystemUi.darkIcons);
+    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(SystemChrome.latestStyle?.statusBarIconBrightness, Brightness.light);
+    expect(
+      SystemChrome.latestStyle?.systemNavigationBarIconBrightness,
+      Brightness.dark,
+    );
   });
 
   group('loading dots', () {

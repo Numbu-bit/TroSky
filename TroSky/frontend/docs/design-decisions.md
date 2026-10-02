@@ -15,6 +15,13 @@ Product decisions that settle questions the Figma Make file leaves open. These r
 | 9 | Offline start | 1 Oct 2026 | In force (`SessionController`) |
 | 10 | OTP sign-in | 1 Oct 2026 | In force (Sign in screen) |
 | 11 | Welcome button label | 1 Oct 2026 | In force (Welcome screen) |
+| 12 | Passenger navigation | 1 Oct 2026 | In force (`PassengerShell`, `TroskyTabBar`) |
+| 13 | Map | 1 Oct 2026 | In force (`HomeMap`); needs a tile provider before launch |
+| 14 | Vehicle pins | 1 Oct 2026 | In force; G16 landed, so live mode shows real vehicles |
+| 15 | Favourite routes | 1 Oct 2026 | In force; G4 landed, so they come from the backend |
+| 16 | Subscribe banner | 1 Oct 2026 | In force (`Feature.subscriptions`) |
+| 17 | Emoji | 1 Oct 2026 | In force |
+| 18 | SOS on Home | 1 Oct 2026 | In force (SOS placeholder); backend gap G19 |
 
 ## 1. Logo
 
@@ -94,7 +101,7 @@ The illustration labels ("YOUR SEAT", "price drops", "July 2026" and so on) stay
 
 ## 9. Offline start
 
-**When the app starts with a saved session but no network, it opens Home in an offline state.** The last `GET /users/me` is cached on the device so Home can show who is signed in. Home is a placeholder for now, with an offline banner.
+**When the app starts with a saved session but no network, it opens Home in an offline state.** The last `GET /users/me` is cached on the device so Home can show who is signed in, with an offline banner and a Retry.
 
 The app signs the user out **only when the backend rejects the session**:
 - 401 on refresh (including `REFRESH_TOKEN_REUSE_DETECTED`)
@@ -111,3 +118,43 @@ The backend sends nothing to a number with no account but answers the same way (
 ## 11. Welcome button label
 
 The Welcome screen's main button says **"Continue"** instead of the design's "Send OTP", because no code is sent at that step. The code is only sent after "Your details" (decision 6). Everything else on the Welcome screen follows the design.
+
+## 12. Passenger navigation
+
+The passenger app has a **bottom tab bar: Home, Trips, Wallet, Profile.** The passenger designs have no tab bar, so it is styled exactly like the one in Driver Home (D1): emoji over a 10 px label, green for the selected tab with a 16 × 3 bar under it. Wallet takes D1's 💰, which D1 uses for Earnings.
+
+Trips, Wallet and Profile are placeholders for now. "Sign out" is on the Profile placeholder. Android back on Home leaves the app; on another tab it goes back to Home first.
+
+## 13. Map
+
+The map is **flutter_map with OpenStreetMap tiles**, because the design embeds OpenStreetMap. The tile URL comes from the build settings (`MAP_TILE_URL`, see `env/README.md`), and the map always shows "© OpenStreetMap contributors".
+
+**The public OpenStreetMap tiles are for development only.** Their usage policy doesn't allow an app's production traffic, so a tile provider (hosted or our own) is needed before launch. Changing `MAP_TILE_URL` is enough to switch.
+
+## 14. Vehicle pins
+
+The Home map shows vehicles as the design's `BusPin` (Shared.tsx): green, or amber when 2 seats or fewer are free.
+
+- **Mock mode:** the mock backend places three vehicles around the map centre, where the design draws them.
+- **Live mode:** only vehicles from `GET /vehicles/nearby` (backend gap G16). **Never show invented vehicles in live mode.**
+
+G16 landed in backend 0.12.0 (1 Oct 2026), so live mode shows real vehicles out on trips with a GPS ping from the last 5 minutes. With none, the map has no pins.
+
+## 15. Favourite routes
+
+The rule was: keep favourite routes on the device until backend gap G4 exists; when there are none, show a short empty line instead of the chips.
+
+G4 landed in backend 0.12.0 (1 Oct 2026), so favourites come from `GET /users/me/favourite-routes`. The last list is kept on the device for offline starts. The empty line still applies.
+
+## 16. Subscribe banner
+
+The "Subscribe your commute" banner on Home is behind the feature flag `subscriptions` (`FEATURES` in the build settings). By default it is **on in mock mode and off in live mode**, because the backend has no subscriptions (gap G14) and the product decision is still open.
+
+## 17. Emoji
+
+The design's emoji stay exactly as drawn (👋, 🔔, the tab bar's 🏠 🗺️ 💰 👤, and so on). They render with the phone's emoji font.
+
+## 18. SOS on Home
+
+The SOS button on the Home map opens the SOS screen (a placeholder for now). The backend can only raise an SOS for a trip (`POST /trips/{trip_id}/sos`), but the Home design shows SOS at all times, so backend gap G19 asks for an SOS without an active trip.
+

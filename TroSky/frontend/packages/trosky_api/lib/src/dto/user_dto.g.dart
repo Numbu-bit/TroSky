@@ -60,3 +60,27 @@ Map<String, dynamic> _$UserResponseToJson(_UserResponse instance) =>
       'created_at': instance.createdAt.toIso8601String(),
       'profile': ?instance.profile?.toJson(),
     };
+
+_FavouriteRouteResponse _$FavouriteRouteResponseFromJson(
+  Map<String, dynamic> json,
+) => _FavouriteRouteResponse(
+  id: json['id'] as String,
+  originStopId: json['origin_stop_id'] as String,
+  originStopName: json['origin_stop_name'] as String,
+  destinationStopId: json['destination_stop_id'] as String,
+  destinationStopName: json['destination_stop_name'] as String,
+  label: json['label'] as String?,
+  createdAt: DateTime.parse(json['created_at'] as String),
+);
+
+Map<String, dynamic> _$FavouriteRouteResponseToJson(
+  _FavouriteRouteResponse instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'origin_stop_id': instance.originStopId,
+  'origin_stop_name': instance.originStopName,
+  'destination_stop_id': instance.destinationStopId,
+  'destination_stop_name': instance.destinationStopName,
+  'label': ?instance.label,
+  'created_at': instance.createdAt.toIso8601String(),
+};

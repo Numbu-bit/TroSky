@@ -82,6 +82,29 @@ DriverRepository driverRepository(Ref ref) =>
       ),
     };
 
+/// Stops and routes. The mock answers from fixed Accra stops.
+@Riverpod(keepAlive: true)
+RouteRepository routeRepository(Ref ref) =>
+    switch (ref.watch(envProvider).apiMode) {
+      ApiMode.live => LiveRouteRepository(ref.watch(apiClientProvider)),
+      ApiMode.mock => MockRouteRepository(
+        ref.watch(mockBackendProvider),
+        latency: ref.watch(mockLatencyProvider),
+      ),
+    };
+
+/// Live vehicle positions. Only the mock invents vehicles (decision 14).
+@Riverpod(keepAlive: true)
+TrackingRepository trackingRepository(Ref ref) =>
+    switch (ref.watch(envProvider).apiMode) {
+      ApiMode.live => LiveTrackingRepository(ref.watch(apiClientProvider)),
+      ApiMode.mock => MockTrackingRepository(
+        ref.watch(mockBackendProvider),
+        tokens: () => ref.read(tokenManagerProvider),
+        latency: ref.watch(mockLatencyProvider),
+      ),
+    };
+
 @Riverpod(keepAlive: true)
 UserCache userCache(Ref ref) =>
     SharedPreferencesUserCache(SharedPreferencesAsync());

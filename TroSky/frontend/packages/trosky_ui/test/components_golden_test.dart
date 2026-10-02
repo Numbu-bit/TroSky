@@ -427,4 +427,127 @@ void main() {
       ),
     );
   });
+
+  testWidgets('Tab bar (D1): Home selected, then Wallet', (tester) async {
+    const items = [
+      TroskyTabItem(emoji: '🏠', label: 'Home'),
+      TroskyTabItem(emoji: '🗺️', label: 'Trips'),
+      TroskyTabItem(emoji: '💰', label: 'Wallet'),
+      TroskyTabItem(emoji: '👤', label: 'Profile'),
+    ];
+    await _golden(
+      tester,
+      'tab_bar',
+      Column(
+        children: [
+          TroskyTabBar(items: items, currentIndex: 0, onSelected: (_) {}),
+          const SizedBox(height: 16),
+          TroskyTabBar(items: items, currentIndex: 2, onSelected: (_) {}),
+        ],
+      ),
+      width: 360,
+    );
+  });
+
+  testWidgets('Map markers (P5): bus pins, location dot, buttons', (
+    tester,
+  ) async {
+    await _golden(
+      tester,
+      'map_markers',
+      Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                TroskyBusPin(seats: 5),
+                TroskyBusPin(seats: 12),
+                TroskyBusPin(seats: 2, amber: true),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                const TroskyLocationDot(),
+                TroskyMyLocationButton(
+                  semanticsLabel: 'My location',
+                  onPressed: () {},
+                ),
+                TroskySosButton(
+                  label: 'SOS',
+                  semanticsLabel: 'SOS',
+                  onPressed: () {},
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      width: 360,
+    );
+  });
+
+  testWidgets('Home sheet parts (P5): search bar, chips, promo, skeleton', (
+    tester,
+  ) async {
+    await _golden(
+      tester,
+      'home_components',
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            decoration: BoxDecoration(gradient: TroskyGradients.navyHeader),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+            child: TroskySearchBar(
+              hint: 'Where are you going?',
+              trailing: 'Now',
+              onPressed: () {},
+            ),
+          ),
+          Container(
+            color: TroskyColors.surface,
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const TroskySheetHandle(),
+                const SizedBox(height: 14),
+                const Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    TroskyRouteChip(label: 'Madina → Circle'),
+                    TroskyRouteChip(label: 'Legon → Osu'),
+                    TroskyRouteChip(label: 'Achimota → Tema'),
+                    TroskyRouteChip(label: 'Kaneshie → Lapaz'),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                const Wrap(
+                  spacing: 8,
+                  children: [
+                    TroskySkeleton(width: 110, height: 34, radius: 20),
+                    TroskySkeleton(width: 90, height: 34, radius: 20),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                TroskyPromoBanner(
+                  eyebrow: 'NEW FEATURE',
+                  title: 'Subscribe your commute',
+                  body: 'Save up to 40% with a monthly plan',
+                  action: 'Try it',
+                  onPressed: () {},
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      width: 360,
+    );
+  });
 }

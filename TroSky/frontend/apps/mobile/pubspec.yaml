@@ -28,6 +28,10 @@ dependencies:
     path: ../../packages/trosky_core
   trosky_ui:
     path: ../../packages/trosky_ui
+  flutter_map: 8.3.2
+  latlong2: 0.10.1
+  geolocator: 14.1.1
+  url_launcher: 6.3.2
 
 dev_dependencies:
   flutter_test:

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/entry/auth/presentation/verify_code_screen.dart';
+import 'package:mobile/passenger/home/presentation/home_screen.dart';
 import 'package:mobile/entry/auth/presentation/welcome_screen.dart';
 import 'package:trosky_api/trosky_api.dart';
 import 'package:trosky_auth/trosky_auth.dart';
@@ -83,7 +84,7 @@ void main() {
       );
 
       await typeCode(tester, MockBackend.otpCode);
-      expect(find.text('home'), findsOneWidget);
+      expect(find.byType(HomeScreen), findsOneWidget);
       expect(world.tokens.token, isNotNull);
       expect(world.cache.user?.phoneNumber, '+233551234567');
     });
@@ -130,7 +131,7 @@ void main() {
       await openDetails(tester);
       await submitDetails(tester);
       await typeCode(tester, '123 456');
-      expect(find.text('home'), findsOneWidget);
+      expect(find.byType(HomeScreen), findsOneWidget);
     });
   });
 
@@ -138,7 +139,7 @@ void main() {
     testWidgets('an existing passenger signs in to home', (tester) async {
       await openSignIn(tester);
       await signIn(tester);
-      expect(find.text('home'), findsOneWidget);
+      expect(find.byType(HomeScreen), findsOneWidget);
     });
 
     testWidgets('with email', (tester) async {
@@ -150,7 +151,7 @@ void main() {
         MockBackend.seedPassword,
       );
       await tapVisible(tester, find.text('Sign in'));
-      expect(find.text('home'), findsOneWidget);
+      expect(find.byType(HomeScreen), findsOneWidget);
     });
 
     testWidgets('a wrong password', (tester) async {
@@ -232,7 +233,7 @@ void main() {
       expect(find.text('Resend code in 60 s'), findsOneWidget);
 
       await typeCode(tester, MockBackend.otpCode);
-      expect(find.text('home'), findsOneWidget);
+      expect(find.byType(HomeScreen), findsOneWidget);
     });
 
     testWidgets('an unverified account inside the cooldown waits it out', (

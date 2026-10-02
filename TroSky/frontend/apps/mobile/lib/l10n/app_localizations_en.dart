@@ -353,4 +353,163 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get signOut => 'Sign out';
+
+  @override
+  String get tabHome => 'Home';
+
+  @override
+  String get tabTrips => 'Trips';
+
+  @override
+  String get tabWallet => 'Wallet';
+
+  @override
+  String get tabProfile => 'Profile';
+
+  @override
+  String get homeGreetingMorning => 'Good morning';
+
+  @override
+  String get homeGreetingAfternoon => 'Good afternoon';
+
+  @override
+  String get homeGreetingEvening => 'Good evening';
+
+  @override
+  String homeName(String name) {
+    return '$name 👋';
+  }
+
+  @override
+  String get homeNameFallback => 'Welcome 👋';
+
+  @override
+  String get homeLocationFallback => 'Accra';
+
+  @override
+  String homeLocationLabel(String place) {
+    return 'Your area: $place';
+  }
+
+  @override
+  String get homeLocationLoading => 'Finding your area';
+
+  @override
+  String get homeNotifications => 'Notifications';
+
+  @override
+  String get homeSearchHint => 'Where are you going?';
+
+  @override
+  String get homeSearchNow => 'Now';
+
+  @override
+  String get homeMyLocation => 'My location';
+
+  @override
+  String get homeSos => 'SOS';
+
+  @override
+  String get homeSosLabel => 'SOS, emergency help';
+
+  @override
+  String get homeYouAreHere => 'You are here';
+
+  @override
+  String homeVehicle(String route, int seats) {
+    String _temp0 = intl.Intl.pluralLogic(
+      seats,
+      locale: localeName,
+      other: '$seats seats free',
+      one: '1 seat free',
+    );
+    return '$route, $_temp0';
+  }
+
+  @override
+  String get homeVehiclesError => 'Couldn\'t load vehicles';
+
+  @override
+  String get homeMapLoading => 'Loading map';
+
+  @override
+  String get homeFavouriteRoutes => 'Favourite Routes';
+
+  @override
+  String get homeSeeAll => 'See all';
+
+  @override
+  String homeRoute(String origin, String destination) {
+    return '$origin → $destination';
+  }
+
+  @override
+  String get homeFavouritesEmpty => 'No favourite routes yet.';
+
+  @override
+  String get homeFavouritesError => 'Couldn\'t load your favourite routes.';
+
+  @override
+  String get homeFavouritesLoading => 'Loading favourite routes';
+
+  @override
+  String get homePromoEyebrow => 'NEW FEATURE';
+
+  @override
+  String get homePromoTitle => 'Subscribe your commute';
+
+  @override
+  String get homePromoBody => 'Save up to 40% with a monthly plan';
+
+  @override
+  String get homePromoAction => 'Try it';
+
+  @override
+  String get homeLocationPromptTitle => 'See rides near you';
+
+  @override
+  String get homeLocationPromptBody =>
+      'TroSky uses your location to show the nearest stop and the vehicles around you. You can still search for trips without it.';
+
+  @override
+  String get homeLocationAllow => 'Allow location';
+
+  @override
+  String get homeLocationNotNow => 'Not now';
+
+  @override
+  String get homeLocationBlocked =>
+      'Location is off for TroSky. Turn it on in Settings.';
+
+  @override
+  String get homeLocationServiceOff => 'Your phone\'s location is off.';
+
+  @override
+  String get homeLocationNotFound => 'Couldn\'t find your location.';
+
+  @override
+  String get homeOpenSettings => 'Settings';
+
+  @override
+  String get placeholderSearch => 'Search';
+
+  @override
+  String placeholderSearchRoute(String origin, String destination) {
+    return 'From $origin to $destination';
+  }
+
+  @override
+  String get placeholderNotifications => 'Notifications';
+
+  @override
+  String get placeholderFavouriteRoutes => 'Favourite Routes';
+
+  @override
+  String get placeholderSubscribe => 'Subscribe';
+
+  @override
+  String get placeholderSos => 'SOS';
+
+  @override
+  String get placeholderSoon => 'This screen is coming soon.';
 }

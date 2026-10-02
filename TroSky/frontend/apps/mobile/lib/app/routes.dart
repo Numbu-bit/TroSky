@@ -10,6 +10,10 @@ import '../entry/auth/presentation/verify_code_screen.dart';
 import '../entry/auth/presentation/welcome_screen.dart';
 import '../entry/onboarding/presentation/onboarding_screen.dart';
 import '../entry/splash/presentation/splash_screen.dart';
+import '../l10n/app_localizations.dart';
+import '../passenger/home/presentation/home_screen.dart';
+import '../passenger/search/search_prefill.dart';
+import '../passenger/shell/passenger_shell.dart';
 import 'placeholder_screen.dart';
 
 part 'routes.g.dart';
@@ -31,7 +35,19 @@ enum AppRoute {
   /// S-05; `extra` may be a [SignInArgs].
   signIn('/sign-in'),
 
+  /// The passenger tabs (decision 12): Home (P-01), then placeholders.
   home('/home'),
+  trips('/trips'),
+  wallet('/wallet'),
+  profile('/profile'),
+
+  /// Opened over the tabs, from Home. Placeholders until built.
+  /// Search (P-02); `extra` may be a [SearchPrefill].
+  search('/search'),
+  notifications('/notifications'),
+  favouriteRoutes('/favourite-routes'),
+  subscribe('/subscribe'),
+  sos('/sos'),
 
   /// D-01, driver registration (placeholder).
   driverOnboarding('/driver/onboarding'),
@@ -82,9 +98,75 @@ GoRouter router(Ref ref) {
               : const SignInArgs(),
         ),
       ),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, shell) => PassengerShell(shell: shell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              route(AppRoute.home, (context, state) => const HomeScreen()),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              route(
+                AppRoute.trips,
+                (context, state) =>
+                    PlaceholderScreen(routeName: AppRoute.trips.name),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              route(
+                AppRoute.wallet,
+                (context, state) =>
+                    PlaceholderScreen(routeName: AppRoute.wallet.name),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              route(
+                AppRoute.profile,
+                (context, state) =>
+                    SignedInPlaceholder(routeName: AppRoute.profile.name),
+              ),
+            ],
+          ),
+        ],
+      ),
+      route(AppRoute.search, (context, state) {
+        final prefill = state.extra is SearchPrefill
+            ? state.extra! as SearchPrefill
+            : null;
+        final l10n = AppLocalizations.of(context);
+        return PushedPlaceholder(
+          title: l10n.placeholderSearch,
+          detail: prefill == null
+              ? null
+              : l10n.placeholderSearchRoute(
+                  prefill.originStopName,
+                  prefill.destinationStopName,
+                ),
+        );
+      }),
+      for (final (pushed, title)
+          in <(AppRoute, String Function(AppLocalizations))>[
+            (AppRoute.notifications, (l10n) => l10n.placeholderNotifications),
+            (
+              AppRoute.favouriteRoutes,
+              (l10n) => l10n.placeholderFavouriteRoutes,
+            ),
+            (AppRoute.subscribe, (l10n) => l10n.placeholderSubscribe),
+            (AppRoute.sos, (l10n) => l10n.placeholderSos),
+          ])
+        route(
+          pushed,
+          (context, state) =>
+              PushedPlaceholder(title: title(AppLocalizations.of(context))),
+        ),
       // Placeholders until these screens are built.
       for (final signedIn in [
-        AppRoute.home,
         AppRoute.driverOnboarding,
         AppRoute.driverAwaitingApproval,
         AppRoute.driverHome,

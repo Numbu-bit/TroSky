@@ -41,3 +41,23 @@ abstract class UserResponse with _$UserResponse {
   factory UserResponse.fromJson(Map<String, dynamic> json) =>
       _$UserResponseFromJson(json);
 }
+
+/// `FavouriteRouteResponse` from `GET /users/me/favourite-routes` (backend
+/// gap G4): a journey pinned to Home, from one stop to another.
+@freezed
+abstract class FavouriteRouteResponse with _$FavouriteRouteResponse {
+  const factory FavouriteRouteResponse({
+    required String id,
+    required String originStopId,
+    required String originStopName,
+    required String destinationStopId,
+    required String destinationStopName,
+
+    /// The passenger's own name for it, e.g. "Home to work".
+    String? label,
+    required DateTime createdAt,
+  }) = _FavouriteRouteResponse;
+
+  factory FavouriteRouteResponse.fromJson(Map<String, dynamic> json) =>
+      _$FavouriteRouteResponseFromJson(json);
+}

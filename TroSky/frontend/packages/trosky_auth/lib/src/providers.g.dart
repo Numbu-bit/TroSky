@@ -406,6 +406,106 @@ final class DriverRepositoryProvider
 
 String _$driverRepositoryHash() => r'3ab08914ea9fe4807f573b420f3a52b08f4f824f';
 
+/// Stops and routes. The mock answers from fixed Accra stops.
+
+@ProviderFor(routeRepository)
+final routeRepositoryProvider = RouteRepositoryProvider._();
+
+/// Stops and routes. The mock answers from fixed Accra stops.
+
+final class RouteRepositoryProvider
+    extends
+        $FunctionalProvider<RouteRepository, RouteRepository, RouteRepository>
+    with $Provider<RouteRepository> {
+  /// Stops and routes. The mock answers from fixed Accra stops.
+  RouteRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'routeRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$routeRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<RouteRepository> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  RouteRepository create(Ref ref) {
+    return routeRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(RouteRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<RouteRepository>(value),
+    );
+  }
+}
+
+String _$routeRepositoryHash() => r'cf287380f33aa0ca7446d19c40502ef968a4f54e';
+
+/// Live vehicle positions. Only the mock invents vehicles (decision 14).
+
+@ProviderFor(trackingRepository)
+final trackingRepositoryProvider = TrackingRepositoryProvider._();
+
+/// Live vehicle positions. Only the mock invents vehicles (decision 14).
+
+final class TrackingRepositoryProvider
+    extends
+        $FunctionalProvider<
+          TrackingRepository,
+          TrackingRepository,
+          TrackingRepository
+        >
+    with $Provider<TrackingRepository> {
+  /// Live vehicle positions. Only the mock invents vehicles (decision 14).
+  TrackingRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'trackingRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$trackingRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<TrackingRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  TrackingRepository create(Ref ref) {
+    return trackingRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(TrackingRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<TrackingRepository>(value),
+    );
+  }
+}
+
+String _$trackingRepositoryHash() =>
+    r'c84da5f057977a96ca7642de22e99f8c9f67ba02';
+
 @ProviderFor(userCache)
 final userCacheProvider = UserCacheProvider._();
 
