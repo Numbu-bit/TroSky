@@ -6,7 +6,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.notifications import Notification, NotificationCategory
@@ -62,6 +62,23 @@ class NotificationRepository:
             stmt.order_by(Notification.created_at.desc()).limit(limit).offset(offset)
         )
         return list(result.scalars().all()), total
+
+    async def count_unread(self, user_id: uuid.UUID) -> int:
+        result = await self._session.execute(
+            select(func.count(Notification.id)).where(
+                Notification.user_id == user_id, Notification.is_read.is_(False)
+            )
+        )
+        return int(result.scalar_one())
+
+    async def mark_all_read(self, user_id: uuid.UUID) -> int:
+        """Mark every unread notification read; returns how many changed."""
+        result = await self._session.execute(
+            update(Notification)
+            .where(Notification.user_id == user_id, Notification.is_read.is_(False))
+            .values(is_read=True, read_at=datetime.now(UTC))
+        )
+        return int(result.rowcount)  # type: ignore[attr-defined]
 
     async def mark_read(self, notification: Notification) -> None:
         notification.is_read = True

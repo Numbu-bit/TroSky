@@ -21,6 +21,8 @@ from app.api.dependencies import (
     WalletServiceDep,
     WithdrawalServiceDep,
 )
+from app.api.payment_dependencies import PaymentMethodServiceDep
+from app.api.v1.views import payment_source
 from app.core.config import from_minor_units
 from app.core.permissions import Permission
 from app.core.ratelimit import rate_limit
@@ -99,13 +101,15 @@ async def create_wallet_topup(
     body: WalletTopupRequest,
     principal: CurrentPrincipal,
     service: PaymentServiceDep,
+    methods: PaymentMethodServiceDep,
     idempotency_key: OptionalIdempotencyKey,
 ) -> PaymentResponse:
+    channel, payer_phone = await payment_source(body, principal.user_id, methods)
     payment = await service.initiate_wallet_topup(
         principal.user_id,
         amount=body.amount,
-        channel=body.channel,
-        payer_phone=body.payer_phone_number,
+        channel=channel,
+        payer_phone=payer_phone,
         idempotency_key=idempotency_key,
     )
     return _payment_response(payment)

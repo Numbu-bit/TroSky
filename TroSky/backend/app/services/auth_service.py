@@ -15,6 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
+from app.core.database import keep_writes_on_failure
 from app.core.exceptions import (
     AccountLockedError,
     AccountNotVerifiedError,
@@ -315,6 +316,7 @@ class AuthService:
                 max_attempts=self._settings.LOGIN_MAX_FAILED_ATTEMPTS,
                 lockout_seconds=self._settings.LOGIN_LOCKOUT_SECONDS,
             )
+            keep_writes_on_failure(self._session)
             raise InvalidCredentialsError()
         # Checked only once the password is right, so a stranger cannot learn
         # whether an account has been verified.
@@ -433,6 +435,7 @@ class AuthService:
                 user_id=str(stored.user_id),
                 session_id=str(stored.session_id),
             )
+            keep_writes_on_failure(self._session)
             raise TokenReuseDetectedError()
 
         if stored.expires_at <= datetime.now(UTC):

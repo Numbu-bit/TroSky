@@ -72,13 +72,31 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
     return _session_factory
 
 
+_KEEP_ON_FAILURE: Final = "trosky.keep_on_failure"
+
+
+def keep_writes_on_failure(session: AsyncSession) -> None:
+    """Keep this request's writes even though it is about to fail.
+
+    For a safeguard that records a failure and then reports it: a wrong
+    password counting towards a lockout, a wrong one-time code counting
+    towards its limit, every session revoked after a refresh token is
+    reused. ``get_db`` rolls back a failing request, which would undo the
+    safeguard along with it. Call this straight after the write and before
+    raising, so nothing else is caught up in the commit.
+    """
+    session.info[_KEEP_ON_FAILURE] = True
+
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """FastAPI dependency yielding a request-scoped AsyncSession.
 
-    Commits on clean completion, rolls back on any exception, and always
-    closes the session. Route handlers should not call ``commit()``
-    themselves for the "request" session — service-layer code that needs an
-    explicit transaction boundary should use :func:`transactional_session`.
+    Commits on clean completion, rolls back on any exception (unless a
+    safeguard asked for its writes to be kept, see
+    :func:`keep_writes_on_failure`), and always closes the session. Route
+    handlers should not call ``commit()`` themselves for the "request"
+    session — service-layer code that needs an explicit transaction
+    boundary should use :func:`transactional_session`.
     """
     session_factory = get_session_factory()
     async with session_factory() as session:
@@ -86,7 +104,14 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             yield session
             await session.commit()
         except Exception:
-            await session.rollback()
+            if session.info.pop(_KEEP_ON_FAILURE, False):
+                try:
+                    await session.commit()
+                except Exception:
+                    logger.exception("keep_on_failure_commit_failed")
+                    await session.rollback()
+            else:
+                await session.rollback()
             raise
         finally:
             await session.close()

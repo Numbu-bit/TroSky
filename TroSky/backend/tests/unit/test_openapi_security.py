@@ -27,6 +27,9 @@ PUBLIC = {
     ("get", "/api/v1/trips/search"),
     ("get", "/api/v1/trips/{trip_id}"),
     ("get", "/api/v1/trips/{trip_id}/seats"),
+    ("get", "/api/v1/trips/{trip_id}/fare-quote"),
+    # Opened by family and friends from a shared link; the token is the key.
+    ("get", "/api/v1/shared-trips/{token}"),
     ("post", "/api/v1/payments/webhooks/{channel}"),
 }
 

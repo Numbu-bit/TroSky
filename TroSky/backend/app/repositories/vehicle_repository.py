@@ -4,6 +4,7 @@ status history, and seat layouts."""
 from __future__ import annotations
 
 import uuid
+from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import date
 
@@ -37,6 +38,14 @@ class SeatSpec:
 class VehicleRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def get_many(self, vehicle_ids: Collection[uuid.UUID]) -> dict[uuid.UUID, Vehicle]:
+        if not vehicle_ids:
+            return {}
+        result = await self._session.execute(
+            select(Vehicle).where(Vehicle.id.in_(list(vehicle_ids)))
+        )
+        return {vehicle.id: vehicle for vehicle in result.scalars()}
 
     async def get_by_id(self, vehicle_id: uuid.UUID) -> Vehicle | None:
         result = await self._session.execute(select(Vehicle).where(Vehicle.id == vehicle_id))

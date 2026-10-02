@@ -31,6 +31,8 @@ distances come from.
 
 from __future__ import annotations
 
+import uuid
+from collections.abc import Iterable
 from decimal import ROUND_HALF_UP, Decimal
 
 from app.core.config import Settings, get_settings
@@ -74,6 +76,19 @@ class FareService:
     def _quantize(self, amount: Decimal) -> Decimal:
         exponent = Decimal(1).scaleb(-self._settings.payments_default_currency_minor_unit)
         return amount.quantize(exponent, rounding=ROUND_HALF_UP)
+
+    def platform_fee(self, fare_amount: Decimal, seat_count: int) -> Decimal:
+        """TroSky's cut, charged on top of the operator's fare.
+
+        Flat component is per seat, percentage applies to the fare. Rounded
+        half-up to the currency's minor unit so the three stored amounts
+        always satisfy fare + fee == total exactly (a banker's-rounding
+        default would break that invariant on .x5 boundaries).
+        """
+        fee = (self._settings.PLATFORM_FEE_FLAT_PER_SEAT * seat_count) + (
+            fare_amount * self._settings.PLATFORM_FEE_PERCENT / Decimal("100")
+        )
+        return self._quantize(fee)
 
     def solo_segment_fare(
         self,
@@ -164,3 +179,33 @@ def segment_distance_km(
         return route_km
     segment = abs(destination_distance_km - origin_distance_km)
     return segment if segment > 0 else None
+
+
+def passenger_km(
+    seats: Iterable[tuple[uuid.UUID | None, uuid.UUID | None, int]],
+    *,
+    stop_distances: dict[uuid.UUID, Decimal | None],
+    route_km: Decimal | None,
+    route_origin_id: uuid.UUID,
+    route_destination_id: uuid.UUID,
+) -> Decimal:
+    """Passenger-kilometres committed by ``seats``: each
+    ``(boards_at, alights_at, seat_count)`` contributes the distance it rides.
+
+    A missing stop means the route's own end: a booking with no boarding
+    stop rides from the start, one with no destination to the end. When a
+    stop's offset was never measured the booking counts as riding the whole
+    route, since under-counting here would silently overcharge everyone
+    else.
+    """
+    whole_route = route_km or Decimal("0")
+    total = Decimal("0")
+    for boards_at, alights_at, seat_count in seats:
+        origin = stop_distances.get(boards_at or route_origin_id)
+        destination = stop_distances.get(alights_at or route_destination_id)
+        if origin is None or destination is None:
+            distance = whole_route
+        else:
+            distance = abs(destination - origin) or whole_route
+        total += distance * seat_count
+    return total

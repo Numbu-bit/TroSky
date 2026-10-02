@@ -96,7 +96,7 @@ class SosAlertRepository:
     async def create(
         self,
         *,
-        trip_id: uuid.UUID,
+        trip_id: uuid.UUID | None,
         triggered_by: uuid.UUID,
         latitude: float | None,
         longitude: float | None,

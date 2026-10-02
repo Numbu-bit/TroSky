@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.background import run_in_background
 from app.core.config import Settings, get_settings
+from app.core.database import keep_writes_on_failure
 from app.core.exceptions import (
     OtpAttemptsExceededError,
     OtpExpiredError,
@@ -71,6 +72,7 @@ class OtpService:
         email_provider: EmailProvider,
         settings: Settings | None = None,
     ) -> None:
+        self._session = session
         self._repo = OtpRepository(session)
         self._redis = redis
         self._sms_provider = sms_provider
@@ -180,6 +182,7 @@ class OtpService:
 
         if hash_otp_code(code, self._settings) != challenge.code_hash:
             await self._repo.increment_attempts(challenge)
+            keep_writes_on_failure(self._session)
             raise OtpInvalidError()
 
         await self._repo.consume(challenge)

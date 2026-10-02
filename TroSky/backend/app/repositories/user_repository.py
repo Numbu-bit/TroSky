@@ -8,6 +8,7 @@ concerns.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Collection
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
@@ -33,6 +34,19 @@ class DuplicateUserError(Exception):
 class UserRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def contacts_by_ids(
+        self, user_ids: Collection[uuid.UUID]
+    ) -> dict[uuid.UUID, tuple[str | None, str]]:
+        """``user_id -> (full name, phone number)`` in one query."""
+        if not user_ids:
+            return {}
+        rows = await self._session.execute(
+            select(User.id, UserProfile.full_name, User.phone_number)
+            .outerjoin(UserProfile, UserProfile.user_id == User.id)
+            .where(User.id.in_(list(user_ids)))
+        )
+        return {row.id: (row.full_name, row.phone_number) for row in rows}
 
     async def get_by_id(self, user_id: uuid.UUID, *, include_deleted: bool = False) -> User | None:
         stmt = select(User).options(selectinload(User.profile)).where(User.id == user_id)

@@ -240,6 +240,17 @@ class Settings(BaseSettings):
     FAVOURITE_ROUTES_MAX_PER_USER: int = Field(default=20, gt=0)
     # Vehicles near me: ignore GPS positions older than this.
     NEARBY_VEHICLES_MAX_AGE_SECONDS: int = Field(default=300, gt=0)
+    # "~3 min away" on search results: a vehicle's own reported speed when
+    # it is moving, else this (Accra traffic, stops included).
+    PICKUP_ETA_AVERAGE_SPEED_KMH: Decimal = Field(default=Decimal("25"), gt=0)
+    # Search ranks and pages in memory, so it looks at no more trips than this.
+    TRIP_SEARCH_MAX_CANDIDATES: int = Field(default=500, gt=0, le=5000)
+    # Live-trip links passengers share with family (POST /bookings/{id}/share).
+    TRIP_SHARE_LINK_TTL_SECONDS: int = Field(default=12 * 3600, gt=0, le=7 * 86400)
+    # Where shared links point. Unset: the backend's own read-only page.
+    TRIP_SHARE_BASE_URL: str | None = None
+    PAYMENT_METHODS_MAX_PER_USER: int = Field(default=10, gt=0)
+    INCIDENT_PHOTO_MAX_SIZE_BYTES: int = Field(default=8 * 1024 * 1024, gt=0)
     PASSWORD_RESET_TOKEN_TTL_SECONDS: int = Field(default=1800, gt=0)
     LOGIN_MAX_FAILED_ATTEMPTS: int = Field(default=5, gt=0)
     LOGIN_LOCKOUT_SECONDS: int = Field(default=900, gt=0)

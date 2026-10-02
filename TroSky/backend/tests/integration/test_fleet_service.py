@@ -206,7 +206,7 @@ class TestDriverAssignment:
         await fleet_service.assign_driver(owner_user_id, vehicle.id, driver.id)
 
         assignments = await driver_service.list_own_assignments(driver.user_id)
-        assert [a.vehicle_id for a in assignments] == [vehicle.id]
+        assert [a.vehicle_id for a, _ in assignments] == [vehicle.id]
 
 
 class TestFleetOwnerTenantIsolation:

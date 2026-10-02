@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 
 from fastapi import APIRouter, File, UploadFile, status
 
@@ -12,11 +13,19 @@ from app.api.dependencies import (
     StorageProviderDep,
     UserServiceDep,
 )
-from app.core.config import get_settings
-from app.models.identity import User, UserProfile
+from app.api.payment_dependencies import PaymentMethodServiceDep
+from app.api.trip_dependencies import TripSearchServiceDep
+from app.api.v1.views import avatar_url, payment_method_response
+from app.models.identity import User
 from app.providers.storage.base import ObjectStorageProvider
+from app.repositories.profile_repository import FavouriteRouteView
 from app.schemas.common import MessageResponse
 from app.schemas.notification import DeviceRegisterRequest, DeviceResponse
+from app.schemas.payment import (
+    PaymentMethodCreateRequest,
+    PaymentMethodResponse,
+    PaymentMethodUpdateRequest,
+)
 from app.schemas.user import (
     AccountDeletionRequest,
     EmergencyContactCreateRequest,
@@ -24,24 +33,16 @@ from app.schemas.user import (
     EmergencyContactUpdateRequest,
     FavouriteRouteCreateRequest,
     FavouriteRouteResponse,
+    NextTripResponse,
     NotificationPreferencesResponse,
     NotificationPreferencesUpdateRequest,
     UserProfileResponse,
     UserProfileUpdateRequest,
     UserResponse,
 )
+from app.services.trip_search_service import TripSearchService
 
 router = APIRouter()
-
-
-async def _avatar_url(profile: UserProfile, storage: ObjectStorageProvider) -> str | None:
-    """A signed, short-lived URL for an uploaded photo; else the URL set by hand."""
-    if profile.avatar_storage_key:
-        return await storage.generate_download_url(
-            profile.avatar_storage_key,
-            expires_in_seconds=get_settings().AVATAR_URL_TTL_SECONDS,
-        )
-    return profile.avatar_url
 
 
 async def _user_response(
@@ -54,7 +55,7 @@ async def _user_response(
             date_of_birth=user.profile.date_of_birth,
             gender=user.profile.gender,
             preferred_language=user.profile.preferred_language,
-            avatar_url=await _avatar_url(user.profile, storage),
+            avatar_url=await avatar_url(user.profile, storage),
             ghana_card_number=user.profile.ghana_card_number,
             ghana_card_verified=user.profile.ghana_card_verified_at is not None,
         )
@@ -197,13 +198,39 @@ async def upload_avatar(
     return await _user_response(user, roles, storage)
 
 
+async def _with_next_trips(
+    favourites: Sequence[FavouriteRouteView], search: TripSearchService
+) -> list[FavouriteRouteResponse]:
+    upcoming = await search.next_departures(
+        [(f.origin_stop_id, f.destination_stop_id) for f in favourites]
+    )
+    responses = []
+    for favourite in favourites:
+        departure = upcoming.get((favourite.origin_stop_id, favourite.destination_stop_id))
+        next_trip = None
+        if departure is not None:
+            next_trip = NextTripResponse(
+                trip_id=departure.trip_id,
+                scheduled_departure_at=departure.scheduled_departure_at,
+                available_seats=departure.available_seats,
+                fare=departure.fare.current,
+                currency=departure.fare.currency,
+            )
+        responses.append(
+            FavouriteRouteResponse.model_validate(favourite).model_copy(
+                update={"next_trip": next_trip}
+            )
+        )
+    return responses
+
+
 @router.get("/me/favourite-routes", response_model=list[FavouriteRouteResponse])
 async def list_favourite_routes(
-    principal: CurrentPrincipal, users: UserServiceDep
+    principal: CurrentPrincipal, users: UserServiceDep, search: TripSearchServiceDep
 ) -> list[FavouriteRouteResponse]:
     """Journeys pinned to the Home screen, oldest first."""
     favourites = await users.list_favourite_routes(principal.user_id)
-    return [FavouriteRouteResponse.model_validate(f) for f in favourites]
+    return await _with_next_trips(favourites, search)
 
 
 @router.post(
@@ -212,7 +239,10 @@ async def list_favourite_routes(
     status_code=status.HTTP_201_CREATED,
 )
 async def add_favourite_route(
-    body: FavouriteRouteCreateRequest, principal: CurrentPrincipal, users: UserServiceDep
+    body: FavouriteRouteCreateRequest,
+    principal: CurrentPrincipal,
+    users: UserServiceDep,
+    search: TripSearchServiceDep,
 ) -> FavouriteRouteResponse:
     """Pin a journey (board at one stop, get off at another). 409 if it is
     already pinned, or the limit is reached."""
@@ -222,7 +252,7 @@ async def add_favourite_route(
         destination_stop_id=body.destination_stop_id,
         label=body.label,
     )
-    return FavouriteRouteResponse.model_validate(favourite)
+    return (await _with_next_trips([favourite], search))[0]
 
 
 @router.delete(
@@ -234,3 +264,66 @@ async def delete_favourite_route(
     favourite_id: uuid.UUID, principal: CurrentPrincipal, users: UserServiceDep
 ) -> None:
     await users.delete_favourite_route(principal.user_id, favourite_id)
+
+
+# ---------------------------------------------------------------------------
+# Saved payment methods
+# ---------------------------------------------------------------------------
+@router.get("/me/payment-methods", response_model=list[PaymentMethodResponse])
+async def list_payment_methods(
+    principal: CurrentPrincipal, methods: PaymentMethodServiceDep
+) -> list[PaymentMethodResponse]:
+    """Saved mobile money numbers, the default first. Numbers are masked;
+    pay with one by sending its id as ``payment_method_id``."""
+    return [payment_method_response(m) for m in await methods.list_methods(principal.user_id)]
+
+
+@router.post(
+    "/me/payment-methods",
+    response_model=PaymentMethodResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_payment_method(
+    body: PaymentMethodCreateRequest,
+    principal: CurrentPrincipal,
+    methods: PaymentMethodServiceDep,
+) -> PaymentMethodResponse:
+    method = await methods.add_method(
+        principal.user_id,
+        channel=body.channel,
+        phone_number=body.phone_number,
+        label=body.label,
+        make_default=body.is_default,
+    )
+    return payment_method_response(method)
+
+
+@router.patch("/me/payment-methods/{method_id}", response_model=PaymentMethodResponse)
+async def update_payment_method(
+    method_id: uuid.UUID,
+    body: PaymentMethodUpdateRequest,
+    principal: CurrentPrincipal,
+    methods: PaymentMethodServiceDep,
+) -> PaymentMethodResponse:
+    """Rename a method, or make it the default."""
+    method = await methods.update_method(
+        principal.user_id,
+        method_id,
+        label=body.label,
+        label_given="label" in body.model_fields_set,
+        make_default=body.is_default is True,
+    )
+    return payment_method_response(method)
+
+
+@router.delete(
+    "/me/payment-methods/{method_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+)
+async def delete_payment_method(
+    method_id: uuid.UUID, principal: CurrentPrincipal, methods: PaymentMethodServiceDep
+) -> None:
+    """Forget a saved number. If it was the default, the newest remaining
+    method becomes the default."""
+    await methods.delete_method(principal.user_id, method_id)

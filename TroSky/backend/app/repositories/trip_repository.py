@@ -10,7 +10,7 @@ logic alone, is what prevents the race.
 from __future__ import annotations
 
 import uuid
-from collections.abc import Collection
+from collections.abc import Collection, Sequence
 from datetime import datetime
 from decimal import Decimal
 
@@ -100,6 +100,15 @@ class TripRepository:
         await self._session.flush()
         return trip
 
+    async def get_many(self, trip_ids: Sequence[uuid.UUID]) -> list[Trip]:
+        """Trips by id, in the order asked for; ids that no longer exist are
+        skipped."""
+        if not trip_ids:
+            return []
+        result = await self._session.execute(select(Trip).where(Trip.id.in_(list(trip_ids))))
+        found = {trip.id: trip for trip in result.scalars()}
+        return [found[trip_id] for trip_id in trip_ids if trip_id in found]
+
     async def search(
         self,
         *,
@@ -110,6 +119,7 @@ class TripRepository:
         statuses: list[TripStatus],
         limit: int,
         offset: int,
+        with_total: bool = True,
     ) -> tuple[list[Trip], int]:
         """Trips a passenger can board at one of ``origin_stop_ids`` and
         leave at ``destination_stop_id``.
@@ -146,15 +156,17 @@ class TripRepository:
                 conditions.append(alight.c.stop_id == destination_stop_id)
             stmt = stmt.where(exists().where(*conditions))
 
-        count_result = await self._session.execute(
-            select(func.count()).select_from(stmt.subquery())
-        )
-        total = count_result.scalar_one()
-
         result = await self._session.execute(
             stmt.order_by(Trip.scheduled_departure_at).limit(limit).offset(offset)
         )
-        return list(result.scalars().all()), total
+        trips = list(result.scalars().all())
+        if not with_total:
+            # The caller pages in memory: the count would be a wasted round trip.
+            return trips, len(trips)
+        count_result = await self._session.execute(
+            select(func.count()).select_from(stmt.subquery())
+        )
+        return trips, count_result.scalar_one()
 
     async def count_unfinished_for_route(self, route_id: uuid.UUID) -> int:
         """Trips on the route that are yet to run or still running."""

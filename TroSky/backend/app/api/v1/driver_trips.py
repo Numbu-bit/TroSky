@@ -20,6 +20,11 @@ from app.api.dependencies import (
 )
 from app.core.permissions import SystemRole, require_roles
 from app.core.ratelimit import rate_limit
+from app.schemas.driver import (
+    ChannelTotalResponse,
+    SeatReceiptResponse,
+    TripPaymentsResponse,
+)
 from app.schemas.ticket import TicketResponse, ValidateTicketRequest
 from app.schemas.tracking import LiveLocationResponse, LocationPingRequest
 from app.schemas.trip import (
@@ -157,3 +162,21 @@ async def list_trip_passengers(
     masked."""
     entries = await trips.get_manifest(trip_id, principal.user_id)
     return [ManifestEntryResponse.model_validate(entry) for entry in entries]
+
+
+@router.get("/{trip_id}/payments", response_model=TripPaymentsResponse)
+async def get_trip_payments(
+    trip_id: uuid.UUID, principal: CurrentPrincipal, trips: TripServiceDep
+) -> TripPaymentsResponse:
+    """What this trip's passengers paid, per seat and per payment channel.
+    Only the trip's assigned driver may see it (403 otherwise). Amounts are
+    fares, TroSky's platform fee excluded."""
+    receipts = await trips.get_receipts(trip_id, principal.user_id)
+    return TripPaymentsResponse(
+        trip_id=receipts.trip_id,
+        currency=receipts.currency,
+        fare_per_seat=receipts.fare_per_seat,
+        total_collected=receipts.total_collected,
+        by_channel=[ChannelTotalResponse.model_validate(t) for t in receipts.by_channel],
+        receipts=[SeatReceiptResponse.model_validate(r) for r in receipts.receipts],
+    )

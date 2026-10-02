@@ -1159,3 +1159,190 @@ Also changed this cycle (affects the app's sign-up and sign-in screens):
 
 Migration `20260930_0013`: `favourite_routes`, `user_profiles.avatar_storage_key`,
 and the four optional rating columns — additive only.
+
+## [0.13.0] - 2026-10-02 - Frontend requests, round 2
+
+Everything from the second request list that needed no product decision.
+All of it is in `/openapi.json`.
+
+### Bugs
+
+- **B1 fixed** — the login lockout, the one-time-code attempt limit and
+  "sign out every session when a refresh token is reused" now stick. They
+  were written and then rolled back with the failing request. A safeguard
+  now marks its write as one to keep (`keep_writes_on_failure`), and
+  `get_db` commits that write before reporting the error. Covered by HTTP
+  tests that failed before the fix.
+- **B2 fixed** — a fresh database registers users without `make seed`.
+  Roles and permissions are reference data, added by
+  `python -m scripts.seed_reference_data` (`make seed-reference`). It runs
+  after `alembic upgrade head` in docker-compose, the container entrypoint
+  and the Kubernetes migration Job, and creates no users, so it is safe in
+  production.
+- **B3 fixed** — the backend workflow is now `.github/workflows/backend.yml`
+  at the repository root, with paths prefixed `TroSky/backend` and the
+  build context fixed. It runs on pushes to `main`, `develop` and
+  `backend`, and on pull requests to `main` and `develop`, only when
+  backend files change. It also runs the reference seed after migrations.
+  Its lint and test jobs were rehearsed in Linux containers matching the
+  runner, which turned up four problems that would have failed the first
+  run, all now fixed:
+  - `.env.test` was gitignored, although the tests load it and it holds
+    only placeholders. It is now committed.
+  - Alembic and the seed load the app's settings, so the job now loads
+    `.env.test` into its environment, not just the database URL.
+  - SQLAlchemy 2.1 was released and the version range allowed it. CI (and
+    the Docker image) would have run an untested version whose stricter
+    typing fails mypy. It is now capped below 2.1, and those two queries are
+    typed to pass on either version.
+  - A new test file's imports were out of order.
+
+  It also showed that local test runs were quietly reading the developer's
+  `.env` for any setting `.env.test` leaves out, and so passing on dev
+  values: higher rate limits, the Gmail SMTP host. Tests now ignore `.env`
+  entirely, and `.env.test` sets its own rate limits.
+- Rejected requests no longer echo passwords, codes or tokens: a 422's
+  `details.errors[].input` is `"***REDACTED***"` for those fields, and the
+  same goes for the logs.
+
+### Demo data and tools
+
+- **D1 done** — `make seed-demo` (`python -m scripts.seed_demo_data`).
+  It adds:
+  - 10 Accra stops: Madina, Circle, Legon, Osu, Achimota, Tema, Kaneshie,
+    Lapaz, Airport and 37.
+  - 6 routes that stop along the way.
+  - 12 approved vehicles with seat layouts: Hiace minibuses, Sprinter
+    shuttles and a Yutong bus.
+  - A trip every 30 minutes from 05:30 to 21:00, from now to 7 days ahead.
+  - A verified passenger with GHS 200 in the wallet, 3 past trips (one
+    rated) and 1 upcoming paid booking.
+
+  Re-running tops the timetable up. Logins (password `TroSkyDemo!2026`):
+
+  | Account | Phone |
+  |---|---|
+  | Passenger, Ama Serwaa | 0245550201 |
+  | Fleet owner, Kwesi Appiah | 0245550202 |
+  | Driver Kofi Mensah, Madina → Circle | 0245550211 |
+  | Driver Abena Owusu, Tema → Circle | 0245550212 |
+  | Driver Yaw Boateng, Achimota → Osu | 0245550213 |
+
+  The script refuses to run when `APP_ENV=production`.
+- **D2 done** — `make simulate-gps` (`python -m scripts.simulate_gps
+  [--trip-id] [--driver-phone] [--speedup 3] [--end]`). It logs in as a
+  driver, starts their current or next trip, and sends a ping every 5 s
+  along the route's stops. Live tracking, nearby vehicles, search ETAs and
+  shared links then show real movement. `--end` completes the trip.
+- **D3, D4** — not done here: a hosted server and the Firebase project need
+  accounts and billing that only the project owner can set up.
+
+### Passenger app
+
+- **G19 done** — `POST /sos {latitude, longitude}` with no trip. Emergency
+  contacts are texted as for a trip SOS. `SosAlertResponse.trip_id` is now
+  nullable.
+- **G20 done** — every `/trips/search` result has
+  `fare {current, solo, minimum, platform_fee, total, currency,
+  riders_count, seats}` for the searched pickup and drop-off.
+  `GET /trips/{id}/fare-quote?origin_stop_id=&destination_stop_id=&seats=`
+  returns the same plus the stops. `current` excludes TroSky's fee, and
+  `total` is exactly what `POST /bookings` then charges, because they share
+  one code path. `minimum` is the price if every free seat filled.
+  - **Answer to the G20 question:** a passenger's fare is **fixed when
+    they book**. Later riders lower the price for people who book after
+    them; nobody already booked is refunded or re-billed. So "Drops to
+    ₵x as more riders join" describes the price of booking later, not a
+    refund.
+  - Also fixed: a booking with a drop-off but no pickup used to be priced
+    as the whole route. It now pays from the route's start to that stop.
+- **G21 done** — trips already on the road are now in search results, since
+  a trotro picks people up along its route. Each result has:
+  - `vehicle_eta_to_pickup_minutes`: from the latest GPS ping, null for
+    trips that haven't set off.
+  - `has_passed_pickup`: once true, the trip can't be booked from that
+    stop. `POST /bookings` answers 409 `PICKUP_ALREADY_PASSED`, also for a
+    moving trip booked from its first stop.
+  - `ride_minutes` for the searched segment.
+
+  Search also takes `?sort=departure|cheapest|fastest` (trips that have
+  passed the pickup always come last), `?vehicle_type=` and `?seats=` (the
+  number of seats to price). It now makes a handful of queries in total,
+  instead of three per result.
+- **G22 done** — `GET /trips/{id}` adds `route_name`, origin and
+  destination stop ids and names, `vehicle {registration_number, type,
+  make_model, capacity}`, `driver {id, full_name, avatar_url,
+  average_rating, rating_count}`, `riders_count`, `seats_total` and
+  `available_seats`.
+- **G24 done** — `POST /bookings/{id}/share` → `{url, token, expires_at}`,
+  for a paid booking only (409 `BOOKING_NOT_SHAREABLE` otherwise). Anyone
+  with the link can open it without an account:
+  - `GET /shared-trips/{token}`: trip status, stops, vehicle, first names,
+    the vehicle's position while moving, and `minutes_to_dropoff`.
+  - `GET /share/{token}`: a small page showing the same, for people
+    without the app.
+
+  Links last 12 hours; an expired or cancelled one answers 410
+  `SHARE_LINK_GONE`. `TRIP_SHARE_BASE_URL` points links at your own page
+  instead.
+- **G25 done** — `GET /bookings/summary?month=YYYY-MM` →
+  `{month, currency, trips_count, total_spent, average_fare,
+  total_saved}`. It counts paid trips departing that month. Saved is the
+  unshared price minus the fare paid, recorded from today on, so older
+  bookings count as no saving.
+- **G26 done** — `FavouriteRouteResponse.next_trip {trip_id,
+  scheduled_departure_at, available_seats, fare, currency}`: the soonest
+  trip in the next 7 days with a free seat, or null.
+- **G27 done** — `GET /notifications/unread-count` → `{unread_count}`;
+  `POST /notifications/read-all` → `{marked_read}`.
+- **G28 done** — `GET/POST /users/me/payment-methods`, plus
+  `PATCH/DELETE /users/me/payment-methods/{id}` (rename, make default).
+  `{id, channel, masked_number, label, is_default, created_at}`:
+  - Only mobile money numbers can be saved (`mtn_momo`, `telecel_cash`,
+    `airteltigo_money`); cards need a card processor first.
+  - The first number saved is the default, and deleting the default
+    promotes the newest one left.
+  - Pay with a saved method by sending `payment_method_id` instead of
+    `channel` to `POST /bookings/{id}/pay` and `POST /wallet/topups`.
+
+### Driver app
+
+- **G29 done** — `GET /drivers/me/rating-summary`: overall and the four
+  categories.
+- **G30 done** — `/drivers/me/assignments` items carry `vehicle {id,
+  registration_number, vehicle_type, make_model, capacity, status}`.
+  `DriverResponse` now has `full_name` and `phone_number`, including on the
+  admin driver screens.
+- **G31 done** — `GET /driver-trips/{trip_id}/payments` →
+  `{total_collected, fare_per_seat, by_channel[{channel, passengers,
+  amount}], receipts[{passenger_name, seat_label, amount, channel, paid_at,
+  booking_reference}]}`. It's for the assigned driver only. Amounts are
+  fares, the platform fee excluded, the same base driver earnings are a
+  share of. `fare_per_seat` is the trip's listed whole-route fare.
+- **G32 done** — incident types `passenger_issue` and `road_hazard`.
+  `severity` is optional and follows the type when left out: accident and
+  safety_concern are high; breakdown, passenger_issue and road_hazard
+  medium; delay and other low. `POST /incidents/{id}/photo` attaches one
+  JPEG/PNG of up to 8 MB (uploading again replaces it). `IncidentResponse`
+  has a signed `photo_url`, including in admin lists.
+- **G33 done** — manifest entries have `dropoff_stop_name`.
+
+### Decisions (from section E)
+
+1. Boarding: the **driver scans the passenger's ticket**, as built.
+2. Driver trips: **scheduled by admins and fleet owners**, as built. Go
+   Online/Offline is an availability toggle, with no ride requests.
+3. Subscriptions (G14): out of the MVP.
+4. Ghana Card verification (G17): out of the MVP.
+5. Wallet "Send" and driver chat: out of the MVP.
+6. Withdrawals stay **paid after admin approval**.
+
+Migration `20261002_0014`:
+- `payment_methods`
+- `sos_alerts.trip_id` becomes nullable
+- `incident_type` gains two values
+- `incidents.photo_storage_key`
+- `bookings.solo_fare_amount`
+
+Everything is additive except the nullable `trip_id`, and the migration has
+a full downgrade.

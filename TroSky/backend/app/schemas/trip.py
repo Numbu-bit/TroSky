@@ -34,6 +34,39 @@ class TripResponse(ApiModel):
     created_at: datetime
 
 
+class FareSummaryResponse(ApiModel):
+    """A seat's price for one pickup and drop-off, as the bus stands now.
+
+    A passenger's fare is fixed when they book: later riders make the trip
+    cheaper for whoever books after them, not for those already aboard.
+    """
+
+    current: Decimal = Field(..., description="Per seat, right now, before TroSky's platform fee.")
+    solo: Decimal = Field(
+        ..., description="Per seat with nobody to share the trip: the crossed-out price."
+    )
+    minimum: Decimal = Field(
+        ...,
+        description=(
+            "Lowest the per-seat price could reach if every free seat filled "
+            '("Drops to GHS 6.00 as more riders join").'
+        ),
+    )
+    platform_fee: Decimal = Field(..., description="TroSky's fee for all the seats asked for.")
+    total: Decimal = Field(
+        ..., description="What booking those seats costs now: current x seats + platform_fee."
+    )
+    currency: str
+    riders_count: int = Field(..., description="Seats already taken on this trip.")
+    seats: int
+
+
+class FareQuoteResponse(FareSummaryResponse):
+    trip_id: uuid.UUID
+    origin_stop_id: uuid.UUID
+    destination_stop_id: uuid.UUID
+
+
 class TripSearchResultResponse(ApiModel):
     trip_id: uuid.UUID
     route_id: uuid.UUID
@@ -56,6 +89,89 @@ class TripSearchResultResponse(ApiModel):
     pickup_stop_name: str | None = None
     pickup_distance_m: float | None = None
     pickup_source: Literal["gps", "manual"] | None = None
+    fare: FareSummaryResponse = Field(
+        ..., description="Price from this pickup to the searched destination."
+    )
+    ride_minutes: int | None = Field(
+        default=None, description="Scheduled minutes from pickup to destination."
+    )
+    vehicle_eta_to_pickup_minutes: int | None = Field(
+        default=None,
+        description=(
+            "For a vehicle already on the road with a recent GPS position: minutes until it "
+            "reaches the pickup (0 = there now). Null for trips that have not set off."
+        ),
+    )
+    has_passed_pickup: bool = Field(
+        default=False,
+        description="The vehicle has already gone past the pickup; it cannot be booked from there.",
+    )
+
+
+class TripVehicleResponse(ApiModel):
+    registration_number: str
+    type: VehicleType
+    make_model: str | None = Field(default=None, examples=["Toyota Hiace"])
+    capacity: int | None
+
+
+class TripDriverResponse(ApiModel):
+    id: uuid.UUID
+    full_name: str | None
+    avatar_url: str | None
+    average_rating: Decimal | None = Field(default=None, description="1-5, null until rated.")
+    rating_count: int
+
+
+class TripDetailResponse(TripResponse):
+    """A trip with what the Live Tracking, Boarding Pass and Rate Driver
+    screens show about it."""
+
+    route_name: str
+    origin_stop_id: uuid.UUID
+    origin_stop_name: str
+    destination_stop_id: uuid.UUID
+    destination_stop_name: str
+    vehicle: TripVehicleResponse | None
+    driver: TripDriverResponse | None
+    riders_count: int = Field(..., description="Seats taken (paid or awaiting payment).")
+    seats_total: int
+    available_seats: int
+
+
+class TripShareLinkResponse(ApiModel):
+    url: str = Field(..., description="Open in any browser; no TroSky account needed.")
+    token: str = Field(..., description="For building your own link: GET /shared-trips/{token}.")
+    expires_at: datetime
+
+
+class SharedTripLocationResponse(ApiModel):
+    latitude: float
+    longitude: float
+    updated_at: datetime
+    is_stale: bool = Field(..., description="True when the last position is too old to trust.")
+
+
+class SharedTripResponse(ApiModel):
+    """A shared trip as family and friends see it."""
+
+    trip_id: uuid.UUID
+    status: TripStatus
+    route_name: str
+    passenger_first_name: str | None
+    driver_first_name: str | None
+    boarding_stop_name: str
+    alighting_stop_name: str
+    scheduled_departure_at: datetime
+    scheduled_arrival_at: datetime | None
+    vehicle: TripVehicleResponse | None
+    location: SharedTripLocationResponse | None = Field(
+        default=None, description="While the trip is under way; null before and after."
+    )
+    minutes_to_dropoff: int | None = Field(
+        default=None, description="Rough minutes until the passenger's stop, while moving."
+    )
+    expires_at: datetime
 
 
 class AssignTripDriverRequest(RequestModel):
@@ -146,5 +262,6 @@ class ManifestEntryResponse(ApiModel):
     passenger_full_name: str
     phone_number: str = Field(..., description="Masked, e.g. +23324•••4567.")
     pickup_stop_name: str
+    dropoff_stop_name: str
     boarded: bool
     boarded_at: datetime | None

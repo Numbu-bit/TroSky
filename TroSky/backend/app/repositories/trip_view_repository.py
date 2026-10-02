@@ -14,19 +14,28 @@ import uuid
 from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import ColumnElement, Select, and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.models.bookings import Booking, BookingPassenger, ReservationStatus, SeatReservation
+from app.models.bookings import (
+    Booking,
+    BookingPassenger,
+    BookingStatus,
+    ReservationStatus,
+    SeatReservation,
+)
 from app.models.drivers import Driver
 from app.models.identity import User, UserProfile
+from app.models.payments import Payment, PaymentStatus
 from app.models.routes import Route, RouteStop, Stop
 from app.models.tickets import Ticket, TicketStatus
 from app.models.trips import Trip, TripDriverAssignment, TripStatus, TripVehicleAssignment
 from app.models.vehicles import Vehicle, VehicleSeat, VehicleSeatLayout, VehicleType
+from app.providers.payments.base import PaymentChannel
 
 # Trips a vehicle is out on: what the live maps and "near me" show.
 ACTIVE_TRIP_STATUSES = (TripStatus.BOARDING, TripStatus.IN_PROGRESS, TripStatus.PAUSED)
@@ -37,14 +46,21 @@ class TripSummary:
     trip_id: uuid.UUID
     route_id: uuid.UUID
     route_name: str
+    origin_stop_id: uuid.UUID
     origin_stop_name: str
+    destination_stop_id: uuid.UUID
     destination_stop_name: str
     scheduled_departure_at: datetime
     scheduled_arrival_at: datetime | None
     status: TripStatus
+    # The operator's fare for the whole route, per seat.
+    fare_amount: Decimal
     vehicle_id: uuid.UUID | None
     vehicle_registration_number: str | None
     vehicle_type: VehicleType | None
+    vehicle_make: str | None
+    vehicle_model: str | None
+    vehicle_capacity: int | None
     fleet_id: uuid.UUID | None
     seats_total: int
     # Paid seats -- the passengers on the driver's manifest.
@@ -55,10 +71,16 @@ class TripSummary:
     boarded_count: int
     driver_id: uuid.UUID | None
     driver_name: str | None
+    driver_user_id: uuid.UUID | None
 
     @property
     def available_seats(self) -> int:
         return max(self.seats_total - self.seats_taken, 0)
+
+    @property
+    def vehicle_make_model(self) -> str | None:
+        """ "Toyota Hiace", or whichever half is known."""
+        return " ".join(part for part in (self.vehicle_make, self.vehicle_model) if part) or None
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,8 +94,23 @@ class ManifestEntry:
     # number of the account that booked the seat.
     phone_number: str
     pickup_stop_name: str
+    dropoff_stop_name: str
     boarded: bool
     boarded_at: datetime | None
+
+
+@dataclass(frozen=True, slots=True)
+class PaidSeat:
+    """One seat of a paid booking on a trip, with how it was paid."""
+
+    booking_id: uuid.UUID
+    booking_reference: str
+    passenger_count: int
+    booking_fare: Decimal
+    channel: PaymentChannel
+    paid_at: datetime | None
+    passenger_name: str
+    seat_label: str
 
 
 def day_window(on_date: date | None) -> tuple[datetime | None, datetime | None]:
@@ -88,6 +125,7 @@ def day_window(on_date: date | None) -> tuple[datetime | None, datetime | None]:
 _origin = aliased(Stop, name="origin_stop")
 _destination = aliased(Stop, name="destination_stop")
 _pickup = aliased(Stop, name="pickup_stop")
+_dropoff = aliased(Stop, name="dropoff_stop")
 
 
 def _reservations(*statuses: ReservationStatus) -> Any:
@@ -118,14 +156,20 @@ def _summary_columns() -> tuple[Any, ...]:
         Trip.id,
         Trip.route_id,
         Route.name.label("route_name"),
+        Route.origin_stop_id,
+        Route.destination_stop_id,
         _origin.name.label("origin_stop_name"),
         _destination.name.label("destination_stop_name"),
         Trip.scheduled_departure_at,
         Trip.scheduled_arrival_at,
         Trip.status,
+        Trip.fare_amount,
         Vehicle.id.label("vehicle_id"),
         Vehicle.registration_number,
         Vehicle.vehicle_type,
+        Vehicle.make.label("vehicle_make"),
+        Vehicle.model.label("vehicle_model"),
+        Vehicle.capacity.label("vehicle_capacity"),
         Vehicle.fleet_id,
         # Seats configured on the layout, else the vehicle's rated capacity.
         func.coalesce(layout_seats, Vehicle.capacity, 0).label("seats_total"),
@@ -134,6 +178,7 @@ def _summary_columns() -> tuple[Any, ...]:
         boarded.label("boarded_count"),
         Driver.id.label("driver_id"),
         UserProfile.full_name.label("driver_name"),
+        Driver.user_id.label("driver_user_id"),
     )
 
 
@@ -171,14 +216,20 @@ def _to_summary(row: Any) -> TripSummary:
         trip_id=row.id,
         route_id=row.route_id,
         route_name=row.route_name,
+        origin_stop_id=row.origin_stop_id,
         origin_stop_name=row.origin_stop_name,
+        destination_stop_id=row.destination_stop_id,
         destination_stop_name=row.destination_stop_name,
         scheduled_departure_at=row.scheduled_departure_at,
         scheduled_arrival_at=row.scheduled_arrival_at,
         status=row.status,
+        fare_amount=row.fare_amount,
         vehicle_id=row.vehicle_id,
         vehicle_registration_number=row.registration_number,
         vehicle_type=row.vehicle_type,
+        vehicle_make=row.vehicle_make,
+        vehicle_model=row.vehicle_model,
+        vehicle_capacity=row.vehicle_capacity,
         fleet_id=row.fleet_id,
         seats_total=row.seats_total,
         seats_booked=row.seats_booked,
@@ -186,6 +237,7 @@ def _to_summary(row: Any) -> TripSummary:
         boarded_count=row.boarded_count,
         driver_id=row.driver_id,
         driver_name=row.driver_name,
+        driver_user_id=row.driver_user_id,
     )
 
 
@@ -246,6 +298,52 @@ class TripViewRepository:
         ).all()
         return {row.id: _to_summary(row) for row in rows}
 
+    async def list_paid_seats(self, trip_id: uuid.UUID) -> list[PaidSeat]:
+        """Every seat on the trip that has been paid for and not refunded or
+        cancelled since, in seat order."""
+        rows = (
+            await self._session.execute(
+                select(
+                    Booking.id,
+                    Booking.booking_reference,
+                    Booking.passenger_count,
+                    Booking.fare_amount,
+                    Payment.channel,
+                    Payment.completed_at,
+                    BookingPassenger.full_name,
+                    VehicleSeat.seat_number,
+                )
+                .select_from(Booking)
+                .join(
+                    Payment,
+                    and_(
+                        Payment.booking_id == Booking.id,
+                        Payment.status == PaymentStatus.SUCCESSFUL,
+                    ),
+                )
+                .join(BookingPassenger, BookingPassenger.booking_id == Booking.id)
+                .join(VehicleSeat, VehicleSeat.id == BookingPassenger.seat_id)
+                .where(
+                    Booking.trip_id == trip_id,
+                    Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.COMPLETED]),
+                )
+                .order_by(VehicleSeat.row_number, VehicleSeat.column_number)
+            )
+        ).all()
+        return [
+            PaidSeat(
+                booking_id=row.id,
+                booking_reference=row.booking_reference,
+                passenger_count=row.passenger_count,
+                booking_fare=row.fare_amount,
+                channel=row.channel,
+                paid_at=row.completed_at,
+                passenger_name=row.full_name,
+                seat_label=row.seat_number,
+            )
+            for row in rows
+        ]
+
     async def list_manifest(self, trip_id: uuid.UUID) -> list[ManifestEntry]:
         """Everyone holding a ticket for the trip, in pickup order along the
         route. Revoked tickets (cancelled bookings) are left out."""
@@ -261,6 +359,7 @@ class TripViewRepository:
                         "phone_number"
                     ),
                     _pickup.name.label("pickup_stop_name"),
+                    _dropoff.name.label("dropoff_stop_name"),
                     Ticket.status,
                     Ticket.validated_at,
                 )
@@ -271,10 +370,16 @@ class TripViewRepository:
                 .join(User, User.id == Booking.passenger_id)
                 .join(Trip, Trip.id == Ticket.trip_id)
                 .join(Route, Route.id == Trip.route_id)
-                # A booking with no boarding stop rides from the route's start.
+                # A booking with no boarding stop rides from the route's start,
+                # one with no destination to its end.
                 .join(
                     _pickup,
                     _pickup.id == func.coalesce(Booking.origin_stop_id, Route.origin_stop_id),
+                )
+                .join(
+                    _dropoff,
+                    _dropoff.id
+                    == func.coalesce(Booking.destination_stop_id, Route.destination_stop_id),
                 )
                 .outerjoin(
                     RouteStop, and_(RouteStop.route_id == Route.id, RouteStop.stop_id == _pickup.id)
@@ -296,6 +401,7 @@ class TripViewRepository:
                 passenger_full_name=row.full_name,
                 phone_number=row.phone_number,
                 pickup_stop_name=row.pickup_stop_name,
+                dropoff_stop_name=row.dropoff_stop_name,
                 boarded=row.status == TicketStatus.VALIDATED,
                 boarded_at=row.validated_at,
             )

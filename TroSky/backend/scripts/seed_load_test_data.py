@@ -42,7 +42,7 @@ from app.schemas.fleet import (
 from app.services.driver_service import DriverService
 from app.services.fleet_service import FleetService
 from app.services.trip_service import TripService
-from scripts.seed_dev_data import ensure_permissions, ensure_roles
+from scripts.seed_reference_data import ensure_permissions, ensure_roles
 
 logger = get_logger(__name__)
 

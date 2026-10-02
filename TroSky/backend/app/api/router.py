@@ -21,6 +21,7 @@ from app.api.v1 import (
     payments,
     routes,
     safety,
+    shared_trips,
     tickets,
     tracking,
     users,
@@ -58,3 +59,5 @@ api_router.include_router(safety.router, tags=["safety"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 
 # ... additional domain routers are attached here as each phase lands.
+
+api_router.include_router(shared_trips.router, prefix="/shared-trips", tags=["shared trips"])

@@ -8,6 +8,7 @@ boundary.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 from decimal import Decimal
 from itertools import pairwise
@@ -71,3 +72,56 @@ def stop_offsets_km(
     if route_km:
         offsets[-1] = Decimal(route_km).quantize(Decimal("0.01"))
     return offsets
+
+
+def travel_minutes(km: float, speed_kmh: Decimal | None, *, fallback_kmh: Decimal) -> int:
+    """Whole minutes to cover ``km``: at the vehicle's own speed while it is
+    moving, else at ``fallback_kmh``. Rounded up, so "0" means "there now"."""
+    speed = speed_kmh if speed_kmh is not None and speed_kmh >= _MOVING_KMH else fallback_kmh
+    return math.ceil(max(km, 0.0) / float(speed) * 60)
+
+
+# Below this a reported speed means "stuck in traffic or stopped", not a
+# pace to extrapolate from.
+_MOVING_KMH = Decimal("5")
+
+
+def progress_along_route_km(
+    stops: Sequence[tuple[float, float, float]], latitude: float, longitude: float
+) -> float | None:
+    """How far along a route a vehicle at ``(latitude, longitude)`` is.
+
+    ``stops`` are ``(latitude, longitude, offset_km)`` in route order, the
+    offset being the stop's distance from the start along the road. The
+    route is treated as straight lines between neighbouring stops: the
+    vehicle is placed on the nearest of those lines, and its progress is
+    read off that line's two offsets in proportion. None for fewer than two
+    stops.
+
+    Straight lines are close enough between neighbouring stops to tell
+    which stops a vehicle has passed, which is what this is for; it is not
+    a road-accurate distance.
+    """
+    if len(stops) < 2:
+        return None
+    # Equirectangular projection around the vehicle: metres-accurate over
+    # the few kilometres between stops, and cheap.
+    km_per_deg_lat = 111.32
+    km_per_deg_lng = 111.32 * math.cos(math.radians(latitude))
+
+    def to_xy(lat: float, lng: float) -> tuple[float, float]:
+        return (lng - longitude) * km_per_deg_lng, (lat - latitude) * km_per_deg_lat
+
+    best: tuple[float, float] | None = None  # (distance off the line, progress)
+    for (lat_a, lng_a, km_a), (lat_b, lng_b, km_b) in pairwise(stops):
+        ax, ay = to_xy(lat_a, lng_a)
+        bx, by = to_xy(lat_b, lng_b)
+        dx, dy = bx - ax, by - ay
+        length_sq = dx * dx + dy * dy
+        # The vehicle sits at the origin of this projection.
+        t = 0.0 if length_sq == 0 else max(0.0, min(1.0, (-ax * dx - ay * dy) / length_sq))
+        off_line = math.hypot(ax + t * dx, ay + t * dy)
+        progress = km_a + t * (km_b - km_a)
+        if best is None or off_line < best[0]:
+            best = (off_line, progress)
+    return best[1] if best is not None else None

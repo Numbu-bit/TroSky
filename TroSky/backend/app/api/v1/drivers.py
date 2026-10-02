@@ -18,15 +18,19 @@ from app.api.dependencies import (
     CurrentPrincipal,
     DriverServiceDep,
     Pagination,
+    RatingServiceDep,
     WalletServiceDep,
 )
+from app.api.v1.views import driver_response, rating_summary
 from app.core.config import get_settings
 from app.core.exceptions import ValidationAppError
 from app.core.permissions import SystemRole, require_roles
 from app.models.drivers import DocumentType
 from app.models.trips import TripStatus
+from app.models.vehicles import Vehicle
 from app.schemas.common import PaginatedResponse
 from app.schemas.driver import (
+    AssignedVehicleResponse,
     DocumentDownloadUrlResponse,
     DriverAssignmentResponse,
     DriverDocumentResponse,
@@ -35,6 +39,7 @@ from app.schemas.driver import (
     DriverUpdateRequest,
     EarningsSummaryResponse,
 )
+from app.schemas.feedback import DriverRatingSummaryResponse
 from app.schemas.trip import TripSummaryResponse
 from app.services.wallet_service import period_start
 from app.utilities.query_params import parse_enum_list
@@ -58,7 +63,7 @@ async def register_driver(
     immediately: ``get_current_principal`` reloads roles from the database
     on every request, so the existing access token keeps working."""
     driver = await drivers.register(principal.user_id, body)
-    return DriverResponse.model_validate(driver)
+    return await driver_response(driver, drivers)
 
 
 @router.get("/me", response_model=DriverResponse)
@@ -66,7 +71,7 @@ async def get_my_driver_profile(
     principal: CurrentPrincipal, drivers: DriverServiceDep
 ) -> DriverResponse:
     driver = await drivers.get_own_profile(principal.user_id)
-    return DriverResponse.model_validate(driver)
+    return await driver_response(driver, drivers)
 
 
 @router.patch("/me", response_model=DriverResponse)
@@ -74,7 +79,7 @@ async def update_my_driver_profile(
     body: DriverUpdateRequest, principal: CurrentPrincipal, drivers: DriverServiceDep
 ) -> DriverResponse:
     driver = await drivers.update_own_profile(principal.user_id, body)
-    return DriverResponse.model_validate(driver)
+    return await driver_response(driver, drivers)
 
 
 @router.post(
@@ -121,10 +126,35 @@ async def get_my_document_download_url(
 async def list_my_assignments(
     principal: CurrentPrincipal, drivers: DriverServiceDep
 ) -> list[DriverAssignmentResponse]:
-    """Vehicles this driver is currently authorized to operate. Trip-specific
-    assignments are added to this response from Phase 4 onward."""
-    assignments = await drivers.list_own_assignments(principal.user_id)
-    return [DriverAssignmentResponse.model_validate(a) for a in assignments]
+    """Vehicles this driver is currently authorized to operate, with their
+    details. The trips themselves are at ``GET /drivers/me/trips``."""
+    return [
+        DriverAssignmentResponse.model_validate(assignment).model_copy(
+            update={"vehicle": _assigned_vehicle(vehicle) if vehicle else None}
+        )
+        for assignment, vehicle in await drivers.list_own_assignments(principal.user_id)
+    ]
+
+
+def _assigned_vehicle(vehicle: Vehicle) -> AssignedVehicleResponse:
+    make_model = " ".join(part for part in (vehicle.make, vehicle.model) if part) or None
+    return AssignedVehicleResponse(
+        id=vehicle.id,
+        registration_number=vehicle.registration_number,
+        vehicle_type=vehicle.vehicle_type,
+        make_model=make_model,
+        capacity=vehicle.capacity,
+        status=vehicle.status,
+    )
+
+
+@router.get("/me/rating-summary", response_model=DriverRatingSummaryResponse)
+async def get_my_rating_summary(
+    principal: CurrentPrincipal, drivers: DriverServiceDep, ratings: RatingServiceDep
+) -> DriverRatingSummaryResponse:
+    """How passengers rate this driver: overall and per category."""
+    driver = await drivers.get_own_profile(principal.user_id)
+    return await rating_summary(driver.id, ratings)
 
 
 @router.get("/me/trips", response_model=PaginatedResponse[TripSummaryResponse])

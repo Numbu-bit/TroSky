@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
 from app.core.exceptions import (
+    FileValidationError,
     ForbiddenError,
     InvalidStateTransitionError,
     NotFoundError,
@@ -25,6 +26,7 @@ from app.core.logging import get_logger
 from app.core.telemetry import SOS_EVENTS_TOTAL
 from app.models.bookings import Booking, BookingStatus
 from app.models.safety import (
+    DEFAULT_SEVERITY,
     Incident,
     IncidentSeverity,
     IncidentStatus,
@@ -33,12 +35,17 @@ from app.models.safety import (
     SosAlertStatus,
 )
 from app.providers.sms.factory import get_sms_provider
+from app.providers.storage.base import ObjectStorageProvider
+from app.providers.storage.malware_scan import MalwareScanner
 from app.repositories.driver_repository import DriverRepository
 from app.repositories.profile_repository import EmergencyContactRepository
 from app.repositories.safety_repository import IncidentRepository, SosAlertRepository
 from app.repositories.trip_repository import TripRepository
+from app.services.document_service import store_uploaded_document
 
 logger = get_logger(__name__)
+
+_PHOTO_TYPES = {"image/jpeg", "image/png"}
 
 _ACTIVE_BOOKING_STATUSES = (
     BookingStatus.PENDING,
@@ -83,7 +90,7 @@ class SafetyService:
         *,
         reported_by: uuid.UUID,
         incident_type: IncidentType,
-        severity: IncidentSeverity,
+        severity: IncidentSeverity | None,
         description: str,
         latitude: float | None,
         longitude: float | None,
@@ -92,6 +99,7 @@ class SafetyService:
         if trip is None:
             raise NotFoundError("Trip not found.")
         await self._assert_trip_participant(trip_id, reported_by)
+        severity = severity or DEFAULT_SEVERITY[incident_type]
 
         incident = await self._incidents.create(
             trip_id=trip_id,
@@ -108,6 +116,49 @@ class SafetyService:
             trip_id=str(trip_id),
             severity=severity.value,
         )
+        return incident
+
+    async def attach_incident_photo(
+        self,
+        incident_id: uuid.UUID,
+        *,
+        reported_by: uuid.UUID,
+        filename: str,
+        content_type: str,
+        data: bytes,
+        storage: ObjectStorageProvider,
+        scanner: MalwareScanner,
+    ) -> Incident:
+        """Attach the one photo an incident can carry, replacing (and
+        deleting) an earlier one. Only whoever reported it may add it."""
+        incident = await self.get_incident(incident_id, requesting_user_id=reported_by)
+        if content_type not in _PHOTO_TYPES:
+            raise FileValidationError(
+                "Upload a JPEG or PNG image.", details={"allowed_types": sorted(_PHOTO_TYPES)}
+            )
+        limit = self._settings.INCIDENT_PHOTO_MAX_SIZE_BYTES
+        if len(data) > limit:
+            raise FileValidationError(
+                "The photo is too large.", details={"max_bytes": limit, "actual_bytes": len(data)}
+            )
+        uploaded = await store_uploaded_document(
+            storage=storage,
+            scanner=scanner,
+            settings=self._settings,
+            key_prefix=f"incidents/{incident.id}",
+            filename=filename,
+            content_type=content_type,
+            data=data,
+        )
+        previous = incident.photo_storage_key
+        incident.photo_storage_key = uploaded.storage_key
+        await self._session.flush()
+        if previous and previous != uploaded.storage_key:
+            try:
+                await storage.delete_object(previous)
+            except Exception:
+                # Only costs storage: the old photo is no longer referenced.
+                logger.warning("incident_previous_photo_not_deleted", incident_id=str(incident.id))
         return incident
 
     async def get_incident(
@@ -167,8 +218,29 @@ class SafetyService:
         await self._notify_emergency_contacts(triggered_by, latitude=latitude, longitude=longitude)
         return alert
 
+    async def trigger_sos_without_trip(
+        self, *, triggered_by: uuid.UUID, latitude: float | None, longitude: float | None
+    ) -> SosAlert:
+        """An emergency outside any trip: the Home screen's SOS button. Same
+        alert and the same messages to emergency contacts; there is just no
+        trip to attach it to, so the location is the only context."""
+        alert = await self._sos.create(
+            trip_id=None, triggered_by=triggered_by, latitude=latitude, longitude=longitude
+        )
+        SOS_EVENTS_TOTAL.labels(status=alert.status.value).inc()
+        logger.warning("sos_triggered", alert_id=str(alert.id), trip_id=None)
+        await self._notify_emergency_contacts(
+            triggered_by, latitude=latitude, longitude=longitude, during_trip=False
+        )
+        return alert
+
     async def _notify_emergency_contacts(
-        self, user_id: uuid.UUID, *, latitude: float | None, longitude: float | None
+        self,
+        user_id: uuid.UUID,
+        *,
+        latitude: float | None,
+        longitude: float | None,
+        during_trip: bool = True,
     ) -> None:
         contacts = await self._contacts.list_for_user(user_id)
         if not contacts:
@@ -179,9 +251,10 @@ class SafetyService:
             if latitude is not None and longitude is not None
             else ""
         )
+        context = " during a trip" if during_trip else ""
         message = (
-            "TroSky SOS Alert: your contact has triggered an emergency alert during a "
-            f"trip.{location_text} Please check on them."
+            f"TroSky SOS Alert: your contact has triggered an emergency alert{context}."
+            f"{location_text} Please check on them."
         )
         provider = get_sms_provider(self._settings)
         for contact in contacts:

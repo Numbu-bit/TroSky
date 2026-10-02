@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Collection
+from collections.abc import Collection, Sequence
 from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,6 +26,7 @@ from app.models.drivers import (
     DriverDocument,
 )
 from app.models.trips import TripStatus
+from app.models.vehicles import Vehicle
 from app.providers.storage.base import ObjectStorageProvider
 from app.providers.storage.malware_scan import MalwareScanner
 from app.repositories.driver_repository import DriverRepository
@@ -34,6 +35,8 @@ from app.repositories.trip_view_repository import (
     TripViewRepository,
     day_window,
 )
+from app.repositories.user_repository import UserRepository
+from app.repositories.vehicle_repository import VehicleRepository
 from app.schemas.driver import DriverRegisterRequest, DriverUpdateRequest
 from app.services.document_service import store_uploaded_document
 from app.services.role_service import grant_role
@@ -176,9 +179,24 @@ class DriverService:
             document.storage_key, expires_in_seconds=self._settings.S3_PRESIGNED_URL_TTL_SECONDS
         )
 
-    async def list_own_assignments(self, user_id: uuid.UUID) -> list[DriverAssignment]:
+    async def list_own_assignments(
+        self, user_id: uuid.UUID
+    ) -> list[tuple[DriverAssignment, Vehicle | None]]:
+        """The vehicles this driver may operate, each with its details."""
         driver = await self.get_own_profile(user_id)
-        return await self._drivers.list_active_assignments_for_driver(driver.id)
+        assignments = await self._drivers.list_active_assignments_for_driver(driver.id)
+        vehicles = await VehicleRepository(self._session).get_many(
+            {assignment.vehicle_id for assignment in assignments}
+        )
+        return [(assignment, vehicles.get(assignment.vehicle_id)) for assignment in assignments]
+
+    async def contacts_for(
+        self, drivers: Sequence[Driver]
+    ) -> dict[uuid.UUID, tuple[str | None, str]]:
+        """``user_id -> (full name, phone)`` for these drivers' accounts."""
+        return await UserRepository(self._session).contacts_by_ids(
+            {driver.user_id for driver in drivers}
+        )
 
     # ------------------------------------------------------------------
     # Admin review

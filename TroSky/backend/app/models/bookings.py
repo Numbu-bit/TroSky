@@ -84,6 +84,10 @@ class Booking(UUIDAuditBase):
         Numeric(12, 2), nullable=False, server_default="0"
     )
     total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    # What these seats would have cost with nobody to share the trip with,
+    # at booking time: what "you saved" is measured against. NULL for
+    # bookings made before it was recorded (treated as no saving).
+    solo_fare_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     idempotency_key: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
     idempotency_request_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     expires_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
@@ -98,6 +102,7 @@ class Booking(UUIDAuditBase):
         CheckConstraint("total_amount >= 0", name="total_amount_non_negative"),
         CheckConstraint("fare_amount >= 0", name="fare_amount_non_negative"),
         CheckConstraint("platform_fee >= 0", name="platform_fee_non_negative"),
+        CheckConstraint("solo_fare_amount >= 0", name="solo_fare_amount_non_negative"),
         Index("ix_bookings_passenger_id", "passenger_id"),
         Index("ix_bookings_trip_id", "trip_id"),
         Index("ix_bookings_trip_segment", "trip_id", "origin_stop_id", "destination_stop_id"),

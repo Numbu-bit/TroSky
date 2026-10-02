@@ -75,7 +75,8 @@ class RatingRepository:
             )
         )
         average, count = result.one()
-        return (Decimal(str(round(average, 2))) if average is not None else None, count)
+        rounded = Decimal(str(average)).quantize(Decimal("0.01")) if average is not None else None
+        return rounded, int(count)
 
 
 class ComplaintRepository:
