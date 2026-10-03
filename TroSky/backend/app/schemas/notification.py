@@ -25,6 +25,14 @@ class NotificationResponse(ApiModel):
     created_at: datetime
 
 
+class UnreadCountResponse(ApiModel):
+    unread_count: int
+
+
+class MarkAllReadResponse(ApiModel):
+    marked_read: int = Field(..., description="How many notifications were unread until now.")
+
+
 class DeviceRegisterRequest(RequestModel):
     device_id: str = Field(..., min_length=1, max_length=255)
     platform: DevicePlatform

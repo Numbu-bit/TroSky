@@ -40,22 +40,37 @@ _SENSITIVE_KEYS = {
 }
 
 
+REDACTED = "***REDACTED***"
+
+# Request fields whose submitted value must never be echoed or logged, even
+# where the generic key holding it ("input" in a validation error) gives no
+# hint. Broader than _SENSITIVE_KEYS on purpose: "code" is a one-time code in
+# a request body, but in a log line it is an error code worth keeping.
+_SENSITIVE_FIELDS = _SENSITIVE_KEYS | {"code", "qr_token", "new_password"}
+
+
+def is_sensitive_field(name: str) -> bool:
+    lowered = name.lower()
+    return lowered in _SENSITIVE_FIELDS or "password" in lowered
+
+
+def redact(value: Any) -> Any:
+    """``value`` with every sensitive key's value replaced, at any depth."""
+    if isinstance(value, dict):
+        return {
+            k: (REDACTED if k.lower() in _SENSITIVE_KEYS else redact(v)) for k, v in value.items()
+        }
+    if isinstance(value, list):
+        return [redact(item) for item in value]
+    return value
+
+
 def _redact_processor(
     _logger: logging.Logger, _method_name: str, event_dict: EventDict
 ) -> EventDict:
-    def redact(value: Any) -> Any:
-        if isinstance(value, dict):
-            return {
-                k: ("***REDACTED***" if k.lower() in _SENSITIVE_KEYS else redact(v))
-                for k, v in value.items()
-            }
-        if isinstance(value, list):
-            return [redact(item) for item in value]
-        return value
-
     for key in list(event_dict.keys()):
         if key.lower() in _SENSITIVE_KEYS:
-            event_dict[key] = "***REDACTED***"
+            event_dict[key] = REDACTED
         else:
             event_dict[key] = redact(event_dict[key])
     return event_dict

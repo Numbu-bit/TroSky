@@ -27,11 +27,19 @@ from app.api.dependencies import (
     RefundServiceDep,
     RouteServiceDep,
     SafetyServiceDep,
+    StorageProviderDep,
     TrackingServiceDep,
     TripServiceDep,
     WithdrawalServiceDep,
 )
-from app.api.v1.views import booking_responses, live_trip_response
+from app.api.v1.views import (
+    booking_responses,
+    driver_response,
+    driver_responses,
+    incident_response,
+    live_trip_response,
+    rating_summary,
+)
 from app.core.permissions import Permission, require_permissions
 from app.models.bookings import BookingStatus, CancellationStatus
 from app.models.feedback import ComplaintStatus
@@ -121,7 +129,7 @@ async def list_pending_drivers(
 ) -> PaginatedResponse[DriverResponse]:
     records, total = await drivers.list_pending(limit=pagination.limit, offset=pagination.offset)
     return PaginatedResponse(
-        items=[DriverResponse.model_validate(d) for d in records],
+        items=await driver_responses(records, drivers),
         total=total,
         limit=pagination.limit,
         offset=pagination.offset,
@@ -140,7 +148,7 @@ async def approve_driver(
     drivers: DriverServiceDep,
 ) -> DriverResponse:
     driver = await drivers.approve(driver_id, reviewer_id=principal.user_id, notes=body.notes)
-    return DriverResponse.model_validate(driver)
+    return await driver_response(driver, drivers)
 
 
 @router.post(
@@ -161,7 +169,7 @@ async def reject_driver(
         rejection_reason=rejection_reason,
         notes=body.notes,
     )
-    return DriverResponse.model_validate(driver)
+    return await driver_response(driver, drivers)
 
 
 @router.get(
@@ -673,13 +681,14 @@ async def dismiss_complaint(
 async def list_incidents(
     pagination: Pagination,
     safety: SafetyServiceDep,
+    storage: StorageProviderDep,
     incident_status: IncidentStatus | None = None,
 ) -> PaginatedResponse[IncidentResponse]:
     records, total = await safety.list_incidents(
         status=incident_status, limit=pagination.limit, offset=pagination.offset
     )
     return PaginatedResponse(
-        items=[IncidentResponse.model_validate(i) for i in records],
+        items=[await incident_response(i, storage) for i in records],
         total=total,
         limit=pagination.limit,
         offset=pagination.offset,
@@ -696,11 +705,12 @@ async def resolve_incident(
     body: IncidentDecisionRequest,
     principal: CurrentPrincipal,
     safety: SafetyServiceDep,
+    storage: StorageProviderDep,
 ) -> IncidentResponse:
     incident = await safety.resolve_incident(
         incident_id, reviewer_id=principal.user_id, notes=body.notes
     )
-    return IncidentResponse.model_validate(incident)
+    return await incident_response(incident, storage)
 
 
 # ---------------------------------------------------------------------------
@@ -767,17 +777,7 @@ async def resolve_sos_alert(
 async def get_driver_rating_summary(
     driver_id: uuid.UUID, ratings: RatingServiceDep
 ) -> DriverRatingSummaryResponse:
-    average, count = await ratings.get_driver_average_rating(driver_id)
-    categories = await ratings.get_driver_category_averages(driver_id)
-    return DriverRatingSummaryResponse(
-        driver_id=driver_id,
-        average_score=average,
-        rating_count=count,
-        safety_average=categories["safety"],
-        cleanliness_average=categories["cleanliness"],
-        professionalism_average=categories["professionalism"],
-        timeliness_average=categories["timeliness"],
-    )
+    return await rating_summary(driver_id, ratings)
 
 
 # ---------------------------------------------------------------------------

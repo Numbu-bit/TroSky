@@ -33,10 +33,22 @@ _TEST_DB_URL = os.environ.get("TROSKY_TEST_DATABASE_URL")
 if _TEST_DB_URL:
     os.environ["DATABASE_URL"] = _TEST_DB_URL
     os.environ["DATABASE_URL_SYNC"] = _TEST_DB_URL.replace("+asyncpg", "+psycopg")
+# Same for Redis: the suite runs FLUSHDB, so a machine whose localhost:6379
+# belongs to something else can point it at a throwaway instance instead.
+_TEST_REDIS_URL = os.environ.get("TROSKY_TEST_REDIS_URL")
+if _TEST_REDIS_URL:
+    os.environ["REDIS_URL"] = _TEST_REDIS_URL
 
 os.environ.setdefault("APP_ENV", "test")
 
-from app.core.config import get_settings  # noqa: E402
+from app.core.config import Settings, get_settings  # noqa: E402
+
+# Settings come from .env.test (loaded above) and the defaults only, never
+# from a developer's .env, which pydantic-settings would otherwise read for
+# anything .env.test leaves out. A local run then behaves like CI.
+Settings.model_config["env_file"] = None
+get_settings.cache_clear()
+
 from app.core.database import dispose_engine, get_engine  # noqa: E402
 from app.core.redis import close_redis, get_redis_client  # noqa: E402
 from app.main import create_app  # noqa: E402
@@ -160,7 +172,7 @@ async def db_session(require_postgres: None) -> AsyncIterator[AsyncSession]:
 async def seeded_roles(db_session: AsyncSession) -> dict[str, object]:
     """Seeds roles/permissions inside the same rolled-back transaction as
     ``db_session`` — for service-level tests that don't go through HTTP."""
-    from scripts.seed_dev_data import ensure_permissions, ensure_roles
+    from scripts.seed_reference_data import ensure_permissions, ensure_roles
 
     roles = await ensure_roles(db_session)
     await ensure_permissions(db_session)
@@ -173,7 +185,7 @@ async def seed_identity_data(require_postgres: None) -> AsyncIterator[None]:
     API-level tests that exercise the app's own (separately-committing)
     request-scoped sessions via the ``client`` fixture. Idempotent, so
     running it once per test is cheap and side-effect-free across runs."""
-    from scripts.seed_dev_data import ensure_permissions, ensure_roles
+    from scripts.seed_reference_data import ensure_permissions, ensure_roles
 
     from app.core.database import get_session_factory
 

@@ -20,6 +20,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from app.api import dependencies as api_dependencies
 from app.api.health import router as health_router
 from app.api.router import api_router
+from app.api.v1 import shared_trips
 from app.core.background import drain_background_jobs
 from app.core.config import Settings, get_settings
 from app.core.database import dispose_engine, get_engine
@@ -104,6 +105,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     app.include_router(health_router)
+    # The page behind shared live-trip links: outside /api/v1, it is a page.
+    app.include_router(shared_trips.page_router)
     app.include_router(api_router, prefix=settings.API_PREFIX)
 
     return app

@@ -9,9 +9,10 @@ existence isn't leaked, unless the caller holds ``bookings:view_any``
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, date, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 
 from app.api.dependencies import (
     BookingServiceDep,
@@ -22,7 +23,10 @@ from app.api.dependencies import (
     RatingServiceDep,
     TicketServiceDep,
 )
-from app.api.v1.views import booking_responses
+from app.api.payment_dependencies import PaymentMethodServiceDep
+from app.api.v1.shared_trips import TripShareServiceDep
+from app.api.v1.views import booking_responses, payment_source
+from app.core.config import get_settings
 from app.core.exceptions import NotFoundError
 from app.core.permissions import Permission
 from app.core.ratelimit import rate_limit
@@ -30,12 +34,14 @@ from app.models.bookings import Booking, BookingStatus
 from app.schemas.booking import (
     BookingCreateRequest,
     BookingResponse,
+    BookingSummaryResponse,
     CancelBookingRequest,
 )
 from app.schemas.common import PaginatedResponse
 from app.schemas.feedback import RateBookingRequest, RatingResponse
 from app.schemas.payment import PayBookingRequest, PaymentResponse
 from app.schemas.ticket import TicketResponse
+from app.schemas.trip import TripShareLinkResponse
 from app.services.booking_service import BookingService
 from app.utilities.query_params import parse_enum_list
 
@@ -98,6 +104,61 @@ async def list_my_bookings(
     )
 
 
+@router.get("/summary", response_model=BookingSummaryResponse)
+async def get_booking_summary(
+    principal: CurrentPrincipal,
+    service: BookingServiceDep,
+    month: str | None = Query(
+        default=None,
+        pattern=r"^\d{4}-(0[1-9]|1[0-2])$",
+        description="YYYY-MM. Default: this month.",
+        examples=["2026-10"],
+    ),
+) -> BookingSummaryResponse:
+    """The Trip History card: trips taken in a month, what they cost, and
+    how much sharing saved."""
+    if month is None:
+        on = datetime.now(UTC).date()
+    else:
+        year, number = (int(part) for part in month.split("-"))
+        on = date(year, number, 1)
+    summary = await service.monthly_summary(principal.user_id, on)
+    return BookingSummaryResponse(
+        month=f"{summary.month:%Y-%m}",
+        currency=summary.currency,
+        trips_count=summary.trips_count,
+        total_spent=summary.total_spent,
+        average_fare=summary.average_fare,
+        total_saved=summary.total_saved,
+    )
+
+
+@router.post(
+    "/{booking_id}/share",
+    response_model=TripShareLinkResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit("bookings:share"))],
+)
+async def share_booking(
+    booking_id: uuid.UUID,
+    request: Request,
+    principal: CurrentPrincipal,
+    shares: TripShareServiceDep,
+) -> TripShareLinkResponse:
+    """A link anyone can open to follow this trip live: the vehicle, the
+    stops, and roughly when it reaches the passenger's stop. For a paid
+    booking; it expires after 12 hours, or as soon as the booking is
+    cancelled."""
+    token, expires_at = await shares.create_link(principal.user_id, booking_id)
+    base = get_settings().TRIP_SHARE_BASE_URL
+    url = (
+        f"{base.rstrip('/')}/{token}"
+        if base
+        else str(request.url_for("shared_trip_page", token=token))
+    )
+    return TripShareLinkResponse(url=url, token=token, expires_at=expires_at)
+
+
 @router.get("/{booking_id}", response_model=BookingResponse)
 async def get_booking(
     booking_id: uuid.UUID, principal: CurrentPrincipal, service: BookingServiceDep
@@ -150,6 +211,7 @@ async def pay_for_booking(
     body: PayBookingRequest,
     principal: CurrentPrincipal,
     service: PaymentServiceDep,
+    methods: PaymentMethodServiceDep,
     idempotency_key: OptionalIdempotencyKey,
 ) -> PaymentResponse:
     """Initiates payment for a held booking. Wallet payments are debited
@@ -157,11 +219,12 @@ async def pay_for_booking(
     ``processing`` payment that is later confirmed by that channel's
     webhook (``POST /payments/webhooks/{channel}``) — never by this
     response."""
+    channel, payer_phone = await payment_source(body, principal.user_id, methods)
     payment = await service.pay_for_booking(
         principal.user_id,
         booking_id,
-        channel=body.channel,
-        payer_phone=body.payer_phone_number,
+        channel=channel,
+        payer_phone=payer_phone,
         idempotency_key=idempotency_key,
     )
     return PaymentResponse.model_validate(payment)

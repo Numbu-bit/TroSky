@@ -20,6 +20,8 @@ env/
 .env
 .env.*
 !.env.example
+# Placeholder test settings, loaded by tests/conftest.py: CI needs them.
+!.env.test
 
 # Testing / QA
 .pytest_cache/

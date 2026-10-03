@@ -1,5 +1,5 @@
 .PHONY: help install dev-install run worker beat lint format typecheck test test-cov \
-        migrate migrate-create migrate-downgrade seed docker-up docker-down docker-logs docker-build \
+        migrate migrate-create migrate-downgrade seed seed-reference seed-demo simulate-gps docker-up docker-down docker-logs docker-build \
         precommit-install clean
 
 PYTHON ?= python
@@ -21,6 +21,9 @@ help:
 	@echo "  make migrate-create m='message'   Autogenerate a new migration"
 	@echo "  make migrate-downgrade  Downgrade one migration"
 	@echo "  make seed               Load development seed data"
+	@echo "  make seed-reference     Add missing roles/permissions (safe in production)"
+	@echo "  make seed-demo          Load demo stops, routes, a week of trips and test accounts"
+	@echo "  make simulate-gps       Drive a demo trip along its route (ARGS=\"--speedup 3\")"
 	@echo "  make docker-up          Start the full local stack via docker compose"
 	@echo "  make docker-down        Stop the local stack"
 	@echo "  make docker-build       Build the production image"
@@ -59,6 +62,7 @@ test-cov:
 
 migrate:
 	alembic upgrade head
+	$(PYTHON) -m scripts.seed_reference_data
 
 migrate-create:
 	alembic revision --autogenerate -m "$(m)"
@@ -68,6 +72,15 @@ migrate-downgrade:
 
 seed:
 	$(PYTHON) -m scripts.seed_dev_data
+
+seed-reference:
+	$(PYTHON) -m scripts.seed_reference_data
+
+seed-demo:
+	$(PYTHON) -m scripts.seed_demo_data
+
+simulate-gps:
+	$(PYTHON) -m scripts.simulate_gps $(ARGS)
 
 docker-up:
 	docker compose up --build

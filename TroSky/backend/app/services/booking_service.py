@@ -16,8 +16,8 @@ import hashlib
 import uuid
 from collections.abc import Awaitable, Collection, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
-from decimal import ROUND_HALF_UP, Decimal
+from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
 from typing import cast
 
 from redis.asyncio import Redis
@@ -47,15 +47,23 @@ from app.models.bookings import (
 from app.models.notifications import NotificationCategory
 from app.models.trips import Trip, TripStatus
 from app.repositories.booking_repository import BookingRepository, SeatAlreadyReservedError
-from app.repositories.route_repository import RouteRepository, StopRepository
+from app.repositories.route_geometry import (
+    PASSED_STOP_TOLERANCE_KM,
+    RouteGeometry,
+    RouteGeometryRepository,
+)
+from app.repositories.route_repository import StopRepository
+from app.repositories.tracking_repository import TripLocationRepository
 from app.repositories.trip_repository import TripRepository
 from app.repositories.trip_view_repository import TripSummary, TripViewRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.vehicle_repository import VehicleRepository
 from app.schemas.booking import BookingCreateRequest
-from app.services.fare_service import FareBreakdown, FareService, segment_distance_km
+from app.services.fare_quote_service import FareQuote, FareQuoteService, QuoteRequest
 from app.services.notification_service import NotificationService
 from app.services.ticket_service import TicketService
+from app.services.tracking_service import TrackingService
+from app.utilities.geo import wkb_to_latlng
 
 logger = get_logger(__name__)
 
@@ -67,6 +75,21 @@ _TERMINAL_BOOKING_STATUSES = frozenset(
         BookingStatus.REFUNDED,
     }
 )
+
+
+@dataclass(frozen=True, slots=True)
+class MonthlySpending:
+    month: date
+    currency: str
+    trips_count: int
+    total_spent: Decimal
+    average_fare: Decimal
+    total_saved: Decimal
+
+
+# A trip already on the road stays bookable from stops it has not reached;
+# see ``BookingService._assert_pickup_ahead``.
+_BOOKABLE_TRIP_STATUSES = (TripStatus.SCHEDULED, TripStatus.BOARDING, TripStatus.IN_PROGRESS)
 
 
 def _held_seats_key(trip_id: uuid.UUID) -> str:
@@ -93,9 +116,10 @@ class BookingService:
         self._settings = settings or get_settings()
         self._bookings = BookingRepository(session)
         self._trips = TripRepository(session)
-        self._routes = RouteRepository(session)
+        self._geometries = RouteGeometryRepository(session)
         self._stops = StopRepository(session)
-        self._fares = FareService(self._settings)
+        self._quotes = FareQuoteService(session, self._settings)
+        self._locations = TripLocationRepository(session)
         self._vehicles = VehicleRepository(session)
         self._users = UserRepository(session)
         self._tickets = TicketService(session, self._settings)
@@ -108,7 +132,7 @@ class BookingService:
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
     async def _resolve_segment(
-        self, trip: Trip, request: BookingCreateRequest
+        self, geometry: RouteGeometry, request: BookingCreateRequest
     ) -> tuple[uuid.UUID | None, uuid.UUID | None]:
         """Where this booking boards and alights, as stops on the trip's route.
 
@@ -121,10 +145,7 @@ class BookingService:
         engine would otherwise price a stop it cannot place as the whole
         route, charging a full fare without telling anyone why.
         """
-        route = await self._routes.get_by_id(trip.route_id)
-        if route is None:
-            raise NotFoundError("Route not found.")
-        order = await self._routes.stop_order(route)
+        order = geometry.order
 
         destination = request.destination_stop_id
         if destination is not None and destination not in order:
@@ -172,57 +193,63 @@ class BookingService:
         self,
         *,
         trip: Trip,
+        geometry: RouteGeometry,
+        seats_total: int,
         origin_stop_id: uuid.UUID | None,
         destination_stop_id: uuid.UUID | None,
         seat_count: int,
-    ) -> FareBreakdown:
-        """Price one seat on the part of the route this booking rides.
-
-        The trip's cost is divided between everyone aboard in proportion to
-        the distance each rides, so the divisor is the sum of every seat's
-        distance — those already booked plus the ones being booked now.
-
-        Sharing is priced from the passengers aboard at the moment of
-        booking: someone boarding later gets their own, cheaper quote, but
-        nobody is re-billed for a bus that filled up after they paid.
-        """
-        route_stops = await self._routes.list_route_stops(trip.route_id)
-        distances = {rs.stop_id: rs.distance_from_origin_km for rs in route_stops}
-        route = await self._routes.get_by_id(trip.route_id)
-        route_km = route.distance_km if route is not None else None
-
-        segment_km = route_km
-        if origin_stop_id is not None and destination_stop_id is not None:
-            segment_km = segment_distance_km(
-                origin_distance_km=distances.get(origin_stop_id),
-                destination_distance_km=distances.get(destination_stop_id),
-                route_km=route_km,
-            )
-
-        committed_km = await self._bookings.sum_passenger_km_for_trip(
-            trip.id, stop_distances=distances, route_km=route_km
-        )
-        own_km = (segment_km or route_km or Decimal("0")) * seat_count
-        return self._fares.quote(
+    ) -> FareQuote:
+        """Price the seats on the part of the route this booking rides, the
+        same way search results and the fare-quote endpoint do (see
+        ``FareQuoteService``)."""
+        request = QuoteRequest(
+            trip_id=trip.id,
+            route_id=trip.route_id,
             full_route_fare=trip.fare_amount,
-            segment_km=segment_km,
-            route_km=route_km,
-            total_passenger_km=committed_km + own_km,
+            seats_total=seats_total,
+            origin_stop_id=origin_stop_id,
+            destination_stop_id=destination_stop_id,
+            seats=seat_count,
         )
+        quotes = await self._quotes.quote([request], {trip.route_id: geometry})
+        return quotes[trip.id]
 
-    def _platform_fee(self, fare_amount: Decimal, seat_count: int) -> Decimal:
-        """TroSky's cut, charged on top of the operator's fare.
+    async def _latest_position(self, trip_id: uuid.UUID) -> tuple[float, float] | None:
+        """Where the vehicle last reported itself: the live cache first, as
+        search reads it, so both agree on whether a stop has been passed
+        (the database keeps a position only every few seconds)."""
+        if self._redis is not None:
+            live = await TrackingService(
+                self._session, self._redis, self._settings
+            ).get_live_location(trip_id)
+            return (live.latitude, live.longitude) if live is not None else None
+        latest = await self._locations.get_latest_for_trip(trip_id)
+        return wkb_to_latlng(latest.location) if latest is not None else None
 
-        Flat component is per seat, percentage applies to the fare. Rounded
-        half-up to the currency's minor unit so the three stored amounts
-        always satisfy fare + fee == total exactly (a banker's-rounding
-        default would break that invariant on .x5 boundaries).
-        """
-        fee = (self._settings.PLATFORM_FEE_FLAT_PER_SEAT * seat_count) + (
-            fare_amount * self._settings.PLATFORM_FEE_PERCENT / Decimal("100")
-        )
-        exponent = Decimal(1).scaleb(-self._settings.payments_default_currency_minor_unit)
-        return fee.quantize(exponent, rounding=ROUND_HALF_UP)
+    async def _assert_pickup_ahead(
+        self, trip: Trip, geometry: RouteGeometry, origin_stop_id: uuid.UUID | None
+    ) -> None:
+        """A trip already on the road can still be booked from a stop it has
+        not reached yet -- the trotro way -- but not from one behind it."""
+        if trip.status != TripStatus.IN_PROGRESS:
+            return
+        if origin_stop_id is None or origin_stop_id == geometry.origin_stop_id:
+            raise ConflictError(
+                "This vehicle has already left its first stop. Choose a pickup further along "
+                "the route.",
+                code="PICKUP_ALREADY_PASSED",
+            )
+        where = await self._latest_position(trip.id)
+        if where is None:
+            # No position reported yet: nothing says the stop is behind it.
+            return
+        km = geometry.km_until(origin_stop_id, *where)
+        if km is not None and km < -PASSED_STOP_TOLERANCE_KM:
+            raise ConflictError(
+                "This vehicle has already passed your pickup.",
+                code="PICKUP_ALREADY_PASSED",
+                details={"stop_id": str(origin_stop_id)},
+            )
 
     async def create_booking(
         self,
@@ -249,7 +276,7 @@ class BookingService:
         trip = await self._trips.get_by_id(request.trip_id)
         if trip is None:
             raise NotFoundError("Trip not found.")
-        if trip.status not in (TripStatus.SCHEDULED, TripStatus.BOARDING):
+        if trip.status not in _BOOKABLE_TRIP_STATUSES:
             raise ConflictError(
                 "This trip is not currently open for booking.", code="TRIP_NOT_BOOKABLE"
             )
@@ -282,16 +309,20 @@ class BookingService:
         hold_seconds = self._settings.SEAT_RESERVATION_HOLD_SECONDS
         expires_at = datetime.now(UTC) + timedelta(seconds=hold_seconds)
         seat_count = len(request.passengers)
-        origin_stop_id, destination_stop_id = await self._resolve_segment(trip, request)
+        geometry = (await self._geometries.for_routes([trip.route_id]))[trip.route_id]
+        origin_stop_id, destination_stop_id = await self._resolve_segment(geometry, request)
+        await self._assert_pickup_ahead(trip, geometry, origin_stop_id)
         quote = await self._quote_segment(
             trip=trip,
+            geometry=geometry,
+            seats_total=layout.total_seats,
             origin_stop_id=origin_stop_id,
             destination_stop_id=destination_stop_id,
             seat_count=seat_count,
         )
-        fare_amount: Decimal = quote.per_seat_fare * seat_count
-        platform_fee = self._platform_fee(fare_amount, seat_count)
-        total_amount: Decimal = fare_amount + platform_fee
+        fare_amount: Decimal = quote.current * seat_count
+        platform_fee = quote.platform_fee
+        total_amount: Decimal = quote.total
 
         booking = await self._bookings.create_booking(
             passenger_id=passenger_id,
@@ -302,6 +333,7 @@ class BookingService:
             fare_amount=fare_amount,
             platform_fee=platform_fee,
             total_amount=total_amount,
+            solo_fare_amount=quote.solo * seat_count,
             expires_at=expires_at,
             idempotency_key=idempotency_key,
             idempotency_request_hash=request_hash,
@@ -366,6 +398,25 @@ class BookingService:
     ) -> tuple[list[Booking], int]:
         return await self._bookings.list_for_passenger(
             passenger_id, statuses=statuses, upcoming=upcoming, limit=limit, offset=offset
+        )
+
+    async def monthly_summary(self, passenger_id: uuid.UUID, month: date) -> MonthlySpending:
+        """Trips taken (paid, departing that month), what they cost and what
+        sharing saved, for the Trip History card."""
+        start = datetime(month.year, month.month, 1, tzinfo=UTC)
+        end = datetime(month.year + month.month // 12, month.month % 12 + 1, 1, tzinfo=UTC)
+        trips, spent, saved = await self._bookings.spending_between(
+            passenger_id, start=start, end=end
+        )
+        cent = Decimal("0.01")
+        average = (spent / trips).quantize(cent) if trips else Decimal("0.00")
+        return MonthlySpending(
+            month=start.date(),
+            currency=self._settings.PAYMENTS_DEFAULT_CURRENCY,
+            trips_count=trips,
+            total_spent=spent.quantize(cent),
+            average_fare=average,
+            total_saved=saved.quantize(cent),
         )
 
     async def describe(self, bookings: Sequence[Booking]) -> list[BookingView]:

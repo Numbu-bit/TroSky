@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 from pydantic import Field, field_validator, model_validator
 
@@ -100,6 +101,14 @@ class FavouriteRouteCreateRequest(RequestModel):
         return self
 
 
+class NextTripResponse(ApiModel):
+    trip_id: uuid.UUID
+    scheduled_departure_at: datetime
+    available_seats: int
+    fare: Decimal = Field(..., description="Per seat right now, before the platform fee.")
+    currency: str
+
+
 class FavouriteRouteResponse(ApiModel):
     id: uuid.UUID
     origin_stop_id: uuid.UUID
@@ -108,3 +117,7 @@ class FavouriteRouteResponse(ApiModel):
     destination_stop_name: str
     label: str | None
     created_at: datetime
+    next_trip: NextTripResponse | None = Field(
+        default=None,
+        description="The soonest trip in the next 7 days with a free seat; null if none.",
+    )

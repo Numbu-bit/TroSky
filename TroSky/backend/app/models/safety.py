@@ -25,6 +25,8 @@ class IncidentType(StrEnum):
     BREAKDOWN = "breakdown"
     DELAY = "delay"
     SAFETY_CONCERN = "safety_concern"
+    PASSENGER_ISSUE = "passenger_issue"
+    ROAD_HAZARD = "road_hazard"
     OTHER = "other"
 
 
@@ -33,6 +35,20 @@ class IncidentSeverity(StrEnum):
     MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
+
+
+# What an incident is filed as when the reporter does not choose: drivers
+# reporting from the road should not have to triage. Ops can still change
+# their view of it while reviewing.
+DEFAULT_SEVERITY: dict[IncidentType, IncidentSeverity] = {
+    IncidentType.ACCIDENT: IncidentSeverity.HIGH,
+    IncidentType.SAFETY_CONCERN: IncidentSeverity.HIGH,
+    IncidentType.BREAKDOWN: IncidentSeverity.MEDIUM,
+    IncidentType.PASSENGER_ISSUE: IncidentSeverity.MEDIUM,
+    IncidentType.ROAD_HAZARD: IncidentSeverity.MEDIUM,
+    IncidentType.DELAY: IncidentSeverity.LOW,
+    IncidentType.OTHER: IncidentSeverity.LOW,
+}
 
 
 class IncidentStatus(StrEnum):
@@ -75,6 +91,8 @@ class Incident(UUIDAuditBase):
     location: Mapped[Any | None] = mapped_column(
         Geography(geometry_type="POINT", srid=4326, spatial_index=False), nullable=True
     )
+    # One photo of the scene, in the private bucket; served as a signed URL.
+    photo_storage_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
     status: Mapped[IncidentStatus] = mapped_column(
         PgEnum(
             IncidentStatus, name="incident_status", native_enum=True, values_callable=enum_values
@@ -97,8 +115,9 @@ class Incident(UUIDAuditBase):
 class SosAlert(UUIDAuditBase):
     __tablename__ = "sos_alerts"
 
-    trip_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("trips.id", ondelete="CASCADE"), nullable=False
+    # NULL for an alert raised outside any trip (the Home screen's SOS button).
+    trip_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("trips.id", ondelete="CASCADE"), nullable=True
     )
     triggered_by: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False

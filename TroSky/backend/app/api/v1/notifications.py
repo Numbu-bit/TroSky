@@ -8,7 +8,11 @@ from fastapi import APIRouter
 
 from app.api.dependencies import CurrentPrincipal, NotificationServiceDep, Pagination
 from app.schemas.common import PaginatedResponse
-from app.schemas.notification import NotificationResponse
+from app.schemas.notification import (
+    MarkAllReadResponse,
+    NotificationResponse,
+    UnreadCountResponse,
+)
 
 router = APIRouter()
 
@@ -29,6 +33,21 @@ async def list_notifications(
         limit=pagination.limit,
         offset=pagination.offset,
     )
+
+
+@router.get("/unread-count", response_model=UnreadCountResponse)
+async def get_unread_count(
+    principal: CurrentPrincipal, service: NotificationServiceDep
+) -> UnreadCountResponse:
+    """For the badge on the bell icon."""
+    return UnreadCountResponse(unread_count=await service.count_unread(principal.user_id))
+
+
+@router.post("/read-all", response_model=MarkAllReadResponse)
+async def mark_all_notifications_read(
+    principal: CurrentPrincipal, service: NotificationServiceDep
+) -> MarkAllReadResponse:
+    return MarkAllReadResponse(marked_read=await service.mark_all_read(principal.user_id))
 
 
 @router.post("/{notification_id}/read", response_model=NotificationResponse)

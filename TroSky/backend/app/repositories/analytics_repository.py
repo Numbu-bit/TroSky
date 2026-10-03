@@ -90,7 +90,9 @@ class AnalyticsRepository:
         )
         average_score, rating_count = rating_result.one()
         average_rating = (
-            Decimal(str(round(average_score, 2))) if average_score is not None else None
+            Decimal(str(average_score)).quantize(Decimal("0.01"))
+            if average_score is not None
+            else None
         )
 
         return FleetSummary(
@@ -99,7 +101,7 @@ class AnalyticsRepository:
             completed_trips=completed_trips,
             total_revenue=total_revenue,
             average_rating=average_rating,
-            rating_count=rating_count,
+            rating_count=int(rating_count),
         )
 
     async def _count_users_with_role(self, role_slug: str) -> int:

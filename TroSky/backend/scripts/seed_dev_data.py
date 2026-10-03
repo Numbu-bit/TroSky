@@ -1,4 +1,5 @@
-"""Development/CI seed data: system roles, permissions, and a dev administrator.
+"""Development/CI seed data: a dev administrator, stops and example routes,
+on top of the reference data (roles and permissions) every database gets.
 
 Run via ``make seed`` (``python -m scripts.seed_dev_data``). Idempotent —
 safe to run repeatedly against the same database. Contains **no production
@@ -25,88 +26,30 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import dispose_engine, transactional_session
 from app.core.logging import configure_logging, get_logger
-from app.core.permissions import Permission, SystemRole
+from app.core.permissions import SystemRole
 from app.core.security import hash_password
 from app.models.identity import (
     NotificationPreference,
     Role,
-    RolePermission,
     User,
     UserProfile,
     UserRole,
-)
-from app.models.identity import (
-    Permission as PermissionModel,
 )
 from app.models.routes import DayOfWeek, Route
 from app.repositories.route_repository import RouteRepository, StopRepository
 from app.repositories.user_repository import UserRepository
 from app.services.route_service import RouteService
+from scripts.seed_reference_data import (
+    ensure_admin_has_all_permissions,
+    ensure_permissions,
+    ensure_roles,
+)
 
 logger = get_logger(__name__)
 
 _DEV_ADMIN_PHONE = "+233200000000"
 _DEV_ADMIN_EMAIL = "admin@trosky.africa"
 _DEV_ADMIN_PASSWORD_FALLBACK = "TroSkyDevAdmin!2026"  # noqa: S105 - local-dev-only fallback
-
-_ROLE_DEFINITIONS: list[tuple[SystemRole, str, str]] = [
-    (SystemRole.PASSENGER, "Passenger", "Books and rides trips."),
-    (SystemRole.DRIVER, "Driver", "Operates assigned vehicles and trips."),
-    (SystemRole.FLEET_OWNER, "Fleet Owner", "Owns and manages vehicles, drivers, and fleets."),
-    (SystemRole.ADMIN, "Administrator", "Operates and moderates the platform."),
-    (
-        SystemRole.SUPER_ADMIN,
-        "Super Administrator",
-        "Unrestricted break-glass administrative access.",
-    ),
-]
-
-
-async def ensure_roles(session: AsyncSession) -> dict[str, Role]:
-    roles: dict[str, Role] = {}
-    for slug, name, description in _ROLE_DEFINITIONS:
-        result = await session.execute(select(Role).where(Role.slug == slug.value))
-        role = result.scalar_one_or_none()
-        if role is None:
-            role = Role(slug=slug.value, name=name, description=description, is_system=True)
-            session.add(role)
-            await session.flush()
-            logger.info("seed_role_created", slug=slug.value)
-        roles[slug.value] = role
-    return roles
-
-
-async def ensure_permissions(session: AsyncSession) -> dict[str, PermissionModel]:
-    permissions: dict[str, PermissionModel] = {}
-    for perm in Permission:
-        result = await session.execute(
-            select(PermissionModel).where(PermissionModel.code == perm.value)
-        )
-        record = result.scalar_one_or_none()
-        if record is None:
-            record = PermissionModel(
-                code=perm.value, description=perm.name.replace("_", " ").title()
-            )
-            session.add(record)
-            await session.flush()
-            logger.info("seed_permission_created", code=perm.value)
-        permissions[perm.value] = record
-    return permissions
-
-
-async def ensure_admin_has_all_permissions(
-    session: AsyncSession, admin_role: Role, permissions: dict[str, PermissionModel]
-) -> None:
-    for permission in permissions.values():
-        result = await session.execute(
-            select(RolePermission).where(
-                RolePermission.role_id == admin_role.id,
-                RolePermission.permission_id == permission.id,
-            )
-        )
-        if result.scalar_one_or_none() is None:
-            session.add(RolePermission(role_id=admin_role.id, permission_id=permission.id))
-    await session.flush()
 
 
 async def ensure_dev_admin(session: AsyncSession, admin_role: Role) -> None:

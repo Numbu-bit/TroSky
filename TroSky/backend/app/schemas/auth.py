@@ -39,7 +39,14 @@ class RegisterRequest(RequestModel):
         ),
         examples=["ama.mensah@gmail.com"],
     )
-    password: str = Field(..., min_length=8, max_length=128)
+    password: str = Field(
+        ...,
+        min_length=8,
+        max_length=128,
+        description=(
+            "At least 8 characters, with an uppercase letter, a lowercase letter and a digit."
+        ),
+    )
     full_name: str = Field(..., min_length=2, max_length=200)
     role: RegistrableRole = RegistrableRole.PASSENGER
     preferred_language: str = Field(default="en", max_length=10)

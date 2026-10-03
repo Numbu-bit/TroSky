@@ -28,7 +28,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.core.logging import get_logger
+from app.core.logging import REDACTED, get_logger, is_sensitive_field, redact
 
 logger = get_logger(__name__)
 
@@ -180,6 +180,14 @@ class NoPickupNearbyError(AppError):
     message = "No pickup point is within walking distance of your location."
 
 
+class ShareLinkGoneError(AppError):
+    """A live-trip link that has expired, or whose booking was cancelled."""
+
+    code = "SHARE_LINK_GONE"
+    status_code = status.HTTP_410_GONE
+    message = "This trip is no longer being shared."
+
+
 class StopNotOnRouteError(AppError):
     code = "STOP_NOT_ON_ROUTE"
     status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
@@ -284,11 +292,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         # it would fail *inside this handler*, downgrading a clean 422 into
         # a 500. "msg" already carries the same text, so drop "ctx" and run
         # the rest through jsonable_encoder to catch any other exotic input.
-        details = {
-            "errors": jsonable_encoder(
-                [{k: v for k, v in error.items() if k != "ctx"} for error in exc.errors()]
-            )
-        }
+        details = {"errors": jsonable_encoder([_without_secrets(error) for error in exc.errors()])}
         logger.info(
             "validation_error", path=request.url.path, request_id=request_id, errors=details
         )
@@ -344,3 +348,21 @@ def register_exception_handlers(app: FastAPI) -> None:
                 request_id=request_id,
             ),
         )
+
+
+def _without_secrets(error: dict[str, Any]) -> dict[str, Any]:
+    """One validation error, safe to log and return.
+
+    Pydantic copies the submitted value into ``input``. For a password or a
+    one-time code that would put the secret in the logs (and echo it back),
+    so its value is masked; a whole-body ``input`` has its sensitive keys
+    masked the same way.
+    """
+    cleaned = {k: v for k, v in error.items() if k != "ctx"}
+    if "input" in cleaned:
+        location = [part for part in cleaned.get("loc", ()) if isinstance(part, str)]
+        if any(is_sensitive_field(part) for part in location):
+            cleaned["input"] = REDACTED
+        else:
+            cleaned["input"] = redact(cleaned["input"])
+    return cleaned

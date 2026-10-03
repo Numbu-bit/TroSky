@@ -35,7 +35,7 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 
-from sqlalchemy import BigInteger, CheckConstraint, ForeignKey, Index, UniqueConstraint
+from sqlalchemy import BigInteger, CheckConstraint, ForeignKey, Index, UniqueConstraint, text
 from sqlalchemy import Enum as PgEnum
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -214,6 +214,47 @@ class RefundRequest(UUIDAuditBase):
     )
 
     __mapper_args__ = {"version_id_col": version}  # noqa: RUF012 - SQLAlchemy special attribute
+
+
+class PaymentMethod(UUIDAuditBase):
+    """A mobile money number a user saved to pay with. Only mobile money:
+    a card could be saved only as a provider token, which needs a card
+    processor TroSky does not have yet."""
+
+    __tablename__ = "payment_methods"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    channel: Mapped[PaymentChannel] = mapped_column(
+        PgEnum(
+            PaymentChannel,
+            name="payment_channel",
+            native_enum=True,
+            values_callable=enum_values,
+            create_type=False,
+        ),
+        nullable=False,
+    )
+    # E.164; only ever shown masked.
+    phone_number: Mapped[str] = mapped_column(String(20), nullable=False)
+    label: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    is_default: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "channel", "phone_number", name="uq_payment_methods_user_number"
+        ),
+        # At most one default per user.
+        Index(
+            "uq_payment_methods_one_default",
+            "user_id",
+            unique=True,
+            postgresql_where=text("is_default"),
+        ),
+    )
 
 
 class Wallet(UUIDAuditBase):

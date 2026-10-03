@@ -170,6 +170,12 @@ class NotificationService:
             user_id, unread_only=unread_only, limit=limit, offset=offset
         )
 
+    async def count_unread(self, user_id: uuid.UUID) -> int:
+        return await self._notifications.count_unread(user_id)
+
+    async def mark_all_read(self, user_id: uuid.UUID) -> int:
+        return await self._notifications.mark_all_read(user_id)
+
     async def mark_read(self, notification_id: uuid.UUID, user_id: uuid.UUID) -> Notification:
         notification = await self._notifications.get_for_user(notification_id, user_id)
         if notification is None:

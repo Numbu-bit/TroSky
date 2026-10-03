@@ -27,6 +27,7 @@ from app.models.routes import DayOfWeek, Route, RouteSchedule, Stop
 from app.models.trips import Trip, TripStatus
 from app.models.vehicles import Vehicle, VehicleSeat
 from app.repositories.booking_repository import BookingRepository
+from app.repositories.route_geometry import RouteGeometryRepository, nearest_pickup
 from app.repositories.route_repository import RouteRepository, StopRepository
 from app.repositories.trip_repository import TripRepository
 from app.repositories.vehicle_repository import VehicleRepository
@@ -136,19 +137,11 @@ class RouteService:
         this trip's route, or may come after the passenger's destination,
         so each is checked against the route's stop order.
         """
-        route = await self._routes.get_by_id(trip.route_id)
-        if route is None:
+        geometries = await RouteGeometryRepository(self._session).for_routes([trip.route_id])
+        geometry = geometries.get(trip.route_id)
+        if geometry is None:
             return None
-        order = await self._routes.stop_order(route)
-        last = max(order.values())
-        alight_at = order.get(destination_stop_id) if destination_stop_id else last
-        if alight_at is None:
-            return None
-        for stop, distance in candidates:
-            board_at = order.get(stop.id)
-            if board_at is not None and board_at < alight_at and stop.id != destination_stop_id:
-                return stop, distance
-        return None
+        return nearest_pickup(geometry, candidates, destination_stop_id)
 
     # ------------------------------------------------------------------
     # Routes
@@ -429,30 +422,31 @@ class RouteService:
         departure_before: time | None,
         limit: int,
         offset: int,
+        statuses: Collection[TripStatus] = (TripStatus.SCHEDULED, TripStatus.BOARDING),
+        with_total: bool = True,
     ) -> tuple[list[Trip], int]:
         window_start = datetime.combine(travel_date, departure_after or time.min, tzinfo=UTC)
         window_end = datetime.combine(travel_date, departure_before or time.max, tzinfo=UTC)
 
         cache_key = self._search_cache_key(
-            origin_stop_ids, destination_stop_id, window_start, window_end, limit, offset
+            origin_stop_ids, destination_stop_id, window_start, window_end, limit, offset, statuses
         )
         if self._redis is not None:
             cached = await self._redis.get(cache_key)
             if cached is not None:
                 payload = json.loads(cached)
                 trip_ids = [uuid.UUID(i) for i in payload["ids"]]
-                cached_trips = [await self._trips.get_by_id(tid) for tid in trip_ids]
-                found_trips = [t for t in cached_trips if t is not None]
-                return found_trips, int(payload["total"])
+                return await self._trips.get_many(trip_ids), int(payload["total"])
 
         trips, total = await self._trips.search(
             origin_stop_ids=origin_stop_ids,
             destination_stop_id=destination_stop_id,
             departure_after=window_start,
             departure_before=window_end,
-            statuses=[TripStatus.SCHEDULED, TripStatus.BOARDING],
+            statuses=list(statuses),
             limit=limit,
             offset=offset,
+            with_total=with_total,
         )
 
         if self._redis is not None:
@@ -469,12 +463,18 @@ class RouteService:
         window_end: datetime,
         limit: int,
         offset: int,
+        statuses: Collection[TripStatus],
     ) -> str:
         # Keyed on the resolved stops, never the raw coordinates: two people
         # standing near the same stops share a cache entry, and no location
         # is written into Redis.
         origins = ",".join(sorted(str(i) for i in origin_stop_ids)) if origin_stop_ids else None
-        raw = f"{origins}:{destination_stop_id}:{window_start}:{window_end}:{limit}:{offset}"
+        states = ",".join(sorted(status.value for status in statuses))
+        raw = ":".join(
+            str(part)
+            for part in (origins, destination_stop_id, window_start, window_end, limit, offset)
+        )
+        raw = f"{raw}:{states}"
         digest = hashlib.sha256(raw.encode()).hexdigest()
         return f"trip_search:{digest}"
 
@@ -495,15 +495,3 @@ class RouteService:
         seats = await self._vehicles.list_seats(layout.id)
         taken_seat_ids = await self._bookings.list_active_seat_ids_for_trip(trip_id)
         return vehicle, seats, taken_seat_ids
-
-    async def get_vehicle_for_trip(self, trip_id: uuid.UUID) -> Vehicle | None:
-        return await self._trips.get_vehicle_for_trip(trip_id)
-
-    async def get_available_seats_count(self, trip_id: uuid.UUID, vehicle: Vehicle) -> int:
-        """Configured seat-layout total minus currently held/confirmed
-        reservations for this trip — falls back to raw vehicle capacity if
-        no layout has been configured yet."""
-        layout = await self._vehicles.get_seat_layout(vehicle.id)
-        total = layout.total_seats if layout is not None else vehicle.capacity
-        taken = await self._bookings.list_active_seat_ids_for_trip(trip_id)
-        return max(total - len(taken), 0)

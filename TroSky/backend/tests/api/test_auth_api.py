@@ -81,15 +81,26 @@ class TestRegistrationAndLoginFlow:
         new_tokens = refresh_response.json()
         assert new_tokens["access_token"] != tokens["access_token"]
 
-        # The rotated-away-from refresh token must now be rejected.
+        # The rotated-away-from refresh token must now be rejected, and its
+        # reuse reads as theft: every session is signed out, the rotated one
+        # included.
         reuse_response = await client.post(
             "/api/v1/auth/refresh", json={"refresh_token": tokens["refresh_token"]}
         )
         assert reuse_response.status_code == 401
+        revoked = await client.get(
+            "/api/v1/users/me",
+            headers={"Authorization": f"Bearer {new_tokens['access_token']}"},
+        )
+        assert revoked.status_code == 401
 
+        fresh = await client.post(
+            "/api/v1/auth/login",
+            json={"identifier": phone, "password": "Str0ngPass"},
+        )
         logout_response = await client.post(
             "/api/v1/auth/logout",
-            headers={"Authorization": f"Bearer {new_tokens['access_token']}"},
+            headers={"Authorization": f"Bearer {fresh.json()['access_token']}"},
         )
         assert logout_response.status_code == 204
 
@@ -185,3 +196,23 @@ class TestPasswordlessLogin:
         assert response.json() == {"message": "A new verification code has been sent."}
         assert SandboxSmsProvider.get_sent_messages("+233" + local[1:]) == []
         assert SandboxSmsProvider.get_sent_messages(local) == []
+
+
+class TestRejectedPasswordsStayPrivate:
+    async def test_a_too_short_password_is_not_echoed(
+        self, client: AsyncClient, seed_identity_data: None, require_redis: None
+    ) -> None:
+        response = await client.post(
+            "/api/v1/auth/register",
+            json={
+                "phone_number": _fresh_local_number(),
+                "password": "Short12",
+                "full_name": "Kwame Mensah",
+                "role": "passenger",
+            },
+        )
+        assert response.status_code == 422
+        assert "Short12" not in response.text
+        [error] = response.json()["error"]["details"]["errors"]
+        assert error["loc"] == ["body", "password"]
+        assert error["input"] == "***REDACTED***"

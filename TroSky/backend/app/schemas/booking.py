@@ -74,6 +74,17 @@ class BookingTripSummaryResponse(ApiModel):
     vehicle_registration_number: str | None
 
 
+class BookingSummaryResponse(ApiModel):
+    month: str = Field(..., examples=["2026-10"])
+    currency: str
+    trips_count: int = Field(..., description="Paid trips departing that month.")
+    total_spent: Decimal = Field(..., description="What they cost, fees included.")
+    average_fare: Decimal = Field(..., description="total_spent / trips_count.")
+    total_saved: Decimal = Field(
+        ..., description="Unshared price less the fare paid, summed: what sharing saved."
+    )
+
+
 class BookingResponse(ApiModel):
     id: uuid.UUID
     booking_reference: str

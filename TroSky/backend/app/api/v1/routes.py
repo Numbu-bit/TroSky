@@ -8,13 +8,20 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, time
-from typing import Literal
 
 from fastapi import APIRouter, Query
 
-from app.api.dependencies import Pagination, RouteServiceDep, TripServiceDep
+from app.api.dependencies import (
+    Pagination,
+    RouteServiceDep,
+    StorageProviderDep,
+    TripServiceDep,
+)
+from app.api.trip_dependencies import TripSearchServiceDep
+from app.api.v1.views import avatar_url
 from app.core.exceptions import ValidationAppError
 from app.models.routes import Stop
+from app.models.vehicles import VehicleType
 from app.schemas.common import PaginatedResponse
 from app.schemas.route import (
     NearbyStopResponse,
@@ -23,12 +30,19 @@ from app.schemas.route import (
     StopResponse,
 )
 from app.schemas.trip import (
+    FareQuoteResponse,
+    FareSummaryResponse,
+    TripDetailResponse,
+    TripDriverResponse,
     TripResponse,
     TripSearchResultResponse,
     TripSeatResponse,
     TripSeatsResponse,
+    TripVehicleResponse,
 )
-from app.utilities.geo import haversine_distance_km, wkb_to_latlng
+from app.services.fare_quote_service import FareQuote
+from app.services.trip_search_service import SearchSort, TripOffer
+from app.utilities.geo import wkb_to_latlng
 
 router = APIRouter()
 
@@ -141,7 +155,7 @@ async def get_route(route_id: uuid.UUID, service: RouteServiceDep) -> RouteDetai
 
 @router.get("/trips/search", response_model=PaginatedResponse[TripSearchResultResponse])
 async def search_trips(
-    service: RouteServiceDep,
+    service: TripSearchServiceDep,
     pagination: Pagination,
     origin_stop_id: uuid.UUID | None = Query(
         default=None,
@@ -155,91 +169,162 @@ async def search_trips(
         default=None, ge=-90, le=90, description="Device GPS latitude: the default pickup."
     ),
     pickup_longitude: float | None = Query(default=None, ge=-180, le=180),
+    sort: SearchSort = Query(
+        default="departure",
+        description=(
+            "departure: soonest first. cheapest: lowest current fare. fastest: shortest "
+            "scheduled ride. Vehicles that have already passed the pickup always come last."
+        ),
+    ),
+    vehicle_type: VehicleType | None = Query(default=None),
+    seats: int = Query(default=1, ge=1, le=10, description="Seats to price each result for."),
 ) -> PaginatedResponse[TripSearchResultResponse]:
-    """Trips a passenger can take, and where they would board each one.
+    """Trips a passenger can take, where they would board each one, and what
+    it costs from there.
 
     The pickup defaults to the passenger's GPS position: send
     ``pickup_latitude``/``pickup_longitude`` and every stop within walking
     distance becomes a candidate boarding point. Send ``origin_stop_id``
     instead, or as well, when the passenger has chosen a pickup by hand;
     a manual choice always overrides the coordinates.
+
+    Trips already on the road are included: a trotro picks people up along
+    its route. ``has_passed_pickup`` says when it is too late to catch one,
+    and ``vehicle_eta_to_pickup_minutes`` how far away it is otherwise.
     """
     _require_both(pickup_latitude, pickup_longitude)
-    candidates = None
-    manual_stop = None
-    origin_stop_ids: list[uuid.UUID] | None = None
-    if origin_stop_id is not None:
-        origin_stop_ids = [origin_stop_id]
-        manual_stop = await service.find_stop(origin_stop_id)
-    elif pickup_latitude is not None and pickup_longitude is not None:
-        candidates = await service.pickup_candidates(
-            latitude=pickup_latitude, longitude=pickup_longitude
-        )
-        origin_stop_ids = [stop.id for stop, _ in candidates]
-
-    trips, total = await service.search_trips(
-        origin_stop_ids=origin_stop_ids,
+    offers, total = await service.search(
+        origin_stop_id=origin_stop_id,
         destination_stop_id=destination_stop_id,
         travel_date=travel_date,
         departure_after=departure_after,
         departure_before=departure_before,
+        pickup_latitude=pickup_latitude,
+        pickup_longitude=pickup_longitude,
+        vehicle_type=vehicle_type,
+        sort=sort,
+        seats=seats,
+        limit=pagination.limit,
+        offset=pagination.offset,
+    )
+    return PaginatedResponse(
+        items=[_search_result(offer) for offer in offers],
+        total=total,
         limit=pagination.limit,
         offset=pagination.offset,
     )
 
-    results: list[TripSearchResultResponse] = []
-    for trip in trips:
-        route = await service.get_route(trip.route_id)
-        vehicle = await service.get_vehicle_for_trip(trip.id)
-        available_seats = (
-            await service.get_available_seats_count(trip.id, vehicle) if vehicle is not None else 0
-        )
-        pickup_stop: Stop | None = None
-        pickup_distance: float | None = None
-        pickup_source: Literal["gps", "manual"] | None = None
-        if manual_stop is not None:
-            pickup_stop, pickup_source = manual_stop, "manual"
-            where = wkb_to_latlng(manual_stop.location)
-            if pickup_latitude is not None and pickup_longitude is not None and where:
-                km = haversine_distance_km(pickup_latitude, pickup_longitude, *where)
-                pickup_distance = round(km * 1000, 1)
-        elif candidates is not None:
-            chosen = await service.pickup_for_trip(trip, candidates, destination_stop_id)
-            if chosen is not None:
-                pickup_stop, pickup_source = chosen[0], "gps"
-                pickup_distance = round(chosen[1], 1)
-        results.append(
-            TripSearchResultResponse(
-                trip_id=trip.id,
-                route_id=route.id,
-                route_name=route.name,
-                origin_stop_id=route.origin_stop_id,
-                destination_stop_id=route.destination_stop_id,
-                scheduled_departure_at=trip.scheduled_departure_at,
-                scheduled_arrival_at=trip.scheduled_arrival_at,
-                estimated_duration_minutes=route.estimated_duration_minutes,
-                distance_km=route.distance_km,
-                fare_amount=trip.fare_amount,
-                status=trip.status,
-                available_seats=available_seats,
-                vehicle_registration_number=vehicle.registration_number if vehicle else None,
-                vehicle_type=vehicle.vehicle_type if vehicle else None,
-                pickup_stop_id=pickup_stop.id if pickup_stop else None,
-                pickup_stop_name=pickup_stop.name if pickup_stop else None,
-                pickup_distance_m=pickup_distance,
-                pickup_source=pickup_source,
-            )
-        )
 
-    return PaginatedResponse(
-        items=results, total=total, limit=pagination.limit, offset=pagination.offset
+def _fare_summary(quote: FareQuote) -> FareSummaryResponse:
+    return FareSummaryResponse(
+        current=quote.current,
+        solo=quote.solo,
+        minimum=quote.minimum,
+        platform_fee=quote.platform_fee,
+        total=quote.total,
+        currency=quote.currency,
+        riders_count=quote.riders_count,
+        seats=quote.seats,
     )
 
 
-@router.get("/trips/{trip_id}", response_model=TripResponse)
-async def get_trip(trip_id: uuid.UUID, service: TripServiceDep) -> TripResponse:
-    trip = await service.get_trip(trip_id)
-    return TripResponse.model_validate(trip)
+def _search_result(offer: TripOffer) -> TripSearchResultResponse:
+    summary, geometry, pickup = offer.summary, offer.geometry, offer.pickup
+    return TripSearchResultResponse(
+        trip_id=summary.trip_id,
+        route_id=summary.route_id,
+        route_name=summary.route_name,
+        origin_stop_id=geometry.origin_stop_id,
+        destination_stop_id=geometry.destination_stop_id,
+        scheduled_departure_at=summary.scheduled_departure_at,
+        scheduled_arrival_at=summary.scheduled_arrival_at,
+        estimated_duration_minutes=geometry.duration_minutes,
+        distance_km=geometry.route_km,
+        fare_amount=summary.fare_amount,
+        status=summary.status,
+        available_seats=summary.available_seats if summary.vehicle_id else 0,
+        vehicle_registration_number=summary.vehicle_registration_number,
+        vehicle_type=summary.vehicle_type,
+        pickup_stop_id=pickup.stop_id if pickup else None,
+        pickup_stop_name=pickup.name if pickup else None,
+        pickup_distance_m=pickup.distance_m if pickup else None,
+        pickup_source=pickup.source if pickup else None,
+        fare=_fare_summary(offer.fare),
+        ride_minutes=offer.ride_minutes,
+        vehicle_eta_to_pickup_minutes=offer.vehicle_eta_to_pickup_minutes,
+        has_passed_pickup=offer.has_passed_pickup,
+    )
+
+
+@router.get("/trips/{trip_id}", response_model=TripDetailResponse)
+async def get_trip(
+    trip_id: uuid.UUID,
+    trips: TripServiceDep,
+    search: TripSearchServiceDep,
+    storage: StorageProviderDep,
+) -> TripDetailResponse:
+    """A trip with its route, vehicle, driver and how full it is."""
+    trip = await trips.get_trip(trip_id)
+    details = await search.trip_details(trip_id)
+    summary = details.summary
+    vehicle = None
+    if summary.vehicle_registration_number and summary.vehicle_type:
+        vehicle = TripVehicleResponse(
+            registration_number=summary.vehicle_registration_number,
+            type=summary.vehicle_type,
+            make_model=summary.vehicle_make_model,
+            capacity=summary.vehicle_capacity,
+        )
+    driver = None
+    if summary.driver_id is not None:
+        profile = details.driver_profile
+        driver = TripDriverResponse(
+            id=summary.driver_id,
+            full_name=summary.driver_name,
+            avatar_url=await avatar_url(profile, storage) if profile is not None else None,
+            average_rating=details.driver_average_rating,
+            rating_count=details.driver_rating_count,
+        )
+    return TripDetailResponse(
+        **TripResponse.model_validate(trip).model_dump(),
+        route_name=summary.route_name,
+        origin_stop_id=summary.origin_stop_id,
+        origin_stop_name=summary.origin_stop_name,
+        destination_stop_id=summary.destination_stop_id,
+        destination_stop_name=summary.destination_stop_name,
+        vehicle=vehicle,
+        driver=driver,
+        riders_count=summary.seats_taken,
+        seats_total=summary.seats_total,
+        available_seats=summary.available_seats,
+    )
+
+
+@router.get("/trips/{trip_id}/fare-quote", response_model=FareQuoteResponse)
+async def get_fare_quote(
+    trip_id: uuid.UUID,
+    service: TripSearchServiceDep,
+    origin_stop_id: uuid.UUID | None = Query(
+        default=None, description="Where the passenger boards. Default: the route's start."
+    ),
+    destination_stop_id: uuid.UUID | None = Query(
+        default=None, description="Where they get off. Default: the route's end."
+    ),
+    seats: int = Query(default=1, ge=1, le=10),
+) -> FareQuoteResponse:
+    """What booking these seats between these stops costs right now: the
+    amount ``POST /bookings`` would charge. Refresh it to show a live fare --
+    it falls as riders join, but a passenger's own fare is fixed once they
+    book."""
+    quote, origin, destination = await service.fare_quote(
+        trip_id, origin_stop_id=origin_stop_id, destination_stop_id=destination_stop_id, seats=seats
+    )
+    return FareQuoteResponse(
+        **_fare_summary(quote).model_dump(),
+        trip_id=trip_id,
+        origin_stop_id=origin,
+        destination_stop_id=destination,
+    )
 
 
 @router.get("/trips/{trip_id}/seats", response_model=TripSeatsResponse)

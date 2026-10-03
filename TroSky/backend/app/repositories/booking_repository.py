@@ -77,6 +77,7 @@ class BookingRepository:
         expires_at: datetime | None,
         idempotency_key: uuid.UUID | None,
         idempotency_request_hash: str | None,
+        solo_fare_amount: Decimal | None = None,
     ) -> Booking:
         booking = Booking(
             booking_reference=self.generate_booking_reference(),
@@ -88,6 +89,7 @@ class BookingRepository:
             fare_amount=fare_amount,
             platform_fee=platform_fee,
             total_amount=total_amount,
+            solo_fare_amount=solo_fare_amount,
             expires_at=expires_at,
             idempotency_key=idempotency_key,
             idempotency_request_hash=idempotency_request_hash,
@@ -263,42 +265,56 @@ class BookingRepository:
             raise SeatAlreadyReservedError(str(seat_id)) from exc
         return reservation
 
-    async def sum_passenger_km_for_trip(
-        self,
-        trip_id: uuid.UUID,
-        *,
-        stop_distances: dict[uuid.UUID, Decimal | None],
-        route_km: Decimal | None,
-    ) -> Decimal:
-        """Total passenger-kilometres already committed on this trip.
-
-        Every seat contributes the distance it rides, and those distances
-        are the weights the trip's cost is divided by. A booking that never
-        named its stops rode end to end, so it contributes the whole route;
-        the same applies when a named stop has no measured offset, since
-        under-counting here would silently overcharge everyone else.
-        """
-        result = await self._session.execute(
-            select(Booking).where(
-                Booking.trip_id == trip_id,
-                Booking.status.in_(_OCCUPYING_STATUSES),
-            )
+    async def spending_between(
+        self, passenger_id: uuid.UUID, *, start: datetime, end: datetime
+    ) -> tuple[int, Decimal, Decimal]:
+        """``(trips, amount paid, amount saved)`` for the passenger's paid
+        trips departing in ``[start, end)``. Saved is the unshared price less
+        the fare paid, for bookings that recorded one."""
+        saved = func.greatest(
+            func.coalesce(Booking.solo_fare_amount, Booking.fare_amount) - Booking.fare_amount, 0
         )
-        whole_route = route_km or Decimal("0")
-        total = Decimal("0")
-        for booking in result.scalars().all():
-            origin = stop_distances.get(booking.origin_stop_id) if booking.origin_stop_id else None
-            destination = (
-                stop_distances.get(booking.destination_stop_id)
-                if booking.destination_stop_id
-                else None
+        row = (
+            await self._session.execute(
+                select(
+                    func.count(Booking.id),
+                    func.coalesce(func.sum(Booking.total_amount), 0),
+                    func.coalesce(func.sum(saved), 0),
+                )
+                .join(Trip, Trip.id == Booking.trip_id)
+                .where(
+                    Booking.passenger_id == passenger_id,
+                    Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.COMPLETED]),
+                    Trip.scheduled_departure_at >= start,
+                    Trip.scheduled_departure_at < end,
+                )
             )
-            if origin is None or destination is None:
-                distance = whole_route
-            else:
-                distance = abs(destination - origin) or whole_route
-            total += distance * booking.passenger_count
-        return total
+        ).one()
+        return int(row[0]), Decimal(row[1]), Decimal(row[2])
+
+    async def occupying_seats_for_trips(
+        self, trip_ids: Collection[uuid.UUID]
+    ) -> dict[uuid.UUID, list[tuple[uuid.UUID | None, uuid.UUID | None, int]]]:
+        """Per trip, ``(boards_at, alights_at, seat_count)`` for every booking
+        holding seats on it: what the trip's fare is shared between."""
+        found: dict[uuid.UUID, list[tuple[uuid.UUID | None, uuid.UUID | None, int]]] = {
+            trip_id: [] for trip_id in trip_ids
+        }
+        if not found:
+            return found
+        rows = await self._session.execute(
+            select(
+                Booking.trip_id,
+                Booking.origin_stop_id,
+                Booking.destination_stop_id,
+                Booking.passenger_count,
+            ).where(Booking.trip_id.in_(list(found)), Booking.status.in_(_OCCUPYING_STATUSES))
+        )
+        for row in rows:
+            found[row.trip_id].append(
+                (row.origin_stop_id, row.destination_stop_id, row.passenger_count)
+            )
+        return found
 
     async def list_active_seat_ids_for_trip(self, trip_id: uuid.UUID) -> set[uuid.UUID]:
         result = await self._session.execute(

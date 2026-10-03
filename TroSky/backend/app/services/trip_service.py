@@ -13,9 +13,9 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Collection
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
-from decimal import Decimal
+from decimal import ROUND_DOWN, Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,6 +31,7 @@ from app.models.bookings import BookingStatus
 from app.models.drivers import ApprovalStatus
 from app.models.payments import WalletReferenceType
 from app.models.trips import Trip, TripEventType, TripStatus
+from app.providers.payments.base import PaymentChannel
 from app.repositories.booking_repository import BookingRepository
 from app.repositories.driver_repository import DriverRepository
 from app.repositories.trip_repository import TripRepository
@@ -49,6 +50,42 @@ from app.utilities.phone import (
 )
 
 logger = get_logger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class SeatReceipt:
+    booking_reference: str
+    passenger_name: str
+    seat_label: str
+    # This seat's part of the booking's fare (TroSky's fee excluded).
+    amount: Decimal
+    channel: PaymentChannel
+    paid_at: datetime | None
+
+
+@dataclass(frozen=True, slots=True)
+class ChannelTotal:
+    channel: PaymentChannel
+    passengers: int
+    amount: Decimal
+
+
+@dataclass(frozen=True, slots=True)
+class TripReceipts:
+    trip_id: uuid.UUID
+    currency: str
+    fare_per_seat: Decimal
+    total_collected: Decimal
+    by_channel: list[ChannelTotal]
+    receipts: list[SeatReceipt]
+
+
+def _seat_amounts(fare: Decimal, seats: int) -> list[Decimal]:
+    """Split a booking's fare across its seats to the pesewa, the first seat
+    taking any remainder, so the seats always add up to the booking."""
+    each = (fare / seats).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+    return [fare - each * (seats - 1)] + [each] * (seats - 1)
+
 
 # The complete, explicit trip state machine. Any transition not listed here
 # is rejected. Self-transitions are handled separately as idempotent no-ops
@@ -192,6 +229,50 @@ class TripService:
             replace(entry, phone_number=mask_phone_number(_international(entry.phone_number)))
             for entry in await self._views.list_manifest(trip_id)
         ]
+
+    async def get_receipts(self, trip_id: uuid.UUID, user_id: uuid.UUID) -> TripReceipts:
+        """What the trip's passengers paid, seat by seat and by payment
+        channel, for its assigned driver only. Amounts are the fare, which is
+        what the driver's earnings are a share of; TroSky's platform fee is
+        left out."""
+        trip = await self._trips.get_by_id(trip_id)
+        if trip is None:
+            raise NotFoundError("Trip not found.")
+        await self._resolve_assigned_driver_id(trip_id, user_id)
+
+        seats = await self._views.list_paid_seats(trip_id)
+        position: dict[uuid.UUID, int] = {}
+        receipts: list[SeatReceipt] = []
+        for seat in seats:
+            index = position.get(seat.booking_id, 0)
+            position[seat.booking_id] = index + 1
+            receipts.append(
+                SeatReceipt(
+                    booking_reference=seat.booking_reference,
+                    passenger_name=seat.passenger_name,
+                    seat_label=seat.seat_label,
+                    amount=_seat_amounts(seat.booking_fare, seat.passenger_count)[index],
+                    channel=seat.channel,
+                    paid_at=seat.paid_at,
+                )
+            )
+
+        totals: dict[PaymentChannel, ChannelTotal] = {}
+        for receipt in receipts:
+            known = totals.get(receipt.channel)
+            totals[receipt.channel] = ChannelTotal(
+                channel=receipt.channel,
+                passengers=(known.passengers if known else 0) + 1,
+                amount=(known.amount if known else Decimal("0")) + receipt.amount,
+            )
+        return TripReceipts(
+            trip_id=trip_id,
+            currency=self._settings.PAYMENTS_DEFAULT_CURRENCY,
+            fare_per_seat=trip.fare_amount,
+            total_collected=sum((r.amount for r in receipts), Decimal("0.00")),
+            by_channel=sorted(totals.values(), key=lambda total: -total.amount),
+            receipts=receipts,
+        )
 
     async def list_trips(
         self,

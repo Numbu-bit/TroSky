@@ -33,7 +33,9 @@ spec:
         - name: migrate
           image: ghcr.io/trosky/backend:REPLACE_WITH_IMAGE_TAG
           imagePullPolicy: IfNotPresent
-          command: ["alembic", "upgrade", "head"]
+          # Roles and permissions are reference data registration depends on;
+          # seed_reference_data adds only what is missing and creates no users.
+          command: ["/bin/sh", "-c", "alembic upgrade head && python -m scripts.seed_reference_data"]
           envFrom:
             - configMapRef:
                 name: trosky-backend-config
