@@ -30,7 +30,7 @@ abstract final class TroskyTheme {
       // colour; the design has no such tint.
       surfaceTint: TroskyColors.transparent,
     );
-    return ThemeData(
+    final base = ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
       scaffoldBackgroundColor: TroskyColors.background,
@@ -42,5 +42,30 @@ abstract final class TroskyTheme {
       highlightColor: TroskyColors.transparent,
       hoverColor: TroskyColors.transparent,
     );
+    // Material 3 spaces its text styles out (e.g. 0.5 px for bodyLarge,
+    // which a TextField types in). The designs are CSS, where letter
+    // spacing is 0 unless a style says otherwise.
+    return base.copyWith(
+      textTheme: _noLetterSpacing(base.textTheme),
+      primaryTextTheme: _noLetterSpacing(base.primaryTextTheme),
+    );
   }
+
+  static TextTheme _noLetterSpacing(TextTheme theme) => theme.copyWith(
+    displayLarge: theme.displayLarge?.copyWith(letterSpacing: 0),
+    displayMedium: theme.displayMedium?.copyWith(letterSpacing: 0),
+    displaySmall: theme.displaySmall?.copyWith(letterSpacing: 0),
+    headlineLarge: theme.headlineLarge?.copyWith(letterSpacing: 0),
+    headlineMedium: theme.headlineMedium?.copyWith(letterSpacing: 0),
+    headlineSmall: theme.headlineSmall?.copyWith(letterSpacing: 0),
+    titleLarge: theme.titleLarge?.copyWith(letterSpacing: 0),
+    titleMedium: theme.titleMedium?.copyWith(letterSpacing: 0),
+    titleSmall: theme.titleSmall?.copyWith(letterSpacing: 0),
+    bodyLarge: theme.bodyLarge?.copyWith(letterSpacing: 0),
+    bodyMedium: theme.bodyMedium?.copyWith(letterSpacing: 0),
+    bodySmall: theme.bodySmall?.copyWith(letterSpacing: 0),
+    labelLarge: theme.labelLarge?.copyWith(letterSpacing: 0),
+    labelMedium: theme.labelMedium?.copyWith(letterSpacing: 0),
+    labelSmall: theme.labelSmall?.copyWith(letterSpacing: 0),
+  );
 }

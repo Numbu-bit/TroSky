@@ -11,6 +11,12 @@ abstract interface class UserRepository {
 
   /// Journeys pinned to Home, oldest first (backend gap G4).
   Future<Result<List<FavouriteRouteResponse>>> listFavouriteRoutes();
+
+  /// Pins a journey. 409 `FAVOURITE_ROUTE_EXISTS` when it is pinned
+  /// already, 409 `FAVOURITE_ROUTES_LIMIT` at 20.
+  Future<Result<FavouriteRouteResponse>> addFavouriteRoute(
+    FavouriteRouteCreateRequest request,
+  );
 }
 
 /// [UserRepository] against the backend.
@@ -32,5 +38,16 @@ class LiveUserRepository implements UserRepository {
       for (final favourite in data! as List)
         FavouriteRouteResponse.fromJson(jsonObject(favourite)),
     ],
+  );
+
+  @override
+  Future<Result<FavouriteRouteResponse>> addFavouriteRoute(
+    FavouriteRouteCreateRequest request,
+  ) => apiCall(
+    () => _dio.post<Object?>(
+      '/users/me/favourite-routes',
+      data: request.toJson(),
+    ),
+    (data) => FavouriteRouteResponse.fromJson(jsonObject(data)),
   );
 }

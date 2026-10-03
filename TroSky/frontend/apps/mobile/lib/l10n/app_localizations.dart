@@ -970,18 +970,6 @@ abstract class AppLocalizations {
   /// **'Settings'**
   String get homeOpenSettings;
 
-  /// Title of the Search placeholder (P-02).
-  ///
-  /// In en, this message translates to:
-  /// **'Search'**
-  String get placeholderSearch;
-
-  /// Search placeholder, filled in from a favourite route.
-  ///
-  /// In en, this message translates to:
-  /// **'From {origin} to {destination}'**
-  String placeholderSearchRoute(String origin, String destination);
-
   /// Title of the Notifications placeholder.
   ///
   /// In en, this message translates to:
@@ -1011,6 +999,430 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This screen is coming soon.'**
   String get placeholderSoon;
+
+  /// A price in Ghana cedis.
+  ///
+  /// In en, this message translates to:
+  /// **'₵{amount}'**
+  String priceCedis(String amount);
+
+  /// A walking distance under 1 km.
+  ///
+  /// In en, this message translates to:
+  /// **'{metres} m'**
+  String distanceMetres(int metres);
+
+  /// A distance of 1 km or more, one decimal.
+  ///
+  /// In en, this message translates to:
+  /// **'{kilometres} km'**
+  String distanceKilometres(String kilometres);
+
+  /// Vehicle type on a trip card.
+  ///
+  /// In en, this message translates to:
+  /// **'Bus'**
+  String get vehicleBus;
+
+  /// Vehicle type on a trip card (P6).
+  ///
+  /// In en, this message translates to:
+  /// **'Minibus'**
+  String get vehicleMinibus;
+
+  /// Vehicle type on a trip card.
+  ///
+  /// In en, this message translates to:
+  /// **'Shuttle'**
+  String get vehicleShuttle;
+
+  /// Vehicle type on a trip card (P6 "Saloon Car").
+  ///
+  /// In en, this message translates to:
+  /// **'Saloon Car'**
+  String get vehicleSedan;
+
+  /// Vehicle type on a trip card when the type is unknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Vehicle'**
+  String get vehicleOther;
+
+  /// Small label above the title of the Search screen (P-02).
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get searchLabel;
+
+  /// Title of the Search screen (P-02).
+  ///
+  /// In en, this message translates to:
+  /// **'Where are you going?'**
+  String get searchTitle;
+
+  /// Screen reader label of the From field.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get searchFromLabel;
+
+  /// Screen reader label of the To field.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get searchToLabel;
+
+  /// From value meaning the phone position (decision 19).
+  ///
+  /// In en, this message translates to:
+  /// **'Current location'**
+  String get searchCurrentLocation;
+
+  /// Line under "Current location" in the stop list.
+  ///
+  /// In en, this message translates to:
+  /// **'Board at the nearest stop'**
+  String get searchCurrentLocationHint;
+
+  /// From field hint when no pickup is chosen.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a pickup stop'**
+  String get searchFromHint;
+
+  /// To field hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Where to?'**
+  String get searchToHint;
+
+  /// Line in the stop list when location can't be used.
+  ///
+  /// In en, this message translates to:
+  /// **'Location is off. Choose a pickup stop.'**
+  String get searchLocationOff;
+
+  /// When pill: travel now.
+  ///
+  /// In en, this message translates to:
+  /// **'Now'**
+  String get searchWhenNow;
+
+  /// When pill: pick a date and time.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule'**
+  String get searchWhenSchedule;
+
+  /// Heading over stop name search results.
+  ///
+  /// In en, this message translates to:
+  /// **'Stops'**
+  String get searchStopsHeading;
+
+  /// Stop search with no results.
+  ///
+  /// In en, this message translates to:
+  /// **'No stops match \"{query}\".'**
+  String searchNoStops(String query);
+
+  /// Stop search failed; next to Retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t search stops.'**
+  String get searchStopsError;
+
+  /// Hint while the stop query is 1 character.
+  ///
+  /// In en, this message translates to:
+  /// **'Type 2 letters or more to search stops.'**
+  String get searchTypeMore;
+
+  /// Heading over stops near the passenger.
+  ///
+  /// In en, this message translates to:
+  /// **'Nearby stops'**
+  String get searchNearbyHeading;
+
+  /// Heading over the last searches.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent searches'**
+  String get searchRecentHeading;
+
+  /// Heading over favourite route chips on Search.
+  ///
+  /// In en, this message translates to:
+  /// **'Favourite routes'**
+  String get searchFavouritesHeading;
+
+  /// Origin name of a recent search made from the current location.
+  ///
+  /// In en, this message translates to:
+  /// **'Current location'**
+  String get searchCurrentLocationShort;
+
+  /// Search screen main button.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get searchButton;
+
+  /// How far a nearby stop is.
+  ///
+  /// In en, this message translates to:
+  /// **'{distance} away'**
+  String searchStopDistance(String distance);
+
+  /// Small label above the journey on Search Results (P6).
+  ///
+  /// In en, this message translates to:
+  /// **'Route'**
+  String get resultsRouteLabel;
+
+  /// The searched journey on Search Results.
+  ///
+  /// In en, this message translates to:
+  /// **'{origin} → {destination}'**
+  String resultsJourney(String origin, String destination);
+
+  /// Banner on Search Results when the API reports approaching vehicles (decision 21).
+  ///
+  /// In en, this message translates to:
+  /// **'Showing vehicles still approaching your stop'**
+  String get resultsApproaching;
+
+  /// Banner action: also show vehicles that passed the stop.
+  ///
+  /// In en, this message translates to:
+  /// **'Show all'**
+  String get resultsShowAll;
+
+  /// Banner action: hide vehicles that passed the stop.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide passed'**
+  String get resultsHidePassed;
+
+  /// Filter pill: departures from now (decision 22).
+  ///
+  /// In en, this message translates to:
+  /// **'Now'**
+  String get filterNow;
+
+  /// Filter pill: pick a date and time (decision 22).
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule'**
+  String get filterSchedule;
+
+  /// Filter pill: sort by price (decision 22).
+  ///
+  /// In en, this message translates to:
+  /// **'Cheapest'**
+  String get filterCheapest;
+
+  /// Filter pill: sort by arrival time (decision 22).
+  ///
+  /// In en, this message translates to:
+  /// **'Fastest'**
+  String get filterFastest;
+
+  /// Filter pill: minibuses only (decision 22).
+  ///
+  /// In en, this message translates to:
+  /// **'Minibus'**
+  String get filterMinibus;
+
+  /// Tag on the first bookable card after sorting (decision 22).
+  ///
+  /// In en, this message translates to:
+  /// **'BEST MATCH'**
+  String get resultsBestMatch;
+
+  /// Times line on a trip card.
+  ///
+  /// In en, this message translates to:
+  /// **'Departs {departs} · ETA {eta}'**
+  String resultsTimes(String departs, String eta);
+
+  /// Times line on a trip card without an arrival time.
+  ///
+  /// In en, this message translates to:
+  /// **'Departs {departs}'**
+  String resultsDeparts(String departs);
+
+  /// Free seats chip on a trip card.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 seat} other{{count} seats}}'**
+  String resultsSeats(int count);
+
+  /// Chip on a trip card with no free seats.
+  ///
+  /// In en, this message translates to:
+  /// **'Full'**
+  String get resultsFull;
+
+  /// Chip on a trip card whose vehicle passed the stop.
+  ///
+  /// In en, this message translates to:
+  /// **'Passed'**
+  String get resultsPassed;
+
+  /// Badge on a trip card when the API reports the vehicle's ETA to the stop (decision 21).
+  ///
+  /// In en, this message translates to:
+  /// **'~{minutes} min away · approaching your stop'**
+  String resultsApproachingBadge(int minutes);
+
+  /// Badge on a trip card in live mode (decision 21).
+  ///
+  /// In en, this message translates to:
+  /// **'Board at {stop} · {distance} away'**
+  String resultsBoardAt(String stop, String distance);
+
+  /// Badge on a trip card without a walking distance.
+  ///
+  /// In en, this message translates to:
+  /// **'Board at {stop}'**
+  String resultsBoardAtStop(String stop);
+
+  /// Saving pill on a trip card when the API gives a solo fare (decision 20).
+  ///
+  /// In en, this message translates to:
+  /// **'Save {percent}%'**
+  String resultsSave(int percent);
+
+  /// Strip on a card whose vehicle passed the stop.
+  ///
+  /// In en, this message translates to:
+  /// **'Already passed your stop — unavailable'**
+  String get resultsPassedNote;
+
+  /// Dashed button at the end of Search Results.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Show 1 vehicle that already passed your stop} other{Show {count} vehicles that already passed your stop}}'**
+  String resultsShowPassed(int count);
+
+  /// Search Results with nothing found.
+  ///
+  /// In en, this message translates to:
+  /// **'No vehicles on this route right now'**
+  String get resultsEmpty;
+
+  /// Button under the empty results: pick a date and time.
+  ///
+  /// In en, this message translates to:
+  /// **'Try another time'**
+  String get resultsTryAnotherTime;
+
+  /// Minibus filter left nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'No minibuses among these trips.'**
+  String get resultsNoMinibus;
+
+  /// Button that turns the Minibus filter off.
+  ///
+  /// In en, this message translates to:
+  /// **'Show all vehicles'**
+  String get resultsShowAllVehicles;
+
+  /// Loading the next page failed; next to Retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load more trips.'**
+  String get resultsLoadMoreError;
+
+  /// NO_PICKUP_NEARBY on Search Results.
+  ///
+  /// In en, this message translates to:
+  /// **'No pickup stop is within walking distance of you.'**
+  String get resultsNoPickup;
+
+  /// No position for a Current location search.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t find your location.'**
+  String get resultsNoLocation;
+
+  /// Button back to Search with From to fill in.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a pickup stop'**
+  String get resultsChoosePickup;
+
+  /// Screen reader label of the star in the results header.
+  ///
+  /// In en, this message translates to:
+  /// **'Save this route'**
+  String get resultsSaveRoute;
+
+  /// Screen reader label of the filled star.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved to your favourite routes'**
+  String get resultsRouteSavedLabel;
+
+  /// Snackbar after saving the route.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved to your favourite routes.'**
+  String get resultsRouteSaved;
+
+  /// FAVOURITE_ROUTE_EXISTS, or the star is already filled.
+  ///
+  /// In en, this message translates to:
+  /// **'This route is already in your favourites.'**
+  String get resultsRouteExists;
+
+  /// FAVOURITE_ROUTES_LIMIT.
+  ///
+  /// In en, this message translates to:
+  /// **'You can save up to 20 routes. Remove one first.'**
+  String get resultsRouteLimit;
+
+  /// Screen reader label of a trip card, before the badge and fare.
+  ///
+  /// In en, this message translates to:
+  /// **'{vehicle} {plate}. {times}. {seats}.'**
+  String resultsTripLabel(
+    String vehicle,
+    String plate,
+    String times,
+    String seats,
+  );
+
+  /// Screen reader: the crossed-out solo price.
+  ///
+  /// In en, this message translates to:
+  /// **'was {price}'**
+  String resultsWas(String price);
+
+  /// Screen reader label of the skeleton cards.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading trips'**
+  String get resultsLoading;
+
+  /// Title of the Seat Selection placeholder (P-05).
+  ///
+  /// In en, this message translates to:
+  /// **'Choose your seat'**
+  String get placeholderSeats;
+
+  /// Seat Selection placeholder: the chosen trip.
+  ///
+  /// In en, this message translates to:
+  /// **'{vehicle} · departs {departs}\nFrom {origin} to {destination}'**
+  String placeholderSeatsTrip(
+    String vehicle,
+    String departs,
+    String origin,
+    String destination,
+  );
 }
 
 class _AppLocalizationsDelegate

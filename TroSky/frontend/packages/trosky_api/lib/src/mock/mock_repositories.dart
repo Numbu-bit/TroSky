@@ -3,6 +3,7 @@ import 'package:trosky_core/trosky_core.dart';
 import '../client/interceptors.dart';
 import '../dto/auth_dto.dart';
 import '../dto/driver_dto.dart';
+import '../dto/paginated.dart';
 import '../dto/route_dto.dart';
 import '../dto/tracking_dto.dart';
 import '../dto/user_dto.dart';
@@ -100,6 +101,15 @@ class MockUserRepository implements UserRepository {
   @override
   Future<Result<List<FavouriteRouteResponse>>> listFavouriteRoutes() =>
       _authenticated(_tokens(), latency, _backend.listFavouriteRoutes);
+
+  @override
+  Future<Result<FavouriteRouteResponse>> addFavouriteRoute(
+    FavouriteRouteCreateRequest request,
+  ) => _authenticated(
+    _tokens(),
+    latency,
+    (token) => _backend.addFavouriteRoute(token, request),
+  );
 }
 
 /// [DriverRepository] on a [MockBackend] (`API_MODE=mock`).
@@ -140,6 +150,23 @@ class MockRouteRepository implements RouteRepository {
       radiusM: radiusM,
       limit: limit,
     );
+  }
+
+  @override
+  Future<Result<List<StopResponse>>> searchStops(
+    String query, {
+    int limit = 20,
+  }) async {
+    if (latency > Duration.zero) await Future<void>.delayed(latency);
+    return _backend.searchStops(query, limit: limit);
+  }
+
+  @override
+  Future<Result<Paginated<TripSearchResultResponse>>> searchTrips(
+    TripSearchQuery query,
+  ) async {
+    if (latency > Duration.zero) await Future<void>.delayed(latency);
+    return _backend.searchTrips(query);
   }
 }
 

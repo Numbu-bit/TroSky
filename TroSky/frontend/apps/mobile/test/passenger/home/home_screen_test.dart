@@ -5,6 +5,7 @@ import 'package:mobile/passenger/home/data/home_store.dart';
 import 'package:mobile/passenger/home/data/location_service.dart';
 import 'package:mobile/passenger/home/presentation/greeting.dart';
 import 'package:mobile/passenger/home/presentation/home_screen.dart';
+import 'package:mobile/passenger/search/presentation/search_results_screen.dart';
 import 'package:trosky_api/trosky_api.dart';
 import 'package:trosky_auth/trosky_auth.dart';
 import 'package:trosky_core/trosky_core.dart';
@@ -231,7 +232,7 @@ void main() {
   });
 
   group('favourite routes (decision 15)', () {
-    testWidgets('filled: the routes as chips; a chip opens Search filled in', (
+    testWidgets('filled: the routes as chips; a chip searches at once', (
       tester,
     ) async {
       await openHome(tester);
@@ -245,7 +246,10 @@ void main() {
       }
 
       await tapVisible(tester, find.text('Legon → Osu'));
-      expect(find.text('From Legon to Osu'), findsOneWidget);
+      // Search (P-02) fills both stops and opens the results straight away.
+      expect(find.byType(SearchResultsScreen), findsOneWidget);
+      expect(find.text('Legon → Osu'), findsOneWidget);
+      expect(find.byType(TroskyTripCard), findsWidgets);
       expect(find.byType(TroskyTabBar), findsNothing);
     });
 
@@ -542,7 +546,7 @@ void main() {
     for (final (label, title) in [
       ('SOS, emergency help', 'SOS'),
       ('Notifications', 'Notifications'),
-      ('Where are you going?, Now', 'Search'),
+      ('Where are you going?, Now', 'Where are you going?'),
     ]) {
       testWidgets(label, (tester) async {
         await openHome(tester);

@@ -13,6 +13,8 @@ import 'package:mobile/entry/splash/presentation/launch_destination_provider.dar
 import 'package:mobile/passenger/home/application/home_providers.dart';
 import 'package:mobile/passenger/home/data/home_store.dart';
 import 'package:mobile/passenger/home/data/location_service.dart';
+import 'package:mobile/passenger/search/application/search_providers.dart';
+import 'package:mobile/passenger/search/data/search_history_store.dart';
 import 'package:trosky_api/trosky_api.dart';
 import 'package:trosky_auth/trosky_auth.dart';
 import 'package:trosky_core/trosky_core.dart';
@@ -150,6 +152,7 @@ class TestWorld {
 
   /// Location was asked about already, so Home doesn't explain it again.
   final InMemoryHomeStore home = InMemoryHomeStore(asked: true);
+  final InMemorySearchHistoryStore searches = InMemorySearchHistoryStore();
 
   /// Signs in as the seeded passenger (Ama Mensah) on the mock backend and
   /// keeps the refresh token, as a previous run of the app would.
@@ -196,6 +199,7 @@ Widget testApp({
       locationServiceProvider.overrideWithValue(w.location),
       homeStoreProvider.overrideWithValue(w.home),
       mapTileProviderFactoryProvider.overrideWithValue(FlatTileProvider.new),
+      searchHistoryStoreProvider.overrideWithValue(w.searches),
       ...overrides.cast(),
     ],
     child: const TroskyMobileApp(),

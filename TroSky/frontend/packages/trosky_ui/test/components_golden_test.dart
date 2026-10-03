@@ -550,4 +550,132 @@ void main() {
       width: 360,
     );
   });
+
+  testWidgets('Search results parts (P6): header buttons, banner, pills, '
+      'cards, dashed button', (tester) async {
+    await _golden(
+      tester,
+      'search_components',
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            color: TroskyColors.navy,
+            padding: const EdgeInsets.all(8),
+            child: Row(
+              children: [
+                TroskyHeaderIconButton(
+                  semanticsLabel: 'Back',
+                  onPressed: () {},
+                  child: TroskyIcons.back(color: TroskyColors.white),
+                ),
+                const Spacer(),
+                TroskyHeaderIconButton(
+                  semanticsLabel: 'Save route',
+                  onPressed: () {},
+                  child: TroskyIcons.star(color: TroskyColors.white),
+                ),
+                TroskyHeaderIconButton(
+                  semanticsLabel: 'Saved',
+                  selected: true,
+                  onPressed: () {},
+                  child: TroskyIcons.star(
+                    color: TroskyColors.amber,
+                    filled: true,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TroskyInfoBanner(
+            text: 'Showing vehicles still approaching your stop',
+            action: 'Show all',
+            onAction: () {},
+          ),
+          Container(
+            color: TroskyColors.surface,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final (i, label) in const [
+                  'Now',
+                  'Schedule',
+                  'Cheapest',
+                  'Fastest',
+                  'Minibus',
+                ].indexed)
+                  TroskyFilterPill(
+                    label: label,
+                    selected: i == 0 || i == 2,
+                    onPressed: () {},
+                  ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TroskyTripCard(
+                  title: 'Minibus',
+                  plate: 'GR-4821',
+                  tag: 'BEST MATCH',
+                  highlighted: true,
+                  times: 'Departs 07:15 · ETA 08:05',
+                  seatsLabel: '5 seats',
+                  seatsColor: TroskyChipColor.green,
+                  badge: '~3 min away · approaching your stop',
+                  fare: const TroskyTripFare(
+                    price: '₵14',
+                    soloPrice: '₵38',
+                    saving: 'Save 63%',
+                  ),
+                  onPressed: () {},
+                ),
+                const SizedBox(height: 10),
+                TroskyTripCard(
+                  title: 'Saloon Car',
+                  plate: 'GT 4402-26',
+                  times: 'Departs 07:22 · ETA 08:10',
+                  seatsLabel: '2 seats',
+                  seatsColor: TroskyChipColor.amber,
+                  badge: 'Board at Accra Madina · 350 m away',
+                  badgeKind: TroskyTripBadgeKind.boardAt,
+                  fare: const TroskyTripFare(price: '₵8'),
+                  onPressed: () {},
+                ),
+                const SizedBox(height: 10),
+                const TroskyTripCard(
+                  title: 'Minibus',
+                  plate: 'GR-3406',
+                  times: 'Departs 08:00 · ETA 08:50',
+                  seatsLabel: 'Full',
+                  seatsColor: TroskyChipColor.gray,
+                ),
+                const SizedBox(height: 10),
+                const TroskyTripCard(
+                  title: 'Minibus',
+                  plate: 'GR-1190',
+                  times: 'Departs 06:58 · ETA 07:48',
+                  seatsLabel: 'Passed',
+                  seatsColor: TroskyChipColor.gray,
+                  passed: true,
+                  passedNote: 'Already passed your stop — unavailable',
+                ),
+                const SizedBox(height: 10),
+                TroskyDashedButton(
+                  label: 'Show 2 vehicles that already passed your stop',
+                  onPressed: () {},
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      width: 360,
+    );
+  });
 }

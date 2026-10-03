@@ -61,6 +61,22 @@ Map<String, dynamic> _$UserResponseToJson(_UserResponse instance) =>
       'profile': ?instance.profile?.toJson(),
     };
 
+_FavouriteRouteCreateRequest _$FavouriteRouteCreateRequestFromJson(
+  Map<String, dynamic> json,
+) => _FavouriteRouteCreateRequest(
+  originStopId: json['origin_stop_id'] as String,
+  destinationStopId: json['destination_stop_id'] as String,
+  label: json['label'] as String?,
+);
+
+Map<String, dynamic> _$FavouriteRouteCreateRequestToJson(
+  _FavouriteRouteCreateRequest instance,
+) => <String, dynamic>{
+  'origin_stop_id': instance.originStopId,
+  'destination_stop_id': instance.destinationStopId,
+  'label': ?instance.label,
+};
+
 _FavouriteRouteResponse _$FavouriteRouteResponseFromJson(
   Map<String, dynamic> json,
 ) => _FavouriteRouteResponse(

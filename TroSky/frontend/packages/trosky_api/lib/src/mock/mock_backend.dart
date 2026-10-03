@@ -4,9 +4,11 @@ import 'package:trosky_core/trosky_core.dart';
 
 import '../dto/auth_dto.dart';
 import '../dto/driver_dto.dart';
+import '../dto/paginated.dart';
 import '../dto/route_dto.dart';
 import '../dto/tracking_dto.dart';
 import '../dto/user_dto.dart';
+import '../repositories/route_repository.dart';
 
 /// An in-memory stand-in for the backend's auth and user endpoints, for
 /// `API_MODE=mock` and tests.
@@ -26,6 +28,9 @@ import '../dto/user_dto.dart';
 /// * Three vehicles are always on the road around whatever point is asked
 ///   about, where the Home design draws them (decision 14), unless
 ///   [vehiclesOnTheRoad] is off.
+/// * Trip search finds trips between any two different stops: for a search
+///   from now, the five P6 design vehicles (three approaching, two passed),
+///   then a departure every 15 minutes until 22:00 (see [searchTrips]).
 class MockBackend {
   MockBackend({DateTime Function()? clock, this.codesByEmail = false})
     : _now = clock ?? DateTime.now {
@@ -44,6 +49,7 @@ class MockBackend {
   // Backend defaults.
   static const int pickupMaxWalkMeters = 1000;
   static const int pickupNearbyLimit = 5;
+  static const int favouriteRoutesMax = 20;
   static const Duration otpTtl = Duration(seconds: 300);
   static const Duration otpCooldown = Duration(seconds: 60);
   static const int otpMaxAttempts = 5;
@@ -565,6 +571,299 @@ class MockBackend {
     vehicles.sort((a, b) => a.distanceM.compareTo(b.distanceM));
     return Ok(vehicles.take(limit).toList());
   }
+
+  /// `POST /users/me/favourite-routes`.
+  Result<FavouriteRouteResponse> addFavouriteRoute(
+    String? accessToken,
+    FavouriteRouteCreateRequest request,
+  ) {
+    final auth = _authenticate(accessToken);
+    if (auth case Err(:final failure)) return Err(failure);
+    if (request.originStopId == request.destinationStopId) {
+      return _validationError([
+        _fieldError(
+          'destination_stop_id',
+          'origin_stop_id and destination_stop_id must be different.',
+        ),
+      ]);
+    }
+    final from = _stopById(request.originStopId);
+    final to = _stopById(request.destinationStopId);
+    for (final (id, stop) in [
+      (request.originStopId, from),
+      (request.destinationStopId, to),
+    ]) {
+      if (stop == null) {
+        return _error(404, 'NOT_FOUND', 'Stop not found.', {'stop_id': id});
+      }
+    }
+    final mine = _favourites.putIfAbsent(auth.valueOrNull!.userId, () => []);
+    if (mine.length >= favouriteRoutesMax) {
+      return _error(
+        409,
+        'FAVOURITE_ROUTES_LIMIT',
+        'You can save up to $favouriteRoutesMax favourite routes. '
+            'Remove one first.',
+      );
+    }
+    if (mine.any(
+      (f) =>
+          f.originStopId == request.originStopId &&
+          f.destinationStopId == request.destinationStopId,
+    )) {
+      return _error(
+        409,
+        'FAVOURITE_ROUTE_EXISTS',
+        'This journey is already in your favourites.',
+      );
+    }
+    final label = request.label?.trim();
+    final route = FavouriteRouteResponse(
+      id: _uuid(),
+      originStopId: from!.id,
+      originStopName: from.name,
+      destinationStopId: to!.id,
+      destinationStopName: to.name,
+      label: label == null || label.isEmpty ? null : label,
+      createdAt: _now().toUtc(),
+    );
+    mine.add(route);
+    return Ok(route);
+  }
+
+  /// `GET /stops?q=` (public): stops whose name contains [query], by name.
+  Result<List<StopResponse>> searchStops(String query, {int limit = 20}) {
+    final q = query.trim().toLowerCase();
+    if (q.length < 2) {
+      return _validationError([
+        {
+          'type': 'string_too_short',
+          'loc': ['query', 'q'],
+          'msg': 'String should have at least 2 characters',
+        },
+      ]);
+    }
+    final found =
+        stops.values.where((s) => s.name.toLowerCase().contains(q)).toList()
+          ..sort((a, b) => a.name.compareTo(b.name));
+    return Ok([for (final stop in found.take(limit)) _stopResponse(stop)]);
+  }
+
+  /// `GET /trips/search` (public), for journeys between two stops.
+  ///
+  /// The pickup is the chosen stop, else the nearest stop within walking
+  /// distance of the position (422 `NO_PICKUP_NEARBY` with none).
+  ///
+  /// The day's trips: for a search from now, the five P6 vehicles around
+  /// the current minute (approaching ones 3, 7 and 12 minutes from the
+  /// stop, two that passed it), with the G20 and G21 fields the design
+  /// shows; then, on any day, a departure every 15 minutes from 05:30 to
+  /// 22:00, one in four of them full.
+  Result<Paginated<TripSearchResultResponse>> searchTrips(
+    TripSearchQuery query,
+  ) {
+    if ((query.pickupLatitude == null) != (query.pickupLongitude == null)) {
+      return _error(
+        422,
+        'VALIDATION_ERROR',
+        'Provide both a latitude and a longitude, or neither.',
+        {'latitude': query.pickupLatitude, 'longitude': query.pickupLongitude},
+      );
+    }
+    MockStop? board;
+    double? walk;
+    PickupSource? source;
+    final lat = query.pickupLatitude;
+    final lng = query.pickupLongitude;
+    if (query.originStopId case final id?) {
+      board = _stopById(id);
+      if (board == null) return _error(404, 'NOT_FOUND', 'Stop not found.');
+      source = PickupSource.manual;
+      if (lat != null && lng != null) {
+        walk = distanceMeters(lat, lng, board.latitude, board.longitude);
+      }
+    } else if (lat != null && lng != null) {
+      final near = nearbyStops(latitude: lat, longitude: lng).valueOrNull!;
+      if (near.isEmpty) {
+        return _error(
+          422,
+          'NO_PICKUP_NEARBY',
+          'No pickup point is within walking distance of your location.',
+          {
+            'max_walk_meters': pickupMaxWalkMeters,
+            'hint': 'Search for a pickup point by name instead.',
+          },
+        );
+      }
+      board = _stopById(near.first.id);
+      walk = near.first.distanceM;
+      source = PickupSource.gps;
+    }
+    final alight = query.destinationStopId == null
+        ? null
+        : _stopById(query.destinationStopId!);
+    final trips = board == null || alight == null || board == alight
+        ? <TripSearchResultResponse>[]
+        : _trips(query, board, alight, walk, source!);
+    return Ok(
+      Paginated(
+        items: trips.skip(query.offset).take(query.limit).toList(),
+        total: trips.length,
+        limit: query.limit,
+        offset: query.offset,
+      ),
+    );
+  }
+
+  List<TripSearchResultResponse> _trips(
+    TripSearchQuery query,
+    MockStop board,
+    MockStop alight,
+    double? walk,
+    PickupSource source,
+  ) {
+    final now = _now().toUtc();
+    final minute = DateTime.utc(
+      now.year,
+      now.month,
+      now.day,
+      now.hour,
+      now.minute,
+    );
+    final day = DateTime.utc(
+      query.travelDate.year,
+      query.travelDate.month,
+      query.travelDate.day,
+    );
+    final after = day.add(query.departureAfter ?? Duration.zero);
+    final before = day.add(
+      query.departureBefore ?? const Duration(hours: 23, minutes: 59),
+    );
+    // A search from now (as "Now" sends it) gets the live vehicles of G21.
+    final fromNow =
+        day == DateTime.utc(now.year, now.month, now.day) &&
+        after.difference(now).abs() <= const Duration(minutes: 2);
+
+    TripSearchResultResponse trip({
+      required DateTime departs,
+      required int minutes,
+      required VehicleType type,
+      required String plate,
+      required int seats,
+      required int solo,
+      required int shared,
+      int? etaMinutes,
+      bool? passed,
+    }) {
+      final key = departs.hour * 60 + departs.minute;
+      return TripSearchResultResponse(
+        tripId: _tripId(board, alight, key, departs),
+        routeId:
+            '${_hash('${board.name}>${alight.name}')}-3c9d-4a20-9000-'
+            '000000000000',
+        routeName: '${board.name} – ${alight.name}',
+        originStopId: board.id,
+        destinationStopId: alight.id,
+        scheduledDepartureAt: departs,
+        scheduledArrivalAt: departs.add(Duration(minutes: minutes)),
+        estimatedDurationMinutes: minutes,
+        distanceKm: 14,
+        fareAmount: '$solo.00',
+        status: TripStatus.scheduled,
+        availableSeats: seats,
+        vehicleRegistrationNumber: plate,
+        vehicleType: type,
+        pickupStopId: board.id,
+        pickupStopName: board.name,
+        pickupDistanceM: walk == null ? null : (walk * 10).roundToDouble() / 10,
+        pickupSource: source,
+        soloFareAmount: '$solo.00',
+        sharedFareAmount: '$shared.00',
+        pickupEtaMinutes: etaMinutes,
+        passedPickup: passed ?? (fromNow ? false : null),
+      );
+    }
+
+    final trips = <TripSearchResultResponse>[
+      if (fromNow) ...[
+        // P6, in the design's order of departure.
+        for (final (
+              offset,
+              minutes,
+              type,
+              plate,
+              seats,
+              solo,
+              shared,
+              eta,
+              passed,
+            )
+            in const [
+              (-14, 50, VehicleType.minibus, 'GR-1190', 0, 38, 14, null, true),
+              (-10, 50, VehicleType.sedan, 'GR-5531', 3, 45, 16, null, true),
+              (3, 50, VehicleType.minibus, 'GR-4821', 5, 38, 14, 3, false),
+              (10, 48, VehicleType.sedan, 'GR-2204', 2, 45, 18, 7, false),
+              (18, 50, VehicleType.minibus, 'GR-7743', 9, 38, 12, 12, false),
+            ])
+          trip(
+            departs: minute.add(Duration(minutes: offset)),
+            minutes: minutes,
+            type: type,
+            plate: plate,
+            seats: seats,
+            solo: solo,
+            shared: shared,
+            etaMinutes: eta,
+            passed: passed,
+          ),
+      ],
+      for (var k = 0; k <= 66; k++)
+        if (day.add(Duration(minutes: 330 + 15 * k)) case final departs
+            when !departs.isBefore(
+                  fromNow ? minute.add(const Duration(minutes: 25)) : after,
+                ) &&
+                !departs.isAfter(before))
+          trip(
+            departs: departs,
+            minutes: 50,
+            type: const [
+              VehicleType.minibus,
+              VehicleType.sedan,
+              VehicleType.minibus,
+              VehicleType.bus,
+            ][k % 4],
+            plate: 'GR-${(3017 + 389 * k) % 9000 + 1000}',
+            seats: const [11, 3, 0, 18][k % 4],
+            solo: const [38, 45, 38, 30][k % 4],
+            shared: const [13, 20, 15, 10][k % 4],
+          ),
+    ]..sort((a, b) => a.scheduledDepartureAt.compareTo(b.scheduledDepartureAt));
+    return trips;
+  }
+
+  String _tripId(MockStop board, MockStop alight, int key, DateTime departs) {
+    final day = departs.year * 10000 + departs.month * 100 + departs.day;
+    return '${_hash('${board.name}>${alight.name}')}-'
+        '${(key % 10000).toString().padLeft(4, '0')}-4000-8000-'
+        '${day.toString().padLeft(12, '0')}';
+  }
+
+  static String _hash(String text) => text.codeUnits
+      .fold<int>(17, (hash, unit) => (hash * 31 + unit) & 0xffffffff)
+      .toRadixString(16)
+      .padLeft(8, '0');
+
+  MockStop? _stopById(String id) =>
+      stops.values.where((s) => s.id == id).firstOrNull;
+
+  StopResponse _stopResponse(MockStop stop) => StopResponse(
+    id: stop.id,
+    name: stop.name,
+    city: 'Accra',
+    region: 'Greater Accra',
+    latitude: stop.latitude,
+    longitude: stop.longitude,
+  );
 
   // ---------------------------------------------------------------------
   // Test controls

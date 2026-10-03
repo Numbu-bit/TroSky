@@ -491,14 +491,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeOpenSettings => 'Settings';
 
   @override
-  String get placeholderSearch => 'Search';
-
-  @override
-  String placeholderSearchRoute(String origin, String destination) {
-    return 'From $origin to $destination';
-  }
-
-  @override
   String get placeholderNotifications => 'Notifications';
 
   @override
@@ -512,4 +504,270 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get placeholderSoon => 'This screen is coming soon.';
+
+  @override
+  String priceCedis(String amount) {
+    return '₵$amount';
+  }
+
+  @override
+  String distanceMetres(int metres) {
+    return '$metres m';
+  }
+
+  @override
+  String distanceKilometres(String kilometres) {
+    return '$kilometres km';
+  }
+
+  @override
+  String get vehicleBus => 'Bus';
+
+  @override
+  String get vehicleMinibus => 'Minibus';
+
+  @override
+  String get vehicleShuttle => 'Shuttle';
+
+  @override
+  String get vehicleSedan => 'Saloon Car';
+
+  @override
+  String get vehicleOther => 'Vehicle';
+
+  @override
+  String get searchLabel => 'Search';
+
+  @override
+  String get searchTitle => 'Where are you going?';
+
+  @override
+  String get searchFromLabel => 'From';
+
+  @override
+  String get searchToLabel => 'To';
+
+  @override
+  String get searchCurrentLocation => 'Current location';
+
+  @override
+  String get searchCurrentLocationHint => 'Board at the nearest stop';
+
+  @override
+  String get searchFromHint => 'Choose a pickup stop';
+
+  @override
+  String get searchToHint => 'Where to?';
+
+  @override
+  String get searchLocationOff => 'Location is off. Choose a pickup stop.';
+
+  @override
+  String get searchWhenNow => 'Now';
+
+  @override
+  String get searchWhenSchedule => 'Schedule';
+
+  @override
+  String get searchStopsHeading => 'Stops';
+
+  @override
+  String searchNoStops(String query) {
+    return 'No stops match \"$query\".';
+  }
+
+  @override
+  String get searchStopsError => 'Couldn\'t search stops.';
+
+  @override
+  String get searchTypeMore => 'Type 2 letters or more to search stops.';
+
+  @override
+  String get searchNearbyHeading => 'Nearby stops';
+
+  @override
+  String get searchRecentHeading => 'Recent searches';
+
+  @override
+  String get searchFavouritesHeading => 'Favourite routes';
+
+  @override
+  String get searchCurrentLocationShort => 'Current location';
+
+  @override
+  String get searchButton => 'Search';
+
+  @override
+  String searchStopDistance(String distance) {
+    return '$distance away';
+  }
+
+  @override
+  String get resultsRouteLabel => 'Route';
+
+  @override
+  String resultsJourney(String origin, String destination) {
+    return '$origin → $destination';
+  }
+
+  @override
+  String get resultsApproaching =>
+      'Showing vehicles still approaching your stop';
+
+  @override
+  String get resultsShowAll => 'Show all';
+
+  @override
+  String get resultsHidePassed => 'Hide passed';
+
+  @override
+  String get filterNow => 'Now';
+
+  @override
+  String get filterSchedule => 'Schedule';
+
+  @override
+  String get filterCheapest => 'Cheapest';
+
+  @override
+  String get filterFastest => 'Fastest';
+
+  @override
+  String get filterMinibus => 'Minibus';
+
+  @override
+  String get resultsBestMatch => 'BEST MATCH';
+
+  @override
+  String resultsTimes(String departs, String eta) {
+    return 'Departs $departs · ETA $eta';
+  }
+
+  @override
+  String resultsDeparts(String departs) {
+    return 'Departs $departs';
+  }
+
+  @override
+  String resultsSeats(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count seats',
+      one: '1 seat',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get resultsFull => 'Full';
+
+  @override
+  String get resultsPassed => 'Passed';
+
+  @override
+  String resultsApproachingBadge(int minutes) {
+    return '~$minutes min away · approaching your stop';
+  }
+
+  @override
+  String resultsBoardAt(String stop, String distance) {
+    return 'Board at $stop · $distance away';
+  }
+
+  @override
+  String resultsBoardAtStop(String stop) {
+    return 'Board at $stop';
+  }
+
+  @override
+  String resultsSave(int percent) {
+    return 'Save $percent%';
+  }
+
+  @override
+  String get resultsPassedNote => 'Already passed your stop — unavailable';
+
+  @override
+  String resultsShowPassed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Show $count vehicles that already passed your stop',
+      one: 'Show 1 vehicle that already passed your stop',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get resultsEmpty => 'No vehicles on this route right now';
+
+  @override
+  String get resultsTryAnotherTime => 'Try another time';
+
+  @override
+  String get resultsNoMinibus => 'No minibuses among these trips.';
+
+  @override
+  String get resultsShowAllVehicles => 'Show all vehicles';
+
+  @override
+  String get resultsLoadMoreError => 'Couldn\'t load more trips.';
+
+  @override
+  String get resultsNoPickup =>
+      'No pickup stop is within walking distance of you.';
+
+  @override
+  String get resultsNoLocation => 'We couldn\'t find your location.';
+
+  @override
+  String get resultsChoosePickup => 'Choose a pickup stop';
+
+  @override
+  String get resultsSaveRoute => 'Save this route';
+
+  @override
+  String get resultsRouteSavedLabel => 'Saved to your favourite routes';
+
+  @override
+  String get resultsRouteSaved => 'Saved to your favourite routes.';
+
+  @override
+  String get resultsRouteExists => 'This route is already in your favourites.';
+
+  @override
+  String get resultsRouteLimit =>
+      'You can save up to 20 routes. Remove one first.';
+
+  @override
+  String resultsTripLabel(
+    String vehicle,
+    String plate,
+    String times,
+    String seats,
+  ) {
+    return '$vehicle $plate. $times. $seats.';
+  }
+
+  @override
+  String resultsWas(String price) {
+    return 'was $price';
+  }
+
+  @override
+  String get resultsLoading => 'Loading trips';
+
+  @override
+  String get placeholderSeats => 'Choose your seat';
+
+  @override
+  String placeholderSeatsTrip(
+    String vehicle,
+    String departs,
+    String origin,
+    String destination,
+  ) {
+    return '$vehicle · departs $departs\nFrom $origin to $destination';
+  }
 }

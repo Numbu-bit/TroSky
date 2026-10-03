@@ -11,3 +11,4 @@ Claude Code appends a line here at the start of every session, after pulling and
 | 2026-10-01 | `c99055c` | No `backend/` commits since `7883216`. Auth contracts reread for Step 6; nothing changed |
 | 2026-10-01 | `862862a` | No `backend/` commits since `7883216`. Read `GET /drivers/me` and `ApprovalStatus` for post-sign-in routing |
 | 2026-10-01 | `4007101` | Backend 0.12.0 (`6bcfd43`, merged as PR #3): G1–G5, G7–G10, G12, G13, G16 done; favourites (G4), vehicles nearby (G16) used by Home now. Auth request/response shapes unchanged; codes may go by email; password reset takes a 6-digit code (G1). B1 still open. `backend-requests.md` updated, G19 added |
+| 2026-10-02 | `4007101` | No `backend/` commits since 0.12.0 (`origin/backend` has nothing beyond main). Read `/trips/search`, `/stops?q=`, `fare_service.py` and the admin trip/fleet endpoints for Step 9. Added G20 (fare for the searched stretch) and G21 (approaching/passed) to `backend-requests.md` |
