@@ -16,11 +16,17 @@ from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
-from app.core.exceptions import ConflictError, InvalidStateTransitionError, NotFoundError
+from app.core.exceptions import (
+    ConflictError,
+    InvalidStateTransitionError,
+    NotFoundError,
+    WalletFrozenError,
+)
 from app.core.logging import get_logger
 from app.models.payments import WalletReferenceType, WithdrawalRequest, WithdrawalStatus
 from app.providers.payments.base import PaymentChannel
 from app.repositories.payment_repository import PaymentRepository
+from app.repositories.wallet_repository import WalletRepository
 from app.services.wallet_service import WalletService
 
 logger = get_logger(__name__)
@@ -50,6 +56,7 @@ class WithdrawalService:
                 "Withdrawals must go to a mobile money channel.",
                 code="INVALID_WITHDRAWAL_CHANNEL",
             )
+        await self._refuse_if_frozen(user_id)
         if amount < self._settings.MIN_WITHDRAWAL_AMOUNT_GHS:
             raise ConflictError(
                 f"Minimum withdrawal amount is GHS {self._settings.MIN_WITHDRAWAL_AMOUNT_GHS}.",
@@ -71,6 +78,12 @@ class WithdrawalService:
         )
         logger.info("withdrawal_requested", withdrawal_id=str(withdrawal.id), amount=str(amount))
         return withdrawal
+
+    async def _refuse_if_frozen(self, user_id: uuid.UUID) -> None:
+        """No payout from a wallet frozen while fraud is looked into."""
+        wallet = await WalletRepository(self._session).get_by_user_id(user_id)
+        if wallet is not None and wallet.frozen_at is not None:
+            raise WalletFrozenError()
 
     async def get_withdrawal(
         self,
@@ -160,6 +173,7 @@ class WithdrawalService:
             raise InvalidStateTransitionError(
                 f"Cannot complete a withdrawal request in status '{withdrawal.status.value}'."
             )
+        await self._refuse_if_frozen(withdrawal.user_id)
         withdrawal.status = WithdrawalStatus.COMPLETED
         withdrawal.provider_reference = provider_reference
         await self._session.flush()

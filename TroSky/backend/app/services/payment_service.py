@@ -271,6 +271,42 @@ class PaymentService:
             idempotency_key=str(payment.id),
         )
 
+    async def _settle_booking_payment(self, booking_id: uuid.UUID) -> None:
+        """Confirm the booking a payment was for -- unless it was cancelled or
+        expired while the payment was in flight (a trip cancelled by the
+        operator, a hold that ran out). The money has arrived either way, so
+        it is then queued for a refund rather than rejected, which would
+        leave the provider retrying a webhook nobody can accept."""
+        booking = await self._bookings.get_for_update(booking_id)
+        if booking is not None and booking.status in (
+            BookingStatus.CANCELLED,
+            BookingStatus.EXPIRED,
+        ):
+            await self._bookings.set_status(
+                booking,
+                new_status=BookingStatus.REFUND_PENDING,
+                changed_by=None,
+                reason="Paid after the booking was cancelled or expired",
+            )
+            await self.create_refund_request_for_cancelled_booking(booking, requested_by=None)
+            logger.warning("late_payment_queued_for_refund", booking_id=str(booking_id))
+            return
+        await self._booking_service.confirm_booking(booking_id)
+
+    async def queue_refunds(
+        self, bookings: list[Booking], *, requested_by: uuid.UUID | None
+    ) -> list[RefundRequest]:
+        """A refund request for each ``refund_pending`` booking; each still
+        needs an admin's approval to pay out."""
+        queued = []
+        for booking in bookings:
+            refund = await self.create_refund_request_for_cancelled_booking(
+                booking, requested_by=requested_by
+            )
+            if refund is not None:
+                queued.append(refund)
+        return queued
+
     # ------------------------------------------------------------------
     # Status transition — shared by webhook processing and reconciliation
     # ------------------------------------------------------------------
@@ -289,7 +325,7 @@ class PaymentService:
                 payment, new_status=PaymentStatus.SUCCESSFUL, completed_at=datetime.now(UTC)
             )
             if payment.purpose == PaymentPurpose.BOOKING_PAYMENT and payment.booking_id is not None:
-                await self._booking_service.confirm_booking(payment.booking_id)
+                await self._settle_booking_payment(payment.booking_id)
             elif payment.purpose == PaymentPurpose.WALLET_TOPUP:
                 await self._credit_wallet_for_payment(payment)
             PAYMENT_EVENTS_TOTAL.labels(provider=payment.channel.value, outcome="successful").inc()

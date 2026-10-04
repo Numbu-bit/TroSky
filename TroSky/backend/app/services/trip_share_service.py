@@ -22,7 +22,12 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
-from app.core.exceptions import ConflictError, NotFoundError, ShareLinkGoneError
+from app.core.exceptions import (
+    ConflictError,
+    FeatureDisabledError,
+    NotFoundError,
+    ShareLinkGoneError,
+)
 from app.models.bookings import BookingStatus
 from app.repositories.booking_repository import BookingRepository
 from app.repositories.route_geometry import RouteGeometryRepository
@@ -32,6 +37,7 @@ from app.repositories.trip_view_repository import (
     TripViewRepository,
 )
 from app.repositories.user_repository import UserRepository
+from app.services.system_settings_service import is_enabled
 from app.services.tracking_service import LiveLocation, TrackingService
 from app.utilities.geo import travel_minutes
 from app.utilities.share_link import decode_share_token, encode_share_token
@@ -61,6 +67,7 @@ class TripShareService:
         self, session: AsyncSession, redis: Redis, settings: Settings | None = None
     ) -> None:
         self._settings = settings or get_settings()
+        self._session = session
         self._bookings = BookingRepository(session)
         self._views = TripViewRepository(session)
         self._geometries = RouteGeometryRepository(session)
@@ -71,6 +78,8 @@ class TripShareService:
         return self._settings.SECRET_KEY.get_secret_value()
 
     async def create_link(self, user_id: uuid.UUID, booking_id: uuid.UUID) -> tuple[str, datetime]:
+        if not await is_enabled(self._session, "trip_share_links", user_id):
+            raise FeatureDisabledError("Sharing trips is not available right now.")
         booking = await self._bookings.get_by_id(booking_id)
         if booking is None or booking.passenger_id != user_id:
             raise NotFoundError("Booking not found.")

@@ -1,4 +1,5 @@
-"""Feedback domain models: post-trip ratings and complaints."""
+"""Feedback domain models: post-trip ratings, and complaints with the
+support team's notes and messages."""
 
 from __future__ import annotations
 
@@ -27,6 +28,21 @@ class ComplaintStatus(StrEnum):
     IN_REVIEW = "in_review"
     RESOLVED = "resolved"
     DISMISSED = "dismissed"
+
+
+class ComplaintPriority(StrEnum):
+    """How soon a complaint must be resolved: each priority has its own
+    resolution time (the ``complaint_sla_hours`` setting)."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    URGENT = "urgent"
+
+
+class ComplaintNoteKind(StrEnum):
+    INTERNAL = "internal"  # for the support team only
+    MESSAGE = "message"  # to the passenger who filed the complaint
 
 
 class Rating(UUIDAuditBase):
@@ -102,6 +118,26 @@ class Complaint(UUIDAuditBase):
         nullable=False,
         default=ComplaintStatus.OPEN,
     )
+    priority: Mapped[ComplaintPriority] = mapped_column(
+        PgEnum(
+            ComplaintPriority,
+            name="complaint_priority",
+            native_enum=True,
+            values_callable=enum_values,
+        ),
+        nullable=False,
+        default=ComplaintPriority.MEDIUM,
+        server_default=ComplaintPriority.MEDIUM.value,
+    )
+    assigned_to: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    assigned_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    # The first thing the passenger saw happen: a message, the move to "in
+    # review", or the decision.
+    first_response_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True
+    )
     resolved_by: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
@@ -111,4 +147,31 @@ class Complaint(UUIDAuditBase):
     __table_args__ = (
         Index("ix_complaints_filed_by", "filed_by"),
         Index("ix_complaints_status", "status"),
+        Index("ix_complaints_assigned_to", "assigned_to"),
+        Index("ix_complaints_created_at", "created_at"),
     )
+
+
+class ComplaintNote(UUIDAuditBase):
+    """An internal note on a complaint, or a message to the passenger."""
+
+    __tablename__ = "complaint_notes"
+
+    complaint_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("complaints.id", ondelete="CASCADE"), nullable=False
+    )
+    author_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    kind: Mapped[ComplaintNoteKind] = mapped_column(
+        PgEnum(
+            ComplaintNoteKind,
+            name="complaint_note_kind",
+            native_enum=True,
+            values_callable=enum_values,
+        ),
+        nullable=False,
+    )
+    body: Mapped[str] = mapped_column(String(2000), nullable=False)
+
+    __table_args__ = (Index("ix_complaint_notes_complaint_id", "complaint_id", "created_at"),)

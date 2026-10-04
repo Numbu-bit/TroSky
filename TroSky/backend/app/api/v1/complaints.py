@@ -10,7 +10,11 @@ from fastapi import APIRouter, status
 from app.api.dependencies import ComplaintServiceDep, CurrentPrincipal, Pagination
 from app.core.permissions import Permission
 from app.schemas.common import PaginatedResponse
-from app.schemas.feedback import ComplaintResponse, FileComplaintRequest
+from app.schemas.feedback import (
+    ComplaintMessageResponse,
+    ComplaintResponse,
+    FileComplaintRequest,
+)
 
 router = APIRouter()
 
@@ -54,3 +58,13 @@ async def get_complaint(
         complaint_id, requesting_user_id=principal.user_id, is_privileged=is_privileged
     )
     return ComplaintResponse.model_validate(complaint)
+
+
+@router.get("/{complaint_id}/messages", response_model=list[ComplaintMessageResponse])
+async def list_complaint_messages(
+    complaint_id: uuid.UUID, principal: CurrentPrincipal, service: ComplaintServiceDep
+) -> list[ComplaintMessageResponse]:
+    """Messages from TroSky support about your complaint, oldest first. Each
+    new one also arrives as a notification."""
+    messages = await service.list_messages(complaint_id, requesting_user_id=principal.user_id)
+    return [ComplaintMessageResponse.model_validate(message) for message in messages]

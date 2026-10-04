@@ -135,6 +135,10 @@ class Settings(BaseSettings):
     EMAIL_SMTP_USERNAME: str = ""
     EMAIL_SMTP_PASSWORD: SecretStr = SecretStr("")
     EMAIL_SMTP_USE_TLS: bool = False
+    # How often an idle connection to the SMTP server is checked (NOOP) and,
+    # if none is left, a new one opened -- so a verification code never
+    # waits for a connect and login (~1.5 s to Gmail). 0 turns it off.
+    EMAIL_SMTP_KEEPALIVE_SECONDS: int = Field(default=40, ge=0, le=3600)
 
     # --- SMS ---------------------------------------------------------------
     SMS_PROVIDER: SmsProviderName = SmsProviderName.CONSOLE
@@ -159,6 +163,9 @@ class Settings(BaseSettings):
     # aboard. The floor stops a full bus pricing a seat into the ground:
     # 0.25 means nobody ever pays less than a quarter of the solo fare.
     FARE_SHARING_ENABLED: bool = True
+    # Search shows, and booking accepts, trips already on the road (from stops
+    # still ahead of the vehicle). Switched by the book_moving_trips flag.
+    BOOK_MOVING_TRIPS_ENABLED: bool = True
     FARE_SHARING_MIN_RATIO: Decimal = Field(default=Decimal("0.25"), gt=0, le=1)
     FARE_MINIMUM_AMOUNT: Decimal = Field(default=Decimal("1.00"), ge=0)
 
@@ -212,6 +219,17 @@ class Settings(BaseSettings):
 
     # --- Reservations / OTP / rate limits ---------------------------------
     SEAT_RESERVATION_HOLD_SECONDS: int = Field(default=600, gt=0)
+    # A new booking waits for the trip's driver (or an admin) to accept it
+    # before the passenger pays. Unanswered after the timeout, it is moved to
+    # another trip going the same way, up to BOOKING_MAX_MOVES times, among
+    # trips leaving within BOOKING_MOVE_WINDOW_MINUTES of the first.
+    BOOKING_ACCEPTANCE_REQUIRED: bool = True
+    BOOKING_ACCEPT_TIMEOUT_SECONDS: int = Field(default=120, ge=15, le=3600)
+    BOOKING_MAX_MOVES: int = Field(default=3, ge=0, le=10)
+    BOOKING_MOVE_WINDOW_MINUTES: int = Field(default=60, ge=0, le=24 * 60)
+    # Trips offered to a passenger who has reached their stop: those leaving
+    # from it within this many minutes.
+    ONWARD_TRIPS_WINDOW_MINUTES: int = Field(default=120, ge=5, le=24 * 60)
     OTP_LENGTH: int = Field(default=6, ge=4, le=10)
     OTP_EXPIRATION_SECONDS: int = Field(default=300, gt=0)
     OTP_RESEND_COOLDOWN_SECONDS: int = Field(default=60, gt=0)

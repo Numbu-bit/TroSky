@@ -19,6 +19,7 @@ from decimal import ROUND_DOWN, Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.admin_events import announce
 from app.core.config import Settings, get_settings
 from app.core.exceptions import (
     ConflictError,
@@ -27,13 +28,22 @@ from app.core.exceptions import (
     NotFoundError,
 )
 from app.core.logging import get_logger
-from app.models.bookings import BookingStatus
+from app.models.driver_actions import ActedAs, DriverActionKind
 from app.models.drivers import ApprovalStatus
-from app.models.payments import WalletReferenceType
-from app.models.trips import Trip, TripEventType, TripStatus
+from app.models.notifications import NotificationCategory
+from app.models.routes import Route
+from app.models.trips import (
+    AssignmentResponse,
+    Trip,
+    TripDriverAssignment,
+    TripEventType,
+    TripStatus,
+)
 from app.providers.payments.base import PaymentChannel
 from app.repositories.booking_repository import BookingRepository
+from app.repositories.driver_action_repository import DriverActionRepository
 from app.repositories.driver_repository import DriverRepository
+from app.repositories.route_geometry import RouteGeometryRepository
 from app.repositories.trip_repository import TripRepository
 from app.repositories.trip_view_repository import (
     ManifestEntry,
@@ -42,7 +52,8 @@ from app.repositories.trip_view_repository import (
     day_window,
 )
 from app.repositories.vehicle_repository import VehicleRepository
-from app.services.wallet_service import WalletService
+from app.services.alighting_service import AlightingService
+from app.services.notification_service import NotificationService
 from app.utilities.phone import (
     InvalidPhoneNumberError,
     mask_phone_number,
@@ -110,8 +121,11 @@ class TripService:
         self._drivers = DriverRepository(session)
         self._vehicles = VehicleRepository(session)
         self._bookings = BookingRepository(session)
-        self._wallets = WalletService(session)
         self._views = TripViewRepository(session)
+        self._actions = DriverActionRepository(session)
+        self._geometries = RouteGeometryRepository(session)
+        self._alighting = AlightingService(session, settings=self._settings)
+        self._notifications = NotificationService(session, self._settings)
 
     # ------------------------------------------------------------------
     # Scheduling
@@ -165,6 +179,123 @@ class TripService:
         if existing is not None:
             await self._trips.unassign_driver(existing)
         await self._trips.assign_driver(trip_id, driver_id, assigned_by)
+        route = await self._session.get(Route, trip.route_id)
+        await self._notifications.notify(
+            driver.user_id,
+            category=NotificationCategory.TRANSACTIONAL,
+            title="New trip assigned",
+            body=(
+                f"{route.name if route else 'A trip'}, leaving "
+                f"{trip.scheduled_departure_at:%d %b at %H:%M}. Accept or decline it in the app."
+            ),
+            data={"trip_id": str(trip_id), "action": "trip_assignment"},
+        )
+
+    # ------------------------------------------------------------------
+    # The driver's answer to a trip
+    # ------------------------------------------------------------------
+    async def respond(
+        self,
+        trip_id: uuid.UUID,
+        *,
+        actor_id: uuid.UUID,
+        accept: bool,
+        reason: str | None,
+        as_admin: bool,
+    ) -> TripDriverAssignment:
+        """The assigned driver accepts or declines the trip; an admin may
+        answer for them. Declined, the trip is left without a driver for the
+        operations team to reassign."""
+        trip = await self._trips.get_for_update(trip_id)
+        if trip is None:
+            raise NotFoundError("Trip not found.")
+        if trip.status in (TripStatus.COMPLETED, TripStatus.CANCELLED):
+            raise InvalidStateTransitionError(f"This trip is {trip.status.value}.")
+        if not as_admin:
+            await self._resolve_assigned_driver_id(trip_id, actor_id)
+        assignment = await self._trips.get_active_driver_assignment(trip_id)
+        if assignment is None:
+            raise ConflictError("This trip has no driver assigned.", code="TRIP_HAS_NO_DRIVER")
+
+        wanted = AssignmentResponse.ACCEPTED if accept else AssignmentResponse.DECLINED
+        if assignment.response == wanted:
+            return assignment  # a second tap
+        if not accept and trip.status not in (TripStatus.SCHEDULED, TripStatus.BOARDING):
+            raise InvalidStateTransitionError(
+                "A trip already on the road cannot be declined.", code="TRIP_ALREADY_STARTED"
+            )
+        await self._trips.record_response(
+            assignment, response=wanted, responded_by=actor_id, reason=reason
+        )
+        await self._actions.record(
+            kind=DriverActionKind.TRIP_ACCEPTED if accept else DriverActionKind.TRIP_DECLINED,
+            trip_id=trip_id,
+            driver_id=assignment.driver_id,
+            acted_as=ActedAs.ADMIN if as_admin else ActedAs.DRIVER,
+            actor_id=actor_id,
+            reason=reason,
+        )
+        announce(
+            self._session,
+            "trip.accepted" if accept else "trip.declined",
+            trip_id=trip_id,
+            driver_id=assignment.driver_id,
+            by="admin" if as_admin else "driver",
+            reason=reason,
+        )
+        if as_admin:
+            driver = await self._drivers.get_by_id(assignment.driver_id)
+            if driver is not None:
+                await self._notifications.notify(
+                    driver.user_id,
+                    category=NotificationCategory.TRANSACTIONAL,
+                    title="Trip accepted for you" if accept else "Trip taken off you",
+                    body=(
+                        "The operations team accepted this trip for you."
+                        if accept
+                        else "The operations team declined this trip for you"
+                        + (f": {reason}" if reason else ".")
+                    ),
+                    data={"trip_id": str(trip_id), "action": "trip_assignment"},
+                )
+        logger.info("trip_answered", trip_id=str(trip_id), accepted=accept, as_admin=as_admin)
+        return assignment
+
+    async def record_ticket_scan(
+        self,
+        trip_id: uuid.UUID,
+        *,
+        driver_id: uuid.UUID,
+        actor_id: uuid.UUID,
+        booking_id: uuid.UUID,
+        ticket_reference: str,
+    ) -> None:
+        await self._actions.record(
+            kind=DriverActionKind.TICKET_SCANNED,
+            trip_id=trip_id,
+            driver_id=driver_id,
+            acted_as=ActedAs.DRIVER,
+            actor_id=actor_id,
+            booking_id=booking_id,
+            details={"ticket_reference": ticket_reference},
+        )
+
+    async def _record_lifecycle(
+        self,
+        kind: DriverActionKind,
+        trip_id: uuid.UUID,
+        driver_id: uuid.UUID,
+        actor_id: uuid.UUID,
+        reason: str | None = None,
+    ) -> None:
+        await self._actions.record(
+            kind=kind,
+            trip_id=trip_id,
+            driver_id=driver_id,
+            acted_as=ActedAs.DRIVER,
+            actor_id=actor_id,
+            reason=reason,
+        )
 
     async def assign_vehicle(
         self, trip_id: uuid.UUID, vehicle_id: uuid.UUID, *, assigned_by: uuid.UUID | None
@@ -330,11 +461,25 @@ class TripService:
                 code="DRIVER_HAS_CONFLICTING_TRIP",
             )
 
+        assignment = await self._trips.get_active_driver_assignment(trip_id)
+        if assignment is not None and assignment.response == AssignmentResponse.PENDING:
+            # Driving the trip is accepting it.
+            await self._trips.record_response(
+                assignment,
+                response=AssignmentResponse.ACCEPTED,
+                responded_by=user_id,
+                reason=None,
+            )
+            await self._record_lifecycle(
+                DriverActionKind.TRIP_ACCEPTED, trip_id, driver_id, user_id, "Started it"
+            )
+
         trip.actual_departure_at = datetime.now(UTC)
         await self._trips.set_status(
             trip, new_status=TripStatus.IN_PROGRESS, changed_by=user_id, reason="Trip started"
         )
         await self._trips.record_event(trip.id, TripEventType.TRIP_STARTED)
+        await self._record_lifecycle(DriverActionKind.TRIP_STARTED, trip_id, driver_id, user_id)
         logger.info("trip_started", trip_id=str(trip_id), driver_id=str(driver_id))
         return trip
 
@@ -342,7 +487,7 @@ class TripService:
         trip = await self._trips.get_for_update(trip_id)
         if trip is None:
             raise NotFoundError("Trip not found.")
-        await self._resolve_assigned_driver_id(trip_id, user_id)
+        driver_id = await self._resolve_assigned_driver_id(trip_id, user_id)
 
         if trip.status == TripStatus.PAUSED:
             return trip  # idempotent
@@ -354,13 +499,16 @@ class TripService:
         await self._trips.record_event(
             trip.id, TripEventType.TRIP_PAUSED, {"reason": reason} if reason else None
         )
+        await self._record_lifecycle(
+            DriverActionKind.TRIP_PAUSED, trip_id, driver_id, user_id, reason
+        )
         return trip
 
     async def resume_trip(self, trip_id: uuid.UUID, user_id: uuid.UUID) -> Trip:
         trip = await self._trips.get_for_update(trip_id)
         if trip is None:
             raise NotFoundError("Trip not found.")
-        await self._resolve_assigned_driver_id(trip_id, user_id)
+        driver_id = await self._resolve_assigned_driver_id(trip_id, user_id)
 
         if trip.status == TripStatus.IN_PROGRESS:
             return trip  # idempotent
@@ -370,6 +518,7 @@ class TripService:
             trip, new_status=TripStatus.IN_PROGRESS, changed_by=user_id, reason="Trip resumed"
         )
         await self._trips.record_event(trip.id, TripEventType.TRIP_RESUMED)
+        await self._record_lifecycle(DriverActionKind.TRIP_RESUMED, trip_id, driver_id, user_id)
         return trip
 
     async def end_trip(
@@ -399,33 +548,26 @@ class TripService:
             latitude=latitude,
             longitude=longitude,
         )
+        # Everyone still aboard has arrived. Those who got off earlier were
+        # completed (and the driver's share credited) then.
         confirmed_bookings = await self._bookings.list_confirmed_for_trip(trip.id)
-        share_percent = self._settings.DRIVER_EARNINGS_SHARE_PERCENT
+        last_stop = (
+            (await self._geometries.for_routes([trip.route_id]))[trip.route_id].destination_stop_id
+            if confirmed_bookings
+            else None
+        )
         for booking in confirmed_bookings:
-            await self._bookings.set_status(
+            # `user_id` here is the calling driver's own account — the same
+            # identity `_resolve_assigned_driver_id` just verified is this
+            # trip's assigned driver, so no extra lookup is needed to know
+            # whose wallet to credit.
+            await self._alighting.complete(
                 booking,
-                new_status=BookingStatus.COMPLETED,
                 changed_by=user_id,
                 reason="Trip completed",
+                driver_user_id=user_id,
+                stop_id=booking.destination_stop_id or last_stop,
             )
-            # A share of the fare only: total_amount also carries TroSky's
-            # platform fee, which is not the driver's to share in.
-            driver_share = (booking.fare_amount * share_percent / Decimal("100")).quantize(
-                Decimal("0.01")
-            )
-            if driver_share > 0:
-                # `user_id` here is the calling driver's own account — the
-                # same identity `_resolve_assigned_driver_id` just verified
-                # is this trip's assigned driver, so no extra lookup is
-                # needed to know whose wallet to credit.
-                await self._wallets.credit(
-                    user_id,
-                    amount=driver_share,
-                    reference_type=WalletReferenceType.TRIP_EARNING,
-                    reference_id=booking.id,
-                    description=f"Trip earning for booking {booking.booking_reference}",
-                    idempotency_key=f"trip-earning-{booking.id}",
-                )
         # Remaining downstream effects that depend on later phases
         # (fleet-owner revenue share, settlement batching, a "trip
         # completed" passenger notification, analytics) are not yet
@@ -437,6 +579,7 @@ class TripService:
             "longitude": str(longitude) if longitude else None,
         }
         await self._trips.record_event(trip.id, TripEventType.TRIP_COMPLETED, end_location)
+        await self._record_lifecycle(DriverActionKind.TRIP_ENDED, trip_id, driver_id, user_id)
         logger.info("trip_completed", trip_id=str(trip_id), driver_id=str(driver_id))
         return trip
 

@@ -21,7 +21,7 @@ from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import from_minor_units, get_settings, to_minor_units
-from app.core.exceptions import InsufficientWalletBalanceError
+from app.core.exceptions import InsufficientWalletBalanceError, WalletFrozenError
 from app.core.logging import get_logger
 from app.models.payments import Wallet, WalletEntryType, WalletReferenceType, WalletTransaction
 from app.repositories.wallet_repository import WalletRepository
@@ -138,6 +138,11 @@ class WalletService:
             )
             if existing is not None:
                 return existing
+
+        # A frozen wallet pays nothing out; only an admin's adjustment (say,
+        # recovering money obtained by fraud) may take from it.
+        if wallet.frozen_at is not None and reference_type != WalletReferenceType.ADMIN_ADJUSTMENT:
+            raise WalletFrozenError()
 
         amount_minor = to_minor_units(amount)
         if wallet.balance_minor_units < amount_minor:

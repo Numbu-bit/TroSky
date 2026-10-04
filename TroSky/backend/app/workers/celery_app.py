@@ -24,6 +24,7 @@ celery_app = Celery(
         "app.workers.tasks.bookings",
         "app.workers.tasks.payments",
         "app.workers.tasks.tracking",
+        "app.workers.tasks.fraud",
         # Phase 9+: "app.workers.tasks.notifications",
     ],
 )
@@ -54,9 +55,17 @@ celery_app.conf.beat_schedule = {
         "task": "app.workers.tasks.bookings.expire_stale_bookings",
         "schedule": 30.0,  # seconds — seat holds must release promptly
     },
+    "move-unanswered-bookings": {
+        "task": "app.workers.tasks.bookings.move_unanswered_bookings",
+        "schedule": 15.0,  # seconds — the passenger is waiting for an answer
+    },
     "reconcile-pending-payments": {
         "task": "app.workers.tasks.payments.reconcile_pending_payments",
         "schedule": 120.0,  # seconds — a fallback path, not the primary one
+    },
+    "detect-fraud": {
+        "task": "app.workers.tasks.fraud.detect_fraud",
+        "schedule": crontab(minute="*/15"),
     },
     "purge-old-trip-locations": {
         "task": "app.workers.tasks.tracking.purge_old_trip_locations",

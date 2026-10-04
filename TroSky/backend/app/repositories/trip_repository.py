@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Collection, Sequence
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from sqlalchemy import exists, func, literal, select, union_all
@@ -21,6 +21,7 @@ from sqlalchemy.sql.selectable import Subquery
 from app.models.drivers import Driver
 from app.models.routes import Route, RouteStop
 from app.models.trips import (
+    AssignmentResponse,
     Trip,
     TripDriverAssignment,
     TripEvent,
@@ -243,6 +244,26 @@ class TripRepository:
 
     async def unassign_driver(self, assignment: TripDriverAssignment) -> None:
         assignment.is_active = False
+        await self._session.flush()
+
+    async def record_response(
+        self,
+        assignment: TripDriverAssignment,
+        *,
+        response: AssignmentResponse,
+        responded_by: uuid.UUID | None,
+        reason: str | None,
+    ) -> None:
+        """The driver's answer to the trip (or an admin's, for them). A
+        declined assignment ends: the trip is left without a driver."""
+        now = datetime.now(UTC)
+        assignment.response = response
+        assignment.responded_at = now
+        assignment.responded_by = responded_by
+        assignment.response_reason = reason
+        if response == AssignmentResponse.DECLINED:
+            assignment.is_active = False
+            assignment.unassigned_at = now
         await self._session.flush()
 
     async def assign_vehicle(

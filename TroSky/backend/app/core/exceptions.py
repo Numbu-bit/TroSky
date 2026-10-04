@@ -180,6 +180,15 @@ class NoPickupNearbyError(AppError):
     message = "No pickup point is within walking distance of your location."
 
 
+class FeatureDisabledError(AppError):
+    """A feature an admin has switched off (or not yet rolled out to this
+    user); see /admin/feature-flags."""
+
+    code = "FEATURE_DISABLED"
+    status_code = status.HTTP_403_FORBIDDEN
+    message = "This feature is not available right now."
+
+
 class ShareLinkGoneError(AppError):
     """A live-trip link that has expired, or whose booking was cancelled."""
 
@@ -224,6 +233,21 @@ class InsufficientWalletBalanceError(AppError):
     code = "INSUFFICIENT_WALLET_BALANCE"
     status_code = status.HTTP_402_PAYMENT_REQUIRED
     message = "The wallet balance is insufficient for this transaction."
+
+
+class WalletFrozenError(AppError):
+    """An admin froze the wallet while looking into possible fraud: no
+    money leaves it, by payment or payout, until it is unfrozen."""
+
+    code = "WALLET_FROZEN"
+    status_code = status.HTTP_403_FORBIDDEN
+    message = "This wallet is frozen. Please contact TroSky support."
+
+
+class DeviceBlockedError(AppError):
+    code = "DEVICE_BLOCKED"
+    status_code = status.HTTP_403_FORBIDDEN
+    message = "Signing in from this device is not allowed. Please contact TroSky support."
 
 
 class InvalidWebhookSignatureError(AppError):

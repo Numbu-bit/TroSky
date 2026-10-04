@@ -65,6 +65,15 @@ class SosAlertStatus(StrEnum):
     FALSE_ALARM = "false_alarm"
 
 
+class EscalationContactType(StrEnum):
+    POLICE = "police"
+    AMBULANCE = "ambulance"
+    FIRE_SERVICE = "fire_service"
+    FLEET_OWNER = "fleet_owner"
+    EMERGENCY_CONTACT = "emergency_contact"  # one the passenger saved
+    OTHER = "other"
+
+
 class Incident(UUIDAuditBase):
     __tablename__ = "incidents"
 
@@ -148,3 +157,31 @@ class SosAlert(UUIDAuditBase):
         Index("ix_sos_alerts_trip_id", "trip_id"),
         Index("ix_sos_alerts_status", "status"),
     )
+
+
+class SosEscalation(UUIDAuditBase):
+    """Who the operations team contacted about an SOS alert, and when."""
+
+    __tablename__ = "sos_escalations"
+
+    sos_alert_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("sos_alerts.id", ondelete="CASCADE"), nullable=False
+    )
+    contact_type: Mapped[EscalationContactType] = mapped_column(
+        PgEnum(
+            EscalationContactType,
+            name="escalation_contact_type",
+            native_enum=True,
+            values_callable=enum_values,
+        ),
+        nullable=False,
+    )
+    contact_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    phone_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    contacted_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    notes: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    logged_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+
+    __table_args__ = (Index("ix_sos_escalations_sos_alert_id", "sos_alert_id", "contacted_at"),)

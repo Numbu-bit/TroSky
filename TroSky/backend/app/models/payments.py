@@ -267,6 +267,12 @@ class Wallet(UUIDAuditBase):
         BigInteger, nullable=False, default=0, server_default="0"
     )
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="GHS")
+    # Set while an admin looks into possible fraud: no debits, no payouts.
+    frozen_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    frozen_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    frozen_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     version: Mapped[int] = mapped_column(nullable=False, default=1, server_default="1")
 
     __table_args__ = (

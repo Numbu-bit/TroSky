@@ -15,6 +15,7 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.admin_events import announce
 from app.core.config import Settings, get_settings
 from app.core.exceptions import (
     ConflictError,
@@ -177,6 +178,14 @@ class FleetService:
             changed_by=user_id,
             reason="Initial registration",
         )
+        announce(
+            self._session,
+            "approval.requested",
+            kind="vehicle",
+            vehicle_id=vehicle.id,
+            fleet_id=fleet.id,
+            registration_number=vehicle.registration_number,
+        )
         return vehicle
 
     async def list_vehicles_for_fleet(
@@ -236,6 +245,14 @@ class FleetService:
         )
         logger.info(
             "vehicle_document_uploaded", vehicle_id=str(vehicle.id), document_id=str(document.id)
+        )
+        announce(
+            self._session,
+            "approval.document_uploaded",
+            kind="vehicle",
+            vehicle_id=vehicle.id,
+            document_id=document.id,
+            document_type=document_type,
         )
         return document
 
