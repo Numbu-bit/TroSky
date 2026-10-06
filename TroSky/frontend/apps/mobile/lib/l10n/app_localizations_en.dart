@@ -759,15 +759,215 @@ class AppLocalizationsEn extends AppLocalizations {
   String get resultsLoading => 'Loading trips';
 
   @override
-  String get placeholderSeats => 'Choose your seat';
+  String get seatsTitle => 'Choose Your Seat';
 
   @override
-  String placeholderSeatsTrip(
-    String vehicle,
-    String departs,
+  String seatsSubtitle(
     String origin,
     String destination,
+    String plate,
+    String departs,
   ) {
-    return '$vehicle · departs $departs\nFrom $origin to $destination';
+    return '$origin → $destination · $plate · Departs $departs';
   }
+
+  @override
+  String seatsBookedSuffix(int total) {
+    return '/$total booked';
+  }
+
+  @override
+  String seatsBookedLabel(int booked, int total) {
+    return '$booked of $total seats booked';
+  }
+
+  @override
+  String get seatsLegendAvailable => 'Available';
+
+  @override
+  String get seatsLegendTaken => 'Taken';
+
+  @override
+  String get seatsLegendSelected => 'Selected';
+
+  @override
+  String seatLabel(String number) {
+    return 'Seat $number';
+  }
+
+  @override
+  String seatLabelTaken(String number) {
+    return 'Seat $number, taken';
+  }
+
+  @override
+  String seatLabelSelected(String number) {
+    return 'Seat $number, selected';
+  }
+
+  @override
+  String get seatsOneSelected => '1 seat selected';
+
+  @override
+  String seatsManySelected(int count) {
+    return '$count seats selected (group booking)';
+  }
+
+  @override
+  String seatsList(String seats) {
+    return 'Seats: $seats';
+  }
+
+  @override
+  String get seatsClear => 'Clear';
+
+  @override
+  String get seatsYouPayNow => 'You pay now';
+
+  @override
+  String seatsPriceTimes(String price, int count) {
+    return '$price × $count seats';
+  }
+
+  @override
+  String seatsDropsTo(String price) {
+    return '↓ Drops to $price';
+  }
+
+  @override
+  String get seatsAsMoreJoin => 'as more riders join';
+
+  @override
+  String get seatsEstimated => 'Estimated';
+
+  @override
+  String seatsWas(String price) {
+    return 'was $price';
+  }
+
+  @override
+  String get seatsSelectToContinue => 'Select Seats to Continue';
+
+  @override
+  String seatsReserveOne(String number) {
+    return 'Reserve Seat $number';
+  }
+
+  @override
+  String seatsReserveMany(int count, String total) {
+    return 'Reserve $count Seats · $total';
+  }
+
+  @override
+  String seatsMax(int max) {
+    return 'You can book up to $max seats at once.';
+  }
+
+  @override
+  String seatsJustTaken(int count, String seats) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Seats $seats were just taken. Choose other seats.',
+      one: 'Seat $seats was just taken. Choose another seat.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get seatsTripClosed =>
+      'This trip can no longer be booked. Choose another one.';
+
+  @override
+  String get seatsPickupPassed =>
+      'This vehicle has already passed your pickup. Choose another one.';
+
+  @override
+  String get seatsStopsChanged =>
+      'This trip no longer stops where you chose. Choose another one.';
+
+  @override
+  String get seatsBackToResults => 'Back to results';
+
+  @override
+  String get seatsLoading => 'Loading seats';
+
+  @override
+  String get seatsLoadError => 'Couldn\'t load the seats.';
+
+  @override
+  String get seatsNoVehicle =>
+      'This trip has no vehicle yet, so its seats can\'t be chosen.';
+
+  @override
+  String get bookingPassengerFallback => 'TroSky passenger';
+
+  @override
+  String bookingGuestName(String firstName, int number) {
+    return '$firstName\'s guest $number';
+  }
+
+  @override
+  String bookingGuestFallback(int number) {
+    return 'Guest $number';
+  }
+
+  @override
+  String get paymentTitle => 'Payment';
+
+  @override
+  String paymentHeldFor(String time) {
+    return 'Seats held for $time';
+  }
+
+  @override
+  String paymentReference(String reference) {
+    return 'Booking $reference';
+  }
+
+  @override
+  String get paymentSeats => 'Seats';
+
+  @override
+  String get paymentFare => 'Fare';
+
+  @override
+  String get paymentPlatformFee => 'Platform fee';
+
+  @override
+  String get paymentTotal => 'Total';
+
+  @override
+  String get paymentComingSoon =>
+      'Paying in the app is coming soon. Your seats stay held until the timer ends.';
+
+  @override
+  String get paymentCancel => 'Cancel booking';
+
+  @override
+  String get paymentCancelled =>
+      'Booking cancelled. Your seats are free again.';
+
+  @override
+  String get paymentReleaseTitle => 'Change your seats?';
+
+  @override
+  String get paymentReleaseBody =>
+      'Going back releases the seats held for you, so you can choose again.';
+
+  @override
+  String get paymentReleaseKeep => 'Keep these seats';
+
+  @override
+  String get paymentReleaseConfirm => 'Release seats';
+
+  @override
+  String get paymentReleased => 'Seats released. Choose again.';
+
+  @override
+  String get paymentExpired =>
+      'Your seat hold has expired. Choose your seats again.';
+
+  @override
+  String get paymentExpiredHome => 'Your seat hold has expired.';
 }

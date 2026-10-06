@@ -51,7 +51,7 @@ final class SessionControllerProvider
   SessionController create() => SessionController();
 }
 
-String _$sessionControllerHash() => r'c803f974039d71ba760831549ffd22790277fba7';
+String _$sessionControllerHash() => r'64d23590ecfceb8c0fb6263df59d19211f3ee6db';
 
 /// The session: restores it on app start and signs in and out.
 ///

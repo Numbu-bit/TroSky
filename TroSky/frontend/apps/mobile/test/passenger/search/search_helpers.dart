@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mobile/passenger/search/presentation/search_results_screen.dart';
 import 'package:mobile/passenger/search/presentation/search_screen.dart';
 import 'package:trosky_api/trosky_api.dart';
 import 'package:trosky_core/trosky_core.dart';
@@ -116,13 +117,24 @@ TripSearchResultResponse liveTrip({
 /// times first, or with [failure] every time), and recording the queries.
 /// Stops come from the mock backend.
 class ScriptedTrips implements RouteRepository {
-  ScriptedTrips(this._backend, this.trips, {this.failures = 0, this.failure});
+  ScriptedTrips(
+    this._backend,
+    this.trips, {
+    this.failures = 0,
+    this.failure,
+    Map<String, TripSeatsResponse>? seatMaps,
+  }) : seatMaps = seatMaps ?? {};
 
   final MockBackend _backend;
   final List<TripSearchResultResponse> trips;
   int failures;
   final AppFailure? failure;
   final List<TripSearchQuery> queries = [];
+
+  /// `GET /trips/{id}/seats` by trip id; change an entry to change what the
+  /// next refresh sees.
+  final Map<String, TripSeatsResponse> seatMaps;
+  int seatRequests = 0;
 
   @override
   Future<Result<Paginated<TripSearchResultResponse>>> searchTrips(
@@ -162,6 +174,17 @@ class ScriptedTrips implements RouteRepository {
     radiusM: radiusM,
     limit: limit,
   );
+
+  @override
+  Future<Result<TripSeatsResponse>> tripSeats(String tripId) async {
+    seatRequests++;
+    return switch (seatMaps[tripId]) {
+      final map? => Ok(map),
+      null => const Err(
+        NotFoundFailure(code: 'NOT_FOUND', message: 'Trip not found.'),
+      ),
+    };
+  }
 }
 
 /// The mock's stop search, counting the requests.
@@ -178,4 +201,43 @@ class CountingStops extends ScriptedTrips {
     stopQueries.add(query);
     return super.searchStops(query, limit: limit);
   }
+}
+
+/// Home → the "Madina → Circle" favourite: Search Results at once.
+Future<TestWorld> openResults(
+  WidgetTester tester, {
+  TestWorld? world,
+  Size size = const Size(360, 806),
+  Env? env,
+  List<Object> overrides = const [],
+  String chip = 'Madina → Circle',
+}) async {
+  final w = await openHome(
+    tester,
+    world: world ?? morning(),
+    size: size,
+    env: env,
+    overrides: overrides,
+  );
+  await tester.tap(find.text(chip));
+  await tester.pumpAndSettle();
+  expect(find.byType(SearchResultsScreen), findsOneWidget);
+  return w;
+}
+
+/// Live mode with [routes] answering the search.
+Future<TestWorld> openLiveResults(
+  WidgetTester tester,
+  TestWorld world,
+  ScriptedTrips routes, {
+  Size size = const Size(360, 806),
+}) {
+  final live = liveMode(world, FakeTracking(const []), routes: routes);
+  return openResults(
+    tester,
+    world: world,
+    size: size,
+    env: live.env,
+    overrides: live.overrides,
+  );
 }

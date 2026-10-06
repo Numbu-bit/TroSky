@@ -506,6 +506,58 @@ final class TrackingRepositoryProvider
 String _$trackingRepositoryHash() =>
     r'c84da5f057977a96ca7642de22e99f8c9f67ba02';
 
+/// Seat holds and bookings.
+
+@ProviderFor(bookingRepository)
+final bookingRepositoryProvider = BookingRepositoryProvider._();
+
+/// Seat holds and bookings.
+
+final class BookingRepositoryProvider
+    extends
+        $FunctionalProvider<
+          BookingRepository,
+          BookingRepository,
+          BookingRepository
+        >
+    with $Provider<BookingRepository> {
+  /// Seat holds and bookings.
+  BookingRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'bookingRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$bookingRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<BookingRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  BookingRepository create(Ref ref) {
+    return bookingRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(BookingRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<BookingRepository>(value),
+    );
+  }
+}
+
+String _$bookingRepositoryHash() => r'2fdcac728430e45f48814f8cbae9a5c8c06874e1';
+
 @ProviderFor(userCache)
 final userCacheProvider = UserCacheProvider._();
 

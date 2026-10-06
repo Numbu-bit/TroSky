@@ -678,4 +678,93 @@ void main() {
       width: 360,
     );
   });
+
+  testWidgets('Seat selection parts (P7): counter, cab, legend, seats, '
+      'button', (tester) async {
+    await _golden(
+      tester,
+      'seat_components',
+      Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const TroskyBookedCounter(
+              booked: 5,
+              total: 14,
+              suffix: '/14 booked',
+              semanticsLabel: '5 of 14 seats booked',
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              decoration: BoxDecoration(
+                color: TroskyColors.surface,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: TroskyShadows.seatMapCard,
+              ),
+              child: Column(
+                children: [
+                  const TroskyVehicleCab(plate: 'GR-4821'),
+                  const SizedBox(height: 16),
+                  const TroskySeatLegend(
+                    available: 'Available',
+                    taken: 'Taken',
+                    selected: 'Selected',
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      TroskySeat(
+                        number: '1',
+                        state: TroskySeatState.available,
+                        semanticsLabel: 'Seat 1',
+                        onPressed: () {},
+                      ),
+                      const SizedBox(width: 8),
+                      const TroskySeat(
+                        number: '2',
+                        state: TroskySeatState.taken,
+                        semanticsLabel: 'Seat 2, taken',
+                      ),
+                      const SizedBox(width: 8),
+                      const TroskySeatAisle(),
+                      const SizedBox(width: 8),
+                      TroskySeat(
+                        number: '3',
+                        state: TroskySeatState.selected,
+                        semanticsLabel: 'Seat 3, selected',
+                        onPressed: () {},
+                      ),
+                      const SizedBox(width: 8),
+                      TroskySeat(
+                        number: '14',
+                        state: TroskySeatState.available,
+                        semanticsLabel: 'Seat 14',
+                        onPressed: () {},
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            TroskyButton(
+              label: 'Select Seats to Continue',
+              variant: TroskyButtonVariant.seatCta,
+              onPressed: null,
+            ),
+            const SizedBox(height: 16),
+            TroskyButton(
+              label: 'Reserve 2 Seats · ₵28.00',
+              variant: TroskyButtonVariant.seatCta,
+              onPressed: () {},
+            ),
+          ],
+        ),
+      ),
+      width: 360,
+    );
+  });
 }

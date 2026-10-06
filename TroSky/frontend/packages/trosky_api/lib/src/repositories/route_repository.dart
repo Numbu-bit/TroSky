@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:trosky_core/trosky_core.dart';
 
 import '../client/api_client.dart';
+import '../dto/booking_dto.dart';
 import '../dto/paginated.dart';
 import '../dto/route_dto.dart';
 
@@ -99,6 +100,10 @@ abstract interface class RouteRepository {
   Future<Result<Paginated<TripSearchResultResponse>>> searchTrips(
     TripSearchQuery query,
   );
+
+  /// The trip vehicle's seats and which are free (public). 409 `CONFLICT`
+  /// before a vehicle is assigned; 404 without a seat layout.
+  Future<Result<TripSeatsResponse>> tripSeats(String tripId);
 }
 
 /// [RouteRepository] against the backend.
@@ -155,5 +160,11 @@ class LiveRouteRepository implements RouteRepository {
     ),
     (data) =>
         Paginated.fromJson(jsonObject(data), TripSearchResultResponse.fromJson),
+  );
+
+  @override
+  Future<Result<TripSeatsResponse>> tripSeats(String tripId) => apiCall(
+    () => _dio.get<Object?>('/trips/$tripId/seats', options: publicEndpoint()),
+    (data) => TripSeatsResponse.fromJson(jsonObject(data)),
   );
 }

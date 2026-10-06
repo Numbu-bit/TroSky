@@ -4,7 +4,7 @@
 **From:** frontend (Flutter mobile app, admin web, fleet web)
 **Status as of:** 30 Sep 2026 (bugs section added 1 Oct 2026)
 
-**Update 1 Oct 2026 (backend 0.12.0, `6bcfd43`):** G1, G2, G3, G4, G5, G7, G8, G9, G10, G12, G13 and G16 are **done** (see the backend `CHANGELOG.md`). G14, G15, G17 and G18 wait for product decisions. B1 and B2 are still open. G19 is new; G20 and G21 were added on 2 Oct 2026.
+**Update 1 Oct 2026 (backend 0.12.0, `6bcfd43`):** G1, G2, G3, G4, G5, G7, G8, G9, G10, G12, G13 and G16 are **done** (see the backend `CHANGELOG.md`). G14, G15, G17 and G18 wait for product decisions. B1 and B2 are still open. G19 is new; G20 and G21 were added on 2 Oct 2026, B3 the same day.
 
 The frontend is being built now against **mock data that follows the contracts below**. When an endpoint lands in the repo, the frontend switches from mock to live. So the most helpful thing is to **agree the request/response shape early**, even before the code exists. If you want a different shape, change it here (or tell us) before building, and we'll update our mocks.
 
@@ -177,6 +177,8 @@ To fix it:
 Because the workflow has never run, expect the first run to surface a few failures of its own.
 
 ### G20 — The passenger's fare in search results
+> **Update 3 Oct 2026 (on main since PR #6, `bea311e`):** the backend answers this in its own shape: a `fare` object on each search result (`current`, `solo`, `minimum`, `platform_fee`, `total`, `currency`, `riders_count`, `seats`) and `GET /trips/{id}/fare-quote?origin_stop_id&destination_stop_id&seats`. That covers the seat-screen fields below too (`current` = shared, `solo`, `minimum` = floor). The app still uses decisions 20 and 24 until it adopts this (next frontend change).
+
 `GET /trips/search` returns the trip's `fare_amount`: the **whole route's** fare. A booking then charges only the stretch ridden, shared with everyone aboard (`app/services/fare_service.py`). So a Madina → Legon search on the Madina – Circle route shows the full fare, but the booking costs less. The design also shows the saving from sharing ("~~₵38~~ ₵14 · Save 63%").
 
 `FareService.quote()` already computes both numbers. Proposal: add them to every `TripSearchResultResponse`, for the searched pickup → destination:
@@ -184,6 +186,12 @@ Because the workflow has never run, expect the first run to surface a few failur
 { "solo_fare_amount": "38.00", "shared_fare_amount": "14.00" }
 ```
 `solo_fare_amount` = the stretch alone (`solo_segment_fare`); `shared_fare_amount` = what a seat costs if booked now (`per_seat_fare`). Both `null` when unknown. The app computes "Save X%" from the two (frontend `docs/design-decisions.md`, decision 20).
+
+The seat screen (P-05) needs the same for the passenger's stretch on `GET /trips/{id}/seats` (with `origin_stop_id` / `destination_stop_id` as query parameters), plus the lowest the shared fare can go, for "↓ Drops to ₵6.00":
+```json
+{ "solo_fare_amount": "38.00", "shared_fare_amount": "14.00", "floor_fare_amount": "6.00" }
+```
+`floor_fare_amount` = `FARE_SHARING_MIN_RATIO` × the solo fare. Until then the seat screen shows an estimate (decision 24).
 
 ### G21 — Vehicles approaching or past the passenger's stop
 The results design shows, for each vehicle, how far it is from the passenger's stop ("~3 min away · approaching your stop") and greys out the ones that already passed it. The backend has the live positions (G16) but search doesn't use them, and it only returns trips that **depart the route's first stop** after the requested time, so a vehicle already on its way to a stop further along is missing.
@@ -193,3 +201,8 @@ Proposal, per result, when the trip is running:
 { "pickup_eta_minutes": 3, "passed_pickup": false }
 ```
 And for `Now` searches, include trips that already left the first stop but haven't reached the pickup yet. Until then the app shows "Board at <stop> · <distance> away" in that slot (decision 21).
+
+### B3: an expired seat hold keeps its seats until the sweeper runs
+`GET /trips/{id}/seats` and booking both treat a `HELD` reservation as taken until `expire_stale_bookings` (Celery beat, every 30 s) marks it expired. They don't look at `expires_at`. With the worker down (or in a stack without Celery, like the local `trosky-api-local`), seats from a lapsed hold stay taken indefinitely.
+
+Suggested fix: `list_active_seat_ids_for_trip` (and the reservation check) treat `HELD` rows with `expires_at <= now()` as free. The sweeper then only tidies up.

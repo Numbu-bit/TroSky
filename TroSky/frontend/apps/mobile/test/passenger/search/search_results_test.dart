@@ -3,54 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mobile/passenger/search/presentation/search_results_screen.dart';
 import 'package:trosky_api/trosky_api.dart';
 import 'package:trosky_auth/trosky_auth.dart';
 import 'package:trosky_core/trosky_core.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
-import '../../helpers/fakes.dart';
 import '../home/home_helpers.dart';
 import 'search_helpers.dart';
-
-/// Home → the "Madina → Circle" favourite: Search Results at once.
-Future<TestWorld> openResults(
-  WidgetTester tester, {
-  TestWorld? world,
-  Size size = const Size(360, 806),
-  Env? env,
-  List<Object> overrides = const [],
-  String chip = 'Madina → Circle',
-}) async {
-  final w = await openHome(
-    tester,
-    world: world ?? morning(),
-    size: size,
-    env: env,
-    overrides: overrides,
-  );
-  await tester.tap(find.text(chip));
-  await tester.pumpAndSettle();
-  expect(find.byType(SearchResultsScreen), findsOneWidget);
-  return w;
-}
-
-/// Live mode with [routes] answering the search.
-Future<TestWorld> openLiveResults(
-  WidgetTester tester,
-  TestWorld world,
-  ScriptedTrips routes, {
-  Size size = const Size(360, 806),
-}) {
-  final live = liveMode(world, FakeTracking(const []), routes: routes);
-  return openResults(
-    tester,
-    world: world,
-    size: size,
-    env: live.env,
-    overrides: live.overrides,
-  );
-}
 
 Iterable<String> _plates(WidgetTester tester) => tester
     .widgetList<TroskyTripCard>(find.byType(TroskyTripCard))
@@ -180,9 +139,9 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Departs 09:03 · ETA 09:53'));
       await tester.pumpAndSettle();
-      expect(find.text('Choose your seat'), findsOneWidget);
+      expect(find.text('Choose Your Seat'), findsOneWidget);
       expect(
-        find.text('Minibus · departs 09:03\nFrom Madina to Circle'),
+        find.text('Madina → Circle · GR-4821 · Departs 09:03'),
         findsOneWidget,
       );
     });

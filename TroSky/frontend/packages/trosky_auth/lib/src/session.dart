@@ -167,6 +167,28 @@ class SessionController extends _$SessionController {
     return signIn(identifier: identifier, password: password);
   }
 
+  /// Verifies the signed-in account with the code sent to [target] (after
+  /// `ACCOUNT_NOT_VERIFIED`, e.g. when booking), then reloads the user.
+  Future<Result<UserResponse>> verifyAccount({
+    required String target,
+    required String code,
+  }) async {
+    final verified = await _auth.verifyOtp(
+      VerifyOtpRequest(
+        target: target,
+        purpose: OtpPurpose.registration,
+        code: code,
+      ),
+    );
+    if (verified case Err(:final failure)) return Err(failure);
+    final me = await ref.read(userRepositoryProvider).getMe();
+    if (me case Ok(:final value)) {
+      await _cache.write(value);
+      state = AsyncData(SessionAuthenticated(value));
+    }
+    return me;
+  }
+
   /// Signs out this device.
   ///
   /// The saved refresh token is deleted first: once the backend has
