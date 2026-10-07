@@ -273,16 +273,17 @@ for the full credentials/callback-URL/compliance checklist per vendor.
   allows. See that directory's own `README.md` for the full file-by-file
   breakdown, apply order, and stated assumptions (external managed
   Postgres/Redis/S3, no cloud-provisioning code included).
-* [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) (repository
+* [`.github/workflows/backend.yml`](../.github/workflows/backend.yml) (repository
   root, not under `backend/` — required for GitHub Actions to discover
   it): lint → typecheck → test against real Postgres+PostGIS/Redis service
-  containers (with an 80% coverage gate) → dependency scan (`pip-audit`) →
-  container build & Trivy scan → environment-gated deploys (development /
-  staging / production). **Production deploys require manual approval**
-  via a protected GitHub Environment — this pipeline never deploys to
-  production unattended. The deploy steps themselves are placeholders
-  (`echo`) pending real cluster/registry credentials — see
-  [`docs/production-readiness-checklist.md`](docs/production-readiness-checklist.md).
+  containers (with an 80% coverage gate) → dependency scan (Trivy over
+  resolved runtime dependencies) → container build + Trivy scan + GHCR
+  publish (`ghcr.io/<owner>/trosky-backend:<sha>`) → environment-gated
+  deploys (development / staging / production) through environment-scoped
+  third-party deployment webhooks. **Production deploys require manual
+  approval** via a protected GitHub Environment — this pipeline never
+  deploys to production unattended. Setup + operations guide:
+  [`docs/backend-deployment.md`](docs/backend-deployment.md).
 
 ## Backup and restore
 
