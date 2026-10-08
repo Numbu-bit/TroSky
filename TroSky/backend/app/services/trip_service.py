@@ -98,6 +98,32 @@ def _seat_amounts(fare: Decimal, seats: int) -> list[Decimal]:
     return [fare - each * (seats - 1)] + [each] * (seats - 1)
 
 
+@dataclass(frozen=True, slots=True)
+class _Driving:
+    """The driver a lifecycle change is for, and whether the system made it
+    (from the vehicle's position or the clock) rather than the driver."""
+
+    driver_id: uuid.UUID
+    driver_user_id: uuid.UUID
+    automatic: bool
+
+    @property
+    def actor_id(self) -> uuid.UUID | None:
+        return None if self.automatic else self.driver_user_id
+
+    @property
+    def by(self) -> str:
+        return "system" if self.automatic else "driver"
+
+
+def _automatic(payload: dict[str, object], reason: str | None) -> dict[str, object] | None:
+    """A trip event's payload, marked as the system's doing when ``reason``
+    (the system's reason) is given."""
+    if reason is not None:
+        payload = {**payload, "automatic": True, "reason": reason}
+    return payload or None
+
+
 # The complete, explicit trip state machine. Any transition not listed here
 # is rejected. Self-transitions are handled separately as idempotent no-ops
 # by the driver-facing start/pause/resume/end methods below, not via this
@@ -279,21 +305,60 @@ class TripService:
             booking_id=booking_id,
             details={"ticket_reference": ticket_reference},
         )
+        # Passengers getting on: the trip is boarding.
+        if self._settings.TRIP_AUTO_STATUS_ENABLED:
+            await self.begin_boarding(trip_id, reason="First ticket scanned")
 
     async def _record_lifecycle(
         self,
         kind: DriverActionKind,
         trip_id: uuid.UUID,
         driver_id: uuid.UUID,
-        actor_id: uuid.UUID,
+        actor_id: uuid.UUID | None,
         reason: str | None = None,
+        *,
+        automatic: bool = False,
     ) -> None:
+        """What happened to the driver's trip. ``automatic``: the system did
+        it from the vehicle's position or the clock, not the driver."""
         await self._actions.record(
             kind=kind,
             trip_id=trip_id,
             driver_id=driver_id,
-            acted_as=ActedAs.DRIVER,
-            actor_id=actor_id,
+            acted_as=ActedAs.SYSTEM if automatic else ActedAs.DRIVER,
+            actor_id=None if automatic else actor_id,
+            reason=reason,
+        )
+
+    async def _change_status(
+        self,
+        trip: Trip,
+        new_status: TripStatus,
+        *,
+        changed_by: uuid.UUID | None,
+        reason: str | None,
+        by: str,
+        latitude: Decimal | None = None,
+        longitude: Decimal | None = None,
+    ) -> None:
+        """Every status change: recorded in the trip's history and shown to
+        the operations team at once. ``by``: driver, admin or system."""
+        previous = trip.status
+        await self._trips.set_status(
+            trip,
+            new_status=new_status,
+            changed_by=changed_by,
+            reason=reason,
+            latitude=latitude,
+            longitude=longitude,
+        )
+        announce(
+            self._session,
+            "trip.status_changed",
+            trip_id=trip.id,
+            previous=previous,
+            status=new_status,
+            by=by,
             reason=reason,
         )
 
@@ -324,8 +389,12 @@ class TripService:
             raise NotFoundError("Trip not found.")
         if trip.status in (TripStatus.COMPLETED, TripStatus.CANCELLED):
             raise InvalidStateTransitionError(f"A {trip.status.value} trip cannot be cancelled.")
-        await self._trips.set_status(
-            trip, new_status=TripStatus.CANCELLED, changed_by=cancelled_by, reason=reason
+        await self._change_status(
+            trip,
+            TripStatus.CANCELLED,
+            changed_by=cancelled_by,
+            reason=reason,
+            by="system" if cancelled_by is None else "admin",
         )
         await self._trips.record_event(
             trip.id, TripEventType.TRIP_CANCELLED, {"reason": reason} if reason else None
@@ -435,90 +504,33 @@ class TripService:
         return await self._resolve_assigned_driver_id(trip_id, user_id)
 
     async def start_trip(self, trip_id: uuid.UUID, user_id: uuid.UUID) -> Trip:
-        trip = await self._trips.get_for_update(trip_id)
-        if trip is None:
-            raise NotFoundError("Trip not found.")
-
+        trip = await self._locked(trip_id)
         driver_id = await self._resolve_assigned_driver_id(trip_id, user_id)
 
         if trip.status == TripStatus.IN_PROGRESS:
             return trip  # idempotent: already started by this same driver
         self._assert_transition_allowed(trip.status, TripStatus.IN_PROGRESS)
-
-        vehicle_assignment = await self._trips.get_active_vehicle_assignment(trip_id)
-        if vehicle_assignment is None:
-            raise ConflictError("This trip has no vehicle assigned yet.")
-        vehicle = await self._vehicles.get_by_id(vehicle_assignment.vehicle_id)
-        if vehicle is None or vehicle.status != ApprovalStatus.APPROVED:
-            raise ForbiddenError("The assigned vehicle is not approved.")
-
-        conflict = await self._trips.find_conflicting_active_trip_for_driver(
-            driver_id, exclude_trip_id=trip_id
-        )
-        if conflict is not None:
-            raise ConflictError(
-                "This driver already has another active trip in progress.",
-                code="DRIVER_HAS_CONFLICTING_TRIP",
-            )
-
-        assignment = await self._trips.get_active_driver_assignment(trip_id)
-        if assignment is not None and assignment.response == AssignmentResponse.PENDING:
-            # Driving the trip is accepting it.
-            await self._trips.record_response(
-                assignment,
-                response=AssignmentResponse.ACCEPTED,
-                responded_by=user_id,
-                reason=None,
-            )
-            await self._record_lifecycle(
-                DriverActionKind.TRIP_ACCEPTED, trip_id, driver_id, user_id, "Started it"
-            )
-
-        trip.actual_departure_at = datetime.now(UTC)
-        await self._trips.set_status(
-            trip, new_status=TripStatus.IN_PROGRESS, changed_by=user_id, reason="Trip started"
-        )
-        await self._trips.record_event(trip.id, TripEventType.TRIP_STARTED)
-        await self._record_lifecycle(DriverActionKind.TRIP_STARTED, trip_id, driver_id, user_id)
-        logger.info("trip_started", trip_id=str(trip_id), driver_id=str(driver_id))
+        await self._start(trip, _Driving(driver_id, user_id, automatic=False), reason=None)
         return trip
 
     async def pause_trip(self, trip_id: uuid.UUID, user_id: uuid.UUID, reason: str | None) -> Trip:
-        trip = await self._trips.get_for_update(trip_id)
-        if trip is None:
-            raise NotFoundError("Trip not found.")
+        trip = await self._locked(trip_id)
         driver_id = await self._resolve_assigned_driver_id(trip_id, user_id)
 
         if trip.status == TripStatus.PAUSED:
             return trip  # idempotent
         self._assert_transition_allowed(trip.status, TripStatus.PAUSED)
-
-        await self._trips.set_status(
-            trip, new_status=TripStatus.PAUSED, changed_by=user_id, reason=reason
-        )
-        await self._trips.record_event(
-            trip.id, TripEventType.TRIP_PAUSED, {"reason": reason} if reason else None
-        )
-        await self._record_lifecycle(
-            DriverActionKind.TRIP_PAUSED, trip_id, driver_id, user_id, reason
-        )
+        await self._pause(trip, _Driving(driver_id, user_id, automatic=False), reason=reason)
         return trip
 
     async def resume_trip(self, trip_id: uuid.UUID, user_id: uuid.UUID) -> Trip:
-        trip = await self._trips.get_for_update(trip_id)
-        if trip is None:
-            raise NotFoundError("Trip not found.")
+        trip = await self._locked(trip_id)
         driver_id = await self._resolve_assigned_driver_id(trip_id, user_id)
 
         if trip.status == TripStatus.IN_PROGRESS:
             return trip  # idempotent
         self._assert_transition_allowed(trip.status, TripStatus.IN_PROGRESS)
-
-        await self._trips.set_status(
-            trip, new_status=TripStatus.IN_PROGRESS, changed_by=user_id, reason="Trip resumed"
-        )
-        await self._trips.record_event(trip.id, TripEventType.TRIP_RESUMED)
-        await self._record_lifecycle(DriverActionKind.TRIP_RESUMED, trip_id, driver_id, user_id)
+        await self._resume(trip, _Driving(driver_id, user_id, automatic=False), reason=None)
         return trip
 
     async def end_trip(
@@ -529,22 +541,235 @@ class TripService:
         latitude: Decimal | None = None,
         longitude: Decimal | None = None,
     ) -> Trip:
-        trip = await self._trips.get_for_update(trip_id)
-        if trip is None:
-            raise NotFoundError("Trip not found.")
+        trip = await self._locked(trip_id)
         driver_id = await self._resolve_assigned_driver_id(trip_id, user_id)
 
         if trip.status == TripStatus.COMPLETED:
             return trip  # idempotent: already ended
 
         self._assert_transition_allowed(trip.status, TripStatus.COMPLETED)
-
-        trip.actual_arrival_at = datetime.now(UTC)
-        await self._trips.set_status(
+        await self._complete(
             trip,
-            new_status=TripStatus.COMPLETED,
-            changed_by=user_id,
-            reason="Trip completed",
+            _Driving(driver_id, user_id, automatic=False),
+            reason=None,
+            latitude=latitude,
+            longitude=longitude,
+        )
+        return trip
+
+    # ------------------------------------------------------------------
+    # The system's own changes, from the vehicle's position and the clock
+    # (app.services.trip_autopilot). Each returns None, changing nothing,
+    # when the trip is no longer in a status it applies to: a driver or an
+    # admin got there first.
+    # ------------------------------------------------------------------
+    async def begin_boarding(self, trip_id: uuid.UUID, *, reason: str) -> Trip | None:
+        trip = await self._locked(trip_id)
+        if trip.status != TripStatus.SCHEDULED:
+            return None
+        await self._change_status(
+            trip, TripStatus.BOARDING, changed_by=None, reason=reason, by="system"
+        )
+        await self._trips.record_event(
+            trip.id, TripEventType.BOARDING_STARTED, _automatic({}, reason)
+        )
+        logger.info("trip_boarding", trip_id=str(trip_id), reason=reason)
+        return trip
+
+    async def auto_start(self, trip_id: uuid.UUID, *, reason: str) -> Trip | None:
+        found = await self._for_the_system(trip_id, TripStatus.SCHEDULED, TripStatus.BOARDING)
+        if found is None:
+            return None
+        await self._start(*found, reason=reason)
+        return found[0]
+
+    async def auto_pause(self, trip_id: uuid.UUID, *, reason: str) -> Trip | None:
+        found = await self._for_the_system(trip_id, TripStatus.IN_PROGRESS)
+        if found is None:
+            return None
+        await self._pause(*found, reason=reason)
+        return found[0]
+
+    async def auto_resume(self, trip_id: uuid.UUID, *, reason: str) -> Trip | None:
+        found = await self._for_the_system(trip_id, TripStatus.PAUSED)
+        if found is None:
+            return None
+        await self._resume(*found, reason=reason)
+        return found[0]
+
+    async def auto_complete(
+        self,
+        trip_id: uuid.UUID,
+        *,
+        reason: str,
+        latitude: Decimal | None = None,
+        longitude: Decimal | None = None,
+    ) -> Trip | None:
+        found = await self._for_the_system(trip_id, TripStatus.IN_PROGRESS)
+        if found is None:
+            return None
+        await self._complete(*found, reason=reason, latitude=latitude, longitude=longitude)
+        return found[0]
+
+    async def auto_cancel(self, trip_id: uuid.UUID, *, reason: str) -> Trip | None:
+        """Cancel a trip that never started. Only a scheduled one: a trip
+        that is boarding has a vehicle and passengers, and is left to the
+        operations team. The caller cancels its bookings."""
+        trip = await self._locked(trip_id)
+        if trip.status != TripStatus.SCHEDULED:
+            return None
+        await self.cancel_trip(trip_id, cancelled_by=None, reason=reason)
+        assignment = await self._trips.get_active_driver_assignment(trip_id)
+        driver = (
+            await self._drivers.get_by_id(assignment.driver_id) if assignment is not None else None
+        )
+        if driver is not None:
+            route = await self._session.get(Route, trip.route_id)
+            await self._notifications.notify(
+                driver.user_id,
+                category=NotificationCategory.TRANSACTIONAL,
+                title="Trip cancelled",
+                body=(
+                    f"{route.name if route else 'Your trip'}, due to leave "
+                    f"{trip.scheduled_departure_at:%d %b at %H:%M}, was cancelled. {reason}."
+                ),
+                data={"trip_id": str(trip_id), "action": "trip_cancelled"},
+            )
+        logger.info("trip_cancelled_automatically", trip_id=str(trip_id), reason=reason)
+        return trip
+
+    async def _for_the_system(
+        self, trip_id: uuid.UUID, *statuses: TripStatus
+    ) -> tuple[Trip, _Driving] | None:
+        """The trip, locked, and its driver, when it is in one of
+        ``statuses``. A trip without a driver has nobody to drive it, or be
+        paid for it, so the system leaves it alone."""
+        trip = await self._locked(trip_id)
+        if trip.status not in statuses:
+            return None
+        assignment = await self._trips.get_active_driver_assignment(trip_id)
+        driver = (
+            await self._drivers.get_by_id(assignment.driver_id) if assignment is not None else None
+        )
+        if driver is None:
+            raise ConflictError("This trip has no driver assigned.", code="TRIP_HAS_NO_DRIVER")
+        return trip, _Driving(driver.id, driver.user_id, automatic=True)
+
+    # ------------------------------------------------------------------
+    # The changes themselves, the trip's status already checked
+    # ------------------------------------------------------------------
+    async def _start(self, trip: Trip, who: _Driving, *, reason: str | None) -> None:
+        vehicle_assignment = await self._trips.get_active_vehicle_assignment(trip.id)
+        if vehicle_assignment is None:
+            raise ConflictError("This trip has no vehicle assigned yet.")
+        vehicle = await self._vehicles.get_by_id(vehicle_assignment.vehicle_id)
+        if vehicle is None or vehicle.status != ApprovalStatus.APPROVED:
+            raise ForbiddenError("The assigned vehicle is not approved.")
+
+        conflict = await self._trips.find_conflicting_active_trip_for_driver(
+            who.driver_id, exclude_trip_id=trip.id
+        )
+        if conflict is not None:
+            raise ConflictError(
+                "This driver already has another active trip in progress.",
+                code="DRIVER_HAS_CONFLICTING_TRIP",
+            )
+
+        assignment = await self._trips.get_active_driver_assignment(trip.id)
+        if assignment is not None and assignment.response == AssignmentResponse.PENDING:
+            # Driving the trip is accepting it.
+            await self._trips.record_response(
+                assignment,
+                response=AssignmentResponse.ACCEPTED,
+                responded_by=who.driver_user_id,
+                reason=None,
+            )
+            await self._record_lifecycle(
+                DriverActionKind.TRIP_ACCEPTED,
+                trip.id,
+                who.driver_id,
+                who.driver_user_id,
+                "Started it",
+                automatic=who.automatic,
+            )
+
+        trip.actual_departure_at = datetime.now(UTC)
+        await self._change_status(
+            trip,
+            TripStatus.IN_PROGRESS,
+            changed_by=who.actor_id,
+            reason=reason or "Trip started",
+            by=who.by,
+        )
+        await self._trips.record_event(
+            trip.id, TripEventType.TRIP_STARTED, _automatic({}, reason if who.automatic else None)
+        )
+        await self._record_lifecycle(
+            DriverActionKind.TRIP_STARTED,
+            trip.id,
+            who.driver_id,
+            who.driver_user_id,
+            reason,
+            automatic=who.automatic,
+        )
+        logger.info("trip_started", trip_id=str(trip.id), driver_id=str(who.driver_id), by=who.by)
+
+    async def _pause(self, trip: Trip, who: _Driving, *, reason: str | None) -> None:
+        await self._change_status(
+            trip, TripStatus.PAUSED, changed_by=who.actor_id, reason=reason, by=who.by
+        )
+        await self._trips.record_event(
+            trip.id,
+            TripEventType.TRIP_PAUSED,
+            _automatic({"reason": reason} if reason else {}, reason if who.automatic else None),
+        )
+        await self._record_lifecycle(
+            DriverActionKind.TRIP_PAUSED,
+            trip.id,
+            who.driver_id,
+            who.driver_user_id,
+            reason,
+            automatic=who.automatic,
+        )
+        logger.info("trip_paused", trip_id=str(trip.id), by=who.by, reason=reason)
+
+    async def _resume(self, trip: Trip, who: _Driving, *, reason: str | None) -> None:
+        await self._change_status(
+            trip,
+            TripStatus.IN_PROGRESS,
+            changed_by=who.actor_id,
+            reason=reason or "Trip resumed",
+            by=who.by,
+        )
+        await self._trips.record_event(
+            trip.id, TripEventType.TRIP_RESUMED, _automatic({}, reason if who.automatic else None)
+        )
+        await self._record_lifecycle(
+            DriverActionKind.TRIP_RESUMED,
+            trip.id,
+            who.driver_id,
+            who.driver_user_id,
+            reason,
+            automatic=who.automatic,
+        )
+        logger.info("trip_resumed", trip_id=str(trip.id), by=who.by)
+
+    async def _complete(
+        self,
+        trip: Trip,
+        who: _Driving,
+        *,
+        reason: str | None,
+        latitude: Decimal | None,
+        longitude: Decimal | None,
+    ) -> None:
+        trip.actual_arrival_at = datetime.now(UTC)
+        await self._change_status(
+            trip,
+            TripStatus.COMPLETED,
+            changed_by=who.actor_id,
+            reason=reason or "Trip completed",
+            by=who.by,
             latitude=latitude,
             longitude=longitude,
         )
@@ -557,30 +782,45 @@ class TripService:
             else None
         )
         for booking in confirmed_bookings:
-            # `user_id` here is the calling driver's own account — the same
-            # identity `_resolve_assigned_driver_id` just verified is this
-            # trip's assigned driver, so no extra lookup is needed to know
-            # whose wallet to credit.
+            # The trip's assigned driver is paid: the caller, when the
+            # driver ended it (``_resolve_assigned_driver_id`` checked them),
+            # else the driver the trip is assigned to.
             await self._alighting.complete(
                 booking,
-                changed_by=user_id,
-                reason="Trip completed",
-                driver_user_id=user_id,
+                changed_by=who.actor_id,
+                reason=reason or "Trip completed",
+                driver_user_id=who.driver_user_id,
                 stop_id=booking.destination_stop_id or last_stop,
             )
         # Remaining downstream effects that depend on later phases
         # (fleet-owner revenue share, settlement batching, a "trip
         # completed" passenger notification, analytics) are not yet
-        # wired — this event is the hook those phases' consumers
+        # wired: this event is the hook those phases' consumers
         # subscribe to. Booking completion (-> rating eligibility, Phase 9)
         # and driver earnings (Phase 10) are wired as of now.
         end_location: dict[str, object] = {
             "latitude": str(latitude) if latitude else None,
             "longitude": str(longitude) if longitude else None,
         }
-        await self._trips.record_event(trip.id, TripEventType.TRIP_COMPLETED, end_location)
-        await self._record_lifecycle(DriverActionKind.TRIP_ENDED, trip_id, driver_id, user_id)
-        logger.info("trip_completed", trip_id=str(trip_id), driver_id=str(driver_id))
+        await self._trips.record_event(
+            trip.id,
+            TripEventType.TRIP_COMPLETED,
+            _automatic(end_location, reason if who.automatic else None),
+        )
+        await self._record_lifecycle(
+            DriverActionKind.TRIP_ENDED,
+            trip.id,
+            who.driver_id,
+            who.driver_user_id,
+            reason,
+            automatic=who.automatic,
+        )
+        logger.info("trip_completed", trip_id=str(trip.id), driver_id=str(who.driver_id), by=who.by)
+
+    async def _locked(self, trip_id: uuid.UUID) -> Trip:
+        trip = await self._trips.get_for_update(trip_id)
+        if trip is None:
+            raise NotFoundError("Trip not found.")
         return trip
 
     @staticmethod

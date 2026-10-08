@@ -50,8 +50,25 @@ class RegisterRequest(RequestModel):
     full_name: str = Field(..., min_length=2, max_length=200)
     role: RegistrableRole = RegistrableRole.PASSENGER
     preferred_language: str = Field(default="en", max_length=10)
+    latitude: float | None = Field(
+        default=None,
+        ge=-90,
+        le=90,
+        description=(
+            "Where the person is now, from the phone's GPS. Required to sign up "
+            "as a passenger, and it must be where TroSky runs (for now, Ghana)."
+        ),
+        examples=[5.6037],
+    )
+    longitude: float | None = Field(default=None, ge=-180, le=180, examples=[-0.187])
 
     _normalize_phone = field_validator("phone_number")(_validate_phone)
+
+    @model_validator(mode="after")
+    def _location_comes_whole(self) -> RegisterRequest:
+        if (self.latitude is None) != (self.longitude is None):
+            raise ValueError("Send both latitude and longitude, or neither.")
+        return self
 
 
 class RegisterResponse(ApiModel):

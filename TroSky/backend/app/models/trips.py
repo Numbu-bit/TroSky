@@ -41,6 +41,7 @@ class AssignmentResponse(StrEnum):
 
 class TripEventType(StrEnum):
     TRIP_SCHEDULED = "trip_scheduled"
+    BOARDING_STARTED = "boarding_started"
     TRIP_STARTED = "trip_started"
     TRIP_PAUSED = "trip_paused"
     TRIP_RESUMED = "trip_resumed"

@@ -8,6 +8,7 @@ from decimal import Decimal
 
 from pydantic import Field
 
+from app.models.trips import TripStatus
 from app.models.vehicles import VehicleType
 from app.schemas.common import ApiModel, RequestModel
 
@@ -33,6 +34,15 @@ class LiveLocationResponse(ApiModel):
     heading_degrees: Decimal | None
     recorded_at: datetime
     is_stale: bool
+    trip_status: TripStatus | None = Field(
+        default=None,
+        description=(
+            "The trip's status after this position, when the driver sent it. Positions "
+            "change it on their own: at the first stop the trip is boarding, leaving it "
+            "starts it, standing still a long time pauses it, moving resumes it, and "
+            "staying at the last stop completes it."
+        ),
+    )
 
 
 class EtaResponse(ApiModel):

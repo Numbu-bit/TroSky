@@ -12,7 +12,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 
 from app.core.database import get_session_factory
-from app.core.permissions import SystemRole
+from app.core.permissions import Permission, SystemRole
 from app.models.drivers import DocumentType
 from app.models.identity import Permission as PermissionRow
 from app.models.identity import User, UserPermission
@@ -230,3 +230,46 @@ class TestWhoMay:
         passenger = await _login(client, passenger_phone)
 
         assert (await client.get(path, headers=passenger)).status_code == 403
+
+
+class TestWhoAmI:
+    """``GET /admin/me``: what the dashboard shows the signed-in admin."""
+
+    async def test_an_admin_sees_their_role_and_permissions(
+        self, client: AsyncClient, admin: dict[str, str]
+    ) -> None:
+        response = await client.get("/api/v1/admin/me", headers=admin)
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["role"] == "admin"
+        assert body["full_name"] == "Adwoa Admin"
+        assert "trips:manage" in body["permissions"]
+        assert body["permissions"] == sorted(body["permissions"])
+
+    async def test_staff_see_only_what_they_were_granted(
+        self, client: AsyncClient, seed_identity_data: None, require_redis: None
+    ) -> None:
+        staff = await _login(client, await _staff_with("complaints:manage", "reports:view"))
+
+        response = await client.get("/api/v1/admin/me", headers=staff)
+
+        assert response.status_code == 200, response.text
+        assert response.json()["role"] == "staff"
+        assert response.json()["permissions"] == ["complaints:manage", "reports:view"]
+
+    async def test_a_super_admin_holds_every_permission(
+        self, client: AsyncClient, seed_identity_data: None, require_redis: None
+    ) -> None:
+        super_admin = await _login(client, await _committed_user(SystemRole.SUPER_ADMIN))
+
+        response = await client.get("/api/v1/admin/me", headers=super_admin)
+
+        assert response.json()["role"] == "super_admin"
+        assert response.json()["permissions"] == sorted(p.value for p in Permission)
+
+    async def test_only_the_admin_team(self, client: AsyncClient, passenger_phone: str) -> None:
+        passenger = await _login(client, passenger_phone)
+
+        assert (await client.get("/api/v1/admin/me", headers=passenger)).status_code == 403
+        assert (await client.get("/api/v1/admin/me")).status_code == 401

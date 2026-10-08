@@ -85,6 +85,20 @@ class TeamMemberResponse(ApiModel):
     created_at: datetime
 
 
+class AdminMeResponse(ApiModel):
+    """The signed-in admin, and everything they may do: what the dashboard
+    shows them."""
+
+    id: uuid.UUID
+    full_name: str | None
+    phone_number: str
+    email: str | None
+    role: Literal["super_admin", "admin", "staff"]
+    permissions: list[str] = Field(
+        ..., description="Every permission they hold; a super admin holds them all."
+    )
+
+
 class TeamInviteRequest(RequestModel):
     full_name: str = Field(..., min_length=1, max_length=120)
     phone_number: str = Field(..., min_length=7, max_length=20)

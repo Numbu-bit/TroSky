@@ -112,7 +112,10 @@ class AlightingService:
         reached is off. Returns how many passengers that was."""
         riding = await self._bookings.list_riding_for_trip(trip_id)
         trip = await self._trips.get_by_id(trip_id) if riding else None
-        if trip is None:
+        # Positions also come in before a trip starts (on its way to the
+        # first stop, it may pass someone's destination): nobody has
+        # arrived anywhere until it is on the road.
+        if trip is None or trip.status not in _ON_THE_ROAD:
             return 0
         geometry = (await self._geometries.for_routes([trip.route_id]))[trip.route_id]
         arrived = 0

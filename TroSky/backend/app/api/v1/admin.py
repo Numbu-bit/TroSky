@@ -286,6 +286,23 @@ async def create_route(
     return RouteResponse.model_validate(route)
 
 
+@router.get(
+    "/routes/{route_id}/schedules",
+    response_model=list[RouteScheduleResponse],
+    dependencies=[Depends(require_permissions(Permission.ROUTES_MANAGE, Permission.TRIPS_MANAGE))],
+)
+async def list_route_schedules(
+    route_id: uuid.UUID, service: RouteServiceDep
+) -> list[RouteScheduleResponse]:
+    """The route's timetable: its active entries, earliest departure first.
+    For showing it, and for scheduling trips from it
+    (``POST /admin/trips/from-schedule``)."""
+    return [
+        RouteScheduleResponse.model_validate(schedule)
+        for schedule in await service.list_schedules(route_id)
+    ]
+
+
 @router.post(
     "/routes/{route_id}/schedules",
     response_model=RouteScheduleResponse,

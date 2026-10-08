@@ -22,6 +22,7 @@ from app.api.dependencies import (
     TrackingServiceDep,
     TripServiceDep,
 )
+from app.api.tracking_dependencies import TripAutopilotDep
 from app.api.trip_dependencies import AlightingServiceDep, BookingAcceptanceServiceDep
 from app.api.v1.views import booking_responses
 from app.core.permissions import SystemRole, require_roles
@@ -258,11 +259,18 @@ async def report_location(
     trips: TripServiceDep,
     tracking: TrackingServiceDep,
     alighting: AlightingServiceDep,
+    autopilot: TripAutopilotDep,
 ) -> LiveLocationResponse:
-    """A driver's phone pushes a GPS ping while the trip is in progress.
-    Restricted to the trip's actively assigned driver, same guard as
+    """A driver's phone pushes a GPS ping while the trip is in progress, and
+    (unless ``TRIP_AUTO_STATUS_ENABLED`` is off) also while it is paused and
+    from ``TRIP_AUTO_WINDOW_MINUTES`` before departure: positions move the
+    trip's status along on their own (see ``trip_status``). Restricted to the
+    trip's actively assigned driver, same guard as
     start/pause/resume/end/validate."""
     await trips.assert_is_assigned_driver(trip_id, principal.user_id)
+    recorded_at = body.recorded_at or datetime.now(UTC)
+    if recorded_at.tzinfo is None:
+        recorded_at = recorded_at.replace(tzinfo=UTC)  # a phone that sent no zone: UTC
     live = await tracking.record_location(
         trip_id,
         latitude=body.latitude,
@@ -270,10 +278,19 @@ async def report_location(
         speed_kmh=body.speed_kmh,
         heading_degrees=body.heading_degrees,
         accuracy_meters=body.accuracy_meters,
-        recorded_at=body.recorded_at or datetime.now(UTC),
+        recorded_at=recorded_at,
     )
     # Whoever's stop this is has arrived: their seat frees up.
     await alighting.on_vehicle_moved(trip_id, live.latitude, live.longitude)
+    # Then the trip itself: boarding, under way, paused, arrived.
+    await autopilot.after_position(
+        trip_id,
+        latitude=live.latitude,
+        longitude=live.longitude,
+        recorded_at=live.recorded_at,
+        accuracy_meters=body.accuracy_meters,
+    )
+    trip = await trips.get_trip(trip_id)
     return LiveLocationResponse(
         trip_id=live.trip_id,
         latitude=live.latitude,
@@ -282,6 +299,7 @@ async def report_location(
         heading_degrees=live.heading_degrees,
         recorded_at=live.recorded_at,
         is_stale=live.is_stale,
+        trip_status=trip.status,
     )
 
 

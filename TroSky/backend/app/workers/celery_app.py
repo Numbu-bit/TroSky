@@ -25,6 +25,7 @@ celery_app = Celery(
         "app.workers.tasks.payments",
         "app.workers.tasks.tracking",
         "app.workers.tasks.fraud",
+        "app.workers.tasks.trips",
         # Phase 9+: "app.workers.tasks.notifications",
     ],
 )
@@ -62,6 +63,10 @@ celery_app.conf.beat_schedule = {
     "reconcile-pending-payments": {
         "task": "app.workers.tasks.payments.reconcile_pending_payments",
         "schedule": 120.0,  # seconds — a fallback path, not the primary one
+    },
+    "apply-trip-timeouts": {
+        "task": "app.workers.tasks.trips.apply_trip_timeouts",
+        "schedule": 60.0,  # seconds -- trips change status on their own
     },
     "detect-fraud": {
         "task": "app.workers.tasks.fraud.detect_fraud",

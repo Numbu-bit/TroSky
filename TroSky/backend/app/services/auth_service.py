@@ -49,10 +49,16 @@ from app.repositories.otp_repository import OtpRepository
 from app.repositories.profile_repository import DeviceRepository, NotificationPreferenceRepository
 from app.repositories.session_repository import SessionRepository
 from app.repositories.user_repository import DuplicateUserError, UserRepository
-from app.schemas.auth import DeviceContext, RegisterRequest, TokenPairResponse
+from app.schemas.auth import (
+    DeviceContext,
+    RegisterRequest,
+    RegistrableRole,
+    TokenPairResponse,
+)
 from app.services.otp_service import OtpService, normalize_otp_target
 from app.utilities.password_policy import PasswordPolicyError, validate_password_policy
 from app.utilities.phone import InvalidPhoneNumberError, normalize_phone_number
+from app.utilities.regions import country_at, country_names
 
 logger = get_logger(__name__)
 
@@ -113,6 +119,27 @@ class AuthService:
                 details={"allowed_domains": sorted(allowed)},
             )
 
+    def _check_signup_location(self, request: RegisterRequest) -> None:
+        """A passenger shares where they are, and it must be where TroSky
+        runs (``PASSENGER_SIGNUP_COUNTRIES``). Only the check is made: the
+        location itself is not kept."""
+        countries = self._settings.passenger_signup_countries
+        if request.role != RegistrableRole.PASSENGER or not countries:
+            return
+        names = country_names(countries)
+        if request.latitude is None or request.longitude is None:
+            raise ValidationAppError(
+                f"Turn on your location to sign up: TroSky is available in {names} for now.",
+                code="LOCATION_REQUIRED",
+                details={"countries": sorted(countries)},
+            )
+        if country_at(request.latitude, request.longitude, countries) is None:
+            raise ValidationAppError(
+                f"TroSky is only available in {names} for now.",
+                code="LOCATION_NOT_SERVED",
+                details={"countries": sorted(countries)},
+            )
+
     def _code_channel(self, purpose: OtpPurpose, requested: OtpChannel) -> OtpChannel:
         """The channel a code for ``purpose`` is actually sent by.
 
@@ -139,6 +166,7 @@ class AuthService:
                 details={"violations": exc.violations},
             ) from None
         self._check_registration_email(request.email)
+        self._check_signup_location(request)
 
         # The code goes out as early as it can: every database round trip
         # before it is time the person waits for their email. So the checks

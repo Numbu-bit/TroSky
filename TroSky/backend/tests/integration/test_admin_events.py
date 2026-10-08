@@ -169,6 +169,26 @@ class TestTheStream:
         assert "event: fraud.flagged" in seen_by_reviewer
         assert flagged not in seen_by_other
 
+    async def test_drivers_answers_to_those_who_watch_trips(self, require_redis: None) -> None:
+        dispatcher = _stream(_principal(Permission.TRIPS_MONITOR_LIVE))
+        other = _stream(_principal(Permission.SOS_REVIEW))
+        await _next(dispatcher)
+        await _next(other)
+        booking, trip, sentinel = (str(uuid.uuid4()) for _ in range(3))
+
+        await _publish("booking.moved", booking_id=booking)
+        await _publish("trip.declined", trip_id=trip)
+        await _publish("sos.created", alert_id=sentinel)
+        seen_by_dispatcher = "".join(await _until(dispatcher, trip))
+        seen_by_other = "".join(await _until(other, sentinel))
+        await dispatcher.aclose()
+        await other.aclose()
+
+        assert "event: booking.moved" in seen_by_dispatcher
+        assert "event: trip.declined" in seen_by_dispatcher
+        assert booking not in seen_by_other
+        assert trip not in seen_by_other
+
     async def test_a_reconnection_catches_up(self, require_redis: None) -> None:
         await _publish("sos.updated", alert_id=str(uuid.uuid4()))
         [(last_seen, _)] = await get_redis_client().xrevrange(STREAM_KEY, count=1)

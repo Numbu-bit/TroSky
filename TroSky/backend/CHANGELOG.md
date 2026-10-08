@@ -2055,10 +2055,10 @@ New admin endpoints:
   for them, or the system.
 
 Viewing needs `trips:manage` or `trips:monitor_live`; acting needs
-`trips:manage`. The live admin stream gets these new events:
+`trips:manage`. These events are announced for the live admin stream:
 `booking.awaiting_acceptance`, `booking.accepted`, `booking.moved`,
 `booking.not_accepted`, `trip.accepted`, `trip.declined` and
-`passenger.alighted`.
+`passenger.alighted` (the stream delivers them from 0.20.2).
 
 ### Tests
 
@@ -2068,3 +2068,99 @@ payment. The new tests turn it on:
 - `tests/integration/test_booking_acceptance.py`: 26 tests
 - `tests/api/test_booking_acceptance_api.py`: 8 tests
 
+
+## [0.20.1] - 2026-10-04 - The dashboard can ask what an admin may do
+
+- `GET /admin/me` returns the signed-in admin's role (`super_admin`,
+  `admin` or `staff`) and every permission they hold, so the admin
+  dashboard shows only the screens and actions open to them. A super admin
+  holds every permission; staff hold only what was granted to them. Anyone
+  else gets 403.
+- The access token still carries roles only.
+
+## [0.20.2] - 2026-10-04 - Timetables can be listed; the stream carries drivers' answers
+
+- `GET /admin/routes/{route_id}/schedules` lists a route's active timetable
+  entries, earliest departure first. Needs `routes:manage` or
+  `trips:manage`. Before this, entries could be added but never read back,
+  so a trip could only be created from a timetable entry whose id was
+  already known.
+- The admin stream (`GET /admin/stream`) has a new topic, `dispatch`, for
+  `trips:manage` or `trips:monitor_live`. It carries the `booking.*`,
+  `trip.*` and `passenger.*` events added in 0.20.0, which the stream used
+  to drop: the 0.20.0 notes wrongly said it delivered them.
+
+## [0.21.0] - 2026-10-08 - Passengers sign up from Ghana
+
+- Registering as a passenger now needs the phone's location
+  (`latitude`/`longitude` on `POST /auth/register`), and it must be in
+  Ghana. Without one the answer is 422 `LOCATION_REQUIRED`; from elsewhere,
+  422 `LOCATION_NOT_SERVED`. The location is only checked, never stored.
+  New setting `PASSENGER_SIGNUP_COUNTRIES` (default `GH`; empty switches
+  the check off). The outline of Ghana is approximate: about 15 km of
+  margin keeps border towns such as Aflao and Paga in, and lets places
+  just across the border (Lomé) in too.
+- Unchanged: a passenger still verifies their email with the code sent to
+  it before signing in or booking (`REQUIRE_VERIFIED_ACCOUNT`), and needs no
+  admin approval.
+- **The passenger app must send its location when it registers:** until
+  it does, passenger sign-up is refused (or set
+  `PASSENGER_SIGNUP_COUNTRIES` empty until the app is updated).
+
+## [0.22.0] - 2026-10-08 - Trips change status on their own
+
+A trip's status now follows what its vehicle is doing, and the clock,
+without the driver pressing anything (`app/services/trip_autopilot.py`):
+
+- **Boarding** when the first ticket is scanned, or when the vehicle is at
+  the first stop in the 30 minutes before departure.
+- **In progress** when, having been at the first stop, it leaves it along the
+  route (300 m). Driving off sideways (to fill up, say) does not count. A
+  vehicle first heard from at a later stop after the departure time is
+  under way too.
+- **Paused** after 20 minutes standing still (within 50 m) away from any
+  stop; waiting at a stop is not a pause. **In progress** again as soon as it
+  moves further than that, whoever paused it.
+- **Completed** after 3 minutes at the last stop, or when its GPS goes quiet
+  there for 10. Passengers still aboard arrive and the driver is paid, as
+  when the driver ends the trip.
+- **Not started**: 15 minutes after the departure time, a `trip_not_started`
+  alert (severity high, `entity_type: trip`) for admins with
+  `trips:manage` or `trips:monitor_live`; its `details.cancels_at` says when
+  it will be cancelled. After 2 hours a trip still **scheduled**, whose
+  vehicle has not been heard from for 30 minutes, is **cancelled**:
+  passengers are told, paid ones get a refund request for an admin to
+  approve, and the driver is told. A boarding trip is never cancelled on its
+  own (its vehicle is there): the alert stays until the team acts. Trips
+  that should have left more than a day ago are left alone.
+
+Every automatic change goes through the same code as the driver's buttons,
+is recorded in the trip's history with `changed_by: null` and its reason,
+and in driver actions as `acted_as: system`. The driver can still start,
+pause, resume and end trips by hand, and admins cancel as before.
+
+- `POST /driver-trips/{id}/location` now also takes positions while a trip
+  is paused, and from 30 minutes before departure while it is scheduled or
+  boarding (only positions on the road are kept in the trip's recorded
+  path). Its response has `trip_status`. A position the system cannot act
+  on (the driver has another trip still going, say) is still accepted.
+  Positions with no time zone are taken as UTC.
+- Passengers are no longer marked as arrived by positions sent before the
+  trip is on the road (a vehicle passing their stop on its way to the
+  first).
+- New admin stream event `trip.status_changed` (`trip_id`, `previous`,
+  `status`, `by`: driver, admin or system, `reason`) for every status
+  change, by anyone.
+- New worker task `app.workers.tasks.trips.apply_trip_timeouts`, every
+  minute.
+- Migration `20261008_0021`: trip event type `boarding_started`.
+- Settings (all in `.env.example`): `TRIP_AUTO_STATUS_ENABLED` (default on;
+  off restores the old behaviour), `TRIP_AUTO_WINDOW_MINUTES`,
+  `TRIP_AT_STOP_METERS`, `TRIP_LEFT_STOP_METERS`, `TRIP_AUTO_PAUSE_MINUTES`,
+  `TRIP_STILL_METERS`, `TRIP_ARRIVAL_MINUTES`,
+  `TRIP_ARRIVAL_SILENCE_MINUTES`, `TRIP_NOT_STARTED_ALERT_MINUTES`,
+  `TRIP_NOT_STARTED_CANCEL_MINUTES` (0: never cancel).
+- **The driver app should send positions from 30 minutes before departure
+  until the trip ends, paused included, and keep sending while standing
+  still.** Until it does, boarding still comes from ticket scans, and the
+  driver starts the trip by hand; everything after that follows on its own.

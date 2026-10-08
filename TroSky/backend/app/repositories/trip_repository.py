@@ -74,10 +74,34 @@ class TripRepository:
         return result.scalar_one_or_none()
 
     async def get_for_update(self, trip_id: uuid.UUID) -> Trip | None:
+        # Refreshed from the locked row: a trip read earlier in this
+        # transaction may have changed while we waited for the lock.
         result = await self._session.execute(
-            select(Trip).where(Trip.id == trip_id).with_for_update()
+            select(Trip)
+            .where(Trip.id == trip_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
         )
         return result.scalar_one_or_none()
+
+    async def list_in_statuses(
+        self,
+        statuses: Collection[TripStatus],
+        *,
+        departure_from: datetime | None = None,
+        departure_before: datetime | None = None,
+        limit: int,
+    ) -> list[Trip]:
+        """Trips in any of ``statuses``, earliest departure first."""
+        query = select(Trip).where(Trip.status.in_(list(statuses)))
+        if departure_from is not None:
+            query = query.where(Trip.scheduled_departure_at >= departure_from)
+        if departure_before is not None:
+            query = query.where(Trip.scheduled_departure_at < departure_before)
+        result = await self._session.execute(
+            query.order_by(Trip.scheduled_departure_at).limit(limit)
+        )
+        return list(result.scalars())
 
     async def create(
         self,

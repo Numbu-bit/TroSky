@@ -174,7 +174,12 @@ class AdminSosAlertDetailResponse(SosAlertResponse):
 
 # ------------------------------------------------------------------- alerts
 AlertType = Literal[
-    "sos_active", "complaint_overdue", "document_expiring", "approval_waiting", "fraud_high_risk"
+    "sos_active",
+    "complaint_overdue",
+    "document_expiring",
+    "approval_waiting",
+    "fraud_high_risk",
+    "trip_not_started",
 ]
 AlertSeverity = Literal["critical", "high", "medium", "low"]
 
@@ -183,7 +188,9 @@ class AlertResponse(ApiModel):
     type: AlertType
     severity: AlertSeverity
     title: str
-    entity_type: str = Field(..., examples=["sos_alert", "complaint", "driver", "vehicle"])
+    entity_type: str = Field(
+        ..., examples=["sos_alert", "complaint", "driver", "vehicle", "fraud_flag", "trip"]
+    )
     entity_id: uuid.UUID
     since: datetime = Field(..., description="How long this has been waiting.")
     details: dict[str, Any]

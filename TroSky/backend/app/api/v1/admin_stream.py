@@ -11,6 +11,11 @@ Events (the SSE ``event:`` name; ``data:`` is JSON):
   ``trips:monitor_live``
 * ``fraud.flagged``, ``fraud.updated`` -- for ``fraud:view`` or
   ``fraud:manage``
+* ``booking.*``, ``trip.*``, ``passenger.*`` -- drivers' answers and what
+  followed (``booking.awaiting_acceptance``, ``booking.accepted``,
+  ``booking.moved``, ``booking.not_accepted``, ``trip.accepted``,
+  ``trip.declined``, ``passenger.alighted``), for ``trips:manage`` or
+  ``trips:monitor_live`` (topic ``dispatch``)
 * ``end`` -- access was withdrawn (logout, suspension, permissions taken
   away); the server then closes the stream
 
@@ -62,12 +67,16 @@ TOPICS: dict[str, tuple[Permission, ...]] = {
     "approvals": (Permission.DRIVERS_APPROVE, Permission.VEHICLES_APPROVE),
     "positions": (Permission.TRIPS_MONITOR_LIVE,),
     "fraud": (Permission.FRAUD_VIEW, Permission.FRAUD_MANAGE),
+    "dispatch": (Permission.TRIPS_MANAGE, Permission.TRIPS_MONITOR_LIVE),
 }
 _EVENT_TOPICS = {
     "sos": "sos",
     "complaint": "complaints",
     "approval": "approvals",
     "fraud": "fraud",
+    "booking": "dispatch",
+    "trip": "dispatch",
+    "passenger": "dispatch",
 }
 _APPROVAL_PERMISSIONS = {
     "driver": Permission.DRIVERS_APPROVE,

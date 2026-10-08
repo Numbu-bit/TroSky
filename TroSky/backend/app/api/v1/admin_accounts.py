@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, date, datetime, time, timedelta
-from typing import Annotated, cast
+from typing import Annotated, Literal, cast
 
 from fastapi import APIRouter, Depends, Query, Response, status
 
@@ -21,8 +21,11 @@ from app.api.v1.listing import (
     export_window,
     parse_sort,
 )
+from app.core.exceptions import NotFoundError
 from app.core.permissions import Permission, SystemRole, require_permissions, require_roles
+from app.repositories.user_repository import UserRepository
 from app.schemas.admin_accounts import (
+    AdminMeResponse,
     AdminSessionResponse,
     AdminUserDetailResponse,
     AdminUserResponse,
@@ -262,6 +265,33 @@ async def update_team_member(
     )
     return TeamUpdateResponse(
         on_team=member is not None, member=_member(member) if member else None
+    )
+
+
+# The most senior admin role wins.
+_TEAM_ROLES = (SystemRole.SUPER_ADMIN, SystemRole.ADMIN, SystemRole.STAFF)
+
+
+@router.get("/me", response_model=AdminMeResponse, dependencies=_ON_TEAM)
+async def who_am_i(db: DbSession, principal: CurrentPrincipal) -> AdminMeResponse:
+    """You: your admin role and every permission you hold, so the dashboard
+    shows only the screens and actions open to you."""
+    user = await UserRepository(db).get_by_id(principal.user_id)
+    if user is None:  # signed in a moment ago, deleted since
+        raise NotFoundError("Account not found.")
+    role = next(role for role in _TEAM_ROLES if principal.has_role(role))
+    permissions = (
+        [permission.value for permission in Permission]
+        if role == SystemRole.SUPER_ADMIN
+        else principal.permissions
+    )
+    return AdminMeResponse(
+        id=user.id,
+        full_name=user.profile.full_name if user.profile else None,
+        phone_number=user.phone_number,
+        email=user.email,
+        role=cast(Literal["super_admin", "admin", "staff"], role.value),
+        permissions=sorted(permissions),
     )
 
 

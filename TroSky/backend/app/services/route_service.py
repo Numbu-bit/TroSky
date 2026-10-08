@@ -361,6 +361,11 @@ class RouteService:
                 stops.append(stop)
         return stops
 
+    async def list_schedules(self, route_id: uuid.UUID) -> list[RouteSchedule]:
+        """The route's timetable (404 for an unknown route)."""
+        await self.get_route(route_id)
+        return await self._routes.list_schedules_for_route(route_id)
+
     async def create_schedule(
         self,
         *,

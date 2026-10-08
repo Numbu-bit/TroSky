@@ -19,7 +19,7 @@ from app.core.permissions import Permission, Principal
 from app.models.feedback import ComplaintPriority
 from app.models.fraud import FraudSeverity
 from app.models.safety import SosAlert, SosEscalation
-from app.models.trips import Trip
+from app.models.trips import Trip, TripStatus
 from app.repositories.admin_complaints_repository import (
     AdminComplaintsRepository,
     ComplaintFilters,
@@ -31,7 +31,12 @@ from app.repositories.trip_repository import TripRepository
 from app.repositories.trip_view_repository import TripSummary, TripViewRepository
 from app.schemas.admin_workflow import AlertSeverity, AlertType, SearchKind
 from app.services.fraud_service import HIGH_RISK, OPEN_FLAGS
-from app.services.system_settings_service import EscalationContact, admin_settings
+from app.services.system_settings_service import (
+    EscalationContact,
+    admin_settings,
+    effective_settings,
+)
+from app.services.trip_autopilot import LOOKBACK
 from app.utilities.geo import haversine_distance_km, wkb_to_latlng
 
 # Per alert type; the feed is for acting on, not for archaeology.
@@ -56,6 +61,8 @@ ALERT_PERMISSIONS = (
     Permission.VEHICLES_APPROVE,
     Permission.FRAUD_VIEW,
     Permission.FRAUD_MANAGE,
+    Permission.TRIPS_MANAGE,
+    Permission.TRIPS_MONITOR_LIVE,
 )
 SEARCH_PERMISSIONS: dict[SearchKind, tuple[Permission, ...]] = {
     "users": (Permission.USERS_MANAGE, Permission.USERS_SUSPEND),
@@ -123,8 +130,9 @@ class AdminOpsService:
     ) -> tuple[list[Alert], dict[str, int]]:
         """Everything waiting for someone, most severe first and then
         oldest: SOS nobody has picked up, complaints past their due time,
-        documents expiring within 30 days (or expired), and approvals
-        waiting longer than the approval target."""
+        documents expiring within 30 days (or expired), approvals
+        waiting longer than the approval target, and trips not started
+        well after their departure time."""
         now = datetime.now(UTC)
         values = await admin_settings(self._session)
         alerts: list[Alert] = []
@@ -188,8 +196,56 @@ class AdminOpsService:
             )
         if principal.has_permission(Permission.FRAUD_VIEW, Permission.FRAUD_MANAGE):
             alerts.extend(await self._fraud_alerts(counts))
+        if principal.has_permission(Permission.TRIPS_MANAGE, Permission.TRIPS_MONITOR_LIVE):
+            alerts.extend(await self._trip_alerts(now, counts))
         alerts.sort(key=lambda alert: (_SEVERITY_ORDER[alert.severity], alert.since))
         return alerts[:limit], counts
+
+    async def _trip_alerts(self, now: datetime, counts: dict[str, int]) -> list[Alert]:
+        """Trips still scheduled or boarding ``TRIP_NOT_STARTED_ALERT_MINUTES``
+        after their departure time (within the last day). A scheduled one is
+        cancelled at ``cancels_at`` if its vehicle is not heard from."""
+        settings = await effective_settings(self._session)
+        late, counts["trip_not_started"] = await TripViewRepository(self._session).list_summaries(
+            statuses=(TripStatus.SCHEDULED, TripStatus.BOARDING),
+            departure_from=now - LOOKBACK,
+            departure_before=now - timedelta(minutes=settings.TRIP_NOT_STARTED_ALERT_MINUTES),
+            limit=ALERT_LIMIT_PER_TYPE,
+            offset=0,
+        )
+        cancel_after = (
+            timedelta(minutes=settings.TRIP_NOT_STARTED_CANCEL_MINUTES)
+            if settings.TRIP_AUTO_STATUS_ENABLED and settings.TRIP_NOT_STARTED_CANCEL_MINUTES
+            else None
+        )
+        return [
+            Alert(
+                type="trip_not_started",
+                severity="high",
+                title=(
+                    f"Trip not started: {trip.route_name}, "
+                    f"due {trip.scheduled_departure_at:%H:%M}"
+                ),
+                entity_type="trip",
+                entity_id=trip.trip_id,
+                since=trip.scheduled_departure_at,
+                details={
+                    "status": trip.status.value,
+                    "route_name": trip.route_name,
+                    "scheduled_departure_at": trip.scheduled_departure_at,
+                    "driver_id": trip.driver_id,
+                    "driver_name": trip.driver_name,
+                    "vehicle_registration_number": trip.vehicle_registration_number,
+                    "seats_booked": trip.seats_booked,
+                    "cancels_at": (
+                        trip.scheduled_departure_at + cancel_after
+                        if cancel_after is not None and trip.status == TripStatus.SCHEDULED
+                        else None
+                    ),
+                },
+            )
+            for trip in late
+        ]
 
     async def _fraud_alerts(self, counts: dict[str, int]) -> list[Alert]:
         """Fraud flags with a high risk score that are still open."""
