@@ -1,0 +1,10 @@
+dist
+dist-demo
+coverage
+node_modules
+package-lock.json
+openapi/openapi.json
+src/api/schema.d.ts
+public/mockServiceWorker.js
+playwright-report
+test-results

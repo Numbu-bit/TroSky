@@ -1346,3 +1346,749 @@ Migration `20261002_0014`:
 
 Everything is additive except the nullable `trip_id`, and the migration has
 a full downgrade.
+<<<<<<< Updated upstream
+=======
+
+## [0.14.0] - 2026-10-03 - Admin dashboard, steps 1-2
+
+The first two build steps of "TroSky Admin: Missing Backend Endpoints". All
+of it is in `/openapi.json`. The document suggested permission names; these
+endpoints reuse the existing ones instead:
+
+| Endpoints | Needs any one of |
+|---|---|
+| Vehicles | `vehicles:approve`, `trips:monitor_live` |
+| Drivers | `drivers:approve`, `trips:monitor_live` |
+| Fleets | `vehicles:approve`, `reports:view` |
+| Payments, revenue | `payments:review`, `refunds:approve`, `reports:view` |
+| User growth, funnel | `reports:view` |
+| Driver performance | `reports:view`, `drivers:approve` |
+
+### Changes to existing endpoints
+
+- **Trip cancel** (`POST /admin/trips/{id}/cancel`) now cancels every booking
+  still holding seats on the trip, in the same transaction:
+  - Paid bookings become `refund_pending`, each with a refund request
+    awaiting approval at `/admin/refund-requests`. Unpaid ones are cancelled.
+  - Every passenger is notified, and the response adds `bookings_cancelled`,
+    `refunds_queued` and `refund_amount`.
+  - A mobile money payment that succeeds after its booking was cancelled or
+    expired is now queued for a refund. Before, the webhook failed and the
+    provider retried it forever, with the money never returned.
+- **Overview** (`GET /admin/reports/overview`) takes `from`, `to` (inclusive
+  Ghana dates, default the last 30 days) and `city`. It adds `period` and
+  `figures`. Each figure has `value`, `previous` (the same number of days
+  just before), `change_percent` and a daily `series`. The figures are:
+  - `new_users`, `new_passengers`, `new_drivers`
+  - `paid_bookings`, `completed_trips`, `booking_payments`
+  - `complaints`, `sos_alerts`
+
+  The all-time totals are unchanged. With `city`, sign-up figures are null,
+  since users have no city.
+- **CSV export**: `?format=csv` on `/admin/trips`, `/admin/bookings`,
+  `/admin/complaints`, `/admin/incidents` and `/admin/withdrawals` (and every
+  new list). It returns every matching row, up to 10,000, with nested fields
+  as dotted columns.
+
+### New endpoints
+
+- **Section 2 done**: `GET /admin/vehicles`, `/admin/vehicles/{id}`,
+  `/admin/drivers`, `/admin/drivers/{id}`, `/admin/fleets` and
+  `/admin/fleets/{id}`.
+  - **Live status:** `on_trip` (boarding, under way or paused), `idle` (a
+    trip still to run today) or `offline`.
+  - **Vehicles:** insurance and roadworthiness expiry come from approved
+    documents.
+  - **Filters:** approval status, live status, fleet, city (a trip starting
+    there in the last 30 or next 7 days), `expiring_within_days`, and a
+    search.
+  - **Fleets:** size, vehicles on a trip now, 7-day utilization (share of
+    approved vehicles that completed a trip), 30-day revenue and average
+    rating.
+  - **Details:** a vehicle's details add documents, 30-day activity and
+    recent incidents; a fleet's add all its vehicles and drivers.
+- **Section 5 done**:
+  - `GET /admin/payments`: every payment with its booking, payer, method,
+    fee and refunds. Filters: dates, method, status, purpose, city, route,
+    fleet and a reference search.
+  - `GET /admin/analytics/revenue`:
+    - figures: gross, refunds, net, platform fees, paid bookings, average
+      fare and failed-payment rate
+    - a daily series per payment method
+    - totals by route, fleet and hour
+    - pending withdrawals
+- **Section 6 done**:
+  - `GET /admin/analytics/users`:
+    - sign-ups per day by role, and cumulative users
+    - daily, weekly and monthly active users ("active" = signed in or
+      booked)
+    - activation: a paid booking within 7 days of signing up
+    - weekly retention cohorts, and passengers by city
+  - `GET /admin/analytics/funnel`: searches → reserved → paid → boarded
+    (ticket scanned), with conversion between stages.
+- **Section 3 done**: `GET /admin/drivers/performance` and
+  `/admin/drivers/{id}/performance`.
+  - **Measures, per period:** rating, on-time starts (within 5 minutes),
+    cancellation rate over finished trips, complaints per 100 trips, and
+    QR scan rate.
+  - **Score:** 0–100, weighted rating 35%, on time 25%, reliability 15%,
+    complaints 15%, QR 10%. A part with no data is left out rather than
+    counted as zero.
+  - **At risk:** flagged with reasons, but only once there is enough data.
+  - **Detail view:** adds a daily trend, rating spread, recent reviews, and
+    earnings today, this week and this month, with pending withdrawals.
+
+### Search logging
+
+The funnel, and the demand heat maps in a later step, need searches.
+Migration `20261003_0015` adds `search_events`, one row per trip search,
+including searches far from any stop that fail. It stores the stops, the
+counts found and bookable, and only a ~550 m grid cell for GPS searches,
+never the passenger's position. Searches are counted from this release on.
+
+Also: the `seed_identity_data` test fixture now grants the admin role every
+permission, as the reference seed does in every real environment.
+
+## [0.15.0] - 2026-10-03 - Admin dashboard, step 3: audit log, settings, flags, wallets
+
+Section 1 of "TroSky Admin: Missing Backend Endpoints". Migration
+`20261003_0016` adds `audit_logs`, `system_settings` and `feature_flags`.
+The endpoints reuse existing permissions:
+
+| Endpoints | Needs |
+|---|---|
+| Audit log | `audit_logs:view` |
+| Settings | `system_settings:manage` |
+| Feature flags | `feature_flags:manage` |
+| Wallets | `wallet:adjust` |
+
+### Audit trail
+
+Every admin request that changes something is recorded automatically. No
+endpoint has to remember to do it, so new admin endpoints are covered too.
+The request adds one row for each database row it inserts, changes or
+deletes, holding:
+
+- who, which endpoint (its name, method and path), and which row (table and
+  id)
+- the columns that changed, before and after (an insert has only "after", a
+  delete only "before")
+- the reason from the request body (`reason`, `rejection_reason`, `notes`,
+  `decision_notes` or `resolution_notes`), the IP address, user agent and
+  request id
+
+A request that changed nothing still gets one row (`entity_type` is
+`request`). Not recorded:
+
+- reads
+- failed requests, which are rolled back together with their audit rows
+- password, code and token hashes
+- `updated_at` and `version`
+- the status-history tables, which repeat a change already on the row
+- rows changed by a bulk `UPDATE` or `DELETE` statement, which are not
+  listed one by one; the request is still on record
+
+`GET /admin/audit-logs` lists the trail, newest first. It filters by
+`actor_id`, `action`, `entity_type`, `entity_id`, `from` and `to`, and
+supports `?format=csv`. `GET /admin/audit-logs/{id}` returns one entry.
+
+### Settings
+
+`GET /admin/settings` lists each setting with its value and whether an
+admin changed it. `PATCH /admin/settings` changes any of them at once:
+
+- Platform fee per seat and percent, and the driver's share of the fare.
+- Payment hold, 60–3600 s.
+- Live position interval, 2–60 s.
+- Complaint resolution time for each priority, in hours.
+- Approval target, in hours.
+- SOS escalation contacts.
+- Enabled cities.
+
+Each setting defaults to the environment value. An admin's change is stored
+and takes precedence; `null` puts the default back. All the changes in one
+request are checked together, and if any is invalid none are saved (422).
+If a stored value stops being valid (because the limits changed later), it
+is ignored and an error is logged. Its default applies until an admin saves
+a new value, and it never blocks changes to other settings.
+
+The fees, the payment hold, the driver's share and the position interval
+apply to new quotes, bookings and trips. They take effect at once on the
+server that made the change, and within 30 seconds on the others. The
+complaint times, approval target and escalation contacts are stored for
+step 4. Enabled cities are stored but not enforced yet.
+
+### Feature flags
+
+`GET /admin/feature-flags` and `PATCH /admin/feature-flags/{key}` (body
+`enabled`, `rollout_percent`):
+
+- `fare_sharing` turns fare sharing between a trip's riders on or off.
+- `book_moving_trips` controls trips already under way: shown in search and
+  bookable from stops ahead. This is the new setting
+  `BOOK_MOVING_TRIPS_ENABLED`, on by default as before.
+- `trip_share_links` can go to a share of passengers, the same passengers
+  each time. When it is off for a passenger, sharing answers 403
+  `FEATURE_DISABLED`.
+
+A flag that switches a platform-wide setting is on or off for everyone, so a
+partial rollout of one is refused (422).
+
+### Wallets
+
+- `GET /admin/wallets/{user_id}` returns a user's balance, money held for
+  withdrawals, and transactions, newest first.
+- `POST /admin/wallets/{user_id}/adjustments` credits or debits a wallet by
+  hand. It needs a reason, which the user sees as the transaction's
+  description, and takes an optional reference. A debit may not take the
+  balance below zero (402). Send an `Idempotency-Key` so a retry does not
+  adjust twice.
+
+## [0.16.0] - 2026-10-03 - Admin dashboard, step 4: complaints, alerts, search, live stream
+
+Sections 4 and 10 of "TroSky Admin: Missing Backend Endpoints". Migration
+`20261003_0017` adds:
+
+- complaint priority, assignment and first-response time
+- `complaint_notes`
+- `sos_escalations`
+
+| Endpoints | Needs |
+|---|---|
+| Complaints (all of them) | `complaints:manage` |
+| SOS details, escalations | `sos:review` |
+| Trip replay | `trips:monitor_live` or `trips:manage` |
+| Alerts, search, live stream | any permission behind something they show; each admin sees only that part |
+
+### Complaints
+
+Every complaint now has a **priority**: low, medium, high or urgent. Safety
+complaints start high and the rest medium, and existing safety complaints
+were moved to high.
+
+A complaint is **due** after its priority's resolution time from filing.
+These times come from the `complaint_sla_hours` setting: 72, 48, 24 and 4
+hours by default. It is **overdue** while still open or in review after
+that.
+
+Endpoints:
+
+- **List.** `GET /admin/complaints` now also returns:
+  - the priority
+  - who filed it, with name and phone
+  - the assignee
+  - the first-response time
+  - `due_at` and `is_overdue`
+
+  New filters: `priority`, `category`, `assigned_to`, `unassigned` and
+  `overdue`, and `complaint_status` now takes several values. `sort` takes
+  `created_at`, `due_at` or `priority`.
+- **One complaint.** `GET /admin/complaints/{id}` returns the complaint with
+  its notes and messages, oldest first.
+- **Change.** `PATCH /admin/complaints/{id}` can:
+  - assign it (`assigned_to`; `null` unassigns). Only an active admin who
+    handles complaints can be assigned.
+  - set the `priority`
+  - move it to `in_review`
+
+  A resolved or dismissed complaint cannot be changed (409).
+- **Notes and messages.** `POST /admin/complaints/{id}/notes` takes a
+  `kind`. An `internal` note is for the team only. A `message` goes to the
+  passenger as a notification and shows in the app.
+- **Figures.** `GET /admin/complaints/stats` takes `from`, `to` and `city`
+  like the other analytics, and returns:
+  - what is open now, by priority, with how many are overdue or unassigned
+  - for the period against the one before:
+    - complaints filed, with a daily series
+    - complaints per 1,000 completed trips
+    - average hours to a first response and to a decision
+    - complaints filed by category
+- **Passenger app.** `GET /complaints/{id}/messages` lists support's
+  messages on the passenger's own complaint.
+
+The **first response** is the first thing the passenger saw: a message, the
+move to review, or the decision. Complaints decided before this release
+count their decision.
+
+The resolve and dismiss routes moved into the new complaints module. Their
+URLs are unchanged, and their responses now use the admin shape, which
+includes every field they returned before.
+
+### SOS
+
+- `GET /admin/sos-alerts/{id}` returns what an admin needs to act:
+  - where the alert was raised, and who raised it (name and phone)
+  - the trip: vehicle, driver and fleet owner with their phone numbers, and
+    the vehicle's last recorded position
+  - the escalations so far
+  - who to call, from the `sos_escalation_contacts` setting
+- `POST /admin/sos-alerts/{id}/escalations` records who was contacted, with
+  name, number, time (default now) and notes. The contact is one of police,
+  ambulance, fire service, fleet owner, emergency contact or other. An alert
+  nobody has picked up yet is acknowledged by the same admin. The document
+  proposed `/admin/sos/{sosId}/escalations`; this path keeps the existing
+  `/admin/sos-alerts` naming.
+
+### Alerts feed
+
+`GET /admin/alerts` is one list, most severe first, then oldest:
+
+| Type | Severity | What it means |
+|---|---|---|
+| `sos_active` | critical | An SOS alert nobody has picked up. |
+| `complaint_overdue` | high, medium or low | High for urgent and high-priority complaints, otherwise the complaint's own priority. |
+| `document_expiring` | high, medium or low | An approved driver's or vehicle's latest approved copy of a document: low if it expires within 30 days, medium within 7 days, high if already expired. An approved renewal clears it. |
+| `approval_waiting` | medium | A driver or vehicle waiting longer than the `approval_target_hours` setting (48 h by default). |
+
+Each type needs its own permission, and `counts` gives the total of each.
+High-risk fraud flags join the feed in step 6.
+
+### Search
+
+`GET /admin/search?q=` needs at least 2 characters. It returns up to `limit`
+results (default 5) of each kind:
+
+- users, by name, phone number in any format, or email
+- drivers, by name, phone number or licence number
+- vehicles, by plate, ignoring spaces and dashes
+- trips, by route name, or by id or its first characters
+- bookings, by reference
+- payments, by TroSky or provider reference
+
+An id finds any kind. `searched` lists the kinds the caller's permissions
+cover.
+
+### Trip replay
+
+`GET /admin/trips/{id}/track` returns the positions recorded during a trip,
+oldest first, with the distance they cover and the top speed. It returns up
+to 20,000 points; `truncated` says there were more, and `since` / `until`
+narrow the range. `?format=csv` exports the points. Positions are kept for
+`GPS_RAW_RETENTION_DAYS`.
+
+### Live stream
+
+`GET /admin/stream` sends Server-Sent Events, in place of polling.
+
+| Event | Sent when |
+|---|---|
+| `sos.created`, `sos.updated` | An SOS is raised, or acknowledged, escalated or resolved. |
+| `complaint.created`, `complaint.updated` | A complaint is filed, or changed. |
+| `approval.requested`, `approval.document_uploaded` | A driver or vehicle (`kind`) applies or uploads a document. |
+| `position` | A bus moved; at most every 5 seconds per trip. |
+| `end` | Access was withdrawn; the stream then closes. |
+
+- **Format.** `data` is JSON: `{"type", "at", "data"}`, where `data` holds
+  the ids involved. Fetch the details from the endpoints above.
+- **Signing in.** Send `Authorization: Bearer`, or `?token=` for
+  `EventSource`, which cannot send headers.
+- **Topics.** `topics=sos,complaints,approvals,positions` narrows the
+  stream. By default it carries every topic the caller's permissions allow:
+  `sos:review`, `complaints:manage`, `drivers:approve` / `vehicles:approve`,
+  and `trips:monitor_live` for positions.
+- **No lost events.** An event is sent only after its change is committed.
+  Every event except `position` has an id. When `EventSource` reconnects it
+  sends `Last-Event-ID`, and the stream replays what was missed from the
+  last 1,000 events.
+- **Staying signed in.** Access is re-checked every
+  `WS_AUTH_RECHECK_SECONDS`, so a logout, a suspension or a removed
+  permission ends the stream.
+- **Connections.** A comment line every 15 seconds keeps idle connections
+  open. Each server process takes at most 20 streams (503 beyond that).
+  Behind a proxy, turn off response buffering for this path. The response
+  sets `X-Accel-Buffering: no` for nginx.
+
+The audit trail covers every change above, including assignments, notes
+and escalations.
+
+## [0.17.0] - 2026-10-03 - Admin dashboard, step 5: demand heat maps
+
+Section 8 of "TroSky Admin: Missing Backend Endpoints". There is no
+migration: this reads the search log added in 0.14.0, and bookings.
+
+`GET /admin/analytics/demand` needs `reports:view`.
+
+- **`type`** chooses the demand to show:
+  - `searches` (the default): every trip search
+  - `unmet`: searches that found no bus with a free seat to catch
+  - `bookings`: paid bookings, counted in seats
+- **Filters:**
+  - `from`, `to` and `city`, as for the other analytics. The city is where
+    the pickup stop is.
+  - `days`, such as `mon,tue,wed,thu,fri`
+  - `hour_from` and `hour_to`, in Ghana time and inclusive. `22` to `5`
+    wraps past midnight.
+- **Returns:**
+  - `total`, `previous_total` (the same number of days just before) and
+    `change_percent`
+  - `cells`: the weight in each ~550 m grid cell, heaviest first, up to
+    2,000. `cell_degrees` gives the cell size.
+  - `top_origins` and `top_pairs`: the 10 busiest pickup stops and
+    journeys
+  - `by_day_and_hour`: Monday to Sunday, 24 hourly values each
+  - `supply_gaps`: the pickup stops where searches most often found no bus
+    with a free seat, with `searches`, `unmet` and `unmet_share`
+
+Privacy: the response holds only totals, never a position. A GPS search was
+only ever stored as its grid cell. A search by stop, and a booking, are
+placed at the pickup stop, a public place. A cell with fewer than 3
+searches is withheld, so no one person's searches can be picked out;
+`withheld` says how many searches that left out. Searches are counted from
+0.14.0 on.
+
+## [0.18.0] - 2026-10-03 - Admin dashboard, step 6: fraud detection
+
+Section 7 of "TroSky Admin: Missing Backend Endpoints". Migration
+`20261003_0018` adds:
+
+- `fraud_rules`, `fraud_flags` and `fraud_flag_events`
+- `blocked_devices`
+- `ticket_scan_attempts`
+- a freeze on `wallets`
+
+Two new permissions, `fraud:view` and `fraud:manage`, are added by the
+reference seed and granted to the admin role. Reading flags and figures
+needs either one; changing anything needs `fraud:manage`.
+
+### Detection
+
+A scheduled job runs every 15 minutes (`app.workers.tasks.fraud`).
+`POST /admin/fraud/scan` runs one at once, and answers 409 while another run
+is going. Each rule has a threshold, a time window and a severity:
+
+| Rule | Looks for | Default |
+|---|---|---|
+| `ticket_reused` | A ticket shown again after boarding, or on another trip | 1 refused scan in 24 h |
+| `payment_failures` | Repeated failed payments | 5 in 1 h |
+| `shared_device` | Several accounts signing in on one device | 3 accounts in 30 days |
+| `shared_momo_number` | Several accounts paying with one mobile money number | 3 accounts in 30 days |
+| `expired_reservations` | Reservations left to expire unpaid | 5 in 7 days |
+| `refund_share` | A high share of a passenger's paid bookings refunded | half, of at least 4, in 30 days |
+| `stationary_trip` | A completed trip whose vehicle barely moved (5+ positions) | 0.2 km at most, trips ended in 24 h |
+| `impossible_speed` | A jump between recorded positions faster than a bus can go | 150 km/h, in 24 h |
+| `low_scan_compliance` | A driver scanning few paid passengers' tickets (10+ passengers) | half or fewer, in 7 days |
+| `unusual_topups` | Large wallet top-ups | GHS 2,000 in 24 h |
+
+A finding becomes a **flag**. Each flag has:
+
+- the rule, severity and a **risk score** (0–100): the severity's base (low
+  25, medium 50, high 70, critical 90), plus up to 20 for how far past the
+  threshold the finding is
+- what it is about (a user, ticket, trip, driver, device or phone number)
+  and the account mainly concerned
+- a summary and the money at risk
+- its evidence, with links to the users, trips, bookings and payments
+  involved
+
+Each flag names its incident, such as a particular ticket, or a user on a
+particular day, so later runs never raise it twice:
+
+- **Getting worse.** A flag still open is updated when its finding grows,
+  for example more failures. Its timeline records "detected again" and its
+  risk score rises with it.
+- **Closed.** A flag confirmed or judged a false positive stays as it is.
+
+To support `ticket_reused`, a ticket refused at boarding because it was
+used already, or because it is for another trip, is now recorded, even
+though the scan itself fails.
+
+### Endpoints
+
+- **List.** `GET /admin/fraud/flags` lists flags, riskiest first. It
+  filters by status, rule, severity, `min_risk`, assignee or `unassigned`,
+  the account concerned, and `from`/`to`, and supports CSV.
+- **One flag.** `GET /admin/fraud/flags/{id}` returns the evidence, the
+  timeline (detected, detected again, assigned, status changes, actions),
+  and the linked users (suspended? wallet frozen?), trips, bookings and
+  payments.
+- **Review.** `PATCH /admin/fraud/flags/{id}` sets the status
+  (`investigating`, `confirmed`, `false_positive`, or back to `open`) and
+  the assignee. The assignee must review fraud. Confirming a flag or calling
+  it a false positive needs a `reason`.
+- **Actions.** `POST /admin/fraud/flags/{id}/actions` takes a reason, and
+  moves an open flag to investigating. The account defaults to the flag's
+  account, and the device to the flag's device. The actions:
+  - `suspend_account` suspends the account and signs it out everywhere.
+    `/admin/users/{id}/reactivate` undoes it.
+  - `freeze_wallet` / `unfreeze_wallet`. No payments or payouts leave a
+    frozen wallet: debits, withdrawal requests and completing a payout all
+    answer 403 `WALLET_FROZEN`. An admin's wallet adjustment can still take
+    money back. `GET /admin/wallets/{id}` shows `frozen_at` and
+    `frozen_reason`.
+  - `block_device` / `unblock_device`. Every session on the device ends,
+    and signing in from it answers 403 `DEVICE_BLOCKED`.
+- **Figures.** `GET /admin/fraud/stats` returns open and high-risk flags
+  (risk 70+) and the money at risk now. For the period it adds flags raised
+  per day, against the previous period; confirmed and false positives; the
+  precision (confirmed out of all reviewed); and counts per rule.
+- **Rules.** `GET /admin/fraud/rules` lists the rules. `PATCH
+  /admin/fraud/rules/{rule}` changes a threshold, time window (5 minutes to
+  90 days) or severity, or turns a rule off; the change applies from the
+  next run.
+
+Open flags with a risk score of 70 or more appear in `/admin/alerts`
+(`fraud_high_risk`). The live stream has a `fraud` topic with
+`fraud.flagged` and `fraud.updated` events.
+
+## [0.19.0] - 2026-10-03 - Admin dashboard, step 7: reports, people and the admin team
+
+Sections 9 and 11 of "TroSky Admin: Missing Backend Endpoints". This
+completes the 49 endpoints the document asked for, and a test now checks
+every one of them is in `/openapi.json`. The optional
+`POST /admin/reports/schedules` (emailed reports) is not built: the email
+provider has no attachments yet.
+
+Migration `20261003_0019` adds `user_permissions`. The reference seed adds
+the `staff` role and the `admins:manage` permission, which the admin role
+gets like every other.
+
+### Reports
+
+`GET /admin/reports/{report}` needs `reports:view`. It returns JSON with
+`columns` (key, label and kind), `rows`, `totals` and `notes`, or CSV with
+`?format=csv`. The dashboard makes PDF and XLSX from either. It takes:
+
+- `from` and `to`, up to a year
+- `city` (where trips start), `route` and `fleet`
+- `granularity`: `day`, `week` (from Monday) or `month`
+
+The reports:
+
+| Report | One row per | Columns |
+|---|---|---|
+| `daily_rides` | period | trips completed and cancelled, seats offered and booked, occupancy, passengers boarded |
+| `revenue` | period | paid bookings, gross, refunds, net, platform fees, average fare |
+| `peak_hours` | hour of the day (Ghana time) | trips departing, seats booked, passengers boarded, bookings made, searches |
+| `route_popularity` | route, busiest first | trips, seats offered and booked, occupancy, boardings, fares, cancelled bookings |
+| `passenger_growth` | period | new, total, active (made a paid booking) and first-time passengers |
+| `cancellation_rates` | period | bookings made, cancelled by passengers, cancelled with their trip, expired unpaid, trips scheduled and cancelled, and both rates |
+
+The time series use the dashboard analytics' own definitions, so the two
+always agree. A figure that cannot be tied to a city, route or fleet, such
+as sign-ups or searches, is null when one is chosen, with a note saying so.
+`/admin/reports/overview` is unchanged.
+
+### Users
+
+- **List.** `GET /admin/users` now browses as well as searches. It filters
+  by role, `status` (active, suspended, inactive), `city` (booked a trip
+  from there) and sign-up date, sorts, and supports CSV. Each user adds
+  their name, roles and last sign-in. `search` works as before.
+- **One user.** `GET /admin/users/{id}` returns:
+  - profile and roles
+  - saved mobile money numbers, masked (`+23324•••0201`)
+  - the 3 most-booked routes
+  - booking and complaint counts
+  - wallet balance, and whether it is frozen
+  - active sessions, driver and fleet owner ids, and open fraud flags
+- **Devices.** `GET /admin/users/{id}/sessions` lists a user's signed-in
+  devices, and `DELETE /admin/users/{id}/sessions/{session_id}` signs one
+  out.
+
+Viewing needs `users:manage` or `users:suspend`; devices need
+`users:manage`.
+
+### The admin team
+
+Needs `admins:manage`. The team is everyone with the `super_admin`, `admin`
+or `staff` role:
+
+- an admin holds every permission
+- a member of staff holds only the permissions granted to them, which
+  count wherever permissions are checked
+
+The endpoints:
+
+- `GET /admin/admins` lists the team with each member's role, permissions
+  (and which were granted directly), status and last sign-in.
+- `POST /admin/admins` invites `{full_name, phone_number, email, role,
+  permissions}`. An existing account with that number or email joins the
+  team as it is. Otherwise a new account is created and sent a code to set
+  its password, the same code as "forgot password", so give an email while
+  codes go by email.
+- `PATCH /admin/admins/{id}` changes a member's role or permissions.
+  `active: false` takes them off the team: their team roles and permissions
+  go, and they are signed out everywhere.
+
+No one can raise anyone above themselves:
+
+- no changing your own access
+- no changing someone with a role above yours
+- no giving a role above your own
+- no granting a permission you do not hold
+
+`GET /admin/me/sessions` and `DELETE /admin/me/sessions/{session_id}` let
+any team member see and end their own sessions.
+
+### Approvals
+
+- `POST /admin/drivers/{id}/request-info` and
+  `POST /admin/vehicles/{id}/request-info` take
+  `{document_types, note}`. They ask for documents again instead of
+  rejecting the application:
+  - those documents are marked rejected with the note, and the app already
+    lets them be uploaded again
+  - the request goes in the status history, which restarts the
+    approval-waiting clock
+  - the driver or fleet owner is notified
+- `GET /admin/documents/{id}` returns a driver's or vehicle's document with
+  a link valid for five minutes. A driver's document needs
+  `drivers:approve`, and a vehicle's needs `vehicles:approve`.
+
+### Tests
+
+API tests now share one application per run instead of building it for
+each test. Building it registers every route, now about 230, so this makes
+an API test about three times faster.
+
+## [0.19.1] - 2026-10-03 - Verification codes arrive faster
+
+A new account's code used to reach the mail server about 4 seconds after
+the request arrived, before Gmail had even delivered it. It now takes about
+1.4 seconds, so the code is usually in the inbox 3 to 5 seconds after the
+person taps Register. Two changes:
+
+- **The mail server connection is kept open.** Opening one (connect,
+  STARTTLS, login) took 1.7 s to Gmail from Accra, and every message paid
+  for it. Logged-in connections are now reused, and sending on one takes
+  about 0.5 s:
+  - the app opens one at start-up
+  - it checks idle ones with NOOP every `EMAIL_SMTP_KEEPALIVE_SECONDS`
+    (default 40; 0 turns this off)
+  - a connection the server has closed is replaced on the spot, and the
+    message is sent once more
+- **The code goes out earlier in registration.** Twelve database round
+  trips, at about 0.14 s each to the hosted database, used to come before
+  the send; now there are about four:
+  - the phone and email checks are one query
+  - the account is inserted without a savepoint
+  - the role and notification preferences are set after the send
+  - every code (registration, login, password reset) starts on its way
+    before it is stored
+
+  A test fails if the code is pushed back behind more database work.
+
+## [0.20.0] - 2026-10-03 - Drivers accept trips and bookings; seats free up when passengers get off
+
+Database migration `20261003_0020`. Run `alembic upgrade head` before
+starting this version.
+
+### Trips
+
+- An assigned driver now accepts or declines the trip:
+  `POST /driver-trips/{trip_id}/accept` and `/decline` (with a reason).
+  Declining takes them off the trip, which then needs another driver.
+- Starting the trip, or accepting a booking on it, also counts as accepting
+  the trip. A trip already on the road cannot be declined.
+- The driver is notified when a trip is assigned to them. Trip lists
+  (`/drivers/me/trips`, `/admin/trips`) show the answer as
+  `driver_response`.
+- Trips assigned before this version count as accepted.
+
+### Bookings
+
+- A new booking now waits for the trip's driver, or an admin, to accept it
+  (`awaiting_acceptance`). The seats are held, but the passenger cannot pay
+  yet. `expires_at` is the deadline for an answer.
+- Once accepted, the booking is `pending`. The passenger is told to pay
+  within `SEAT_RESERVATION_HOLD_SECONDS`, as before.
+- Drivers see their waiting bookings at `GET /driver-trips/booking-requests`
+  and answer them at
+  `POST /driver-trips/{trip_id}/bookings/{booking_id}/accept` or `/decline`.
+- If the driver declines, or does not answer within
+  `BOOKING_ACCEPT_TIMEOUT_SECONDS` (default 120), the booking moves to
+  another vehicle. That vehicle must:
+  - go from the same pickup to the same destination
+  - have a driver and enough free seats
+  - not have passed the pickup yet
+  - leave within `BOOKING_MOVE_WINDOW_MINUTES` (default 60)
+- A moved booking keeps its passengers and its price, gets seats on the new
+  vehicle, and waits for that driver. The passenger is told each time.
+- A booking moves at most `BOOKING_MAX_MOVES` times (default 3). With no
+  other vehicle, or after the last move, it ends uncharged and the passenger
+  is told to search again.
+- A worker job checks for unanswered bookings every 15 seconds.
+- A passenger can cancel a booking that is waiting for an answer at any
+  time; no admin review is needed.
+- `BOOKING_ACCEPTANCE_REQUIRED=false` turns all of this off: bookings go
+  straight to payment, as before.
+
+### Getting off
+
+- A passenger's seat is now free for the rest of the route once they get
+  off. Before, it stayed taken until the end of the trip.
+- A passenger is off when:
+  - the driver marks them off at
+    `POST /driver-trips/{trip_id}/passengers/{booking_passenger_id}/alight`,
+    with an optional `stop_id` (otherwise the stop nearest the vehicle)
+  - or the vehicle's GPS reaches the stop they booked to
+- The passenger list shows `booking_passenger_id` and `alighted_at` for
+  each passenger.
+- When everyone on a booking is off and it is paid for, the booking is
+  completed there and then. The driver's share of the fare is credited at
+  that point, not again at the end of the trip.
+- The passenger gets a notification offering vehicles leaving from where
+  they got off. The same happens at the end of a trip.
+  `GET /bookings/{booking_id}/onward-trips` lists those vehicles: ones
+  leaving within `ONWARD_TRIPS_WINDOW_MINUTES` (default 120) that have not
+  passed the stop and have a seat free.
+- A passenger who gets off early gets no money back for the part they did
+  not ride: the fare is fixed at booking.
+
+### Operations team
+
+New admin endpoints:
+
+- `GET /admin/booking-requests`: every booking waiting for an answer.
+- `POST /admin/bookings/{id}/accept` and `/decline`: answer a booking for
+  the driver. Declining has `move_to_another_trip` (default true); set it
+  to false to end the booking. An admin can also decline a booking that was
+  accepted but not yet paid for.
+- `POST /admin/bookings/{id}/move`: put an unpaid booking on a trip of the
+  admin's choice.
+- `POST /admin/trips/{id}/accept-for-driver` and `/decline-for-driver`:
+  answer a trip for the driver, who is notified.
+- `POST /admin/trips/{trip_id}/passengers/{booking_passenger_id}/alight`:
+  mark a passenger off for the driver.
+- `GET /admin/driver-actions`: a log of everything drivers did, newest
+  first, also as CSV. It covers trips and bookings accepted or declined,
+  trips started, paused, resumed and ended, tickets scanned, and passengers
+  marked off. `acted_as` says whether it was the driver, an admin acting
+  for them, or the system.
+
+Viewing needs `trips:manage` or `trips:monitor_live`; acting needs
+`trips:manage`. These events are announced for the live admin stream:
+`booking.awaiting_acceptance`, `booking.accepted`, `booking.moved`,
+`booking.not_accepted`, `trip.accepted`, `trip.declined` and
+`passenger.alighted` (the stream delivers them from 0.20.2).
+
+### Tests
+
+`.env.test` turns acceptance off, so existing tests still book straight to
+payment. The new tests turn it on:
+
+- `tests/integration/test_booking_acceptance.py`: 26 tests
+- `tests/api/test_booking_acceptance_api.py`: 8 tests
+
+
+## [0.20.1] - 2026-10-04 - The dashboard can ask what an admin may do
+
+- `GET /admin/me` returns the signed-in admin's role (`super_admin`,
+  `admin` or `staff`) and every permission they hold, so the admin
+  dashboard shows only the screens and actions open to them. A super admin
+  holds every permission; staff hold only what was granted to them. Anyone
+  else gets 403.
+- The access token still carries roles only.
+
+## [0.20.2] - 2026-10-04 - Timetables can be listed; the stream carries drivers' answers
+
+- `GET /admin/routes/{route_id}/schedules` lists a route's active timetable
+  entries, earliest departure first. Needs `routes:manage` or
+  `trips:manage`. Before this, entries could be added but never read back,
+  so a trip could only be created from a timetable entry whose id was
+  already known.
+- The admin stream (`GET /admin/stream`) has a new topic, `dispatch`, for
+  `trips:manage` or `trips:monitor_live`. It carries the `booking.*`,
+  `trip.*` and `passenger.*` events added in 0.20.0, which the stream used
+  to drop: the 0.20.0 notes wrongly said it delivered them.
+>>>>>>> Stashed changes
