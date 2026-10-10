@@ -16,6 +16,7 @@ import '../../../entry/auth/presentation/failure_messages.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../home/application/home_providers.dart';
 import '../application/search_providers.dart';
+import '../../seats/domain/seat_selection_args.dart';
 import '../domain/journey.dart';
 import 'search_screen.dart';
 import 'trip_view.dart';
@@ -25,25 +26,6 @@ import 'widgets/search_header.dart';
 enum ResultsOutcome {
   /// No pickup could be found from the phone's position: choose a stop.
   choosePickup,
-}
-
-/// The trip chosen on Search Results, for Seat Selection (P-05).
-@immutable
-class SeatSelectionArgs {
-  const SeatSelectionArgs({
-    required this.trip,
-    required this.boardingStopId,
-    required this.boardingStopName,
-    required this.alightingStop,
-  });
-
-  final TripSearchResultResponse trip;
-
-  /// Where the passenger boards: the chosen stop, or the one the backend
-  /// picked from the phone's position.
-  final String? boardingStopId;
-  final String boardingStopName;
-  final SearchStop alightingStop;
 }
 
 /// Search Results (P-03, Figma P6): the vehicles for a journey, a page at
@@ -162,6 +144,10 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
       StopOrigin(:final stop) => (stop.id, stop.name),
       CurrentLocationOrigin() => (trip.pickupStopId, trip.pickupStopName),
     };
+    // A "Current location" search books from the same position.
+    final position = _search.origin is CurrentLocationOrigin
+        ? ref.read(locationControllerProvider).position
+        : null;
     context.pushNamed(
       AppRoute.seatSelection.name,
       extra: SeatSelectionArgs(
@@ -171,6 +157,8 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
             boarding.$2 ??
             AppLocalizations.of(context).searchCurrentLocationShort,
         alightingStop: _search.destination,
+        pickupLatitude: position?.latitude,
+        pickupLongitude: position?.longitude,
       ),
     );
   }

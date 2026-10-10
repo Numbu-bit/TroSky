@@ -1407,22 +1407,322 @@ abstract class AppLocalizations {
   /// **'Loading trips'**
   String get resultsLoading;
 
-  /// Title of the Seat Selection placeholder (P-05).
+  /// Seat Selection header title (P7).
   ///
   /// In en, this message translates to:
-  /// **'Choose your seat'**
-  String get placeholderSeats;
+  /// **'Choose Your Seat'**
+  String get seatsTitle;
 
-  /// Seat Selection placeholder: the chosen trip.
+  /// Seat Selection header line (P7).
   ///
   /// In en, this message translates to:
-  /// **'{vehicle} · departs {departs}\nFrom {origin} to {destination}'**
-  String placeholderSeatsTrip(
-    String vehicle,
-    String departs,
+  /// **'{origin} → {destination} · {plate} · Departs {departs}'**
+  String seatsSubtitle(
     String origin,
     String destination,
+    String plate,
+    String departs,
   );
+
+  /// After the booked count on the counter card (P7), e.g. "5/14 booked".
+  ///
+  /// In en, this message translates to:
+  /// **'/{total} booked'**
+  String seatsBookedSuffix(int total);
+
+  /// Screen reader label of the booked counter.
+  ///
+  /// In en, this message translates to:
+  /// **'{booked} of {total} seats booked'**
+  String seatsBookedLabel(int booked, int total);
+
+  /// Seat map legend.
+  ///
+  /// In en, this message translates to:
+  /// **'Available'**
+  String get seatsLegendAvailable;
+
+  /// Seat map legend.
+  ///
+  /// In en, this message translates to:
+  /// **'Taken'**
+  String get seatsLegendTaken;
+
+  /// Seat map legend.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected'**
+  String get seatsLegendSelected;
+
+  /// Screen reader label of a free seat.
+  ///
+  /// In en, this message translates to:
+  /// **'Seat {number}'**
+  String seatLabel(String number);
+
+  /// Screen reader label of a taken seat.
+  ///
+  /// In en, this message translates to:
+  /// **'Seat {number}, taken'**
+  String seatLabelTaken(String number);
+
+  /// Screen reader label of a selected seat.
+  ///
+  /// In en, this message translates to:
+  /// **'Seat {number}, selected'**
+  String seatLabelSelected(String number);
+
+  /// Group strip on the fare panel (P7).
+  ///
+  /// In en, this message translates to:
+  /// **'1 seat selected'**
+  String get seatsOneSelected;
+
+  /// Group strip on the fare panel (P7).
+  ///
+  /// In en, this message translates to:
+  /// **'{count} seats selected (group booking)'**
+  String seatsManySelected(int count);
+
+  /// Group strip: the chosen seat numbers.
+  ///
+  /// In en, this message translates to:
+  /// **'Seats: {seats}'**
+  String seatsList(String seats);
+
+  /// Group strip: unselect every seat.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get seatsClear;
+
+  /// Fare panel label for one seat (P7).
+  ///
+  /// In en, this message translates to:
+  /// **'You pay now'**
+  String get seatsYouPayNow;
+
+  /// Fare panel label for several seats (P7).
+  ///
+  /// In en, this message translates to:
+  /// **'{price} × {count} seats'**
+  String seatsPriceTimes(String price, int count);
+
+  /// Fare panel pill (P7, mock mode until G20).
+  ///
+  /// In en, this message translates to:
+  /// **'↓ Drops to {price}'**
+  String seatsDropsTo(String price);
+
+  /// Under the "Drops to" pill (P7).
+  ///
+  /// In en, this message translates to:
+  /// **'as more riders join'**
+  String get seatsAsMoreJoin;
+
+  /// Live mode fare panel tag until G20 (decision 24).
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated'**
+  String get seatsEstimated;
+
+  /// Screen reader: the crossed-out solo price.
+  ///
+  /// In en, this message translates to:
+  /// **'was {price}'**
+  String seatsWas(String price);
+
+  /// Seat Selection button with no seat chosen (P7).
+  ///
+  /// In en, this message translates to:
+  /// **'Select Seats to Continue'**
+  String get seatsSelectToContinue;
+
+  /// Seat Selection button for one seat (P7).
+  ///
+  /// In en, this message translates to:
+  /// **'Reserve Seat {number}'**
+  String seatsReserveOne(String number);
+
+  /// Seat Selection button for several seats (P7).
+  ///
+  /// In en, this message translates to:
+  /// **'Reserve {count} Seats · {total}'**
+  String seatsReserveMany(int count, String total);
+
+  /// Trying to pick more seats than a booking allows.
+  ///
+  /// In en, this message translates to:
+  /// **'You can book up to {max} seats at once.'**
+  String seatsMax(int max);
+
+  /// A selected seat was booked by someone else (refresh or SEAT_NOT_AVAILABLE).
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Seat {seats} was just taken. Choose another seat.} other{Seats {seats} were just taken. Choose other seats.}}'**
+  String seatsJustTaken(int count, String seats);
+
+  /// TRIP_NOT_BOOKABLE.
+  ///
+  /// In en, this message translates to:
+  /// **'This trip can no longer be booked. Choose another one.'**
+  String get seatsTripClosed;
+
+  /// Reserving failed with PICKUP_ALREADY_PASSED: the vehicle is on the road and past the boarding stop.
+  ///
+  /// In en, this message translates to:
+  /// **'This vehicle has already passed your pickup. Choose another one.'**
+  String get seatsPickupPassed;
+
+  /// Reserving failed with STOP_NOT_ON_ROUTE: the route changed since the search.
+  ///
+  /// In en, this message translates to:
+  /// **'This trip no longer stops where you chose. Choose another one.'**
+  String get seatsStopsChanged;
+
+  /// Action after TRIP_NOT_BOOKABLE.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to results'**
+  String get seatsBackToResults;
+
+  /// Screen reader label while the seat map loads.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading seats'**
+  String get seatsLoading;
+
+  /// The seat map failed to load; next to Retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the seats.'**
+  String get seatsLoadError;
+
+  /// GET /trips/{id}/seats: no vehicle or layout.
+  ///
+  /// In en, this message translates to:
+  /// **'This trip has no vehicle yet, so its seats can\'t be chosen.'**
+  String get seatsNoVehicle;
+
+  /// Passenger 1 name when the account has no name (decision 23).
+  ///
+  /// In en, this message translates to:
+  /// **'TroSky passenger'**
+  String get bookingPassengerFallback;
+
+  /// Name of each extra passenger (decision 23).
+  ///
+  /// In en, this message translates to:
+  /// **'{firstName}\'s guest {number}'**
+  String bookingGuestName(String firstName, int number);
+
+  /// Extra passenger name when the account has no name.
+  ///
+  /// In en, this message translates to:
+  /// **'Guest {number}'**
+  String bookingGuestFallback(int number);
+
+  /// Title of the Payment placeholder (P-07).
+  ///
+  /// In en, this message translates to:
+  /// **'Payment'**
+  String get paymentTitle;
+
+  /// Countdown to the end of the seat hold.
+  ///
+  /// In en, this message translates to:
+  /// **'Seats held for {time}'**
+  String paymentHeldFor(String time);
+
+  /// Booking reference on Payment.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking {reference}'**
+  String paymentReference(String reference);
+
+  /// Row label on Payment.
+  ///
+  /// In en, this message translates to:
+  /// **'Seats'**
+  String get paymentSeats;
+
+  /// Row label on Payment.
+  ///
+  /// In en, this message translates to:
+  /// **'Fare'**
+  String get paymentFare;
+
+  /// Row label on Payment.
+  ///
+  /// In en, this message translates to:
+  /// **'Platform fee'**
+  String get paymentPlatformFee;
+
+  /// Row label on Payment.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get paymentTotal;
+
+  /// Note on the Payment placeholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Paying in the app is coming soon. Your seats stay held until the timer ends.'**
+  String get paymentComingSoon;
+
+  /// Cancels the held booking and frees the seats.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel booking'**
+  String get paymentCancel;
+
+  /// After cancelling.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking cancelled. Your seats are free again.'**
+  String get paymentCancelled;
+
+  /// Title of the sheet shown when going back from Payment to Seat Selection.
+  ///
+  /// In en, this message translates to:
+  /// **'Change your seats?'**
+  String get paymentReleaseTitle;
+
+  /// Body of the sheet shown when going back from Payment to Seat Selection.
+  ///
+  /// In en, this message translates to:
+  /// **'Going back releases the seats held for you, so you can choose again.'**
+  String get paymentReleaseBody;
+
+  /// Stays on Payment with the seats still held.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep these seats'**
+  String get paymentReleaseKeep;
+
+  /// Cancels the held booking and goes back to Seat Selection.
+  ///
+  /// In en, this message translates to:
+  /// **'Release seats'**
+  String get paymentReleaseConfirm;
+
+  /// After the held seats were released by going back.
+  ///
+  /// In en, this message translates to:
+  /// **'Seats released. Choose again.'**
+  String get paymentReleased;
+
+  /// When the countdown reaches zero.
+  ///
+  /// In en, this message translates to:
+  /// **'Your seat hold has expired. Choose your seats again.'**
+  String get paymentExpired;
+
+  /// When a restored hold runs out.
+  ///
+  /// In en, this message translates to:
+  /// **'Your seat hold has expired.'**
+  String get paymentExpiredHome;
 }
 
 class _AppLocalizationsDelegate

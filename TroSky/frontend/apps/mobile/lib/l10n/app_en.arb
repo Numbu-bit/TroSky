@@ -1044,26 +1044,331 @@
   "@resultsLoading": {
     "description": "Screen reader label of the skeleton cards."
   },
-  "placeholderSeats": "Choose your seat",
-  "@placeholderSeats": {
-    "description": "Title of the Seat Selection placeholder (P-05)."
+  "seatsTitle": "Choose Your Seat",
+  "@seatsTitle": {
+    "description": "Seat Selection header title (P7)."
   },
-  "placeholderSeatsTrip": "{vehicle} · departs {departs}\nFrom {origin} to {destination}",
-  "@placeholderSeatsTrip": {
-    "description": "Seat Selection placeholder: the chosen trip.",
+  "seatsSubtitle": "{origin} → {destination} · {plate} · Departs {departs}",
+  "@seatsSubtitle": {
+    "description": "Seat Selection header line (P7).",
     "placeholders": {
-      "vehicle": {
-        "type": "String"
-      },
-      "departs": {
-        "type": "String"
-      },
       "origin": {
         "type": "String"
       },
       "destination": {
         "type": "String"
+      },
+      "plate": {
+        "type": "String"
+      },
+      "departs": {
+        "type": "String"
       }
     }
+  },
+  "seatsBookedSuffix": "/{total} booked",
+  "@seatsBookedSuffix": {
+    "description": "After the booked count on the counter card (P7), e.g. \"5/14 booked\".",
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "seatsBookedLabel": "{booked} of {total} seats booked",
+  "@seatsBookedLabel": {
+    "description": "Screen reader label of the booked counter.",
+    "placeholders": {
+      "booked": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "seatsLegendAvailable": "Available",
+  "@seatsLegendAvailable": {
+    "description": "Seat map legend."
+  },
+  "seatsLegendTaken": "Taken",
+  "@seatsLegendTaken": {
+    "description": "Seat map legend."
+  },
+  "seatsLegendSelected": "Selected",
+  "@seatsLegendSelected": {
+    "description": "Seat map legend."
+  },
+  "seatLabel": "Seat {number}",
+  "@seatLabel": {
+    "description": "Screen reader label of a free seat.",
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "seatLabelTaken": "Seat {number}, taken",
+  "@seatLabelTaken": {
+    "description": "Screen reader label of a taken seat.",
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "seatLabelSelected": "Seat {number}, selected",
+  "@seatLabelSelected": {
+    "description": "Screen reader label of a selected seat.",
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "seatsOneSelected": "1 seat selected",
+  "@seatsOneSelected": {
+    "description": "Group strip on the fare panel (P7)."
+  },
+  "seatsManySelected": "{count} seats selected (group booking)",
+  "@seatsManySelected": {
+    "description": "Group strip on the fare panel (P7).",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "seatsList": "Seats: {seats}",
+  "@seatsList": {
+    "description": "Group strip: the chosen seat numbers.",
+    "placeholders": {
+      "seats": {
+        "type": "String"
+      }
+    }
+  },
+  "seatsClear": "Clear",
+  "@seatsClear": {
+    "description": "Group strip: unselect every seat."
+  },
+  "seatsYouPayNow": "You pay now",
+  "@seatsYouPayNow": {
+    "description": "Fare panel label for one seat (P7)."
+  },
+  "seatsPriceTimes": "{price} × {count} seats",
+  "@seatsPriceTimes": {
+    "description": "Fare panel label for several seats (P7).",
+    "placeholders": {
+      "price": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "seatsDropsTo": "↓ Drops to {price}",
+  "@seatsDropsTo": {
+    "description": "Fare panel pill (P7, mock mode until G20).",
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "seatsAsMoreJoin": "as more riders join",
+  "@seatsAsMoreJoin": {
+    "description": "Under the \"Drops to\" pill (P7)."
+  },
+  "seatsEstimated": "Estimated",
+  "@seatsEstimated": {
+    "description": "Live mode fare panel tag until G20 (decision 24)."
+  },
+  "seatsWas": "was {price}",
+  "@seatsWas": {
+    "description": "Screen reader: the crossed-out solo price.",
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "seatsSelectToContinue": "Select Seats to Continue",
+  "@seatsSelectToContinue": {
+    "description": "Seat Selection button with no seat chosen (P7)."
+  },
+  "seatsReserveOne": "Reserve Seat {number}",
+  "@seatsReserveOne": {
+    "description": "Seat Selection button for one seat (P7).",
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "seatsReserveMany": "Reserve {count} Seats · {total}",
+  "@seatsReserveMany": {
+    "description": "Seat Selection button for several seats (P7).",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "seatsMax": "You can book up to {max} seats at once.",
+  "@seatsMax": {
+    "description": "Trying to pick more seats than a booking allows.",
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "seatsJustTaken": "{count, plural, =1{Seat {seats} was just taken. Choose another seat.} other{Seats {seats} were just taken. Choose other seats.}}",
+  "@seatsJustTaken": {
+    "description": "A selected seat was booked by someone else (refresh or SEAT_NOT_AVAILABLE).",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "seats": {
+        "type": "String"
+      }
+    }
+  },
+  "seatsTripClosed": "This trip can no longer be booked. Choose another one.",
+  "@seatsTripClosed": {
+    "description": "TRIP_NOT_BOOKABLE."
+  },
+  "seatsPickupPassed": "This vehicle has already passed your pickup. Choose another one.",
+  "@seatsPickupPassed": {
+    "description": "Reserving failed with PICKUP_ALREADY_PASSED: the vehicle is on the road and past the boarding stop."
+  },
+  "seatsStopsChanged": "This trip no longer stops where you chose. Choose another one.",
+  "@seatsStopsChanged": {
+    "description": "Reserving failed with STOP_NOT_ON_ROUTE: the route changed since the search."
+  },
+  "seatsBackToResults": "Back to results",
+  "@seatsBackToResults": {
+    "description": "Action after TRIP_NOT_BOOKABLE."
+  },
+  "seatsLoading": "Loading seats",
+  "@seatsLoading": {
+    "description": "Screen reader label while the seat map loads."
+  },
+  "seatsLoadError": "Couldn't load the seats.",
+  "@seatsLoadError": {
+    "description": "The seat map failed to load; next to Retry."
+  },
+  "seatsNoVehicle": "This trip has no vehicle yet, so its seats can't be chosen.",
+  "@seatsNoVehicle": {
+    "description": "GET /trips/{id}/seats: no vehicle or layout."
+  },
+  "bookingPassengerFallback": "TroSky passenger",
+  "@bookingPassengerFallback": {
+    "description": "Passenger 1 name when the account has no name (decision 23)."
+  },
+  "bookingGuestName": "{firstName}'s guest {number}",
+  "@bookingGuestName": {
+    "description": "Name of each extra passenger (decision 23).",
+    "placeholders": {
+      "firstName": {
+        "type": "String"
+      },
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "bookingGuestFallback": "Guest {number}",
+  "@bookingGuestFallback": {
+    "description": "Extra passenger name when the account has no name.",
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "paymentTitle": "Payment",
+  "@paymentTitle": {
+    "description": "Title of the Payment placeholder (P-07)."
+  },
+  "paymentHeldFor": "Seats held for {time}",
+  "@paymentHeldFor": {
+    "description": "Countdown to the end of the seat hold.",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentReference": "Booking {reference}",
+  "@paymentReference": {
+    "description": "Booking reference on Payment.",
+    "placeholders": {
+      "reference": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentSeats": "Seats",
+  "@paymentSeats": {
+    "description": "Row label on Payment."
+  },
+  "paymentFare": "Fare",
+  "@paymentFare": {
+    "description": "Row label on Payment."
+  },
+  "paymentPlatformFee": "Platform fee",
+  "@paymentPlatformFee": {
+    "description": "Row label on Payment."
+  },
+  "paymentTotal": "Total",
+  "@paymentTotal": {
+    "description": "Row label on Payment."
+  },
+  "paymentComingSoon": "Paying in the app is coming soon. Your seats stay held until the timer ends.",
+  "@paymentComingSoon": {
+    "description": "Note on the Payment placeholder."
+  },
+  "paymentCancel": "Cancel booking",
+  "@paymentCancel": {
+    "description": "Cancels the held booking and frees the seats."
+  },
+  "paymentCancelled": "Booking cancelled. Your seats are free again.",
+  "@paymentCancelled": {
+    "description": "After cancelling."
+  },
+  "paymentReleaseTitle": "Change your seats?",
+  "@paymentReleaseTitle": {
+    "description": "Title of the sheet shown when going back from Payment to Seat Selection."
+  },
+  "paymentReleaseBody": "Going back releases the seats held for you, so you can choose again.",
+  "@paymentReleaseBody": {
+    "description": "Body of the sheet shown when going back from Payment to Seat Selection."
+  },
+  "paymentReleaseKeep": "Keep these seats",
+  "@paymentReleaseKeep": {
+    "description": "Stays on Payment with the seats still held."
+  },
+  "paymentReleaseConfirm": "Release seats",
+  "@paymentReleaseConfirm": {
+    "description": "Cancels the held booking and goes back to Seat Selection."
+  },
+  "paymentReleased": "Seats released. Choose again.",
+  "@paymentReleased": {
+    "description": "After the held seats were released by going back."
+  },
+  "paymentExpired": "Your seat hold has expired. Choose your seats again.",
+  "@paymentExpired": {
+    "description": "When the countdown reaches zero."
+  },
+  "paymentExpiredHome": "Your seat hold has expired.",
+  "@paymentExpiredHome": {
+    "description": "When a restored hold runs out."
   }
 }

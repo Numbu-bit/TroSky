@@ -293,6 +293,170 @@ void main() {
     });
   });
 
+  group('Seats and bookings (P-05)', () {
+    late String token;
+    late TripSearchResultResponse minibus;
+
+    setUp(() {
+      token = signIn('0241234567');
+      final page = backend
+          .searchTrips(
+            TripSearchQuery(
+              originStopId: MockBackend.stops['Madina']!.id,
+              destinationStopId: MockBackend.stops['Circle']!.id,
+              travelDate: now,
+              departureAfter: Duration(hours: now.hour, minutes: now.minute),
+            ),
+          )
+          .valueOrNull!;
+      minibus = page.items.firstWhere(
+        (t) => t.vehicleRegistrationNumber == 'GR-4821',
+      );
+    });
+
+    TripSeatsResponse seats() => backend.tripSeats(minibus.tripId).valueOrNull!;
+    String seatId(String number) =>
+        seats().seats.firstWhere((s) => s.seatNumber == number).id;
+    BookingCreateRequest request(List<String> numbers) => BookingCreateRequest(
+      tripId: minibus.tripId,
+      passengers: [
+        for (final (i, n) in numbers.indexed)
+          PassengerInput(seatId: seatId(n), fullName: 'Ama guest $i'),
+      ],
+    );
+
+    test('the P7 map: 14 seats, 2 6 9 11 12 taken, a back bench', () {
+      backend.simulateRiders = false;
+      final map = seats();
+      expect(map.totalSeats, 14);
+      expect(map.seats.where((s) => !s.isAvailable).map((s) => s.seatNumber), [
+        '2',
+        '6',
+        '9',
+        '11',
+        '12',
+      ]);
+      final bench = map.seats.where((s) => s.rowNumber == 4);
+      expect(bench.map((s) => (s.seatNumber, s.columnNumber)), [
+        ('13', 2),
+        ('14', 3),
+      ]);
+      expect(
+        (map.sharedFareAmount, map.soloFareAmount, map.floorFareAmount),
+        ('14.00', '38.00', '6.00'),
+      );
+    });
+
+    test('riders join every 10 s and the fare drops to the floor', () {
+      expect(seats().availableSeats, 9);
+      now = now.add(const Duration(seconds: 11));
+      final after = seats();
+      expect(after.availableSeats, 8);
+      expect(after.sharedFareAmount, '7.33');
+      for (var i = 0; i < 10; i++) {
+        now = now.add(const Duration(seconds: 11));
+        seats();
+      }
+      expect(seats().availableSeats, 2);
+      expect(seats().sharedFareAmount, '6.00');
+    });
+
+    test('a hold: pending, 10 minutes, the seats taken, the fare and fee', () {
+      backend.simulateRiders = false;
+      final booking = backend
+          .createBooking(token, request(['4', '7']))
+          .valueOrNull!;
+      expect(booking.status, BookingStatus.pending);
+      expect(booking.bookingReference, startsWith('TS-'));
+      expect(booking.expiresAt, now.toUtc().add(const Duration(minutes: 10)));
+      expect(
+        (booking.fareAmount, booking.platformFee, booking.totalAmount),
+        ('28.00', '1.00', '29.00'),
+      );
+      expect(booking.trip?.vehicleRegistrationNumber, 'GR-4821');
+      expect(booking.boardingStopName, 'Madina');
+      final map = seats();
+      expect(
+        map.seats
+            .where((s) => ['4', '7'].contains(s.seatNumber))
+            .map((s) => s.isAvailable),
+        [false, false],
+      );
+
+      // Someone else on the same seat.
+      expect(
+        code(backend.createBooking(token, request(['7']))),
+        'SEAT_NOT_AVAILABLE',
+      );
+    });
+
+    test('the hold lapses after 10 minutes and the seats come back', () {
+      backend.simulateRiders = false;
+      final booking = backend.createBooking(token, request(['4'])).valueOrNull!;
+      now = now.add(const Duration(minutes: 10, seconds: 1));
+      expect(backend.bookingStatus(booking.id), BookingStatus.expired);
+      expect(
+        seats().seats.firstWhere((s) => s.seatNumber == '4').isAvailable,
+        isTrue,
+      );
+    });
+
+    test('cancel releases the seats; cancelling again is refused', () {
+      backend.simulateRiders = false;
+      final booking = backend.createBooking(token, request(['4'])).valueOrNull!;
+      final cancelled = backend.cancelBooking(token, booking.id).valueOrNull!;
+      expect(cancelled.status, BookingStatus.cancelled);
+      expect(cancelled.expiresAt, isNull);
+      expect(
+        seats().seats.firstWhere((s) => s.seatNumber == '4').isAvailable,
+        isTrue,
+      );
+      expect(
+        code(backend.cancelBooking(token, booking.id)),
+        'INVALID_STATE_TRANSITION',
+      );
+    });
+
+    test('the held booking is found by status', () {
+      backend.simulateRiders = false;
+      final booking = backend.createBooking(token, request(['4'])).valueOrNull!;
+      final held = backend
+          .listBookings(
+            token,
+            statuses: [BookingStatus.pending, BookingStatus.paymentPending],
+            upcoming: true,
+          )
+          .valueOrNull!;
+      expect(held.items.single.id, booking.id);
+    });
+
+    test(
+      'refusals: unverified, closed trip, 11 seats, the same seat twice',
+      () {
+        backend.simulateRiders = false;
+        final all = [for (final s in seats().seats) s.seatNumber];
+        expect(
+          code(backend.createBooking(token, request(all.take(11).toList()))),
+          'VALIDATION_ERROR',
+        );
+        expect(
+          code(backend.createBooking(token, request(['4', '4']))),
+          'VALIDATION_ERROR',
+        );
+        backend.closeTrip(minibus.tripId);
+        expect(
+          code(backend.createBooking(token, request(['4']))),
+          'TRIP_NOT_BOOKABLE',
+        );
+        backend.markUnverified('0241234567');
+        expect(
+          code(backend.createBooking(token, request(['5']))),
+          'ACCOUNT_NOT_VERIFIED',
+        );
+      },
+    );
+  });
+
   group('register', () {
     test('a new phone gets a code by SMS, sent to the E.164 number', () {
       final result = backend.register(newPassenger());

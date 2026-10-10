@@ -26,6 +26,9 @@ Product decisions that settle questions the Figma Make file leaves open. These r
 | 20 | Fare display | 2 Oct 2026 | In force (`TripCard`); full design waits for G20 |
 | 21 | Approaching / passed | 2 Oct 2026 | In force (`SearchResultsScreen`); full design waits for G21 |
 | 22 | Filter pills | 2 Oct 2026 | In force (`SearchResultsScreen`) |
+| 23 | Passenger names | 2 Oct 2026 | In force (`SeatSelectionScreen`) |
+| 24 | Price on the seat screen | 2 Oct 2026 | In force; full design waits for G20 |
+| 25 | Seat layout | 2 Oct 2026 | In force (`SeatMapLayout`) |
 
 ## 1. Logo
 
@@ -194,3 +197,28 @@ In live mode the badge slot shows where the passenger boards, from the search re
 Now and Schedule pick the time; Cheapest and Fastest pick the order (tap again for departure order); Minibus is an on/off filter. Several pills can be on at once.
 
 **"BEST MATCH"** is the first card after sorting that can still be booked (free seats, not passed).
+
+## 23. Passenger names
+
+The design has no passenger-details step (P-06 is skipped for now). A booking names one passenger per seat:
+
+- **Seat 1:** the signed-in user's full name and phone number.
+- **Every other seat:** "<first name>'s guest 2", "<first name>'s guest 3" and so on, with no phone number.
+- **At most 10 seats** per booking, the backend's limit.
+
+## 24. Price on the seat screen
+
+- **Mock mode:** the full design. The fare drops as other riders book, the solo price is crossed out, and "↓ Drops to ₵6.00 / as more riders join" shows. The price flashes green when it changes (`.anim-price`).
+- **Live mode, until backend gap G20:** the trip's fare × the seats chosen, with a small "Estimated" label where the "Drops to" badge would be. No crossed-out price and no "Drops to". The exact total, with the platform fee, comes from the booking response on the next screen.
+
+## 25. Seat layout
+
+The seat map is drawn from `GET /trips/{id}/seats` (`row_number`, `column_number`, `seat_type`), not from the design's fixed 14 seats. Each seat sits in its row and column; a missing seat leaves its place empty, so seats line up in columns.
+
+The backend has no aisle field: a layout is just seats on a grid, and `seat_type` (`standard`, `vip`, `window`, `aisle`) is optional. The aisle is found in this order:
+
+1. **A column with no seats in most rows** (such as column 3 in a 2 + 2 bus coded as 5 columns) is the aisle. A seat in it (the middle of a back bench) is drawn in the aisle's place.
+2. Otherwise, **two neighbouring columns of `aisle` seats**: the aisle is between them.
+3. Otherwise, by width: **4 columns → between 2 and 3** (as in the design); 3 columns → between 2 and 3 (2 + 1); 5 or more → after the middle column; 1–2 columns → no aisle.
+
+**A shorter last row** (fewer seats than the rows before it, such as the design's 2-seat back bench) is centred under the others without an aisle, as P7 draws seats 13 and 14. A grid wider than the card shrinks to fit.

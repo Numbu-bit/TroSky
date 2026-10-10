@@ -117,9 +117,9 @@ Use the **Screen ID** as the screenshot filename (e.g. `S-04.png`). "Figma" is t
 | P-02 | **Search** (from, to, when; not in Figma, decision 19). Built 2 Oct 2026: Current location or a chosen stop, stop search, nearby stops, favourites, last 5 searches | `GET /stops?q=`, `GET /stops/nearby`, `GET /users/me/favourite-routes` | ✅ |
 | P-03 | **Search results** (P6). Built 2 Oct 2026: filter pills (decision 22), pages, save route. Live shows the trip fare and "Board at …" (decisions 20, 21) | `GET /trips/search` (+ `pickup_latitude` / `pickup_longitude`), `POST /users/me/favourite-routes` | ✅ full design waits for G20, G21 |
 | P-04 | Trip details | `GET /trips/{id}`, `GET /routes/{id}` | ✅ |
-| P-05 | Seat selection | `GET /trips/{id}/seats` | ✅ |
-| P-06 | Passenger details + booking review | `POST /bookings` | ✅ |
-| P-07 | Payment method | `POST /bookings/{id}/pay`, `GET /wallet` | ✅ |
+| P-05 | **Seat selection** (P7). Built 2 Oct 2026: the map drawn from the seat rows and columns (decision 25), refreshed every 10 s, up to 10 seats, the fare per decision 24; Reserve holds the seats (passengers per decision 23) | `GET /trips/{id}/seats`, `POST /bookings` (`Idempotency-Key`) | ✅ live fare is an estimate until G20 |
+| P-06 | Passenger details + booking review. Not built: decision 23 names the passengers without asking, and Payment shows the review | `POST /bookings` | ✅ |
+| P-07 | Payment method. **Placeholder** since 2 Oct 2026: the held booking (reference, seats, fare, fee, total), a countdown to `expires_at`, Cancel booking; Home reopens an unpaid hold after a restart | `POST /bookings/{id}/pay`, `GET /wallet`; the placeholder uses `POST /bookings/{id}/cancel`, `GET /bookings?status=pending,payment_pending&upcoming=true` | ✅ |
 | P-08 | Approve on your phone (MoMo pending) | `POST /payments/{id}/sync` (poll) | ✅ |
 | P-09 | Payment success / failed | `GET /bookings/{id}` | ✅ |
 | P-10 | Ticket (QR) | `GET /bookings/{id}/tickets`, `GET /tickets/{id}` | ✅ |

@@ -44,6 +44,7 @@ Future<TestWorld> openHome(
   TestWorld world,
   TrackingRepository tracking, {
   RouteRepository? routes,
+  BookingRepository? bookings,
 }) => (
   env: Env.parse(
     apiBaseUrl: 'http://localhost:8000/api/v1',
@@ -73,6 +74,14 @@ Future<TestWorld> openHome(
       ),
     ),
     trackingRepositoryProvider.overrideWithValue(tracking),
+    bookingRepositoryProvider.overrideWith(
+      (ref) =>
+          bookings ??
+          MockBookingRepository(
+            world.backend,
+            tokens: () => ref.read(tokenManagerProvider),
+          ),
+    ),
   ],
 );
 

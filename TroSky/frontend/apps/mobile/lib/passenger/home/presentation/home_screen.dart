@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:trosky_api/trosky_api.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
+import '../../../app/routes.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../booking/presentation/payment_screen.dart';
+import '../../seats/application/seat_providers.dart';
 import '../application/home_providers.dart';
 import 'widgets/home_header.dart';
 import 'widgets/home_map.dart';
@@ -40,6 +45,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         WidgetsBinding.instance.addPostFrameCallback((_) => _askLocation());
       }
     }, fireImmediately: true);
+    ref.listenManual(heldBookingProvider, (_, next) {
+      if (next.value case final booking?) _reopen(booking);
+    }, fireImmediately: true);
+  }
+
+  /// A booking held before the app closed is reopened on Payment, once.
+  void _reopen(BookingResponse booking) {
+    if (ref.read(shownBookingsProvider).contains(booking.id)) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Only over Home itself, not over a screen opened from it.
+      if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return;
+      if (ref.read(shownBookingsProvider).contains(booking.id)) return;
+      ref.read(shownBookingsProvider.notifier).add(booking.id);
+      context.pushNamed(
+        AppRoute.payment.name,
+        extra: PaymentArgs(booking: booking, restored: true),
+      );
+    });
   }
 
   Future<void> _askLocation() async {
