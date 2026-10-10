@@ -5,6 +5,7 @@ import '../client/api_client.dart';
 import '../dto/booking_dto.dart';
 import '../dto/paginated.dart';
 import '../dto/route_dto.dart';
+import '../dto/tracking_dto.dart';
 
 /// What to search for with `GET /trips/search`.
 ///
@@ -24,6 +25,8 @@ class TripSearchQuery {
     this.departureBefore,
     this.pickupLatitude,
     this.pickupLongitude,
+    this.sort = SearchSort.departure,
+    this.vehicleType,
     this.limit = 20,
     this.offset = 0,
   });
@@ -39,6 +42,10 @@ class TripSearchQuery {
   final Duration? departureBefore;
   final double? pickupLatitude;
   final double? pickupLongitude;
+  final SearchSort sort;
+
+  /// Only this kind of vehicle.
+  final VehicleType? vehicleType;
   final int limit;
   final int offset;
 
@@ -50,6 +57,8 @@ class TripSearchQuery {
     departureBefore: departureBefore,
     pickupLatitude: pickupLatitude,
     pickupLongitude: pickupLongitude,
+    sort: sort,
+    vehicleType: vehicleType,
     limit: limit,
     offset: offset ?? this.offset,
   );
@@ -63,6 +72,8 @@ class TripSearchQuery {
     if (departureBefore case final before?) 'departure_before': _time(before),
     'pickup_latitude': ?pickupLatitude,
     'pickup_longitude': ?pickupLongitude,
+    if (sort != SearchSort.departure) 'sort': sort.name,
+    'vehicle_type': ?vehicleType?.name,
     'limit': limit,
     'offset': offset,
   };
@@ -95,8 +106,8 @@ abstract interface class RouteRepository {
     int limit = 20,
   });
 
-  /// Trips the passenger can take, earliest departure first, one page at a
-  /// time.
+  /// Trips the passenger can take, one page at a time, in [TripSearchQuery.sort]
+  /// order. Each carries its price from the pickup ([TripSearchResultResponse.fare]).
   Future<Result<Paginated<TripSearchResultResponse>>> searchTrips(
     TripSearchQuery query,
   );
@@ -104,6 +115,17 @@ abstract interface class RouteRepository {
   /// The trip vehicle's seats and which are free (public). 409 `CONFLICT`
   /// before a vehicle is assigned; 404 without a seat layout.
   Future<Result<TripSeatsResponse>> tripSeats(String tripId);
+
+  /// What [seats] seats from [originStopId] to [destinationStopId] cost now
+  /// (public): the amount `POST /bookings` would charge. Without stops, the
+  /// route's start and end. 422 `STOP_NOT_ON_ROUTE`, 404 for an unknown
+  /// trip.
+  Future<Result<FareQuoteResponse>> fareQuote(
+    String tripId, {
+    String? originStopId,
+    String? destinationStopId,
+    int seats = 1,
+  });
 }
 
 /// [RouteRepository] against the backend.
@@ -166,5 +188,24 @@ class LiveRouteRepository implements RouteRepository {
   Future<Result<TripSeatsResponse>> tripSeats(String tripId) => apiCall(
     () => _dio.get<Object?>('/trips/$tripId/seats', options: publicEndpoint()),
     (data) => TripSeatsResponse.fromJson(jsonObject(data)),
+  );
+
+  @override
+  Future<Result<FareQuoteResponse>> fareQuote(
+    String tripId, {
+    String? originStopId,
+    String? destinationStopId,
+    int seats = 1,
+  }) => apiCall(
+    () => _dio.get<Object?>(
+      '/trips/$tripId/fare-quote',
+      queryParameters: {
+        'origin_stop_id': ?originStopId,
+        'destination_stop_id': ?destinationStopId,
+        'seats': seats,
+      },
+      options: publicEndpoint(),
+    ),
+    (data) => FareQuoteResponse.fromJson(jsonObject(data)),
   );
 }

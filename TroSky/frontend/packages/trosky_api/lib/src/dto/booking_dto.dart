@@ -31,9 +31,8 @@ abstract class TripSeatResponse with _$TripSeatResponse {
       _$TripSeatResponseFromJson(json);
 }
 
-/// `TripSeatsResponse` from `GET /trips/{id}/seats`, plus the fare fields
-/// proposed in backend gap G20. Those stay null until the backend sends
-/// them; the seat screen then shows an estimate (decision 24).
+/// `TripSeatsResponse` from `GET /trips/{id}/seats`. Its price comes from
+/// `GET /trips/{id}/fare-quote`.
 @freezed
 abstract class TripSeatsResponse with _$TripSeatsResponse {
   const factory TripSeatsResponse({
@@ -42,15 +41,6 @@ abstract class TripSeatsResponse with _$TripSeatsResponse {
     required int totalSeats,
     required int availableSeats,
     required List<TripSeatResponse> seats,
-
-    /// G20: one seat, shared, if booked now.
-    @JsonKey(fromJson: decimalStringOrNull) String? sharedFareAmount,
-
-    /// G20: one seat for the stretch alone.
-    @JsonKey(fromJson: decimalStringOrNull) String? soloFareAmount,
-
-    /// G20: the lowest the shared fare can drop to.
-    @JsonKey(fromJson: decimalStringOrNull) String? floorFareAmount,
   }) = _TripSeatsResponse;
 
   factory TripSeatsResponse.fromJson(Map<String, dynamic> json) =>

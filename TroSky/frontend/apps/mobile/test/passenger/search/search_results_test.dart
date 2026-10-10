@@ -80,23 +80,30 @@ void main() {
       expect(few.fare?.saving, 'Save 60%');
     });
 
-    testWidgets('passed vehicles: hidden, then shown after the approaching '
-        'ones', (tester) async {
+    testWidgets('passed vehicles: last, as the backend sends them; hidden '
+        'behind a button, then shown', (tester) async {
       await openResults(tester, size: const Size(360, 1600));
       expect(find.text('Already passed your stop — unavailable'), findsNothing);
-      // The dashed button sits right after the approaching vehicles.
+      expect(_plates(tester).take(3), ['GR-4821', 'GR-2204', 'GR-7743']);
+      // They come with the last page; the dashed button closes the list.
       final button = find.text('Show 2 vehicles that already passed your stop');
+      await tester.scrollUntilVisible(
+        button,
+        400,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.pumpAndSettle();
       expect(button, findsOneWidget);
 
       await tester.tap(button);
       await tester.pumpAndSettle();
-      expect(_plates(tester).take(5), [
-        'GR-4821',
-        'GR-2204',
-        'GR-7743',
-        'GR-1190',
-        'GR-5531',
-      ]);
+      await tester.scrollUntilVisible(
+        find.text('GR-5531'),
+        400,
+        scrollable: find.byType(Scrollable).last,
+      );
+      final plates = _plates(tester).toList();
+      expect(plates.sublist(plates.length - 2), ['GR-1190', 'GR-5531']);
       final passed = _card(tester, 'GR-1190');
       expect(
         (passed.passed, passed.seatsLabel, passed.onPressed),
@@ -173,6 +180,80 @@ void main() {
       expect(find.byType(TroskyDashedButton), findsNothing);
     });
 
+    testWidgets("the backend's fare: the current price, the solo fare "
+        'crossed out, the saving (decision 20 ended)', (tester) async {
+      final world = morning();
+      await openLiveResults(
+        tester,
+        world,
+        ScriptedTrips(world.backend, [
+          liveTrip(
+            id: 't1',
+            departs: DateTime(2026, 10, 1, 9, 15),
+            fare: '6.50',
+            solo: '8.00',
+          ),
+          liveTrip(
+            id: 't2',
+            departs: DateTime(2026, 10, 1, 9, 45),
+            plate: 'B-2',
+          ),
+        ]),
+      );
+      final shared = _card(tester, 'GT 4402-26');
+      expect(
+        (shared.fare?.price, shared.fare?.soloPrice, shared.fare?.saving),
+        ('₵6.50', '₵8', 'Save 19%'),
+      );
+      // Nobody aboard yet: solo and current are equal.
+      final empty = _card(tester, 'B-2');
+      expect(
+        (empty.fare?.price, empty.fare?.soloPrice, empty.fare?.saving),
+        ('₵8', null, null),
+      );
+    });
+
+    testWidgets('vehicles on the road: the banner, "~N min away", passed ones '
+        'behind the button (decision 21 ended)', (tester) async {
+      final world = morning();
+      await openLiveResults(
+        tester,
+        world,
+        ScriptedTrips(world.backend, [
+          liveTrip(
+            id: 'gone',
+            departs: DateTime(2026, 10, 1, 8, 40),
+            plate: 'P-0',
+          ).copyWith(hasPassedPickup: true),
+          liveTrip(
+            id: 'coming',
+            departs: DateTime(2026, 10, 1, 8, 50),
+            plate: 'A-1',
+          ).copyWith(vehicleEtaToPickupMinutes: 4),
+          liveTrip(
+            id: 'later',
+            departs: DateTime(2026, 10, 1, 9, 30),
+            plate: 'B-2',
+          ),
+        ]),
+      );
+      expect(
+        find.text('Showing vehicles still approaching your stop'),
+        findsOneWidget,
+      );
+      expect(_plates(tester), ['A-1', 'B-2']);
+      final coming = _card(tester, 'A-1');
+      expect(coming.badge, '~4 min away · approaching your stop');
+      expect(coming.tag, 'BEST MATCH');
+      expect(_card(tester, 'B-2').badge, 'Board at Accra Madina · 350 m away');
+      await tester.tap(
+        find.text('Show 1 vehicle that already passed your stop'),
+      );
+      await tester.pumpAndSettle();
+      final gone = _card(tester, 'P-0');
+      expect((gone.passed, gone.onPressed), (true, null));
+    });
+
     testWidgets('a pickup without a distance, and a fare with pesewas', (
       tester,
     ) async {
@@ -196,26 +277,27 @@ void main() {
   });
 
   group('filter pills (decision 22)', () {
-    testWidgets('Cheapest and Fastest sort; tapping again goes back', (
-      tester,
-    ) async {
+    testWidgets('Cheapest and Fastest ask the backend to sort; tapping again '
+        'goes back', (tester) async {
       final world = morning();
-      await openLiveResults(
-        tester,
-        world,
-        ScriptedTrips(world.backend, _threeTrips()),
-      );
+      final routes = ScriptedTrips(world.backend, _threeTrips());
+      await openLiveResults(tester, world, routes);
       expect(_plates(tester), ['A-1', 'B-2', 'C-3']);
       expect(_card(tester, 'A-1').tag, 'BEST MATCH');
+      expect(routes.queries.last.sort, SearchSort.departure);
 
       await tapPill(tester, 'Cheapest');
+      expect(routes.queries.last.sort, SearchSort.cheapest);
       expect(_plates(tester), ['C-3', 'A-1', 'B-2']);
       expect(_card(tester, 'C-3').tag, 'BEST MATCH');
 
+      // The backend's fastest: the shortest ride.
       await tapPill(tester, 'Fastest');
+      expect(routes.queries.last.sort, SearchSort.fastest);
       expect(_plates(tester), ['B-2', 'C-3', 'A-1']);
 
       await tapPill(tester, 'Fastest');
+      expect(routes.queries.last.sort, SearchSort.departure);
       expect(_plates(tester), ['A-1', 'B-2', 'C-3']);
     });
 
@@ -223,9 +305,10 @@ void main() {
       tester,
     ) async {
       final world = morning();
-      final trips = _threeTrips();
-      await openLiveResults(tester, world, ScriptedTrips(world.backend, trips));
+      final routes = ScriptedTrips(world.backend, _threeTrips());
+      await openLiveResults(tester, world, routes);
       await tapPill(tester, 'Minibus');
+      expect(routes.queries.last.vehicleType, VehicleType.minibus);
       expect(_plates(tester), ['B-2']);
     });
 

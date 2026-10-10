@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:trosky_api/trosky_api.dart';
@@ -15,6 +16,52 @@ const Duration seatRefreshEvery = Duration(seconds: 10);
 @Riverpod(retry: noRetry)
 Future<TripSeatsResponse> tripSeats(Ref ref, String tripId) async =>
     switch (await ref.read(routeRepositoryProvider).tripSeats(tripId)) {
+      Ok(:final value) => value,
+      Err(:final failure) => throw failure,
+    };
+
+/// What the seat screen prices: [seats] seats on [tripId] from
+/// [originStopId] to [destinationStopId] (the route's ends when null).
+@immutable
+class FareQuoteRequest {
+  const FareQuoteRequest(
+    this.tripId, {
+    this.originStopId,
+    this.destinationStopId,
+    this.seats = 1,
+  });
+
+  final String tripId;
+  final String? originStopId;
+  final String? destinationStopId;
+  final int seats;
+
+  @override
+  bool operator ==(Object other) =>
+      other is FareQuoteRequest &&
+      other.tripId == tripId &&
+      other.originStopId == originStopId &&
+      other.destinationStopId == destinationStopId &&
+      other.seats == seats;
+
+  @override
+  int get hashCode =>
+      Object.hash(tripId, originStopId, destinationStopId, seats);
+}
+
+/// The price of a [FareQuoteRequest] right now (`GET /trips/{id}/fare-quote`):
+/// what `POST /bookings` would charge. It falls as riders join, so the seat
+/// screen fetches it again with the seat map.
+@Riverpod(retry: noRetry)
+Future<FareQuoteResponse> fareQuote(Ref ref, FareQuoteRequest request) async =>
+    switch (await ref
+        .read(routeRepositoryProvider)
+        .fareQuote(
+          request.tripId,
+          originStopId: request.originStopId,
+          destinationStopId: request.destinationStopId,
+          seats: request.seats,
+        )) {
       Ok(:final value) => value,
       Err(:final failure) => throw failure,
     };

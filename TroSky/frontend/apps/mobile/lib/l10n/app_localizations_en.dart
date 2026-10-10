@@ -838,9 +838,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get seatsAsMoreJoin => 'as more riders join';
 
   @override
-  String get seatsEstimated => 'Estimated';
-
-  @override
   String seatsWas(String price) {
     return 'was $price';
   }

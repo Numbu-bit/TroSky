@@ -176,6 +176,22 @@ class MockRouteRepository implements RouteRepository {
     if (latency > Duration.zero) await Future<void>.delayed(latency);
     return _backend.tripSeats(tripId);
   }
+
+  @override
+  Future<Result<FareQuoteResponse>> fareQuote(
+    String tripId, {
+    String? originStopId,
+    String? destinationStopId,
+    int seats = 1,
+  }) async {
+    if (latency > Duration.zero) await Future<void>.delayed(latency);
+    return _backend.fareQuote(
+      tripId,
+      originStopId: originStopId,
+      destinationStopId: destinationStopId,
+      seats: seats,
+    );
+  }
 }
 
 /// [BookingRepository] on a [MockBackend] (`API_MODE=mock`).

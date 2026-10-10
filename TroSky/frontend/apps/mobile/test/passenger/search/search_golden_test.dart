@@ -73,4 +73,43 @@ void main() {
     await tester.pumpAndSettle();
     await _golden(tester, SearchResultsScreen, 'search_results_360');
   });
+
+  testWidgets('P-03 live: the backend fare and a vehicle on the road', (
+    tester,
+  ) async {
+    final world = morning();
+    final live = liveMode(
+      world,
+      FakeTracking(const []),
+      routes: ScriptedTrips(world.backend, [
+        liveTrip(
+          id: 'a',
+          departs: DateTime(2026, 10, 1, 8, 50),
+          fare: '6.50',
+          solo: '8.00',
+        ).copyWith(vehicleEtaToPickupMinutes: 4),
+        liveTrip(
+          id: 'b',
+          departs: DateTime(2026, 10, 1, 9, 30),
+          plate: 'GR 7781-26',
+          type: VehicleType.bus,
+        ),
+        liveTrip(
+          id: 'c',
+          departs: DateTime(2026, 10, 1, 8, 40),
+          plate: 'GE 2210-26',
+          type: VehicleType.sedan,
+        ).copyWith(hasPassedPickup: true),
+      ]),
+    );
+    await openHome(
+      tester,
+      world: world,
+      env: live.env,
+      overrides: live.overrides,
+    );
+    await tester.tap(find.text('Madina → Circle'));
+    await tester.pumpAndSettle();
+    await _golden(tester, SearchResultsScreen, 'search_results_live_360');
+  });
 }

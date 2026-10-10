@@ -46,9 +46,6 @@ _TripSeatsResponse _$TripSeatsResponseFromJson(Map<String, dynamic> json) =>
       seats: (json['seats'] as List<dynamic>)
           .map((e) => TripSeatResponse.fromJson(e as Map<String, dynamic>))
           .toList(),
-      sharedFareAmount: decimalStringOrNull(json['shared_fare_amount']),
-      soloFareAmount: decimalStringOrNull(json['solo_fare_amount']),
-      floorFareAmount: decimalStringOrNull(json['floor_fare_amount']),
     );
 
 Map<String, dynamic> _$TripSeatsResponseToJson(_TripSeatsResponse instance) =>
@@ -58,9 +55,6 @@ Map<String, dynamic> _$TripSeatsResponseToJson(_TripSeatsResponse instance) =>
       'total_seats': instance.totalSeats,
       'available_seats': instance.availableSeats,
       'seats': instance.seats.map((e) => e.toJson()).toList(),
-      'shared_fare_amount': ?instance.sharedFareAmount,
-      'solo_fare_amount': ?instance.soloFareAmount,
-      'floor_fare_amount': ?instance.floorFareAmount,
     };
 
 _PassengerInput _$PassengerInputFromJson(Map<String, dynamic> json) =>

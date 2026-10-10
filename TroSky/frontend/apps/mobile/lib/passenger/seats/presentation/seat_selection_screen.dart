@@ -59,6 +59,20 @@ class _SeatSelectionScreenState extends ConsumerState<SeatSelectionScreen> {
   TripSearchResultResponse get _trip => widget.args.trip;
   TripSeatsProvider get _seats => tripSeatsProvider(_trip.tripId);
 
+  /// The price of the seats chosen (one when none are), for the passenger's
+  /// stops.
+  FareQuoteProvider get _quote => fareQuoteProvider(
+    FareQuoteRequest(
+      _trip.tripId,
+      originStopId: widget.args.boardingStopId,
+      destinationStopId: widget.args.alightingStop.id,
+      seats: math.max(_selected.length, 1),
+    ),
+  );
+
+  /// The last quote that arrived, shown while the next one loads.
+  FareQuoteResponse? _lastQuote;
+
   @override
   void initState() {
     super.initState();
@@ -85,7 +99,9 @@ class _SeatSelectionScreenState extends ConsumerState<SeatSelectionScreen> {
     if (!mounted || !(_onScreen?.value.enabled ?? true)) return;
     final lifecycle = WidgetsBinding.instance.lifecycleState;
     if (lifecycle != null && lifecycle != AppLifecycleState.resumed) return;
-    ref.invalidate(_seats);
+    ref
+      ..invalidate(_seats)
+      ..invalidate(_quote);
   }
 
   void _say(String text) => ScaffoldMessenger.of(context)
@@ -348,8 +364,7 @@ class _SeatSelectionScreenState extends ConsumerState<SeatSelectionScreen> {
           ),
         ),
         _FarePanel(
-          map: map,
-          trip: _trip,
+          fare: _fare(),
           selected: [
             for (final s in map.seats)
               if (_selected.contains(s.id)) s,
@@ -366,6 +381,20 @@ class _SeatSelectionScreenState extends ConsumerState<SeatSelectionScreen> {
         ),
       ],
     );
+  }
+
+  /// The price on the panel (decision 24 ended): the fare quote; while the
+  /// quote for a new number of seats loads, the last one; if it fails, the
+  /// search result's fare, so the screen stays usable.
+  SeatFare _fare() {
+    final state = ref.watch(_quote);
+    if (state.value case final quote?) _lastQuote = quote;
+    final quote = switch (state) {
+      AsyncValue(:final value?) => value,
+      AsyncValue(hasError: true) => null,
+      _ => _lastQuote,
+    };
+    return quote == null ? SeatFare.ofTrip(_trip) : SeatFare.ofQuote(quote);
   }
 
   Widget _seat(AppLocalizations l10n, TripSeatResponse seat) {
@@ -518,11 +547,41 @@ class _SeatGrid extends StatelessWidget {
   ];
 }
 
+/// One seat's price on the panel: [current] (what it costs now), [solo]
+/// (riding alone) and [minimum] (the lowest it can drop to; unknown from
+/// an older backend).
+@immutable
+class SeatFare {
+  const SeatFare({required this.current, required this.solo, this.minimum});
+
+  factory SeatFare.ofQuote(FareQuoteResponse quote) => SeatFare(
+    current: double.parse(quote.current),
+    solo: double.parse(quote.solo),
+    minimum: double.parse(quote.minimum),
+  );
+
+  /// From the search result: one seat, as it stood then.
+  factory SeatFare.ofTrip(TripSearchResultResponse trip) => switch (trip.fare) {
+    final fare? => SeatFare(
+      current: double.parse(fare.current),
+      solo: double.parse(fare.solo),
+      minimum: double.parse(fare.minimum),
+    ),
+    null => SeatFare(
+      current: double.parse(trip.fareAmount),
+      solo: double.parse(trip.fareAmount),
+    ),
+  };
+
+  final double current;
+  final double solo;
+  final double? minimum;
+}
+
 /// The bottom panel of P7: the group strip, the price and the button.
 class _FarePanel extends StatelessWidget {
   const _FarePanel({
-    required this.map,
-    required this.trip,
+    required this.fare,
     required this.selected,
     required this.reserving,
     required this.error,
@@ -532,8 +591,7 @@ class _FarePanel extends StatelessWidget {
     required this.onBackToResults,
   });
 
-  final TripSeatsResponse map;
-  final TripSearchResultResponse trip;
+  final SeatFare fare;
   final List<TripSeatResponse> selected;
   final bool reserving;
   final String? error;
@@ -547,16 +605,15 @@ class _FarePanel extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final count = selected.length;
     final times = math.max(count, 1);
-    // Decision 24: the API's shared fare when it gives one (G20), else the
-    // trip's fare as an estimate.
-    final estimated = map.sharedFareAmount == null;
-    final perSeat = double.parse(
-      map.sharedFareAmount ?? trip.sharedFareAmount ?? trip.fareAmount,
-    );
+    final perSeat = fare.current;
     final total = perSeat * times;
-    final solo = map.soloFareAmount == null
-        ? null
-        : double.parse(map.soloFareAmount!) * times;
+    // Riding alone costs more: crossed out. Not when there's no saving.
+    final solo = fare.solo > fare.current ? fare.solo * times : null;
+    // "Drops to": only when more riders would lower the price.
+    final dropsTo = switch (fare.minimum) {
+      final minimum? when minimum < fare.current => minimum,
+      _ => null,
+    };
     final numbers = [for (final s in selected) s.seatNumber]
       ..sort(compareSeatNumbers);
     final totalText = _cedis2(l10n, total);
@@ -603,7 +660,10 @@ class _FarePanel extends StatelessWidget {
                       l10n.seatsYouPayNow,
                     totalText,
                     if (solo != null) l10n.seatsWas(_cedis2(l10n, solo)),
-                    if (estimated) l10n.seatsEstimated,
+                    if (dropsTo != null) ...[
+                      l10n.seatsDropsTo(_cedis2(l10n, dropsTo)),
+                      l10n.seatsAsMoreJoin,
+                    ],
                   ].join(', '),
                   excludeSemantics: true,
                   child: Column(
@@ -646,39 +706,36 @@ class _FarePanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: TroskySpacing.s8),
-              if (map.floorFareAmount case final floor?)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: TroskySpacing.s10,
-                        vertical: TroskySpacing.s4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: TroskyColors.amberA15,
-                        borderRadius: BorderRadius.circular(TroskyRadii.r20),
-                      ),
-                      child: Text(
-                        l10n.seatsDropsTo(_cedis2(l10n, double.parse(floor))),
-                        style: TroskyTypography.body11Bold.copyWith(
-                          color: TroskyColors.goldText,
+              if (dropsTo != null)
+                ExcludeSemantics(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: TroskySpacing.s10,
+                          vertical: TroskySpacing.s4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: TroskyColors.amberA15,
+                          borderRadius: BorderRadius.circular(TroskyRadii.r20),
+                        ),
+                        child: Text(
+                          l10n.seatsDropsTo(_cedis2(l10n, dropsTo)),
+                          style: TroskyTypography.body11Bold.copyWith(
+                            color: TroskyColors.goldText,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: TroskySpacing.s3),
-                    Text(
-                      l10n.seatsAsMoreJoin,
-                      style: TroskyTypography.body10Regular.copyWith(
-                        color: TroskyColors.textSecondary,
+                      const SizedBox(height: TroskySpacing.s3),
+                      Text(
+                        l10n.seatsAsMoreJoin,
+                        style: TroskyTypography.body10Regular.copyWith(
+                          color: TroskyColors.textSecondary,
+                        ),
                       ),
-                    ),
-                  ],
-                )
-              else if (estimated)
-                TroskyChip(
-                  label: l10n.seatsEstimated,
-                  color: TroskyChipColor.gray,
+                    ],
+                  ),
                 ),
             ],
           ),

@@ -59,4 +59,11 @@ void main() {
     await tapReserve(tester);
     await _golden(tester, PaymentScreen, 'payment_360');
   });
+
+  testWidgets('P-05 live: the fare quote for two seats', (tester) async {
+    await openLiveSeats(tester, morning(), p7Seats(taken: {'2', '6'}));
+    await tapSeat(tester, '4');
+    await tapSeat(tester, '5');
+    await _golden(tester, SeatSelectionScreen, 'seat_selection_live_360');
+  });
 }

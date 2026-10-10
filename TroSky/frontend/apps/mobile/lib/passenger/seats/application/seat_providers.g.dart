@@ -94,6 +94,106 @@ final class TripSeatsFamily extends $Family
   String toString() => r'tripSeatsProvider';
 }
 
+/// The price of a [FareQuoteRequest] right now (`GET /trips/{id}/fare-quote`):
+/// what `POST /bookings` would charge. It falls as riders join, so the seat
+/// screen fetches it again with the seat map.
+
+@ProviderFor(fareQuote)
+final fareQuoteProvider = FareQuoteFamily._();
+
+/// The price of a [FareQuoteRequest] right now (`GET /trips/{id}/fare-quote`):
+/// what `POST /bookings` would charge. It falls as riders join, so the seat
+/// screen fetches it again with the seat map.
+
+final class FareQuoteProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<FareQuoteResponse>,
+          FareQuoteResponse,
+          FutureOr<FareQuoteResponse>
+        >
+    with
+        $FutureModifier<FareQuoteResponse>,
+        $FutureProvider<FareQuoteResponse> {
+  /// The price of a [FareQuoteRequest] right now (`GET /trips/{id}/fare-quote`):
+  /// what `POST /bookings` would charge. It falls as riders join, so the seat
+  /// screen fetches it again with the seat map.
+  FareQuoteProvider._({
+    required FareQuoteFamily super.from,
+    required FareQuoteRequest super.argument,
+  }) : super(
+         retry: noRetry,
+         name: r'fareQuoteProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$fareQuoteHash();
+
+  @override
+  String toString() {
+    return r'fareQuoteProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<FareQuoteResponse> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<FareQuoteResponse> create(Ref ref) {
+    final argument = this.argument as FareQuoteRequest;
+    return fareQuote(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is FareQuoteProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$fareQuoteHash() => r'dab367765fc05c03863a8b4069c70bbedb0cb032';
+
+/// The price of a [FareQuoteRequest] right now (`GET /trips/{id}/fare-quote`):
+/// what `POST /bookings` would charge. It falls as riders join, so the seat
+/// screen fetches it again with the seat map.
+
+final class FareQuoteFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          FutureOr<FareQuoteResponse>,
+          FareQuoteRequest
+        > {
+  FareQuoteFamily._()
+    : super(
+        retry: noRetry,
+        name: r'fareQuoteProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// The price of a [FareQuoteRequest] right now (`GET /trips/{id}/fare-quote`):
+  /// what `POST /bookings` would charge. It falls as riders join, so the seat
+  /// screen fetches it again with the seat map.
+
+  FareQuoteProvider call(FareQuoteRequest request) =>
+      FareQuoteProvider._(argument: request, from: this);
+
+  @override
+  String toString() => r'fareQuoteProvider';
+}
+
 /// A held, unpaid booking of the signed-in passenger whose hold hasn't run
 /// out: the app reopens it instead of losing it (Part 2). Null offline or
 /// when there is none.
@@ -145,17 +245,17 @@ final class HeldBookingProvider
 String _$heldBookingHash() => r'7342e600e98bb729baa7d8d09ac7bb5682bef213';
 
 /// Held bookings already shown on Payment in this run, so Home reopens
-/// each at most once.
+/// each at most once. Added to just before Payment opens.
 
 @ProviderFor(ShownBookings)
 final shownBookingsProvider = ShownBookingsProvider._();
 
 /// Held bookings already shown on Payment in this run, so Home reopens
-/// each at most once.
+/// each at most once. Added to just before Payment opens.
 final class ShownBookingsProvider
     extends $NotifierProvider<ShownBookings, Set<String>> {
   /// Held bookings already shown on Payment in this run, so Home reopens
-  /// each at most once.
+  /// each at most once. Added to just before Payment opens.
   ShownBookingsProvider._()
     : super(
         from: null,
@@ -186,7 +286,7 @@ final class ShownBookingsProvider
 String _$shownBookingsHash() => r'0118729c604e95e79e881db44e50f40a38ad387b';
 
 /// Held bookings already shown on Payment in this run, so Home reopens
-/// each at most once.
+/// each at most once. Added to just before Payment opens.
 
 abstract class _$ShownBookings extends $Notifier<Set<String>> {
   Set<String> build();

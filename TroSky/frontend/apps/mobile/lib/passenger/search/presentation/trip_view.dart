@@ -5,58 +5,20 @@ import 'package:trosky_ui/trosky_ui.dart';
 
 import '../../../l10n/app_localizations.dart';
 
-/// The order of Search Results (decision 22).
-enum ResultsSort {
-  /// As the backend sends them: earliest departure first.
-  departure,
-
-  /// Lowest price first.
-  cheapest,
-
-  /// Earliest arrival (ETA) first.
-  fastest,
-}
-
-/// [trips] arranged for the screen (decision 22): the ones still
-/// available ([upcoming]) sorted by [sort], minibuses only with
-/// [minibusOnly]; the ones that passed the stop ([passed], G21) by
-/// departure; and the best match.
-///
-/// The passed ones (or the button that shows them) go at [passedAt]: after
-/// the last vehicle reported approaching the stop, as in the design. With
-/// many pages of later departures, the end of the list would be too far.
+/// [trips] arranged for the screen, in the backend's order (decision 22:
+/// it sorts and filters): the ones still available ([upcoming]), the ones
+/// that passed the stop ([passed], G21; the backend sends them last), and
+/// the best match.
 @immutable
 class ResultsView {
-  factory ResultsView.arrange(
-    List<TripSearchResultResponse> trips, {
-    ResultsSort sort = ResultsSort.departure,
-    bool minibusOnly = false,
-  }) {
-    final shown = minibusOnly
-        ? trips.where((t) => t.vehicleType == VehicleType.minibus)
-        : trips;
-    final upcoming = [...shown.where((t) => t.passedPickup != true)];
-    final passed = [...shown.where((t) => t.passedPickup == true)];
-    int byDeparture(TripSearchResultResponse a, TripSearchResultResponse b) =>
-        a.scheduledDepartureAt.compareTo(b.scheduledDepartureAt);
-    upcoming.sort(
-      (a, b) => switch (sort) {
-        ResultsSort.departure => 0,
-        ResultsSort.cheapest => mainPrice(a).compareTo(mainPrice(b)),
-        ResultsSort.fastest => arrival(a).compareTo(arrival(b)),
-      }.orElse(() => byDeparture(a, b)),
-    );
-    passed.sort(byDeparture);
-    final lastApproaching = upcoming.lastIndexWhere(
-      (t) => t.pickupEtaMinutes != null,
-    );
+  factory ResultsView.arrange(List<TripSearchResultResponse> trips) {
+    final upcoming = [...trips.where((t) => !t.hasPassedPickup)];
     return ResultsView._(
       upcoming: upcoming,
-      passed: passed,
-      passedAt: lastApproaching + 1,
+      passed: [...trips.where((t) => t.hasPassedPickup)],
       bestMatch: upcoming.where((t) => t.availableSeats > 0).firstOrNull,
       approachKnown: trips.any(
-        (t) => t.passedPickup != null || t.pickupEtaMinutes != null,
+        (t) => t.hasPassedPickup || t.vehicleEtaToPickupMinutes != null,
       ),
     );
   }
@@ -64,7 +26,6 @@ class ResultsView {
   const ResultsView._({
     required this.upcoming,
     required this.passed,
-    required this.passedAt,
     required this.bestMatch,
     required this.approachKnown,
   });
@@ -72,25 +33,19 @@ class ResultsView {
   final List<TripSearchResultResponse> upcoming;
   final List<TripSearchResultResponse> passed;
 
-  /// Where in [upcoming] the passed block goes.
-  final int passedAt;
-
-  /// The first card after sorting that can still be booked.
+  /// The first card that can still be booked.
   final TripSearchResultResponse? bestMatch;
 
-  /// Whether the API says which vehicles approach or passed the stop
-  /// (G21): only then the banner and the passed cards show (decision 21).
+  /// Whether any vehicle is already on the road, approaching the stop or
+  /// past it (G21): only then the banner and the passed cards show
+  /// (decision 21).
   final bool approachKnown;
 }
 
-extension on int {
-  int orElse(int Function() next) => this != 0 ? this : next();
-}
-
-/// What the passenger pays: the shared fare for their stretch when the API
-/// gives it (G20), else the trip's fare (decision 20).
+/// What one seat costs from the pickup now: the backend's current fare
+/// (G20), or the trip's fare from an older backend.
 double mainPrice(TripSearchResultResponse trip) =>
-    double.parse(trip.sharedFareAmount ?? trip.fareAmount);
+    double.parse(trip.fare?.current ?? trip.fareAmount);
 
 /// When the vehicle reaches the destination: the scheduled arrival, else
 /// departure plus the route's duration, else the departure.
@@ -129,14 +84,15 @@ String vehicleLabel(AppLocalizations l10n, VehicleType? type) => switch (type) {
 /// card.
 const int fewSeats = 2;
 
-/// [trip] as a [TroskyTripCard] (P6, decisions 20 and 21).
+/// [trip] as a [TroskyTripCard] (P6, with the fare of G20 and the
+/// approaching / passed state of G21).
 TroskyTripCard tripCard(
   AppLocalizations l10n,
   TripSearchResultResponse trip, {
   required bool bestMatch,
   VoidCallback? onPressed,
 }) {
-  final passed = trip.passedPickup ?? false;
+  final passed = trip.hasPassedPickup;
   final seats = trip.availableSeats;
   final (seatsLabel, seatsColor) = passed
       ? (l10n.resultsPassed, TroskyChipColor.gray)
@@ -155,7 +111,7 @@ TroskyTripCard tripCard(
 
   String? badge;
   var badgeKind = TroskyTripBadgeKind.approaching;
-  if (trip.pickupEtaMinutes case final minutes?) {
+  if (trip.vehicleEtaToPickupMinutes case final minutes?) {
     badge = l10n.resultsApproachingBadge(minutes);
   } else if (trip.pickupStopName case final stop?) {
     badgeKind = TroskyTripBadgeKind.boardAt;
@@ -167,22 +123,20 @@ TroskyTripCard tripCard(
 
   TroskyTripFare? fare;
   if (seats > 0 && !passed) {
-    final price = formatPrice(l10n, trip.sharedFareAmount ?? trip.fareAmount);
-    final solo = trip.soloFareAmount;
-    final shared = trip.sharedFareAmount;
-    if (solo != null && shared != null && double.parse(solo) > 0) {
-      final saving =
-          ((double.parse(solo) - double.parse(shared)) /
-                  double.parse(solo) *
-                  100)
-              .round();
-      fare = saving > 0
-          ? TroskyTripFare(
-              price: price,
-              soloPrice: formatPrice(l10n, solo),
-              saving: l10n.resultsSave(saving),
-            )
-          : TroskyTripFare(price: price);
+    final current = trip.fare?.current ?? trip.fareAmount;
+    final price = formatPrice(l10n, current);
+    // Sharing makes it cheaper than riding alone: the solo fare crossed
+    // out and the saving, rounded to a whole percent. Not when they're
+    // equal (nobody to share with yet).
+    final solo = double.parse(trip.fare?.solo ?? current);
+    final shared = double.parse(current);
+    if (solo > shared) {
+      final saving = ((solo - shared) / solo * 100).round();
+      fare = TroskyTripFare(
+        price: price,
+        soloPrice: formatPrice(l10n, trip.fare!.solo),
+        saving: saving > 0 ? l10n.resultsSave(saving) : null,
+      );
     } else {
       fare = TroskyTripFare(price: price);
     }

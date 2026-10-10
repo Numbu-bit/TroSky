@@ -109,19 +109,23 @@ Future<void> openTrip(WidgetTester tester, String departs) async {
   expect(find.byType(SeatSelectionScreen), findsOneWidget);
 }
 
-/// Live mode: one trip ("t1", 09:15, ₵8.00) whose seat map is [seats].
+/// Live mode: one trip ("t1", 09:15, ₵8.00 in the results) whose seat
+/// map is [seats] and whose fare quote is [quote] a seat (default ₵6.50,
+/// ₵8.00 alone, down to ₵2.00).
 Future<ScriptedTrips> openLiveSeats(
   WidgetTester tester,
   TestWorld world,
   List<TripSeatResponse> seats, {
   Size size = const Size(360, 806),
   BookingRepository? bookings,
+  FareSummaryResponse? quote,
 }) async {
   final routes = ScriptedTrips(
     world.backend,
     [liveTrip(id: 't1', departs: DateTime(2026, 10, 1, 9, 15))],
     seatMaps: {'t1': seatMap('t1', seats)},
   );
+  routes.quotes['t1'] = quote ?? fareOf('6.50', solo: '8.00');
   final live = liveMode(
     world,
     FakeTracking(const []),
