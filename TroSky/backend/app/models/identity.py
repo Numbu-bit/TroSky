@@ -177,6 +177,27 @@ class UserProfile(UUIDAuditBase):
     __table_args__ = (UniqueConstraint("user_id", name="uq_user_profiles_user_id"),)
 
 
+class UserPermission(UUIDAuditBase):
+    """A permission granted to one person: how a staff member gets exactly
+    the access their job needs. Added to their roles' permissions."""
+
+    __tablename__ = "user_permissions"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    permission_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("permissions.id", ondelete="CASCADE"), nullable=False
+    )
+    granted_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "permission_id", name="uq_user_permissions_user_permission"),
+    )
+
+
 class UserRole(Base):
     """Join table: which roles a user holds (a user may hold more than one,
     e.g. a passenger who is also a driver)."""

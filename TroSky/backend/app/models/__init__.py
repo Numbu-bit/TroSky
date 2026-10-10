@@ -8,9 +8,13 @@ the single place new model modules are wired in as later phases add them.
 from __future__ import annotations
 
 from app.models import (  # noqa: F401
+    admin,
+    analytics,
     bookings,
+    driver_actions,
     drivers,
     feedback,
+    fraud,
     identity,
     notifications,
     payments,

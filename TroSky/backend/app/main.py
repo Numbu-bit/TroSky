@@ -10,6 +10,8 @@ Production runs via Gunicorn + Uvicorn workers (see ``Dockerfile`` /
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -22,7 +24,7 @@ from app.api.health import router as health_router
 from app.api.router import api_router
 from app.api.v1 import shared_trips
 from app.core.background import drain_background_jobs
-from app.core.config import Settings, get_settings
+from app.core.config import EmailProviderName, Settings, get_settings
 from app.core.database import dispose_engine, get_engine
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import configure_logging, get_logger
@@ -34,6 +36,7 @@ from app.middleware.request_context import (
     CorrelationIdMiddleware,
     RequestSizeLimitMiddleware,
 )
+from app.providers.email.smtp import keep_smtp_warm
 
 logger = get_logger(__name__)
 
@@ -50,9 +53,21 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # surfaces at startup, not on the first unlucky request.
     get_engine()
     get_redis_client()
+    # A logged-in connection to the mail server, ready before the first
+    # verification code and kept from going stale.
+    warm_smtp = None
+    if settings.EMAIL_PROVIDER == EmailProviderName.SMTP and settings.EMAIL_SMTP_KEEPALIVE_SECONDS:
+        warm_smtp = asyncio.create_task(
+            keep_smtp_warm(settings, every_seconds=settings.EMAIL_SMTP_KEEPALIVE_SECONDS),
+            name="keep-smtp-warm",
+        )
     yield
     logger.info("application_shutting_down")
     await drain_background_jobs(timeout_seconds=10)
+    if warm_smtp is not None:
+        warm_smtp.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await warm_smtp
     await dispose_engine()
     await close_redis()
 

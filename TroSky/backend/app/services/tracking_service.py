@@ -25,7 +25,7 @@ import json
 import uuid
 from collections.abc import Awaitable, Collection, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any, cast
 
@@ -39,7 +39,7 @@ from app.core.logging import get_logger
 from app.core.permissions import Permission, Principal
 from app.core.telemetry import GPS_INGEST_TOTAL
 from app.models.bookings import Booking, BookingStatus
-from app.models.trips import TripStatus
+from app.models.trips import Trip, TripStatus
 from app.providers.maps.base import EtaResult, MapsProvider
 from app.providers.maps.factory import get_maps_provider
 from app.repositories.driver_repository import DriverRepository
@@ -62,6 +62,8 @@ _LIVE_KEY_TTL_MULTIPLIER = 20
 
 # More active trips than this at once is beyond one screen's map anyway.
 _LIVE_TRIPS_LIMIT = 500
+
+_ON_THE_ROAD = (TripStatus.IN_PROGRESS, TripStatus.PAUSED)
 
 _ACTIVE_BOOKING_STATUSES = (
     BookingStatus.PENDING,
@@ -149,11 +151,8 @@ class TrackingService:
         trip = await self._trips.get_by_id(trip_id)
         if trip is None:
             raise NotFoundError("Trip not found.")
-        if trip.status != TripStatus.IN_PROGRESS:
-            raise ConflictError(
-                "Location updates are only accepted while a trip is in progress.",
-                code="TRIP_NOT_IN_PROGRESS",
-            )
+        self._assert_accepts_positions(trip, recorded_at)
+        on_the_road = trip.status in _ON_THE_ROAD
 
         previous = await self._get_cached_location(trip_id)
         should_persist = previous is None
@@ -181,7 +180,9 @@ class TrackingService:
                     )
             should_persist = elapsed_seconds >= self._settings.GPS_UPDATE_MIN_INTERVAL_SECONDS
 
-        if should_persist:
+        # The trip's recorded path (replay, the live map's fallback) starts
+        # when it does; positions before that only go to the live cache.
+        if should_persist and on_the_road:
             await self._locations.create(
                 trip_id=trip_id,
                 latitude=latitude,
@@ -205,6 +206,33 @@ class TrackingService:
         await self._redis.publish(channel_name(trip_id), live.to_publish_payload())
         GPS_INGEST_TOTAL.labels(result="accepted").inc()
         return live
+
+    def _assert_accepts_positions(self, trip: Trip, recorded_at: datetime) -> None:
+        """Positions come in while a trip is in progress. When trips change
+        status on their own, also while it is paused (moving again resumes
+        it) and from ``TRIP_AUTO_WINDOW_MINUTES`` before departure (reaching
+        the first stop starts boarding, leaving it starts the trip)."""
+        if trip.status == TripStatus.IN_PROGRESS:
+            return
+        if self._settings.TRIP_AUTO_STATUS_ENABLED:
+            if trip.status == TripStatus.PAUSED:
+                return
+            window = timedelta(minutes=self._settings.TRIP_AUTO_WINDOW_MINUTES)
+            if (
+                trip.status in (TripStatus.SCHEDULED, TripStatus.BOARDING)
+                and recorded_at >= trip.scheduled_departure_at - window
+            ):
+                return
+            raise ConflictError(
+                "Location updates are accepted from "
+                f"{self._settings.TRIP_AUTO_WINDOW_MINUTES} minutes before departure "
+                "until the trip ends.",
+                code="TRIP_NOT_IN_PROGRESS",
+            )
+        raise ConflictError(
+            "Location updates are only accepted while a trip is in progress.",
+            code="TRIP_NOT_IN_PROGRESS",
+        )
 
     async def _cache_location(self, live: LiveLocation) -> None:
         key = _live_key(live.trip_id)

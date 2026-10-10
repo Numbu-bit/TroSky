@@ -18,12 +18,15 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime, timedelta
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
+from app.core.database import keep_writes_on_failure
 from app.core.exceptions import InvalidStateTransitionError, NotFoundError, TicketValidationError
 from app.core.logging import get_logger
 from app.models.bookings import Booking
+from app.models.fraud import TicketScanAttempt, TicketScanOutcome
 from app.models.tickets import Ticket, TicketStatus
 from app.repositories.booking_repository import BookingRepository
 from app.repositories.ticket_repository import TicketRepository
@@ -94,9 +97,11 @@ class TicketService:
             # from before some (currently nonexistent) re-issuance flow.
             raise TicketValidationError("This ticket code is stale.")
         if ticket.trip_id != trip_id:
+            await self._keep_refusal(ticket, trip_id, validated_by, TicketScanOutcome.WRONG_TRIP)
             raise TicketValidationError("This ticket is not for this trip.")
 
         if ticket.status == TicketStatus.VALIDATED:
+            await self._keep_refusal(ticket, trip_id, validated_by, TicketScanOutcome.ALREADY_USED)
             raise InvalidStateTransitionError("This ticket has already been used to board.")
         if ticket.status == TicketStatus.REVOKED:
             raise InvalidStateTransitionError("This ticket has been revoked.")
@@ -110,6 +115,27 @@ class TicketService:
         )
         logger.info("ticket_validated", ticket_id=str(ticket.id), trip_id=str(trip_id))
         return ticket
+
+    async def _keep_refusal(
+        self,
+        ticket: Ticket,
+        trip_id: uuid.UUID,
+        scanned_by: uuid.UUID,
+        outcome: TicketScanOutcome,
+    ) -> None:
+        """Record a ticket shown again after boarding, or on another trip,
+        for the fraud rules -- and keep the record although the scan fails."""
+        try:
+            async with self._session.begin_nested():
+                self._session.add(
+                    TicketScanAttempt(
+                        ticket_id=ticket.id, trip_id=trip_id, scanned_by=scanned_by, outcome=outcome
+                    )
+                )
+                await self._session.flush()
+        except IntegrityError:  # not a trip at all: nothing to keep
+            return
+        keep_writes_on_failure(self._session)
 
     async def get_ticket(
         self, ticket_id: uuid.UUID, *, requesting_user_id: uuid.UUID, is_privileged: bool = False

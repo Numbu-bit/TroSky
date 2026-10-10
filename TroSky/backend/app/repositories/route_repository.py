@@ -261,9 +261,10 @@ class RouteRepository:
         return result.scalar_one_or_none()
 
     async def list_schedules_for_route(self, route_id: uuid.UUID) -> list[RouteSchedule]:
+        """The route's active timetable entries, earliest departure first."""
         result = await self._session.execute(
-            select(RouteSchedule).where(
-                RouteSchedule.route_id == route_id, RouteSchedule.is_active.is_(True)
-            )
+            select(RouteSchedule)
+            .where(RouteSchedule.route_id == route_id, RouteSchedule.is_active.is_(True))
+            .order_by(RouteSchedule.departure_time, RouteSchedule.id)
         )
         return list(result.scalars().all())

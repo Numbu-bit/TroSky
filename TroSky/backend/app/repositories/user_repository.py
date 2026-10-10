@@ -16,7 +16,15 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.identity import Permission, Role, RolePermission, User, UserProfile, UserRole
+from app.models.identity import (
+    Permission,
+    Role,
+    RolePermission,
+    User,
+    UserPermission,
+    UserProfile,
+    UserRole,
+)
 
 
 class DuplicateUserError(Exception):
@@ -73,6 +81,22 @@ class UserRepository:
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def contacts_taken(self, phone_number: str, email: str | None) -> tuple[bool, bool]:
+        """Whether an account already has this phone number, and this email:
+        both in one round trip."""
+        matches = User.phone_number == phone_number
+        if email is not None:
+            matches = matches | (User.email == email)
+        rows = await self._session.execute(
+            select(User.phone_number, User.email).where(matches, User.deleted_at.is_(None))
+        )
+        found = rows.all()
+        phone_taken = any(phone == phone_number for phone, _ in found)
+        email_taken = email is not None and any(
+            (taken or "").lower() == email.lower() for _, taken in found
+        )
+        return phone_taken, email_taken
+
     async def create(
         self,
         *,
@@ -81,11 +105,18 @@ class UserRepository:
         password_hash: str,
         full_name: str,
         preferred_language: str = "en",
+        savepoint: bool = True,
     ) -> User:
+        """``savepoint=False`` saves two round trips when nothing else in the
+        transaction needs keeping should the insert fail (registration)."""
         user = User(phone_number=phone_number, email=email, password_hash=password_hash)
         user.profile = UserProfile(full_name=full_name, preferred_language=preferred_language)
         try:
-            async with self._session.begin_nested():
+            if savepoint:
+                async with self._session.begin_nested():
+                    self._session.add(user)
+                    await self._session.flush()
+            else:
                 self._session.add(user)
                 await self._session.flush()
         except IntegrityError as exc:
@@ -131,6 +162,15 @@ class UserRepository:
             .where(Role.slug.in_(role_slugs))
         )
         result = await self._session.execute(stmt)
+        return set(result.scalars().all())
+
+    async def get_granted_permissions(self, user_id: uuid.UUID) -> set[str]:
+        """Permissions granted to the person directly, not through a role."""
+        result = await self._session.execute(
+            select(Permission.code)
+            .join(UserPermission, UserPermission.permission_id == Permission.id)
+            .where(UserPermission.user_id == user_id)
+        )
         return set(result.scalars().all())
 
     async def record_login_success(self, user: User) -> None:

@@ -63,6 +63,7 @@ async def resolve_principal(db: AsyncSession, token: str) -> Principal:
 
     roles = await users.get_roles_for_user(user.id)
     permissions = await users.get_permissions_for_roles(roles)
+    permissions |= await users.get_granted_permissions(user.id)
 
     return Principal(
         user_id=user.id,

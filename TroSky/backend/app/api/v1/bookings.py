@@ -24,6 +24,8 @@ from app.api.dependencies import (
     TicketServiceDep,
 )
 from app.api.payment_dependencies import PaymentMethodServiceDep
+from app.api.trip_dependencies import TripSearchServiceDep
+from app.api.v1.routes import search_result_response
 from app.api.v1.shared_trips import TripShareServiceDep
 from app.api.v1.views import booking_responses, payment_source
 from app.core.config import get_settings
@@ -41,7 +43,7 @@ from app.schemas.common import PaginatedResponse
 from app.schemas.feedback import RateBookingRequest, RatingResponse
 from app.schemas.payment import PayBookingRequest, PaymentResponse
 from app.schemas.ticket import TicketResponse
-from app.schemas.trip import TripShareLinkResponse
+from app.schemas.trip import TripSearchResultResponse, TripShareLinkResponse
 from app.services.booking_service import BookingService
 from app.utilities.query_params import parse_enum_list
 
@@ -60,9 +62,15 @@ async def create_booking(
     service: BookingServiceDep,
     idempotency_key: OptionalIdempotencyKey,
 ) -> BookingResponse:
-    """Reserve one or more seats on a trip. Seats are held for a
-    configurable window (``SEAT_RESERVATION_HOLD_SECONDS``) pending
-    payment (Phase 6) and released automatically if it lapses."""
+    """Reserve one or more seats on a trip.
+
+    The booking first waits for the trip's driver (or an admin) to accept it:
+    status ``awaiting_acceptance``, with ``expires_at`` the deadline for an
+    answer. Unanswered or declined, it is moved to another vehicle from the
+    same pickup to the same destination (the passenger is notified) or, with
+    none, ends. Once accepted it is ``pending``: pay before the new
+    ``expires_at`` (``SEAT_RESERVATION_HOLD_SECONDS``) or the seats are
+    released."""
     booking = await service.create_booking(principal.user_id, body, idempotency_key=idempotency_key)
     return await _booking_response(service, booking)
 
@@ -157,6 +165,23 @@ async def share_booking(
         else str(request.url_for("shared_trip_page", token=token))
     )
     return TripShareLinkResponse(url=url, token=token, expires_at=expires_at)
+
+
+@router.get("/{booking_id}/onward-trips", response_model=list[TripSearchResultResponse])
+async def list_onward_trips(
+    booking_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    service: BookingServiceDep,
+    search: TripSearchServiceDep,
+    limit: int = Query(default=10, ge=1, le=50),
+) -> list[TripSearchResultResponse]:
+    """Vehicles leaving soon from where this booking's ride ended (or will
+    end), with a seat free, for carrying on the journey. The passenger is
+    sent a notification pointing here when they get off."""
+    booking = await service.get_booking(booking_id, requesting_user_id=principal.user_id)
+    stop_id = await service.ride_end_stop(booking)
+    offers = await search.onward(stop_id, exclude_trip_id=booking.trip_id, limit=limit)
+    return [search_result_response(offer) for offer in offers]
 
 
 @router.get("/{booking_id}", response_model=BookingResponse)

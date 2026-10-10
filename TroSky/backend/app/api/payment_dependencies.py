@@ -10,12 +10,13 @@ from app.api.common_dependencies import DbSession
 from app.services.payment_method_service import PaymentMethodService
 from app.services.payment_service import PaymentService
 from app.services.refund_service import RefundService
+from app.services.system_settings_service import effective_settings
 from app.services.wallet_service import WalletService
 from app.services.withdrawal_service import WithdrawalService
 
 
-def get_payment_service(db: DbSession) -> PaymentService:
-    return PaymentService(db)
+async def get_payment_service(db: DbSession) -> PaymentService:
+    return PaymentService(db, await effective_settings(db))
 
 
 def get_payment_method_service(db: DbSession) -> PaymentMethodService:

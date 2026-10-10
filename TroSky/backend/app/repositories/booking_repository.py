@@ -37,11 +37,13 @@ from app.repositories.trip_view_repository import ACTIVE_TRIP_STATUSES
 _REFERENCE_ALPHABET = string.ascii_uppercase + string.digits
 
 
-# A seat is only "aboard" while the booking still holds it: pending and
-# payment_pending hold a reservation that has not lapsed, confirmed and
-# completed have travelled. Cancelled, expired and refunded bookings freed
-# their seat, so they neither block it nor share its cost.
+# A seat is only "aboard" while the booking still holds it: awaiting
+# acceptance, pending and payment_pending hold a reservation that has not
+# lapsed, confirmed and completed have travelled. Cancelled, expired and
+# refunded bookings freed their seat, so they neither block it nor share its
+# cost.
 _OCCUPYING_STATUSES = (
+    BookingStatus.AWAITING_ACCEPTANCE,
     BookingStatus.PENDING,
     BookingStatus.PAYMENT_PENDING,
     BookingStatus.CONFIRMED,
@@ -78,9 +80,11 @@ class BookingRepository:
         idempotency_key: uuid.UUID | None,
         idempotency_request_hash: str | None,
         solo_fare_amount: Decimal | None = None,
+        status: BookingStatus = BookingStatus.PENDING,
     ) -> Booking:
         booking = Booking(
             booking_reference=self.generate_booking_reference(),
+            status=status,
             passenger_id=passenger_id,
             trip_id=trip_id,
             passenger_count=passenger_count,
@@ -221,9 +225,37 @@ class BookingRepository:
 
     async def list_passengers(self, booking_id: uuid.UUID) -> list[BookingPassenger]:
         result = await self._session.execute(
-            select(BookingPassenger).where(BookingPassenger.booking_id == booking_id)
+            select(BookingPassenger)
+            .where(BookingPassenger.booking_id == booking_id)
+            .order_by(BookingPassenger.created_at, BookingPassenger.id)
         )
         return list(result.scalars().all())
+
+    async def get_passenger(self, passenger_id: uuid.UUID) -> BookingPassenger | None:
+        return await self._session.get(BookingPassenger, passenger_id)
+
+    async def list_riding_for_trip(self, trip_id: uuid.UUID) -> list[tuple[uuid.UUID, uuid.UUID]]:
+        """``(booking_id, destination_stop_id)`` for paid bookings on the trip
+        going to a named stop with someone still aboard: whom the vehicle's
+        arrival at a stop can concern. Ids only, so a caller locking one then
+        reads it afresh."""
+        still_aboard = (
+            select(BookingPassenger.id)
+            .where(
+                BookingPassenger.booking_id == Booking.id,
+                BookingPassenger.alighted_at.is_(None),
+            )
+            .exists()
+        )
+        result = await self._session.execute(
+            select(Booking.id, Booking.destination_stop_id).where(
+                Booking.trip_id == trip_id,
+                Booking.status == BookingStatus.CONFIRMED,
+                Booking.destination_stop_id.is_not(None),
+                still_aboard,
+            )
+        )
+        return [tuple(row) for row in result.all()]
 
     # ------------------------------------------------------------------
     # Seat reservations (concurrency-critical)
@@ -341,6 +373,24 @@ class BookingRepository:
                 reservation.expires_at = None
         await self._session.flush()
 
+    async def set_reservation_expiry(self, booking_id: uuid.UUID, expires_at: datetime) -> None:
+        for reservation in await self.list_reservations_for_booking(booking_id):
+            if reservation.status == ReservationStatus.HELD:
+                reservation.expires_at = expires_at
+        await self._session.flush()
+
+    async def complete_reservation(self, booking_id: uuid.UUID, seat_id: uuid.UUID) -> None:
+        """The passenger in ``seat_id`` got off: the seat is free again."""
+        now = datetime.now(UTC)
+        for reservation in await self.list_reservations_for_booking(booking_id):
+            if reservation.seat_id == seat_id and reservation.status in (
+                ReservationStatus.HELD,
+                ReservationStatus.CONFIRMED,
+            ):
+                reservation.status = ReservationStatus.COMPLETED
+                reservation.released_at = now
+        await self._session.flush()
+
     async def release_reservations_for_booking(
         self, booking_id: uuid.UUID, *, new_status: ReservationStatus
     ) -> None:
@@ -351,6 +401,28 @@ class BookingRepository:
                 reservation.status = new_status
                 reservation.released_at = now
         await self._session.flush()
+
+    async def list_open_for_trip_for_update(self, trip_id: uuid.UUID) -> list[Booking]:
+        """Bookings still holding seats on the trip (awaiting acceptance,
+        unpaid, awaiting payment or paid), locked for the caller's
+        transaction."""
+        result = await self._session.execute(
+            select(Booking)
+            .where(
+                Booking.trip_id == trip_id,
+                Booking.status.in_(
+                    [
+                        BookingStatus.AWAITING_ACCEPTANCE,
+                        BookingStatus.PENDING,
+                        BookingStatus.PAYMENT_PENDING,
+                        BookingStatus.CONFIRMED,
+                    ]
+                ),
+            )
+            .order_by(Booking.created_at)
+            .with_for_update()
+        )
+        return list(result.scalars().all())
 
     async def list_confirmed_for_trip(self, trip_id: uuid.UUID) -> list[Booking]:
         result = await self._session.execute(

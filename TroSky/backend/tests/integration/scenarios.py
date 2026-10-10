@@ -102,6 +102,44 @@ async def build_trip_scenario(
         created_by=None,
     )
 
+    return await _staffed_trip(
+        session,
+        make_user,
+        route_id=route.id,
+        route_name=route.name,
+        stops=[(stop.id, stop.name) for stop in stops],
+        departure=departure,
+        seats=seats,
+    )
+
+
+async def another_trip(
+    session: AsyncSession, make_user, scenario: TripScenario, *, departure: datetime, seats: int = 4
+) -> TripScenario:
+    """A second trip on the scenario's route, with its own driver and
+    vehicle: somewhere for a booking to go when it is moved."""
+    return await _staffed_trip(
+        session,
+        make_user,
+        route_id=scenario.route_id,
+        route_name=scenario.route_name,
+        stops=list(zip(scenario.stop_ids, scenario.stop_names, strict=True)),
+        departure=departure,
+        seats=seats,
+    )
+
+
+async def _staffed_trip(
+    session: AsyncSession,
+    make_user,
+    *,
+    route_id: uuid.UUID,
+    route_name: str,
+    stops: list[tuple[uuid.UUID, str]],
+    departure: datetime,
+    seats: int,
+) -> TripScenario:
+    suffix = uuid.uuid4().hex[:6]
     driver_user, driver = await approved_driver(session, make_user)
 
     fleets = fleet_service(session)
@@ -132,7 +170,7 @@ async def build_trip_scenario(
 
     trips = TripService(session)
     trip = await trips.create_trip(
-        route_id=route.id,
+        route_id=route_id,
         route_schedule_id=None,
         scheduled_departure_at=departure,
         scheduled_arrival_at=None,
@@ -144,10 +182,10 @@ async def build_trip_scenario(
 
     return TripScenario(
         trip_id=trip.id,
-        route_id=route.id,
-        route_name=route.name,
-        stop_ids=[stop.id for stop in stops],
-        stop_names=[stop.name for stop in stops],
+        route_id=route_id,
+        route_name=route_name,
+        stop_ids=[stop_id for stop_id, _ in stops],
+        stop_names=[name for _, name in stops],
         driver_user_id=driver_user.id,
         driver_id=driver.id,
         owner_user_id=owner.id,

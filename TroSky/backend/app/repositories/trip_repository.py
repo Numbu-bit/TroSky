@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Collection, Sequence
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from sqlalchemy import exists, func, literal, select, union_all
@@ -21,6 +21,7 @@ from sqlalchemy.sql.selectable import Subquery
 from app.models.drivers import Driver
 from app.models.routes import Route, RouteStop
 from app.models.trips import (
+    AssignmentResponse,
     Trip,
     TripDriverAssignment,
     TripEvent,
@@ -73,10 +74,34 @@ class TripRepository:
         return result.scalar_one_or_none()
 
     async def get_for_update(self, trip_id: uuid.UUID) -> Trip | None:
+        # Refreshed from the locked row: a trip read earlier in this
+        # transaction may have changed while we waited for the lock.
         result = await self._session.execute(
-            select(Trip).where(Trip.id == trip_id).with_for_update()
+            select(Trip)
+            .where(Trip.id == trip_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
         )
         return result.scalar_one_or_none()
+
+    async def list_in_statuses(
+        self,
+        statuses: Collection[TripStatus],
+        *,
+        departure_from: datetime | None = None,
+        departure_before: datetime | None = None,
+        limit: int,
+    ) -> list[Trip]:
+        """Trips in any of ``statuses``, earliest departure first."""
+        query = select(Trip).where(Trip.status.in_(list(statuses)))
+        if departure_from is not None:
+            query = query.where(Trip.scheduled_departure_at >= departure_from)
+        if departure_before is not None:
+            query = query.where(Trip.scheduled_departure_at < departure_before)
+        result = await self._session.execute(
+            query.order_by(Trip.scheduled_departure_at).limit(limit)
+        )
+        return list(result.scalars())
 
     async def create(
         self,
@@ -243,6 +268,26 @@ class TripRepository:
 
     async def unassign_driver(self, assignment: TripDriverAssignment) -> None:
         assignment.is_active = False
+        await self._session.flush()
+
+    async def record_response(
+        self,
+        assignment: TripDriverAssignment,
+        *,
+        response: AssignmentResponse,
+        responded_by: uuid.UUID | None,
+        reason: str | None,
+    ) -> None:
+        """The driver's answer to the trip (or an admin's, for them). A
+        declined assignment ends: the trip is left without a driver."""
+        now = datetime.now(UTC)
+        assignment.response = response
+        assignment.responded_at = now
+        assignment.responded_by = responded_by
+        assignment.response_reason = reason
+        if response == AssignmentResponse.DECLINED:
+            assignment.is_active = False
+            assignment.unassigned_at = now
         await self._session.flush()
 
     async def assign_vehicle(
