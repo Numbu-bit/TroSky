@@ -33,6 +33,9 @@ class EmailProviderName(StrEnum):
     SMTP = "smtp"
     SANDBOX = "sandbox"
     SES = "ses"
+    # HTTPS APIs: for hosts that block SMTP ports (Render's free plan).
+    BREVO = "brevo"
+    RESEND = "resend"
 
 
 class SmsProviderName(StrEnum):
@@ -139,6 +142,10 @@ class Settings(BaseSettings):
     # if none is left, a new one opened -- so a verification code never
     # waits for a connect and login (~1.5 s to Gmail). 0 turns it off.
     EMAIL_SMTP_KEEPALIVE_SECONDS: int = Field(default=40, ge=0, le=3600)
+    # Brevo or Resend: the API key, and the name the mail comes from.
+    # EMAIL_FROM_ADDRESS must be a sender (or domain) verified with them.
+    EMAIL_API_KEY: SecretStr = SecretStr("")
+    EMAIL_FROM_NAME: str = "TroSky"
 
     # --- SMS ---------------------------------------------------------------
     SMS_PROVIDER: SmsProviderName = SmsProviderName.CONSOLE
@@ -449,6 +456,15 @@ class Settings(BaseSettings):
         if v.upper() != "GHS":
             raise ValueError("Only GHS is supported for MVP monetary storage.")
         return v.upper()
+
+    @model_validator(mode="after")
+    def _email_api_key_given(self) -> Settings:
+        """An HTTPS email provider without its key would fail every code it
+        sends: refuse to start instead."""
+        api_providers = (EmailProviderName.BREVO, EmailProviderName.RESEND)
+        if self.EMAIL_PROVIDER in api_providers and not self.EMAIL_API_KEY.get_secret_value():
+            raise ValueError(f"EMAIL_PROVIDER={self.EMAIL_PROVIDER} needs EMAIL_API_KEY.")
+        return self
 
     @model_validator(mode="after")
     def _cancel_after_the_alert(self) -> Settings:

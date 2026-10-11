@@ -211,6 +211,23 @@ With `EMAIL_PROVIDER=console` every code is written to the log instead of being 
 Codes expire after 5 minutes (`OTP_EXPIRATION_SECONDS`). The log search covers the running
 instance; after a restart, ask for a new code.
 
+## Sending real email (Brevo or Resend)
+
+Render's free plan blocks SMTP, so real email goes through an HTTPS API instead (backend
+0.22.3). Both services have a free tier:
+
+- **Brevo** (about 300 emails a day free): Settings → **Senders** → add and verify the address codes come
+  from (a Gmail address works); then SMTP & API → **API keys** → generate one.
+- **Resend** (about 100 a day free): it sends only from a domain you verify; its test sender reaches only
+  your own address.
+
+Then in `render.yaml` (or the service's **Environment** tab) set `EMAIL_PROVIDER` to `brevo` or
+`resend` and `EMAIL_FROM_ADDRESS` to the verified sender, and add **`EMAIL_API_KEY`** in the
+Environment tab only, never in `render.yaml` (it's a secret). The server refuses to start with
+`brevo` or `resend` and no key. A code the service refuses to send (a sender not verified yet, the
+day's quota reached) is reported to the person, who can ask again at once; the reason is in the
+logs (`otp_delivery_failed`, `email_api_refused`).
+
 ## The administrator account
 
 When `DEV_ADMIN_PASSWORD` is set (12 characters or more), the first start creates

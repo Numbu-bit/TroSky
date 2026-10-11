@@ -22,13 +22,14 @@ from app.core.exceptions import (
     OtpExpiredError,
     OtpInvalidError,
     OtpNotFoundError,
+    ProviderError,
     RateLimitExceededError,
 )
 from app.core.logging import get_logger
 from app.core.security import generate_numeric_otp, hash_otp_code
 from app.models.identity import OtpChallenge, OtpChannel, OtpPurpose
-from app.providers.email.base import EmailProvider
-from app.providers.sms.base import SmsProvider
+from app.providers.email.base import EmailProvider, EmailSendResult
+from app.providers.sms.base import SmsProvider, SmsSendResult
 from app.repositories.otp_repository import OtpRepository
 from app.utilities.phone import InvalidPhoneNumberError, normalize_phone_number
 
@@ -161,11 +162,22 @@ class OtpService:
         target: str,
         purpose: OtpPurpose,
     ) -> None:
+        result: SmsSendResult | EmailSendResult
         try:
             if channel == OtpChannel.SMS:
-                await self._sms_provider.send_sms(address, message)
+                result = await self._sms_provider.send_sms(address, message)
             else:
-                await self._email_provider.send_email(address, subject, message)
+                result = await self._email_provider.send_email(address, subject, message)
+            # A provider answers an expected failure (a bad key, a sender not
+            # yet verified) with success=False rather than raising.
+            if not result.success:
+                logger.warning(
+                    "otp_delivery_failed",
+                    channel=channel.value,
+                    purpose=purpose.value,
+                    error=result.error,
+                )
+                raise ProviderError(f"The code could not be sent by {channel.value}.")
         except Exception:
             # Nothing was delivered, so asking again must not have to wait
             # out the cooldown.

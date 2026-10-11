@@ -2221,3 +2221,17 @@ pause, resume and end trips by hand, and admins cancel as before.
 - The audit log still records each admin action's full route path
   (`/api/v1/admin/users/{user_id}/suspend`): FastAPI now keeps included
   routers nested, and a route knows only its path within its router.
+
+## [0.22.3] - 2026-10-11 - Verification codes by real email on Render
+
+- **Email through an HTTPS API:** `EMAIL_PROVIDER=brevo` or `resend`, with
+  `EMAIL_API_KEY` and an `EMAIL_FROM_ADDRESS` verified with the service
+  (`EMAIL_FROM_NAME`, default "TroSky", is the sender's name). Render's free
+  plan blocks SMTP, so sign-up codes could only go to the logs; now they
+  reach real inboxes. The server refuses to start with either provider and
+  no key. Setup: `docs/deploy-render.md`, "Sending real email".
+- **A code the provider refused to send is reported:** an email or SMS
+  provider answering "not sent" (a bad key, a sender not verified, a quota
+  reached) used to be taken as sent, leaving the person waiting for a code
+  that never came, behind the resend cooldown. Now the request fails with
+  `PROVIDER_ERROR` (502) and the person can ask again at once.
