@@ -1,7 +1,8 @@
 """S3-compatible object storage adapter (boto3).
 
-Works unmodified against real AWS S3 in production and against MinIO in
-local development / CI (``S3_ENDPOINT`` points at MinIO in
+Works unmodified against real AWS S3 in production, Cloudflare R2 (the
+staging server's storage: ``docs/deploy-render.md``, "File uploads") and
+MinIO in local development / CI (``S3_ENDPOINT`` points at MinIO in
 ``docker-compose.yml``) — the same adapter, just different endpoint
 configuration, which is the point of the S3 API being a de-facto standard.
 
@@ -37,7 +38,14 @@ class S3StorageProvider:
             region_name=settings.S3_REGION,
             aws_access_key_id=settings.S3_ACCESS_KEY,
             aws_secret_access_key=settings.S3_SECRET_KEY.get_secret_value(),
-            config=BotoConfig(signature_version="s3v4"),
+            config=BotoConfig(
+                signature_version="s3v4",
+                # Checksums only where an operation requires them: newer boto3
+                # adds them to every upload by default, which S3-compatible
+                # stores such as R2 have refused. AWS and MinIO are unaffected.
+                request_checksum_calculation="when_required",
+                response_checksum_validation="when_required",
+            ),
             use_ssl=settings.S3_USE_SSL,
         )
 
