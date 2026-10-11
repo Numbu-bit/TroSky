@@ -2184,3 +2184,8 @@ pause, resume and end trips by hand, and admins cancel as before.
   Tasks now share one loop per worker process (`app/workers/loop.py`), and
   the pools are closed on it when the process stops. Running Celery with
   `--max-tasks-per-child 1` to work around it is no longer needed.
+- **`scripts.seed_demo_data` works with booking acceptance on.** Since
+  0.20.0 it confirmed the demo passenger's upcoming booking while it was
+  still waiting for the driver, and stopped there. The driver now accepts it
+  first, as in the app. Seeding no longer needs
+  `BOOKING_ACCEPTANCE_REQUIRED=false`.
