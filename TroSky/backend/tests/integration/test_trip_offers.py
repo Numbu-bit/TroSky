@@ -9,7 +9,7 @@ that, and TroSky adds 0.50 a seat.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 
 import pytest
@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError
 from app.core.redis import get_redis_client
+from app.models.trips import Trip
 from app.models.vehicles import VehicleType
 from app.schemas.booking import BookingCreateRequest, PassengerInput
 from app.services.booking_service import BookingService
@@ -34,16 +35,43 @@ def _service(session: AsyncSession) -> TripSearchService:
     return TripSearchService(session, get_redis_client())
 
 
+# Searches go by date, so a test's trips must share one whatever the time of
+# day the tests run. Two ways of placing them:
+
+
+def _ahead(minutes: int) -> datetime:
+    """Upcoming: ``minutes`` from now or, when trips up to four hours ahead
+    would be either side of midnight, from early tomorrow."""
+    start = datetime.now(UTC)
+    if (start + timedelta(hours=4)).date() != start.date():
+        start = datetime.combine(start.date() + timedelta(days=1), time(5, 0), tzinfo=UTC)
+    return start + timedelta(minutes=minutes)
+
+
+def _near(minutes: int) -> datetime:
+    """Gone or about to go: ``minutes`` from now, but within today. Close to
+    midnight the gaps between a test's trips shrink; their order does not."""
+    now = datetime.now(UTC)
+    today = datetime.combine(now.date(), time(0, 0), tzinfo=UTC)
+    return min(max(now + timedelta(minutes=minutes), today), today + timedelta(days=1, seconds=-1))
+
+
 async def _scenario(session: AsyncSession, make_user, *, minutes_from_now: int = 120):
-    departure = datetime.now(UTC) + timedelta(minutes=minutes_from_now)
+    departure = _near(minutes_from_now) if minutes_from_now < 0 else _ahead(minutes_from_now)
     return await build_trip_scenario(session, make_user, departure=departure)
+
+
+async def _travel_date(session: AsyncSession, scenario: TripScenario) -> date:
+    trip = await session.get(Trip, scenario.trip_id)
+    assert trip is not None
+    return trip.scheduled_departure_at.date()
 
 
 async def _search(session: AsyncSession, scenario: TripScenario, **options):
     defaults = {
         "origin_stop_id": scenario.stop_ids[LEGON],
         "destination_stop_id": scenario.stop_ids[CIRCLE],
-        "travel_date": datetime.now(UTC).date(),
+        "travel_date": await _travel_date(session, scenario),
         "departure_after": None,
         "departure_before": None,
         "pickup_latitude": None,
@@ -151,7 +179,7 @@ class TestSortingAndFilters:
         pricier = await trips.create_trip(
             route_id=scenario.route_id,
             route_schedule_id=None,
-            scheduled_departure_at=datetime.now(UTC) + timedelta(minutes=90),
+            scheduled_departure_at=_ahead(90),
             scheduled_arrival_at=None,
             fare_amount=Decimal("12.00"),
             created_by=None,
@@ -231,7 +259,7 @@ class TestVehiclesAlreadyOnTheRoad:
         next_one = await trips.create_trip(
             route_id=gone.route_id,
             route_schedule_id=None,
-            scheduled_departure_at=datetime.now(UTC) + timedelta(minutes=30),
+            scheduled_departure_at=_near(30),
             scheduled_arrival_at=None,
             fare_amount=Decimal("8.00"),
             created_by=None,
