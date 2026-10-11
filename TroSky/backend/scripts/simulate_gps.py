@@ -13,6 +13,11 @@ ground faster than real time; the backend rejects pings implying more than
 140 km/h, so speed x speedup is capped below that. ``--end`` ends the trip
 on arrival, which completes its bookings and credits the driver.
 
+A trip already on the road carries on from where it was last reported, so
+the simulator can be stopped and run again. ``--from-stop`` starts at a
+given stop instead (its number along the route, from 1, or part of its
+name). The access token lasts 15 minutes; it is refreshed as it runs out.
+
 Talks only to the HTTP API (default http://127.0.0.1:8000/api/v1), so it
 works against any running backend: local, docker or a hosted one.
 """
@@ -23,6 +28,7 @@ import argparse
 import math
 import sys
 import time
+from collections.abc import Generator
 from datetime import UTC, datetime
 from itertools import pairwise
 from typing import Any
@@ -69,6 +75,80 @@ def path_length_km(path: list[Point]) -> float:
     return sum(haversine_km(a, b) for a, b in pairwise(path))
 
 
+def km_along(path: list[Point], point: Point) -> float:
+    """How far along ``path`` the point nearest ``point`` is: where a vehicle
+    last reported there is on its route."""
+    best_distance, best_km, start_km = math.inf, 0.0, 0.0
+    for a, b in pairwise(path):
+        leg = haversine_km(a, b)
+        # Flat projection onto the leg: close enough over a few kilometres.
+        scale = math.cos(math.radians(a[0]))
+        ax, ay = (b[1] - a[1]) * scale, b[0] - a[0]
+        px, py = (point[1] - a[1]) * scale, point[0] - a[0]
+        length_sq = ax * ax + ay * ay
+        t = 0.0 if length_sq == 0 else max(0.0, min(1.0, (px * ax + py * ay) / length_sq))
+        nearest = (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
+        distance = haversine_km(nearest, point)
+        if distance < best_distance:
+            best_distance, best_km = distance, start_km + leg * t
+        start_km += leg
+    return best_km
+
+
+class DriverAuth(httpx.Auth):
+    """Signs each request in as the driver. When the access token has run
+    out (401), it is refreshed, or failing that the driver signs in again,
+    and the request is sent once more: a trip lasts longer than a token."""
+
+    requires_response_body = True
+
+    def __init__(self, base_url: str, phone: str, password: str) -> None:
+        self._base_url = base_url.rstrip("/")
+        self._phone, self._password = phone, password
+        self._access = self._refresh = ""
+
+    def sign_in(self) -> httpx.Request:
+        return httpx.Request(
+            "POST",
+            f"{self._base_url}/auth/login",
+            json={"identifier": self._phone, "password": self._password},
+        )
+
+    def keep(self, response: httpx.Response) -> bool:
+        if response.status_code != 200:
+            return False
+        tokens = response.json()
+        self._access, self._refresh = tokens["access_token"], tokens["refresh_token"]
+        return True
+
+    def auth_flow(self, request: httpx.Request) -> Generator[httpx.Request, httpx.Response, None]:
+        if not self._access:
+            self.keep((yield self.sign_in()))
+        request.headers["Authorization"] = f"Bearer {self._access}"
+        response = yield request
+        if response.status_code != 401:
+            return
+        refreshed = yield httpx.Request(
+            "POST", f"{self._base_url}/auth/refresh", json={"refresh_token": self._refresh}
+        )
+        if not self.keep(refreshed) and not self.keep((yield self.sign_in())):
+            return  # the caller reports the failure
+        print("  (signed in again: the access token had run out)")
+        request.headers["Authorization"] = f"Bearer {self._access}"
+        yield request
+
+
+def stop_index(names: list[str], wanted: str) -> int:
+    """A stop given by its number along the route (from 1) or part of its
+    name."""
+    if wanted.isdigit() and 1 <= int(wanted) <= len(names):
+        return int(wanted) - 1
+    matches = [i for i, name in enumerate(names) if wanted.lower() in name.lower()]
+    if len(matches) != 1:
+        sys.exit(f"--from-stop {wanted!r}: no single stop matches. Stops: {', '.join(names)}")
+    return matches[0]
+
+
 def _check(response: httpx.Response, what: str) -> Any:
     if response.status_code >= 300:
         sys.exit(f"{what} failed: {response.status_code} {response.text}")
@@ -112,6 +192,11 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--speed", type=float, default=30.0, help="Vehicle speed in km/h.")
     parser.add_argument("--speedup", type=float, default=1.0, help="Cover ground N times faster.")
     parser.add_argument("--end", action="store_true", help="End the trip on arrival.")
+    parser.add_argument(
+        "--from-stop",
+        help="Start at this stop (number from 1, or part of its name). Default: the first "
+        "stop, or where a trip already on the road was last reported.",
+    )
     args = parser.parse_args(argv)
     # Route names contain arrows; a Windows console or pipe may not print them.
     if hasattr(sys.stdout, "reconfigure"):
@@ -125,14 +210,12 @@ def main(argv: list[str] | None = None) -> None:
             f"anything above 140, so keep it under {MAX_APPARENT_KMH:.0f}."
         )
 
-    client = httpx.Client(base_url=args.base_url, timeout=60)
-    login = _check(
-        client.post(
-            "/auth/login", json={"identifier": args.driver_phone, "password": args.password}
-        ),
-        "Logging in as the driver",
+    client = httpx.Client(
+        base_url=args.base_url,
+        timeout=60,
+        auth=DriverAuth(args.base_url, args.driver_phone, args.password),
     )
-    client.headers["Authorization"] = f"Bearer {login['access_token']}"
+    _check(client.get("/users/me"), "Logging in as the driver")
 
     trip = pick_trip(client, args.trip_id)
     trip_id = trip["trip_id"]
@@ -142,6 +225,33 @@ def main(argv: list[str] | None = None) -> None:
     total_km = path_length_km(path)
     print(f"Trip {trip_id}: {route['name']} ({' -> '.join(names)}), {total_km:.1f} km")
 
+    # Where a trip already on the road was last reported: going anywhere far
+    # from there at once is a jump the backend rejects as implausible.
+    last_km: float | None = None
+    if trip["status"] in ("in_progress", "paused"):
+        last = client.get(f"/trips/{trip_id}/location")
+        if last.status_code == 200:
+            where = last.json()
+            last_km = km_along(path, (where["latitude"], where["longitude"]))
+            seconds = (datetime.now(UTC) - _parse(where["recorded_at"])).total_seconds()
+
+    travelled = last_km or 0.0
+    if args.from_stop:
+        start = stop_index(names, args.from_stop)
+        travelled = path_length_km(path[: start + 1])
+        if last_km is not None:
+            jump = abs(travelled - last_km)
+            if jump / max(seconds, 1) * 3600 > MAX_APPARENT_KMH:
+                sys.exit(
+                    f"This trip is on the road, last reported {last_km:.2f} km along: jumping "
+                    f"{jump:.2f} km to {names[start]} now would be rejected as implausible. "
+                    "Leave out --from-stop to carry on from there, or use it on a trip that "
+                    "has not started."
+                )
+        print(f"Starting at {names[start]}, {travelled:.2f} km along.")
+    elif last_km is not None:
+        print(f"Carrying on from the last position, {travelled:.2f} km along.")
+
     if trip["status"] in ("scheduled", "boarding"):
         _check(client.post(f"/driver-trips/{trip_id}/start"), "Starting the trip")
         print("Trip started.")
@@ -149,8 +259,9 @@ def main(argv: list[str] | None = None) -> None:
         _check(client.post(f"/driver-trips/{trip_id}/resume"), "Resuming the trip")
 
     step_km = args.speed * args.speedup * args.interval / 3600
-    travelled = 0.0
     next_stop = 1
+    while next_stop < len(path) and travelled >= path_length_km(path[: next_stop + 1]):
+        next_stop += 1  # stops already behind
     while True:
         (latitude, longitude), heading = point_along(path, travelled)
         response = client.post(
