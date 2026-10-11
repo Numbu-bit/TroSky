@@ -3,22 +3,37 @@
 Implements the publicly documented MTN MoMo Open API Collections product
 (https://momodeveloper.mtn.com — "Collection" product): OAuth-style bearer
 token exchange, Request-to-Pay (push-USSD collection), and status polling.
-Genuinely production-ready once real subscription/API-user credentials are
-supplied — this makes no assumptions beyond that documented contract, same
-as ``TwilioSmsProvider``.
+Works against MTN's sandbox as configured by default; the live environment
+needs MTN's production credentials and ``PAYMENTS_MTN_MOMO_TARGET_ENVIRONMENT``
+(``mtnghana`` for Ghana). ``scripts/momo_sandbox_setup.py`` makes the sandbox
+API user and key; ``docs/deploy-render.md`` ("Payments: MTN MoMo sandbox")
+has the whole setup.
 
 Flow:
 
 1. ``POST {base}/collection/token/`` with HTTP Basic auth
    (``PAYMENTS_MTN_MOMO_API_KEY`` : ``PAYMENTS_MTN_MOMO_API_SECRET``) and the
-   ``Ocp-Apim-Subscription-Key`` header — returns a short-lived bearer token.
-2. ``POST {base}/collection/v1_0/requesttopay`` with ``X-Reference-Id`` (our
-   own reference, becomes the payment's identity for every later lookup) —
-   returns ``202 Accepted`` with no body; the request is now pending
-   customer approval on their phone.
+   ``Ocp-Apim-Subscription-Key`` header — returns a short-lived bearer token,
+   kept until shortly before it expires.
+2. ``POST {base}/collection/v1_0/requesttopay`` with ``X-Reference-Id``, which
+   MTN requires to be a UUID: one made from our payment reference, so asking
+   again for the same payment is the same request (MTN answers 409). Our
+   reference goes as ``externalId``. With ``PAYMENTS_MTN_MOMO_CALLBACK_URL``
+   set, ``X-Callback-Url`` asks MTN to post the outcome there. ``202
+   Accepted``: the payer now has a prompt on their phone.
 3. ``GET {base}/collection/v1_0/requesttopay/{referenceId}`` — returns
-   ``{"status": "PENDING"|"SUCCESSFUL"|"FAILED", ...}``, used both for
-   webhook-triggered confirmation and for the reconciliation poll.
+   ``{"status": "PENDING"|"SUCCESSFUL"|"FAILED", ...}``: the only status this
+   backend acts on.
+
+Callbacks: MTN doesn't sign the outcomes it posts, so their content is never
+trusted. A callback names the payment (``externalId``); the payment service
+then asks MTN for that payment's status (``trusts_webhook_status = False``)
+and applies that. A forged callback can at most make it ask. Payments are
+also confirmed by the reconciliation sweep, so they complete without
+callbacks too.
+
+Sandbox: MTN's sandbox accepts only EUR (``PAYMENTS_MTN_MOMO_CURRENCY=EUR``),
+and a few test numbers give fixed outcomes; any other number is approved.
 
 Refunds: the Collections product has no refund endpoint of its own — a real
 MoMo refund is a *disbursement* (a transfer back to the customer), which
@@ -27,20 +42,13 @@ provision. ``refund`` therefore raises :class:`ProviderError` rather than
 fabricating a call against an endpoint this product doesn't expose; route
 MoMo-funded refunds through manual disbursement or credit the passenger's
 in-app wallet instead until that integration is scoped.
-
-Webhook authentication: MTN's callback-host registration does not sign each
-delivery with a per-payload HMAC (unlike, say, Stripe) — the merchant's
-registered callback URL is itself the trust boundary, conventionally
-protected by a bearer token issued at registration time. This adapter
-verifies that shared secret (``PAYMENTS_WEBHOOK_SIGNING_SECRET``) via the
-``Authorization`` header rather than inventing a signing scheme MTN doesn't
-actually implement.
 """
 
 from __future__ import annotations
 
-import hmac
+import contextlib
 import time
+import uuid
 from collections.abc import Mapping
 from decimal import Decimal
 from typing import Any
@@ -57,6 +65,7 @@ from app.providers.payments.base import (
     RefundResult,
     WebhookEvent,
 )
+from app.utilities.phone import InvalidPhoneNumberError, normalize_phone_number
 
 logger = get_logger(__name__)
 
@@ -65,28 +74,60 @@ _STATUS_MAP = {
     "SUCCESSFUL": PaymentProviderStatus.SUCCESSFUL,
     "FAILED": PaymentProviderStatus.FAILED,
 }
+# Request-to-pay references, made from our own payment references: the same
+# payment always gets the same one.
+_REFERENCE_NAMESPACE = uuid.UUID("5c1c3f5e-8f4e-4c39-9f4b-9d5f3c6e0a11")
+
+# Bearer tokens by (base URL, API user), shared by every adapter in the
+# process: one is made per request that pays.
+_tokens: dict[tuple[str, str], tuple[str, float]] = {}
+
+
+def momo_reference(reference: str) -> str:
+    """The X-Reference-Id (a UUID, as MTN requires) for our payment
+    ``reference``."""
+    return str(uuid.uuid5(_REFERENCE_NAMESPACE, reference))
+
+
+def _msisdn(phone: str) -> str:
+    """The payer's number as MTN wants it, international digits without the
+    plus (233241234567). Numbers that aren't Ghanaian (the sandbox's test
+    numbers) go as typed, digits only."""
+    with contextlib.suppress(InvalidPhoneNumberError):
+        phone = normalize_phone_number(phone)
+    return "".join(ch for ch in phone if ch.isdigit())
 
 
 class MtnMomoPaymentProvider:
-    def __init__(self, settings: Settings) -> None:
+    # A callback's content is not trusted: see the module docstring.
+    trusts_webhook_status = False
+
+    def __init__(
+        self, settings: Settings, transport: httpx.AsyncBaseTransport | None = None
+    ) -> None:
         self._base_url = settings.PAYMENTS_MTN_MOMO_BASE_URL.rstrip("/")
         self._api_user = settings.PAYMENTS_MTN_MOMO_API_KEY.get_secret_value()
         self._api_key = settings.PAYMENTS_MTN_MOMO_API_SECRET.get_secret_value()
         self._subscription_key = settings.PAYMENTS_MTN_MOMO_SUBSCRIPTION_KEY.get_secret_value()
-        self._target_environment = "sandbox" if not settings.is_production else "production"
-        self._webhook_secret = settings.PAYMENTS_WEBHOOK_SIGNING_SECRET.get_secret_value()
+        self._target_environment = settings.PAYMENTS_MTN_MOMO_TARGET_ENVIRONMENT
+        self._currency = settings.PAYMENTS_MTN_MOMO_CURRENCY.strip().upper()
+        self._callback_url = settings.PAYMENTS_MTN_MOMO_CALLBACK_URL.strip()
+        self._transport = transport
         if not (self._base_url and self._api_user and self._api_key and self._subscription_key):
             raise ProviderError(
                 "MTN MoMo provider selected but PAYMENTS_MTN_MOMO_BASE_URL / "
                 "PAYMENTS_MTN_MOMO_API_KEY / PAYMENTS_MTN_MOMO_API_SECRET / "
                 "PAYMENTS_MTN_MOMO_SUBSCRIPTION_KEY are not fully configured."
             )
-        self._token: str | None = None
-        self._token_expires_at: float = 0.0
+
+    def _client(self) -> httpx.AsyncClient:
+        return httpx.AsyncClient(timeout=15.0, transport=self._transport)
 
     async def _get_access_token(self, client: httpx.AsyncClient) -> str:
-        if self._token is not None and time.monotonic() < self._token_expires_at:
-            return self._token
+        key = (self._base_url, self._api_user)
+        cached = _tokens.get(key)
+        if cached is not None and time.monotonic() < cached[1]:
+            return cached[0]
         try:
             response = await client.post(
                 f"{self._base_url}/collection/token/",
@@ -102,9 +143,9 @@ class MtnMomoPaymentProvider:
         if not token:
             raise ProviderError("MTN MoMo token response did not include an access_token.")
         # Refresh a little early rather than racing the vendor's own expiry.
-        self._token_expires_at = time.monotonic() + max(int(body.get("expires_in", 3600)) - 30, 0)
-        self._token = str(token)
-        return self._token
+        expires_at = time.monotonic() + max(int(body.get("expires_in", 3600)) - 30, 0)
+        _tokens[key] = (str(token), expires_at)
+        return str(token)
 
     def _headers(self, token: str, *, reference: str | None = None) -> dict[str, str]:
         headers = {
@@ -115,6 +156,8 @@ class MtnMomoPaymentProvider:
         }
         if reference is not None:
             headers["X-Reference-Id"] = reference
+            if self._callback_url:
+                headers["X-Callback-Url"] = self._callback_url
         return headers
 
     async def initialize_payment(
@@ -128,20 +171,18 @@ class MtnMomoPaymentProvider:
     ) -> PaymentInitResult:
         if not payer_phone:
             raise ProviderError("MTN MoMo requires the payer's MSISDN (payer_phone).")
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        momo_id = momo_reference(reference)
+        async with self._client() as client:
             token = await self._get_access_token(client)
             try:
                 response = await client.post(
                     f"{self._base_url}/collection/v1_0/requesttopay",
-                    headers=self._headers(token, reference=reference),
+                    headers=self._headers(token, reference=momo_id),
                     json={
                         "amount": str(amount),
-                        "currency": currency,
+                        "currency": self._currency or currency,
                         "externalId": reference,
-                        "payer": {
-                            "partyIdType": "MSISDN",
-                            "partyId": payer_phone.lstrip("+"),
-                        },
+                        "payer": {"partyIdType": "MSISDN", "partyId": _msisdn(payer_phone)},
                         "payerMessage": narration[:160],
                         "payeeNote": narration[:160],
                     },
@@ -149,22 +190,24 @@ class MtnMomoPaymentProvider:
             except httpx.HTTPError as exc:
                 raise ProviderError("Failed to reach MTN MoMo request-to-pay endpoint.") from exc
 
-        if response.status_code != 202:
+        # 409: this payment was asked for already (a retry): still pending.
+        if response.status_code not in (202, 409):
             logger.warning(
                 "mtn_momo_requesttopay_rejected",
                 status_code=response.status_code,
                 reference=reference,
+                detail=response.text[:300],
             )
             raise ProviderError(f"MTN MoMo rejected the request (HTTP {response.status_code}).")
 
         return PaymentInitResult(
-            provider_reference=reference,
+            provider_reference=momo_id,
             status=PaymentProviderStatus.PENDING,
             instructions="Approve the payment prompt sent to your phone.",
         )
 
     async def query_payment(self, provider_reference: str) -> PaymentStatusResult:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with self._client() as client:
             token = await self._get_access_token(client)
             try:
                 response = await client.get(
@@ -204,9 +247,9 @@ class MtnMomoPaymentProvider:
         )
 
     def verify_webhook_signature(self, headers: Mapping[str, str], raw_body: bytes) -> bool:
-        provided = headers.get("authorization") or headers.get("Authorization") or ""
-        expected = f"Bearer {self._webhook_secret}"
-        return hmac.compare_digest(provided, expected)
+        """MTN signs nothing, so there is nothing to verify: every callback
+        is accepted as a prompt to ask MTN, never believed itself."""
+        return True
 
     def parse_webhook_event(
         self, headers: Mapping[str, str], payload: dict[str, Any]

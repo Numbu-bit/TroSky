@@ -183,10 +183,22 @@ class Settings(BaseSettings):
     PICKUP_MAX_WALK_METERS: int = Field(default=1000, gt=0, le=20_000)
     PICKUP_NEARBY_LIMIT: int = Field(default=5, gt=0, le=50)
     PAYMENTS_WEBHOOK_SIGNING_SECRET: SecretStr
-    PAYMENTS_MTN_MOMO_BASE_URL: str = ""
+    # MTN MoMo Collections (app.providers.payments.mtn_momo). API_KEY is the
+    # API user's id, API_SECRET its API key; scripts/momo_sandbox_setup.py
+    # makes a sandbox pair from the subscription key.
+    PAYMENTS_MTN_MOMO_BASE_URL: str = "https://sandbox.momodeveloper.mtn.com"
     PAYMENTS_MTN_MOMO_API_KEY: SecretStr = SecretStr("")
     PAYMENTS_MTN_MOMO_API_SECRET: SecretStr = SecretStr("")
     PAYMENTS_MTN_MOMO_SUBSCRIPTION_KEY: SecretStr = SecretStr("")
+    # "sandbox" for MTN's sandbox; Ghana's live environment is "mtnghana".
+    PAYMENTS_MTN_MOMO_TARGET_ENVIRONMENT: str = "sandbox"
+    # The currency sent to MTN, when not the payment's own: the sandbox
+    # accepts only EUR. Empty: the payment's currency (GHS).
+    PAYMENTS_MTN_MOMO_CURRENCY: str = ""
+    # Where MTN posts the outcome of a payment, on the API user's callback
+    # host: https://<host>/api/v1/payments/webhooks/mtn_momo. Empty: none is
+    # asked for, and payments are confirmed by polling MTN.
+    PAYMENTS_MTN_MOMO_CALLBACK_URL: str = ""
     PAYMENTS_TELECEL_CASH_BASE_URL: str = ""
     PAYMENTS_TELECEL_CASH_API_KEY: SecretStr = SecretStr("")
     PAYMENTS_TELECEL_CASH_API_SECRET: SecretStr = SecretStr("")
