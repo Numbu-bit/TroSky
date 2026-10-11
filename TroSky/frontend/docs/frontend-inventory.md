@@ -115,11 +115,11 @@ Use the **Screen ID** as the screenshot filename (e.g. `S-04.png`). "Figma" is t
 |---|---|---|---|
 | P-01 | **Home** (P5: map, favourite routes, subscribe banner, SOS) in the passenger tab bar (decision 12). Built 1 Oct 2026. P5 has no upcoming-trip card, so `GET /bookings` isn't used yet | `GET /stops/nearby`, `GET /users/me/favourite-routes` (G4), `GET /vehicles/nearby` (G16) | ✅ banner behind `subscriptions` (G14); SOS needs G19 |
 | P-02 | **Search** (from, to, when; not in Figma, decision 19). Built 2 Oct 2026: Current location or a chosen stop, stop search, nearby stops, favourites, last 5 searches | `GET /stops?q=`, `GET /stops/nearby`, `GET /users/me/favourite-routes` | ✅ |
-| P-03 | **Search results** (P6). Built 2 Oct 2026: filter pills (decision 22), pages, save route. Live shows the trip fare and "Board at …" (decisions 20, 21) | `GET /trips/search` (+ `pickup_latitude` / `pickup_longitude`), `POST /users/me/favourite-routes` | ✅ full design waits for G20, G21 |
+| P-03 | **Search results** (P6). Built 2 Oct 2026: filter pills (decision 22, sorted and filtered by the backend since 10 Oct), pages, save route. Since 10 Oct 2026 live shows the full design: the passenger's fare with the saving (G20), vehicles approaching or passed (G21) | `GET /trips/search` (+ `pickup_latitude` / `pickup_longitude`, `sort`, `vehicle_type`), `POST /users/me/favourite-routes` | ✅ |
 | P-04 | Trip details | `GET /trips/{id}`, `GET /routes/{id}` | ✅ |
-| P-05 | Seat selection | `GET /trips/{id}/seats` | ✅ |
-| P-06 | Passenger details + booking review | `POST /bookings` | ✅ |
-| P-07 | Payment method | `POST /bookings/{id}/pay`, `GET /wallet` | ✅ |
+| P-05 | **Seat selection** (P7). Built 2 Oct 2026: the map drawn from the seat rows and columns (decision 25), refreshed every 10 s, up to 10 seats; the fare from the backend's quote for the stops and seats (since 10 Oct 2026); Reserve holds the seats (passengers per decision 23) | `GET /trips/{id}/seats`, `GET /trips/{id}/fare-quote`, `POST /bookings` (`Idempotency-Key`) | ✅ |
+| P-06 | Passenger details + booking review. Not built: decision 23 names the passengers without asking, and Payment shows the review | `POST /bookings` | ✅ |
+| P-07 | Payment method. **Placeholder** since 2 Oct 2026: the held booking (reference, seats, fare, fee, total), a countdown to `expires_at`, Cancel booking; Home reopens an unpaid hold after a restart | `POST /bookings/{id}/pay`, `GET /wallet`; the placeholder uses `POST /bookings/{id}/cancel`, `GET /bookings?status=pending,payment_pending&upcoming=true` | ✅ |
 | P-08 | Approve on your phone (MoMo pending) | `POST /payments/{id}/sync` (poll) | ✅ |
 | P-09 | Payment success / failed | `GET /bookings/{id}` | ✅ |
 | P-10 | Ticket (QR) | `GET /bookings/{id}/tickets`, `GET /tickets/{id}` | ✅ |
@@ -214,7 +214,7 @@ Ranked by how badly each blocks the frontend. Most are small additions to router
 | G11 | Telecel, AirtelTigo and card payments are placeholders | P-07 | Already known; the UI shows "Coming soon" |
 | G12 | `GET /bookings` has no status or date filter, and bookings don't include departure time | P-01, P-15 (the app makes one extra request per booking) | `?status=&upcoming=true` and embed a trip summary |
 | G13 | The rating is a single score. The SRS asked for safety, cleanliness, professionalism and timeliness | P-14 (only if the Figma "Rate Driver" screen shows categories) | Optional category scores |
-| G19 | An SOS needs a trip (`POST /trips/{trip_id}/sos`), but Home shows SOS at all times | P-01's SOS button, P-12 outside a trip | `POST /sos` with an optional `trip_id` (decision 18) |
+| G19 (done, 0.13.0) | An SOS needs a trip (`POST /trips/{trip_id}/sos`), but Home shows SOS at all times | P-01's SOS button, P-12 outside a trip | `POST /sos` with an optional `trip_id` (decision 18) |
 
 ### Gaps the Figma design creates (it shows features the backend doesn't have)
 | ID | Design shows | Backend today | Decision needed |

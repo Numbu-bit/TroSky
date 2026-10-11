@@ -53,6 +53,10 @@ enum CodePurpose {
 
   /// "Sign in with a code".
   signIn,
+
+  /// Already signed in, but an action (booking) needs a verified account:
+  /// verify, then go back to it.
+  verifyAccount,
 }
 
 /// What the code screen needs.
@@ -81,7 +85,8 @@ class CodeRequest {
 
   OtpPurpose get otpPurpose => switch (purpose) {
     CodePurpose.registration ||
-    CodePurpose.unverifiedAccount => OtpPurpose.registration,
+    CodePurpose.unverifiedAccount ||
+    CodePurpose.verifyAccount => OtpPurpose.registration,
     CodePurpose.signIn => OtpPurpose.login,
   };
 }

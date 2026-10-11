@@ -36,6 +36,11 @@ _ROLE_DEFINITIONS: list[tuple[SystemRole, str, str]] = [
         "Super Administrator",
         "Unrestricted break-glass administrative access.",
     ),
+    (
+        SystemRole.STAFF,
+        "Staff",
+        "On the admin team with only the permissions granted to them.",
+    ),
 ]
 
 

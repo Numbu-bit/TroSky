@@ -216,3 +216,19 @@ class TestRejectedPasswordsStayPrivate:
         [error] = response.json()["error"]["details"]["errors"]
         assert error["loc"] == ["body", "password"]
         assert error["input"] == "***REDACTED***"
+
+
+class TestPassengerSignUpLocation:
+    async def test_a_location_comes_whole(
+        self, client: AsyncClient, seed_identity_data: None
+    ) -> None:
+        response = await client.post(
+            "/api/v1/auth/register",
+            json={
+                "phone_number": "0271239877",
+                "password": "Str0ngPass",
+                "full_name": "Ama Serwaa",
+                "latitude": 5.6037,
+            },
+        )
+        assert response.status_code == 422

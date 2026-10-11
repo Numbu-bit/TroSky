@@ -10,7 +10,13 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.feedback import Complaint, ComplaintCategory, ComplaintStatus, Rating
+from app.models.feedback import (
+    Complaint,
+    ComplaintCategory,
+    ComplaintPriority,
+    ComplaintStatus,
+    Rating,
+)
 
 
 class RatingAlreadyExistsError(Exception):
@@ -92,6 +98,7 @@ class ComplaintRepository:
         category: ComplaintCategory,
         subject: str,
         description: str,
+        priority: ComplaintPriority = ComplaintPriority.MEDIUM,
     ) -> Complaint:
         complaint = Complaint(
             filed_by=filed_by,
@@ -100,6 +107,7 @@ class ComplaintRepository:
             category=category,
             subject=subject,
             description=description,
+            priority=priority,
         )
         self._session.add(complaint)
         await self._session.flush()

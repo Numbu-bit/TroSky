@@ -33,7 +33,13 @@ from app.models.identity import User, UserProfile
 from app.models.payments import Payment, PaymentStatus
 from app.models.routes import Route, RouteStop, Stop
 from app.models.tickets import Ticket, TicketStatus
-from app.models.trips import Trip, TripDriverAssignment, TripStatus, TripVehicleAssignment
+from app.models.trips import (
+    AssignmentResponse,
+    Trip,
+    TripDriverAssignment,
+    TripStatus,
+    TripVehicleAssignment,
+)
 from app.models.vehicles import Vehicle, VehicleSeat, VehicleSeatLayout, VehicleType
 from app.providers.payments.base import PaymentChannel
 
@@ -63,7 +69,8 @@ class TripSummary:
     vehicle_capacity: int | None
     fleet_id: uuid.UUID | None
     seats_total: int
-    # Paid seats -- the passengers on the driver's manifest.
+    # Paid seats -- the passengers on the driver's manifest, those who have
+    # got off included (a seat taken again after that counts twice).
     seats_booked: int
     # Paid seats plus seats held for bookings awaiting payment: what nobody
     # else can book right now.
@@ -72,6 +79,8 @@ class TripSummary:
     driver_id: uuid.UUID | None
     driver_name: str | None
     driver_user_id: uuid.UUID | None
+    # The assigned driver's answer to the trip; None with no driver.
+    driver_response: AssignmentResponse | None
 
     @property
     def available_seats(self) -> int:
@@ -86,6 +95,7 @@ class TripSummary:
 @dataclass(frozen=True, slots=True)
 class ManifestEntry:
     ticket_id: uuid.UUID
+    booking_passenger_id: uuid.UUID
     booking_reference: str
     seat_id: uuid.UUID
     seat_label: str
@@ -97,6 +107,7 @@ class ManifestEntry:
     dropoff_stop_name: str
     boarded: bool
     boarded_at: datetime | None
+    alighted_at: datetime | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -173,12 +184,16 @@ def _summary_columns() -> tuple[Any, ...]:
         Vehicle.fleet_id,
         # Seats configured on the layout, else the vehicle's rated capacity.
         func.coalesce(layout_seats, Vehicle.capacity, 0).label("seats_total"),
-        _reservations(ReservationStatus.CONFIRMED).label("seats_booked"),
+        # Including passengers who have got off: still on the manifest.
+        _reservations(ReservationStatus.CONFIRMED, ReservationStatus.COMPLETED).label(
+            "seats_booked"
+        ),
         _reservations(ReservationStatus.HELD, ReservationStatus.CONFIRMED).label("seats_taken"),
         boarded.label("boarded_count"),
         Driver.id.label("driver_id"),
         UserProfile.full_name.label("driver_name"),
         Driver.user_id.label("driver_user_id"),
+        TripDriverAssignment.response.label("driver_response"),
     )
 
 
@@ -238,6 +253,7 @@ def _to_summary(row: Any) -> TripSummary:
         driver_id=row.driver_id,
         driver_name=row.driver_name,
         driver_user_id=row.driver_user_id,
+        driver_response=row.driver_response,
     )
 
 
@@ -351,6 +367,7 @@ class TripViewRepository:
             await self._session.execute(
                 select(
                     Ticket.id,
+                    BookingPassenger.id.label("booking_passenger_id"),
                     Booking.booking_reference,
                     BookingPassenger.seat_id,
                     VehicleSeat.seat_number,
@@ -362,6 +379,7 @@ class TripViewRepository:
                     _dropoff.name.label("dropoff_stop_name"),
                     Ticket.status,
                     Ticket.validated_at,
+                    BookingPassenger.alighted_at,
                 )
                 .select_from(Ticket)
                 .join(Booking, Booking.id == Ticket.booking_id)
@@ -395,6 +413,7 @@ class TripViewRepository:
         return [
             ManifestEntry(
                 ticket_id=row.id,
+                booking_passenger_id=row.booking_passenger_id,
                 booking_reference=row.booking_reference,
                 seat_id=row.seat_id,
                 seat_label=row.seat_number,
@@ -404,6 +423,7 @@ class TripViewRepository:
                 dropoff_stop_name=row.dropoff_stop_name,
                 boarded=row.status == TicketStatus.VALIDATED,
                 boarded_at=row.validated_at,
+                alighted_at=row.alighted_at,
             )
             for row in rows
         ]

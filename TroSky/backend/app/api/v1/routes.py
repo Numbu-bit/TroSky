@@ -208,7 +208,7 @@ async def search_trips(
         offset=pagination.offset,
     )
     return PaginatedResponse(
-        items=[_search_result(offer) for offer in offers],
+        items=[search_result_response(offer) for offer in offers],
         total=total,
         limit=pagination.limit,
         offset=pagination.offset,
@@ -228,7 +228,7 @@ def _fare_summary(quote: FareQuote) -> FareSummaryResponse:
     )
 
 
-def _search_result(offer: TripOffer) -> TripSearchResultResponse:
+def search_result_response(offer: TripOffer) -> TripSearchResultResponse:
     summary, geometry, pickup = offer.summary, offer.geometry, offer.pickup
     return TripSearchResultResponse(
         trip_id=summary.trip_id,

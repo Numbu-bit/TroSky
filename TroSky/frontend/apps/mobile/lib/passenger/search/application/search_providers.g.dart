@@ -245,7 +245,8 @@ final class NearbyStopListProvider
 
 String _$nearbyStopListHash() => r'58040ebb09a6f4a6094e5f6b60ec40f008919ef0';
 
-/// The results of [search] (`GET /trips/search`), a page at a time.
+/// The results of a [ResultsRequest] (`GET /trips/search`), a page at a
+/// time.
 ///
 /// Fails with an [AppFailure] (e.g. 422 `NO_PICKUP_NEARBY`) or
 /// [LocationUnavailable].
@@ -253,19 +254,21 @@ String _$nearbyStopListHash() => r'58040ebb09a6f4a6094e5f6b60ec40f008919ef0';
 @ProviderFor(TripResultsController)
 final tripResultsControllerProvider = TripResultsControllerFamily._();
 
-/// The results of [search] (`GET /trips/search`), a page at a time.
+/// The results of a [ResultsRequest] (`GET /trips/search`), a page at a
+/// time.
 ///
 /// Fails with an [AppFailure] (e.g. 422 `NO_PICKUP_NEARBY`) or
 /// [LocationUnavailable].
 final class TripResultsControllerProvider
     extends $AsyncNotifierProvider<TripResultsController, TripResults> {
-  /// The results of [search] (`GET /trips/search`), a page at a time.
+  /// The results of a [ResultsRequest] (`GET /trips/search`), a page at a
+  /// time.
   ///
   /// Fails with an [AppFailure] (e.g. 422 `NO_PICKUP_NEARBY`) or
   /// [LocationUnavailable].
   TripResultsControllerProvider._({
     required TripResultsControllerFamily super.from,
-    required JourneySearch super.argument,
+    required ResultsRequest super.argument,
   }) : super(
          retry: noRetry,
          name: r'tripResultsControllerProvider',
@@ -300,9 +303,10 @@ final class TripResultsControllerProvider
 }
 
 String _$tripResultsControllerHash() =>
-    r'45890df89c48cd3a3c184620989c11d35dde5092';
+    r'a0cf78cafbdfcbe1ec5a0bcf4f6f8b395fce3c61';
 
-/// The results of [search] (`GET /trips/search`), a page at a time.
+/// The results of a [ResultsRequest] (`GET /trips/search`), a page at a
+/// time.
 ///
 /// Fails with an [AppFailure] (e.g. 422 `NO_PICKUP_NEARBY`) or
 /// [LocationUnavailable].
@@ -314,7 +318,7 @@ final class TripResultsControllerFamily extends $Family
           AsyncValue<TripResults>,
           TripResults,
           FutureOr<TripResults>,
-          JourneySearch
+          ResultsRequest
         > {
   TripResultsControllerFamily._()
     : super(
@@ -325,28 +329,30 @@ final class TripResultsControllerFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// The results of [search] (`GET /trips/search`), a page at a time.
+  /// The results of a [ResultsRequest] (`GET /trips/search`), a page at a
+  /// time.
   ///
   /// Fails with an [AppFailure] (e.g. 422 `NO_PICKUP_NEARBY`) or
   /// [LocationUnavailable].
 
-  TripResultsControllerProvider call(JourneySearch search) =>
-      TripResultsControllerProvider._(argument: search, from: this);
+  TripResultsControllerProvider call(ResultsRequest request) =>
+      TripResultsControllerProvider._(argument: request, from: this);
 
   @override
   String toString() => r'tripResultsControllerProvider';
 }
 
-/// The results of [search] (`GET /trips/search`), a page at a time.
+/// The results of a [ResultsRequest] (`GET /trips/search`), a page at a
+/// time.
 ///
 /// Fails with an [AppFailure] (e.g. 422 `NO_PICKUP_NEARBY`) or
 /// [LocationUnavailable].
 
 abstract class _$TripResultsController extends $AsyncNotifier<TripResults> {
-  late final _$args = ref.$arg as JourneySearch;
-  JourneySearch get search => _$args;
+  late final _$args = ref.$arg as ResultsRequest;
+  ResultsRequest get request => _$args;
 
-  FutureOr<TripResults> build(JourneySearch search);
+  FutureOr<TripResults> build(ResultsRequest request);
   @$mustCallSuper
   @override
   WhenComplete runBuild() {

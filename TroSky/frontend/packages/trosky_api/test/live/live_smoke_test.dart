@@ -174,8 +174,11 @@ void main() {
         : false,
   );
 
+  // B1 (fixed in backend 0.13.0): the three safeguards keep their writes
+  // although the request fails. The lockout runs last: a locked account
+  // can't ask for codes.
   test(
-    'probes: do the backend safeguards hold?',
+    'B1: reusing a refresh token signs out every session',
     () async {
       // Two sessions for the same account.
       final a = (await auth.login(
@@ -190,23 +193,20 @@ void main() {
       );
       final bStatus = await meStatusWith(b.accessToken);
       step(
-        'P1 refresh token reused: ${reuse.failureOrNull?.code}; the other '
-        'session then gets $bStatus (${bStatus == 401 ? 'revoked as designed' : 'NOT revoked'})',
+        'B1 refresh token reused: ${reuse.failureOrNull?.code}; the other '
+        'session then gets $bStatus',
       );
+      expect(reuse.failureOrNull?.code, 'REFRESH_TOKEN_REUSE_DETECTED');
+      expect(bStatus, 401);
+    },
+    skip: _baseUrl == null
+        ? 'Set TROSKY_LIVE_API to run against a backend'
+        : false,
+  );
 
-      for (var i = 0; i < 5; i++) {
-        await auth.login(
-          LoginRequest(identifier: phone, password: 'Wrong2026x'),
-        );
-      }
-      final afterWrong = await auth.login(
-        LoginRequest(identifier: phone, password: password),
-      );
-      step(
-        'P2 5 wrong passwords, then the right one: '
-        '${afterWrong.isOk ? 'signed in (NOT locked)' : afterWrong.failureOrNull!.code}',
-      );
-
+  test(
+    'B1: wrong codes stop at the attempt limit',
+    () async {
       await auth.resendOtp(
         ResendOtpRequest(target: phone, purpose: OtpPurpose.login),
       );
@@ -221,7 +221,30 @@ void main() {
         );
         codes.add(r.failureOrNull?.code);
       }
-      step('P3 6 wrong codes: ${codes.join(', ')}');
+      step('B1 6 wrong codes: ${codes.join(', ')}');
+      expect(codes.last, 'OTP_ATTEMPTS_EXCEEDED');
+    },
+    skip: _baseUrl == null
+        ? 'Set TROSKY_LIVE_API to run against a backend'
+        : false,
+  );
+
+  test(
+    'B1: 5 wrong passwords lock the account',
+    () async {
+      for (var i = 0; i < 5; i++) {
+        await auth.login(
+          LoginRequest(identifier: phone, password: 'Wrong2026x'),
+        );
+      }
+      final afterWrong = await auth.login(
+        LoginRequest(identifier: phone, password: password),
+      );
+      step(
+        'B1 5 wrong passwords, then the right one: '
+        '${afterWrong.isOk ? 'signed in' : afterWrong.failureOrNull!.code}',
+      );
+      expect(afterWrong.failureOrNull?.code, 'ACCOUNT_LOCKED');
     },
     skip: _baseUrl == null
         ? 'Set TROSKY_LIVE_API to run against a backend'

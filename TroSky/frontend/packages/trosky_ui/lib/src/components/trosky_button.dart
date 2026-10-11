@@ -19,6 +19,8 @@ class TroskyButtonVariant {
     required this.shadow,
     this.border,
     this.pressedBackground,
+    this.idleBackground,
+    this.idleForeground,
   });
 
   /// White "Next" on Onboarding 1: 54 px pill, 95 % white, dark green
@@ -69,6 +71,22 @@ class TroskyButtonVariant {
 
   /// White outlined "Continue with Email" on Sign Up: 50 px tall, radius 14,
   /// 1.5 px border, Inter 14/500, no shadow.
+  /// "Reserve Seat 4" on Seat Selection (P7): 52 px, fully rounded,
+  /// Plus Jakarta Sans 14/700. With nothing to reserve it is grey with grey
+  /// text, as the design draws it ("Select Seats to Continue"), instead of
+  /// the usual 70 % (decision 3).
+  static final seatCta = TroskyButtonVariant._(
+    height: 52,
+    radius: TroskyRadii.r26,
+    background: TroskyColors.green,
+    foreground: TroskyColors.white,
+    textStyle: TroskyTypography.heading14Bold,
+    shadow: TroskyShadows.primaryButton,
+    pressedBackground: TroskyColors.greenDark,
+    idleBackground: TroskyColors.border,
+    idleForeground: TroskyColors.textSecondary,
+  );
+
   static final outline = TroskyButtonVariant._(
     height: 50,
     radius: TroskyRadii.r14,
@@ -94,6 +112,11 @@ class TroskyButtonVariant {
   /// buttons use greenDark, which globals.css pairs with green, and every
   /// variant drops its shadow while pressed.
   final Color? pressedBackground;
+
+  /// A disabled look the design draws itself (P7). When set, a disabled
+  /// button uses these colours at full opacity instead of fading.
+  final Color? idleBackground;
+  final Color? idleForeground;
 }
 
 /// Full-width button in one of the [TroskyButtonVariant] styles.
@@ -146,10 +169,17 @@ class _TroskyButtonState extends State<TroskyButton> {
     final variant = widget.variant;
     final pressed = _enabled && (_down || widget.pressed);
     final disabled = widget.onPressed == null && !widget.loading;
-    final background = pressed
+    final idle = disabled && variant.idleBackground != null;
+    final background = idle
+        ? variant.idleBackground!
+        : pressed
         ? variant.pressedBackground ?? variant.background
         : variant.background;
-    final textStyle = variant.textStyle.copyWith(color: variant.foreground);
+    final textStyle = variant.textStyle.copyWith(
+      color: idle
+          ? variant.idleForeground ?? variant.foreground
+          : variant.foreground,
+    );
 
     final Widget content;
     if (widget.loading) {
@@ -223,7 +253,7 @@ class _TroskyButtonState extends State<TroskyButton> {
           onTapCancel: _enabled ? () => _setDown(false) : null,
           onTap: _enabled ? widget.onPressed : null,
           child: Opacity(
-            opacity: disabled ? TroskyOpacity.disabled : 1,
+            opacity: disabled && !idle ? TroskyOpacity.disabled : 1,
             child: button,
           ),
         ),

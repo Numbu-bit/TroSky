@@ -11,12 +11,14 @@ import '../entry/auth/presentation/welcome_screen.dart';
 import '../entry/onboarding/presentation/onboarding_screen.dart';
 import '../entry/splash/presentation/splash_screen.dart';
 import '../l10n/app_localizations.dart';
+import '../passenger/booking/presentation/payment_screen.dart';
 import '../passenger/home/presentation/home_screen.dart';
 import '../passenger/search/domain/journey.dart';
 import '../passenger/search/presentation/search_results_screen.dart';
 import '../passenger/search/presentation/search_screen.dart';
-import '../passenger/search/presentation/trip_view.dart';
 import '../passenger/search/search_prefill.dart';
+import '../passenger/seats/domain/seat_selection_args.dart';
+import '../passenger/seats/presentation/seat_selection_screen.dart';
 import '../passenger/shell/passenger_shell.dart';
 import 'placeholder_screen.dart';
 
@@ -52,8 +54,12 @@ enum AppRoute {
   /// Search Results (P-03); `extra` is a [JourneySearch].
   searchResults('/search/results'),
 
-  /// Seat Selection (P-05, placeholder); `extra` is a [SeatSelectionArgs].
+  /// Seat Selection (P-05); `extra` is a [SeatSelectionArgs].
   seatSelection('/seats'),
+
+  /// Payment (P-07, placeholder): a held booking; `extra` is a
+  /// [PaymentArgs].
+  payment('/payment'),
   notifications('/notifications'),
   favouriteRoutes('/favourite-routes'),
   subscribe('/subscribe'),
@@ -167,19 +173,17 @@ GoRouter router(Ref ref) {
         name: AppRoute.seatSelection.name,
         redirect: (context, state) =>
             state.extra is SeatSelectionArgs ? null : AppRoute.home.path,
-        builder: (context, state) {
-          final args = state.extra! as SeatSelectionArgs;
-          final l10n = AppLocalizations.of(context);
-          return PushedPlaceholder(
-            title: l10n.placeholderSeats,
-            detail: l10n.placeholderSeatsTrip(
-              vehicleLabel(l10n, args.trip.vehicleType),
-              clockTime(args.trip.scheduledDepartureAt),
-              args.boardingStopName,
-              args.alightingStop.name,
-            ),
-          );
-        },
+        builder: (context, state) =>
+            SeatSelectionScreen(args: state.extra! as SeatSelectionArgs),
+      ),
+      GoRoute(
+        path: AppRoute.payment.path,
+        name: AppRoute.payment.name,
+        // The booking only travels in memory; Home reopens a held one.
+        redirect: (context, state) =>
+            state.extra is PaymentArgs ? null : AppRoute.home.path,
+        builder: (context, state) =>
+            PaymentScreen(args: state.extra! as PaymentArgs),
       ),
       for (final (pushed, title)
           in <(AppRoute, String Function(AppLocalizations))>[

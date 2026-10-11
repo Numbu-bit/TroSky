@@ -46,6 +46,7 @@ from app.models.bookings import (
 )
 from app.models.notifications import NotificationCategory
 from app.models.trips import Trip, TripStatus
+from app.repositories.booking_offer_repository import BookingOfferRepository
 from app.repositories.booking_repository import BookingRepository, SeatAlreadyReservedError
 from app.repositories.route_geometry import (
     PASSED_STOP_TOLERANCE_KM,
@@ -53,17 +54,16 @@ from app.repositories.route_geometry import (
     RouteGeometryRepository,
 )
 from app.repositories.route_repository import StopRepository
-from app.repositories.tracking_repository import TripLocationRepository
 from app.repositories.trip_repository import TripRepository
 from app.repositories.trip_view_repository import TripSummary, TripViewRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.vehicle_repository import VehicleRepository
 from app.schemas.booking import BookingCreateRequest
+from app.services.booking_acceptance_service import BookingAcceptanceService
 from app.services.fare_quote_service import FareQuote, FareQuoteService, QuoteRequest
 from app.services.notification_service import NotificationService
 from app.services.ticket_service import TicketService
-from app.services.tracking_service import TrackingService
-from app.utilities.geo import wkb_to_latlng
+from app.services.vehicle_position import latest_position
 
 logger = get_logger(__name__)
 
@@ -119,11 +119,11 @@ class BookingService:
         self._geometries = RouteGeometryRepository(session)
         self._stops = StopRepository(session)
         self._quotes = FareQuoteService(session, self._settings)
-        self._locations = TripLocationRepository(session)
         self._vehicles = VehicleRepository(session)
         self._users = UserRepository(session)
         self._tickets = TicketService(session, self._settings)
         self._notifications = NotificationService(session, self._settings)
+        self._offers = BookingOfferRepository(session)
 
     @staticmethod
     def _hash_request(request: BookingCreateRequest) -> str:
@@ -214,18 +214,6 @@ class BookingService:
         quotes = await self._quotes.quote([request], {trip.route_id: geometry})
         return quotes[trip.id]
 
-    async def _latest_position(self, trip_id: uuid.UUID) -> tuple[float, float] | None:
-        """Where the vehicle last reported itself: the live cache first, as
-        search reads it, so both agree on whether a stop has been passed
-        (the database keeps a position only every few seconds)."""
-        if self._redis is not None:
-            live = await TrackingService(
-                self._session, self._redis, self._settings
-            ).get_live_location(trip_id)
-            return (live.latitude, live.longitude) if live is not None else None
-        latest = await self._locations.get_latest_for_trip(trip_id)
-        return wkb_to_latlng(latest.location) if latest is not None else None
-
     async def _assert_pickup_ahead(
         self, trip: Trip, geometry: RouteGeometry, origin_stop_id: uuid.UUID | None
     ) -> None:
@@ -239,7 +227,7 @@ class BookingService:
                 "the route.",
                 code="PICKUP_ALREADY_PASSED",
             )
-        where = await self._latest_position(trip.id)
+        where = await latest_position(self._session, self._redis, self._settings, trip.id)
         if where is None:
             # No position reported yet: nothing says the stop is behind it.
             return
@@ -276,7 +264,12 @@ class BookingService:
         trip = await self._trips.get_by_id(request.trip_id)
         if trip is None:
             raise NotFoundError("Trip not found.")
-        if trip.status not in _BOOKABLE_TRIP_STATUSES:
+        bookable = (
+            _BOOKABLE_TRIP_STATUSES
+            if self._settings.BOOK_MOVING_TRIPS_ENABLED
+            else (TripStatus.SCHEDULED, TripStatus.BOARDING)
+        )
+        if trip.status not in bookable:
             raise ConflictError(
                 "This trip is not currently open for booking.", code="TRIP_NOT_BOOKABLE"
             )
@@ -306,7 +299,14 @@ class BookingService:
                 if is_held:
                     raise SeatNotAvailableError(details={"seat_id": str(seat_id)})
 
-        hold_seconds = self._settings.SEAT_RESERVATION_HOLD_SECONDS
+        # Waiting for the driver to accept it, or (acceptance switched off)
+        # for payment: the seats are held as long as that may take.
+        needs_acceptance = self._settings.BOOKING_ACCEPTANCE_REQUIRED
+        hold_seconds = (
+            self._settings.BOOKING_ACCEPT_TIMEOUT_SECONDS
+            if needs_acceptance
+            else self._settings.SEAT_RESERVATION_HOLD_SECONDS
+        )
         expires_at = datetime.now(UTC) + timedelta(seconds=hold_seconds)
         seat_count = len(request.passengers)
         geometry = (await self._geometries.for_routes([trip.route_id]))[trip.route_id]
@@ -337,6 +337,9 @@ class BookingService:
             expires_at=expires_at,
             idempotency_key=idempotency_key,
             idempotency_request_hash=request_hash,
+            status=(
+                BookingStatus.AWAITING_ACCEPTANCE if needs_acceptance else BookingStatus.PENDING
+            ),
         )
         await self._bookings.record_creation(booking, created_by=passenger_id)
 
@@ -367,6 +370,9 @@ class BookingService:
                 await cast(Awaitable[object], self._redis.sadd(held_key, str(seat_id)))
             await self._redis.expire(held_key, hold_seconds)
 
+        if needs_acceptance:
+            await BookingAcceptanceService(self._session, self._redis, self._settings).open(booking)
+
         BOOKING_EVENTS_TOTAL.labels(outcome="created").inc()
         logger.info(
             "booking_created",
@@ -386,6 +392,20 @@ class BookingService:
         if not is_privileged and booking.passenger_id != requesting_user_id:
             raise NotFoundError("Booking not found.")
         return booking
+
+    async def ride_end_stop(self, booking: Booking) -> uuid.UUID:
+        """Where the booking's ride ends or ended: where its passengers got
+        off, else the stop it was booked to, else the end of the route."""
+        for passenger in await self._bookings.list_passengers(booking.id):
+            if passenger.alighted_stop_id is not None:
+                return passenger.alighted_stop_id
+        if booking.destination_stop_id is not None:
+            return booking.destination_stop_id
+        trip = await self._trips.get_by_id(booking.trip_id)
+        if trip is None:
+            raise NotFoundError("Trip not found.")
+        geometry = (await self._geometries.for_routes([trip.route_id]))[trip.route_id]
+        return geometry.destination_stop_id
 
     async def list_own_bookings(
         self,
@@ -528,8 +548,10 @@ class BookingService:
         refund_eligible = was_paid and trip_not_started
 
         # MVP cancellation policy: auto-approve while the trip hasn't
-        # started; anything after boarding/departure needs admin review.
-        auto_decide = trip_not_started
+        # started; anything after boarding/departure needs admin review --
+        # except a booking no driver has accepted yet, which has cost nobody
+        # anything.
+        auto_decide = trip_not_started or booking.status == BookingStatus.AWAITING_ACCEPTANCE
         now = datetime.now(UTC)
         await self._bookings.create_cancellation_request(
             booking_id=booking.id,
@@ -542,6 +564,7 @@ class BookingService:
         )
 
         if auto_decide:
+            await self._offers.withdraw_pending(booking.id, reason="Cancelled by the passenger")
             await self._bookings.release_reservations_for_booking(
                 booking.id, new_status=ReservationStatus.RELEASED
             )
@@ -562,6 +585,59 @@ class BookingService:
             logger.info("booking_cancellation_pending_review", booking_id=str(booking.id))
 
         return booking
+
+    async def cancel_all_for_trip(
+        self, trip_id: uuid.UUID, *, cancelled_by: uuid.UUID | None, reason: str | None
+    ) -> list[Booking]:
+        """Cancel every booking still holding seats on a trip the operator
+        has cancelled; returns them.
+
+        Paid bookings become ``refund_pending`` whatever stage the trip had
+        reached: the passenger did nothing wrong. Unpaid ones (and those
+        awaiting a mobile money payment) are simply cancelled; a payment that
+        succeeds afterwards is refunded on arrival
+        (``PaymentService._apply_provider_status``). Every passenger is told.
+        """
+        bookings = await self._bookings.list_open_for_trip_for_update(trip_id)
+        why = reason or "The trip was cancelled by the operator."
+        now = datetime.now(UTC)
+        for booking in bookings:
+            paid = booking.status == BookingStatus.CONFIRMED
+            await self._bookings.create_cancellation_request(
+                booking_id=booking.id,
+                requested_by=cancelled_by,
+                reason=why,
+                status=CancellationStatus.APPROVED,
+                refund_eligible=paid,
+                decided_by=cancelled_by,
+                decided_at=now,
+            )
+            await self._offers.withdraw_pending(booking.id, reason="Trip cancelled")
+            await self._bookings.release_reservations_for_booking(
+                booking.id, new_status=ReservationStatus.RELEASED
+            )
+            await self._bookings.set_status(
+                booking,
+                new_status=BookingStatus.REFUND_PENDING if paid else BookingStatus.CANCELLED,
+                changed_by=cancelled_by,
+                reason=why,
+            )
+            await self._tickets.revoke_tickets_for_booking(booking.id, reason="Trip cancelled")
+            await self._notifications.notify(
+                booking.passenger_id,
+                category=NotificationCategory.TRANSACTIONAL,
+                title="Trip cancelled",
+                body=(
+                    f"Your trip for booking {booking.booking_reference} was cancelled. "
+                    + ("Your payment will be refunded." if paid else "You have not been charged.")
+                ),
+                data={"booking_id": str(booking.id), "trip_id": str(trip_id)},
+            )
+            BOOKING_EVENTS_TOTAL.labels(outcome="cancelled").inc()
+        if bookings and self._redis is not None:
+            await self._redis.delete(_held_seats_key(trip_id))
+        logger.info("trip_bookings_cancelled", trip_id=str(trip_id), count=len(bookings))
+        return bookings
 
     # ------------------------------------------------------------------
     # Admin review of a post-boarding cancellation request (the ``auto_decide

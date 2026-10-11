@@ -141,6 +141,9 @@ void main() {
       double? lng,
       String destination = 'Circle',
       int offset = 0,
+      int limit = 20,
+      SearchSort sort = SearchSort.departure,
+      VehicleType? vehicleType,
     }) => TripSearchQuery(
       originStopId: origin == null ? null : id(origin),
       destinationStopId: id(destination),
@@ -148,7 +151,10 @@ void main() {
       pickupLongitude: lng,
       travelDate: now,
       departureAfter: Duration(hours: now.hour, minutes: now.minute),
+      sort: sort,
+      vehicleType: vehicleType,
       offset: offset,
+      limit: limit,
     );
 
     test('stop search: 2 characters or more, by name', () {
@@ -164,38 +170,87 @@ void main() {
       ]);
     });
 
-    test('from now: the five P6 vehicles first, then every 15 minutes', () {
+    test('from now: the three P6 vehicles on the way, then every 15 minutes, '
+        'the two that passed last', () {
       final page = backend.searchTrips(fromNow(origin: 'Madina')).valueOrNull!;
-      final first = page.items.take(5).toList();
+      final first = page.items.take(3).toList();
       expect(first.map((t) => t.vehicleRegistrationNumber), [
-        'GR-1190',
-        'GR-5531',
         'GR-4821',
         'GR-2204',
         'GR-7743',
       ]);
-      expect(first.map((t) => t.passedPickup), [
-        true,
-        true,
-        false,
-        false,
-        false,
-      ]);
-      expect(first.map((t) => t.pickupEtaMinutes), [null, null, 3, 7, 12]);
-      final best = first[2];
+      expect(first.map((t) => t.hasPassedPickup), everyElement(isFalse));
+      expect(first.map((t) => t.vehicleEtaToPickupMinutes), [3, 7, 12]);
+      final best = first.first;
       expect(best.scheduledDepartureAt, DateTime.utc(2026, 10, 1, 9, 3));
       expect(best.scheduledArrivalAt, DateTime.utc(2026, 10, 1, 9, 53));
-      expect((best.soloFareAmount, best.sharedFareAmount), ('38.00', '14.00'));
+      expect(
+        (best.fare?.current, best.fare?.solo, best.fare?.minimum),
+        ('14.00', '38.00', '6.00'),
+      );
+      expect((best.fare?.platformFee, best.fare?.total), ('0.50', '14.50'));
+      expect(best.rideMinutes, 50);
       expect(best.pickupSource, PickupSource.manual);
       expect(best.pickupStopName, 'Madina');
       // 09:30 onwards, every 15 minutes to 22:00.
       expect(
-        page.items[5].scheduledDepartureAt,
+        page.items[3].scheduledDepartureAt,
         DateTime.utc(2026, 10, 1, 9, 30),
       );
+      expect(page.items[3].vehicleEtaToPickupMinutes, isNull);
       expect(page.total, 5 + 51);
       expect(page.items, hasLength(20));
       expect(page.hasMore, isTrue);
+      // As the backend: vehicles that passed the pickup come last.
+      final all = backend
+          .searchTrips(fromNow(origin: 'Madina', limit: 100))
+          .valueOrNull!
+          .items;
+      expect(all.reversed.take(2).map((t) => t.vehicleRegistrationNumber), [
+        'GR-5531',
+        'GR-1190',
+      ]);
+      expect(all.where((t) => t.hasPassedPickup), hasLength(2));
+    });
+
+    test('sort: cheapest and fastest, still with passed vehicles last', () {
+      final cheapest = backend
+          .searchTrips(
+            fromNow(origin: 'Madina', limit: 100, sort: SearchSort.cheapest),
+          )
+          .valueOrNull!
+          .items;
+      final prices = [
+        for (final t in cheapest.where((t) => !t.hasPassedPickup))
+          double.parse(t.fare!.current),
+      ];
+      expect(prices, [...prices]..sort());
+      expect(cheapest.last.hasPassedPickup, isTrue);
+      final fastest = backend
+          .searchTrips(
+            fromNow(origin: 'Madina', limit: 100, sort: SearchSort.fastest),
+          )
+          .valueOrNull!
+          .items;
+      expect(fastest.first.vehicleRegistrationNumber, 'GR-2204');
+      expect(fastest.first.rideMinutes, 48);
+    });
+
+    test('vehicle_type: only that kind', () {
+      final minibuses = backend
+          .searchTrips(
+            fromNow(
+              origin: 'Madina',
+              limit: 100,
+              vehicleType: VehicleType.minibus,
+            ),
+          )
+          .valueOrNull!;
+      expect(
+        minibuses.items.map((t) => t.vehicleType),
+        everyElement(VehicleType.minibus),
+      );
+      expect(minibuses.total, lessThan(56));
     });
 
     test('pages follow on without repeats', () {
@@ -226,7 +281,11 @@ void main() {
         page.items.first.scheduledDepartureAt,
         DateTime.utc(2026, 10, 3, 17),
       );
-      expect(page.items.map((t) => t.passedPickup), everyElement(isNull));
+      expect(page.items.map((t) => t.hasPassedPickup), everyElement(isFalse));
+      expect(
+        page.items.map((t) => t.vehicleEtaToPickupMinutes),
+        everyElement(isNull),
+      );
       expect(page.total, 21);
     });
 
@@ -291,6 +350,199 @@ void main() {
         'FAVOURITE_ROUTES_LIMIT',
       );
     });
+  });
+
+  group('Seats and bookings (P-05)', () {
+    late String token;
+    late TripSearchResultResponse minibus;
+
+    setUp(() {
+      token = signIn('0241234567');
+      final page = backend
+          .searchTrips(
+            TripSearchQuery(
+              originStopId: MockBackend.stops['Madina']!.id,
+              destinationStopId: MockBackend.stops['Circle']!.id,
+              travelDate: now,
+              departureAfter: Duration(hours: now.hour, minutes: now.minute),
+            ),
+          )
+          .valueOrNull!;
+      minibus = page.items.firstWhere(
+        (t) => t.vehicleRegistrationNumber == 'GR-4821',
+      );
+    });
+
+    TripSeatsResponse seats() => backend.tripSeats(minibus.tripId).valueOrNull!;
+    String seatId(String number) =>
+        seats().seats.firstWhere((s) => s.seatNumber == number).id;
+    BookingCreateRequest request(List<String> numbers) => BookingCreateRequest(
+      tripId: minibus.tripId,
+      passengers: [
+        for (final (i, n) in numbers.indexed)
+          PassengerInput(seatId: seatId(n), fullName: 'Ama guest $i'),
+      ],
+    );
+
+    test('the P7 map: 14 seats, 2 6 9 11 12 taken, a back bench', () {
+      backend.simulateRiders = false;
+      final map = seats();
+      expect(map.totalSeats, 14);
+      expect(map.seats.where((s) => !s.isAvailable).map((s) => s.seatNumber), [
+        '2',
+        '6',
+        '9',
+        '11',
+        '12',
+      ]);
+      final bench = map.seats.where((s) => s.rowNumber == 4);
+      expect(bench.map((s) => (s.seatNumber, s.columnNumber)), [
+        ('13', 2),
+        ('14', 3),
+      ]);
+      final quote = backend.fareQuote(minibus.tripId).valueOrNull!;
+      expect(
+        (quote.current, quote.solo, quote.minimum),
+        ('14.00', '38.00', '6.00'),
+      );
+    });
+
+    test('the fare quote: per seat, the fee per seat, the stops', () {
+      backend.simulateRiders = false;
+      final quote = backend
+          .fareQuote(
+            minibus.tripId,
+            originStopId: minibus.originStopId,
+            destinationStopId: minibus.destinationStopId,
+            seats: 2,
+          )
+          .valueOrNull!;
+      expect(
+        (quote.current, quote.platformFee, quote.total, quote.seats),
+        ('14.00', '1.00', '29.00', 2),
+      );
+      expect(quote.ridersCount, 5);
+      expect(
+        backend
+            .fareQuote(
+              minibus.tripId,
+              originStopId: MockBackend.stops['Osu']!.id,
+            )
+            .failureOrNull
+            ?.code,
+        'STOP_NOT_ON_ROUTE',
+      );
+      expect(backend.fareQuote('nope').failureOrNull?.statusCode, 404);
+    });
+
+    test('riders join every 10 s and the fare drops to the floor', () {
+      expect(seats().availableSeats, 9);
+      now = now.add(const Duration(seconds: 11));
+      final after = seats();
+      expect(after.availableSeats, 8);
+      expect(backend.fareQuote(minibus.tripId).valueOrNull!.current, '7.33');
+      for (var i = 0; i < 10; i++) {
+        now = now.add(const Duration(seconds: 11));
+        seats();
+      }
+      expect(seats().availableSeats, 2);
+      expect(backend.fareQuote(minibus.tripId).valueOrNull!.current, '6.00');
+    });
+
+    test('a hold: pending, 10 minutes, the seats taken, the fare and fee', () {
+      backend.simulateRiders = false;
+      final booking = backend
+          .createBooking(token, request(['4', '7']))
+          .valueOrNull!;
+      expect(booking.status, BookingStatus.pending);
+      expect(booking.bookingReference, startsWith('TS-'));
+      expect(booking.expiresAt, now.toUtc().add(const Duration(minutes: 10)));
+      expect(
+        (booking.fareAmount, booking.platformFee, booking.totalAmount),
+        ('28.00', '1.00', '29.00'),
+      );
+      expect(booking.trip?.vehicleRegistrationNumber, 'GR-4821');
+      expect(booking.boardingStopName, 'Madina');
+      final map = seats();
+      expect(
+        map.seats
+            .where((s) => ['4', '7'].contains(s.seatNumber))
+            .map((s) => s.isAvailable),
+        [false, false],
+      );
+
+      // Someone else on the same seat.
+      expect(
+        code(backend.createBooking(token, request(['7']))),
+        'SEAT_NOT_AVAILABLE',
+      );
+    });
+
+    test('the hold lapses after 10 minutes and the seats come back', () {
+      backend.simulateRiders = false;
+      final booking = backend.createBooking(token, request(['4'])).valueOrNull!;
+      now = now.add(const Duration(minutes: 10, seconds: 1));
+      expect(backend.bookingStatus(booking.id), BookingStatus.expired);
+      expect(
+        seats().seats.firstWhere((s) => s.seatNumber == '4').isAvailable,
+        isTrue,
+      );
+    });
+
+    test('cancel releases the seats; cancelling again is refused', () {
+      backend.simulateRiders = false;
+      final booking = backend.createBooking(token, request(['4'])).valueOrNull!;
+      final cancelled = backend.cancelBooking(token, booking.id).valueOrNull!;
+      expect(cancelled.status, BookingStatus.cancelled);
+      expect(cancelled.expiresAt, isNull);
+      expect(
+        seats().seats.firstWhere((s) => s.seatNumber == '4').isAvailable,
+        isTrue,
+      );
+      expect(
+        code(backend.cancelBooking(token, booking.id)),
+        'INVALID_STATE_TRANSITION',
+      );
+    });
+
+    test('the held booking is found by status', () {
+      backend.simulateRiders = false;
+      final booking = backend.createBooking(token, request(['4'])).valueOrNull!;
+      final held = backend
+          .listBookings(
+            token,
+            statuses: [BookingStatus.pending, BookingStatus.paymentPending],
+            upcoming: true,
+          )
+          .valueOrNull!;
+      expect(held.items.single.id, booking.id);
+    });
+
+    test(
+      'refusals: unverified, closed trip, 11 seats, the same seat twice',
+      () {
+        backend.simulateRiders = false;
+        final all = [for (final s in seats().seats) s.seatNumber];
+        expect(
+          code(backend.createBooking(token, request(all.take(11).toList()))),
+          'VALIDATION_ERROR',
+        );
+        expect(
+          code(backend.createBooking(token, request(['4', '4']))),
+          'VALIDATION_ERROR',
+        );
+        backend.closeTrip(minibus.tripId);
+        expect(
+          code(backend.createBooking(token, request(['4']))),
+          'TRIP_NOT_BOOKABLE',
+        );
+        backend.markUnverified('0241234567');
+        expect(
+          code(backend.createBooking(token, request(['5']))),
+          'ACCOUNT_NOT_VERIFIED',
+        );
+      },
+    );
   });
 
   group('register', () {

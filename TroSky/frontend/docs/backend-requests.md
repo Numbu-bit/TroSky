@@ -2,9 +2,49 @@
 
 **For:** the TroSky backend developer
 **From:** frontend (Flutter mobile app, admin web, fleet web)
-**Status as of:** 30 Sep 2026 (bugs section added 1 Oct 2026)
+**Status as of:** 10 Oct 2026 (first written 30 Sep 2026)
 
-**Update 1 Oct 2026 (backend 0.12.0, `6bcfd43`):** G1, G2, G3, G4, G5, G7, G8, G9, G10, G12, G13 and G16 are **done** (see the backend `CHANGELOG.md`). G14, G15, G17 and G18 wait for product decisions. B1 and B2 are still open. G19 is new; G20 and G21 were added on 2 Oct 2026.
+**Update 1 Oct 2026 (backend 0.12.0, `6bcfd43`):** G1, G2, G3, G4, G5, G7, G8, G9, G10, G12, G13 and G16 are **done** (see the backend `CHANGELOG.md`). G14, G15, G17 and G18 wait for product decisions. B1 and B2 are still open. G19 is new; G20 and G21 were added on 2 Oct 2026, B3 the same day.
+
+**Update 10 Oct 2026 (backend 0.13.0 on main, `d425891`):** status of the second request list, from the backend `CHANGELOG.md` (0.13.0), the `app/api` and `app/schemas` diff, and tests against a local stack built from main. The second list itself (D1–D4, G22–G33, section E) was sent outside this file; its items are listed here as the changelog names them.
+
+| ID | Request | Status | Delivered by |
+|---|---|---|---|
+| B1 | Lockout, code attempt limit, sign-out on token reuse | **Done**, re-tested live 10 Oct (all three pass) | Safeguard writes kept on failure (`keep_writes_on_failure`) |
+| B2 | Register on a fresh database | **Done** (not re-tested on an empty database) | `scripts.seed_reference_data` after `alembic upgrade head` (compose, image entrypoint, k8s job) |
+| B3 | An expired seat hold keeps its seats until the sweeper runs | **Partly**: availability still ignores `expires_at`; with Celery beat running, the 30 s sweep frees the seats | `expire_stale_bookings` (re-tested 10 Oct, see B3 below) |
+| CI | Backend workflow never ran (the backend changelog calls this "B3") | **Done** | `.github/workflows/backend.yml` at the repository root |
+| D1 | Demo data | **Done** (in use; replaces the frontend's `tool/seed_local_trips.dart`) | `make seed-demo` / `python -m scripts.seed_demo_data` |
+| D2 | GPS simulator | **Done** (in use) | `make simulate-gps` / `python -m scripts.simulate_gps` |
+| D3 | Hosted server | **Not started**: needs the project owner's accounts and billing | — |
+| D4 | Firebase project (push) | **Not started**: same reason | — |
+| G19 | SOS without a trip | **Done** | `POST /sos {latitude, longitude}`; `SosAlertResponse.trip_id` nullable |
+| G20 | The passenger's fare | **Done**, in its own shape (in use on P-03 and P-05) | `fare {current, solo, minimum, platform_fee, total, currency, riders_count, seats}` on `/trips/search`; `GET /trips/{id}/fare-quote` |
+| G21 | Vehicles approaching or past the stop | **Done** (in use on P-03) | Trips on the road in search; `vehicle_eta_to_pickup_minutes`, `has_passed_pickup`, `ride_minutes`; `?sort=`, `?vehicle_type=`, `?seats=`; `PICKUP_ALREADY_PASSED` on booking |
+| G22 | Trip details | **Done** | `GET /trips/{id}`: route, stops, `vehicle {…}`, `driver {…}`, `riders_count`, `seats_total`, `available_seats` |
+| G23 | (not in the changelog or the code) | **Unknown**: the second list isn't in the repo, so what it asked can't be checked | — |
+| G24 | Share a live trip | **Done** | `POST /bookings/{id}/share`; `GET /shared-trips/{token}`; `GET /share/{token}` page |
+| G25 | Monthly trip summary | **Done** | `GET /bookings/summary?month=YYYY-MM` |
+| G26 | A favourite route's next trip | **Done** | `FavouriteRouteResponse.next_trip {trip_id, scheduled_departure_at, available_seats, fare, currency}` |
+| G27 | Notification count, read all | **Done** | `GET /notifications/unread-count`; `POST /notifications/read-all` |
+| G28 | Saved payment methods | **Partly**: mobile money numbers only; cards need a card processor | `GET/POST /users/me/payment-methods`, `PATCH/DELETE …/{id}`; pay with `payment_method_id` |
+| G29 | Driver rating summary | **Done** | `GET /drivers/me/rating-summary` |
+| G30 | Vehicles on assignments, driver names | **Done** | `/drivers/me/assignments` items carry `vehicle {…}`; `DriverResponse.full_name`, `phone_number` |
+| G31 | Payments on a driver's trip | **Done** | `GET /driver-trips/{trip_id}/payments` |
+| G32 | Incident types and a photo | **Done** | Types `passenger_issue`, `road_hazard`; optional `severity`; `POST /incidents/{id}/photo` |
+| G33 | Drop-off on the manifest | **Done** | `dropoff_stop_name` on manifest entries |
+| E1 | Boarding | **Decided**: the driver scans the passenger's ticket | As built |
+| E2 | Driver trips | **Decided**: scheduled by admins and fleet owners; Go Online/Offline is availability only, no ride requests | As built |
+| E3 | Subscriptions (G14) | **Decided**: out of the MVP | — |
+| E4 | Ghana Card verification (G17) | **Decided**: out of the MVP | — |
+| E5 | Wallet "Send", driver chat | **Decided**: out of the MVP | — |
+| E6 | Withdrawals | **Decided**: paid after admin approval | As built |
+
+**Since 10 Oct 2026, 17:14 UTC, main has backend 0.14.0 to 0.22.0 (PR #9).** Two of its changes break screens the app already has; the app is not adapted yet:
+- **0.20.0, booking acceptance:** `POST /bookings` answers `awaiting_acceptance`; `expires_at` is the driver's answer deadline (`BOOKING_ACCEPT_TIMEOUT_SECONDS`, 120 s). Payment is possible only once accepted (`pending`, then the 600 s hold). Unanswered or declined, the booking moves to another trip (up to 3 times) or ends uncharged. Affects P-05 → P-07 and Home's restore of a held booking. `BOOKING_ACCEPTANCE_REQUIRED=false` restores the old flow.
+- **0.21.0, Ghana-only sign-up:** `POST /auth/register` as a passenger needs `latitude`/`longitude` (422 `LOCATION_REQUIRED`, or `LOCATION_NOT_SERVED` outside Ghana). S-06 sends none, so passenger sign-up fails. `PASSENGER_SIGNUP_COUNTRIES=` (empty) switches the check off.
+
+Also settled by 0.13.0: G15 (fare splitting) is built as the fare sharing behind G20, and **a passenger's fare is fixed when they book**; later riders lower the price only for people who book after them.
 
 The frontend is being built now against **mock data that follows the contracts below**. When an endpoint lands in the repo, the frontend switches from mock to live. So the most helpful thing is to **agree the request/response shape early**, even before the code exists. If you want a different shape, change it here (or tell us) before building, and we'll update our mocks.
 
@@ -26,7 +66,7 @@ When you finish one, please:
 
 ### B1: three security safeguards never take effect (rollback on error)
 
-**Still open in 0.12.0:** `app/core/database.py` is unchanged.
+**Fixed in 0.13.0**, re-tested on 10 Oct 2026 with `live_smoke_test.dart`, which now asserts all three: a reused refresh token answers `REFRESH_TOKEN_REUSE_DETECTED` and the other session then gets 401; the 6th wrong code answers `OTP_ATTEMPTS_EXCEEDED`; after 5 wrong passwords the right one answers `ACCOUNT_LOCKED`. What follows is the original report.
 
 `get_db` (app/core/database.py) rolls back the request's transaction on any exception. Three safeguards write to the database and then raise an `AppError`, so their writes are rolled back:
 
@@ -46,6 +86,8 @@ When you finish one, please:
 **Frontend impact:** none. The app already handles `ACCOUNT_LOCKED`, `OTP_ATTEMPTS_EXCEEDED` and `REFRESH_TOKEN_REUSE_DETECTED`, and the mock follows the intended behaviour.
 
 ### B2: registration answers 500 until roles are seeded
+
+**Fixed in 0.13.0:** `scripts.seed_reference_data` runs after the migrations.
 
 On a fresh database, `POST /auth/register` fails with `500 INTERNAL_SERVER_ERROR` (`RuntimeError: Role 'passenger' is not seeded`). `make seed` fixes it. Consider running the seed from the docker-compose `api` command after `alembic upgrade head`, so a fresh stack works on its own.
 
@@ -137,9 +179,9 @@ Also add `?reference_type=` as a filter on `GET /wallet/transactions`.
 | ID | The Figma design shows | Backend today |
 |---|---|---|
 | G18 | Sign up with **phone → OTP only** (no password; email optional) | Requires phone + Gmail address + name + password. **Decided 1 Oct 2026: the backend stays as it is.** The app adds a "Your details" screen for name, email and password (frontend `docs/design-decisions.md`, decision 6) |
-| G14 | **Subscribe your commute** (monthly plan, "save up to 40%") | No subscriptions |
-| G15 | **Fare splitting**: price drops as more riders board | One fixed `fare_amount` per trip |
-| G17 | Optional Ghana Card verification | Fields exist, but there's no verification endpoint |
+| G14 | **Subscribe your commute** (monthly plan, "save up to 40%") | No subscriptions. **Decided: out of the MVP** (E3) |
+| G15 | **Fare splitting**: price drops as more riders board | **Built** (0.13.0): fare sharing, the fare fixed at booking |
+| G17 | Optional Ghana Card verification | Fields exist, but there's no verification endpoint. **Decided: out of the MVP** (E4) |
 
 Mubarik will confirm these with the team and update this file.
 
@@ -148,6 +190,8 @@ Mubarik will confirm these with the team and update this file.
 ## New requests
 
 ### G19 — SOS without an active trip
+> **Done in 0.13.0:** `POST /sos {latitude, longitude}`. The app uses it when the SOS screen is built.
+
 The Home screen (P5) shows an SOS button at all times, also when the passenger is not on a trip. Today an SOS needs a trip: `POST /trips/{trip_id}/sos`. Until this exists, SOS on Home opens the SOS screen but can't raise an alert outside a trip (frontend `docs/design-decisions.md`, decision 18).
 
 Proposal: `POST /sos` · any signed-in user
@@ -159,6 +203,8 @@ Proposal: `POST /sos` · any signed-in user
 ---
 
 ## CI
+
+> **Done in 0.13.0** (the backend changelog calls it "B3"): `.github/workflows/backend.yml` at the repository root.
 
 **`TroSky/.github/workflows/ci.yml` has never run.** GitHub only runs workflows from `.github/workflows/` at the repository root. In this repo that folder sits one level down, inside `TroSky/`, so GitHub ignores it and no lint, tests, scans or image builds happen on push or PR. The frontend workflow is at the root (`.github/workflows/frontend.yml`) and does run; it only triggers on `TroSky/frontend/**`, so it won't touch the backend.
 
@@ -177,6 +223,8 @@ To fix it:
 Because the workflow has never run, expect the first run to surface a few failures of its own.
 
 ### G20 — The passenger's fare in search results
+> **Done (backend 0.13.0, on main since PR #6), in use since 10 Oct 2026** (decisions 20 and 24 ended). The backend answers this in its own shape: a `fare` object on each search result (`current`, `solo`, `minimum`, `platform_fee`, `total`, `currency`, `riders_count`, `seats`) and `GET /trips/{id}/fare-quote?origin_stop_id&destination_stop_id&seats`. That covers the seat-screen fields below too (`current` = shared, `solo`, `minimum` = floor). Search Results show `fare`; Seat Selection asks `fare-quote` for its stops and seats.
+
 `GET /trips/search` returns the trip's `fare_amount`: the **whole route's** fare. A booking then charges only the stretch ridden, shared with everyone aboard (`app/services/fare_service.py`). So a Madina → Legon search on the Madina – Circle route shows the full fare, but the booking costs less. The design also shows the saving from sharing ("~~₵38~~ ₵14 · Save 63%").
 
 `FareService.quote()` already computes both numbers. Proposal: add them to every `TripSearchResultResponse`, for the searched pickup → destination:
@@ -185,7 +233,15 @@ Because the workflow has never run, expect the first run to surface a few failur
 ```
 `solo_fare_amount` = the stretch alone (`solo_segment_fare`); `shared_fare_amount` = what a seat costs if booked now (`per_seat_fare`). Both `null` when unknown. The app computes "Save X%" from the two (frontend `docs/design-decisions.md`, decision 20).
 
+The seat screen (P-05) needs the same for the passenger's stretch on `GET /trips/{id}/seats` (with `origin_stop_id` / `destination_stop_id` as query parameters), plus the lowest the shared fare can go, for "↓ Drops to ₵6.00":
+```json
+{ "solo_fare_amount": "38.00", "shared_fare_amount": "14.00", "floor_fare_amount": "6.00" }
+```
+`floor_fare_amount` = `FARE_SHARING_MIN_RATIO` × the solo fare. Until then the seat screen shows an estimate (decision 24).
+
 ### G21 — Vehicles approaching or past the passenger's stop
+> **Done in 0.13.0**, as `vehicle_eta_to_pickup_minutes`, `has_passed_pickup` and `ride_minutes` on each result, with trips already on the road included. In use on Search Results since 10 Oct 2026 (decision 21 ended).
+
 The results design shows, for each vehicle, how far it is from the passenger's stop ("~3 min away · approaching your stop") and greys out the ones that already passed it. The backend has the live positions (G16) but search doesn't use them, and it only returns trips that **depart the route's first stop** after the requested time, so a vehicle already on its way to a stop further along is missing.
 
 Proposal, per result, when the trip is running:
@@ -193,3 +249,11 @@ Proposal, per result, when the trip is running:
 { "pickup_eta_minutes": 3, "passed_pickup": false }
 ```
 And for `Now` searches, include trips that already left the first stop but haven't reached the pickup yet. Until then the app shows "Board at <stop> · <distance> away" in that slot (decision 21).
+
+### B3: an expired seat hold keeps its seats until the sweeper runs
+
+> **Still open in 0.13.0** (the backend changelog's "B3" is the CI workflow). Re-tested on 10 Oct 2026: a hold that expired at 17:36:03 still had its seat taken at 17:36:46 (`pending`, reservation `held`) with no Celery worker running. With the worker and beat started, the next sweep (17:38:16) set it `expired` and freed the seat. So with beat running, a lapsed hold is freed within one sweep interval (30 s).
+
+`GET /trips/{id}/seats` and booking both treat a `HELD` reservation as taken until `expire_stale_bookings` (Celery beat, every 30 s) marks it expired. They don't look at `expires_at`. With the worker down (or in a stack without Celery, like the local `trosky-api-local`), seats from a lapsed hold stay taken indefinitely.
+
+Suggested fix: `list_active_seat_ids_for_trip` (and the reservation check) treat `HELD` rows with `expires_at <= now()` as free. The sweeper then only tidies up.

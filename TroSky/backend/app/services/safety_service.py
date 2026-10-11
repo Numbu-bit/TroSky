@@ -10,10 +10,12 @@ exists for promotional/transactional messages, not this.
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.admin_events import announce
 from app.core.config import Settings, get_settings
 from app.core.exceptions import (
     FileValidationError,
@@ -21,18 +23,21 @@ from app.core.exceptions import (
     InvalidStateTransitionError,
     NotFoundError,
     ProviderError,
+    ValidationAppError,
 )
 from app.core.logging import get_logger
 from app.core.telemetry import SOS_EVENTS_TOTAL
 from app.models.bookings import Booking, BookingStatus
 from app.models.safety import (
     DEFAULT_SEVERITY,
+    EscalationContactType,
     Incident,
     IncidentSeverity,
     IncidentStatus,
     IncidentType,
     SosAlert,
     SosAlertStatus,
+    SosEscalation,
 )
 from app.providers.sms.factory import get_sms_provider
 from app.providers.storage.base import ObjectStorageProvider
@@ -46,6 +51,7 @@ from app.services.document_service import store_uploaded_document
 logger = get_logger(__name__)
 
 _PHOTO_TYPES = {"image/jpeg", "image/png"}
+_CLOCK_LEEWAY = timedelta(minutes=2)
 
 _ACTIVE_BOOKING_STATUSES = (
     BookingStatus.PENDING,
@@ -215,6 +221,7 @@ class SafetyService:
         )
         SOS_EVENTS_TOTAL.labels(status=alert.status.value).inc()
         logger.warning("sos_triggered", alert_id=str(alert.id), trip_id=str(trip_id))
+        self._announce(alert, "sos.created", latitude=latitude, longitude=longitude)
         await self._notify_emergency_contacts(triggered_by, latitude=latitude, longitude=longitude)
         return alert
 
@@ -229,6 +236,7 @@ class SafetyService:
         )
         SOS_EVENTS_TOTAL.labels(status=alert.status.value).inc()
         logger.warning("sos_triggered", alert_id=str(alert.id), trip_id=None)
+        self._announce(alert, "sos.created", latitude=latitude, longitude=longitude)
         await self._notify_emergency_contacts(
             triggered_by, latitude=latitude, longitude=longitude, during_trip=False
         )
@@ -288,6 +296,7 @@ class SafetyService:
             )
         await self._sos.acknowledge(alert, acknowledged_by=reviewer_id)
         SOS_EVENTS_TOTAL.labels(status=alert.status.value).inc()
+        self._announce(alert, "sos.updated")
         return alert
 
     async def resolve_sos(
@@ -310,4 +319,68 @@ class SafetyService:
             alert, resolved_by=reviewer_id, resolution_notes=notes, status=status
         )
         SOS_EVENTS_TOTAL.labels(status=alert.status.value).inc()
+        self._announce(alert, "sos.updated")
         return alert
+
+    async def escalate_sos(
+        self,
+        alert_id: uuid.UUID,
+        *,
+        logged_by: uuid.UUID,
+        contact_type: EscalationContactType,
+        contact_name: str | None,
+        phone_number: str | None,
+        contacted_at: datetime | None,
+        notes: str | None,
+    ) -> SosEscalation:
+        """Record that the operations team contacted someone about an alert
+        (the police, an ambulance, the fleet owner...). Calling for help
+        means someone has picked the alert up: an alert still waiting is
+        acknowledged by the same person."""
+        alert = await self._sos.get_for_update(alert_id)
+        if alert is None:
+            raise NotFoundError("SOS alert not found.")
+        now = datetime.now(UTC)
+        contacted_at = contacted_at or now
+        # A little leeway for the clock on the admin's computer.
+        if contacted_at > now + _CLOCK_LEEWAY or contacted_at < alert.created_at - _CLOCK_LEEWAY:
+            raise ValidationAppError(
+                "A contact is made after the alert was raised, and not in the future.",
+                details={"param": "contacted_at"},
+            )
+        if alert.status == SosAlertStatus.ACTIVE:
+            await self._sos.acknowledge(alert, acknowledged_by=logged_by)
+            SOS_EVENTS_TOTAL.labels(status=alert.status.value).inc()
+        escalation = SosEscalation(
+            sos_alert_id=alert.id,
+            contact_type=contact_type,
+            contact_name=contact_name,
+            phone_number=phone_number,
+            contacted_at=contacted_at,
+            notes=notes,
+            logged_by=logged_by,
+        )
+        self._session.add(escalation)
+        await self._session.flush()
+        logger.warning("sos_escalated", alert_id=str(alert.id), contact_type=contact_type.value)
+        self._announce(alert, "sos.updated", escalated_to=contact_type)
+        return escalation
+
+    async def list_escalations(self, alert_id: uuid.UUID) -> list[SosEscalation]:
+        result = await self._session.execute(
+            select(SosEscalation)
+            .where(SosEscalation.sos_alert_id == alert_id)
+            .order_by(SosEscalation.contacted_at, SosEscalation.id)
+        )
+        return list(result.scalars().all())
+
+    def _announce(self, alert: SosAlert, event_type: str, **extra: object) -> None:
+        announce(
+            self._session,
+            event_type,
+            alert_id=alert.id,
+            status=alert.status,
+            trip_id=alert.trip_id,
+            triggered_by=alert.triggered_by,
+            **extra,
+        )

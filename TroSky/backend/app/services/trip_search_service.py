@@ -29,7 +29,9 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
-from app.core.exceptions import NotFoundError, StopNotOnRouteError
+from app.core.database import keep_writes_on_failure
+from app.core.exceptions import NoPickupNearbyError, NotFoundError, StopNotOnRouteError
+from app.models.analytics import SEARCH_GRID_DEGREES, SearchEvent
 from app.models.identity import UserProfile
 from app.models.routes import Stop
 from app.models.trips import TripStatus
@@ -100,6 +102,7 @@ class TripSearchService:
         self, session: AsyncSession, redis: Redis, settings: Settings | None = None
     ) -> None:
         self._settings = settings or get_settings()
+        self._session = session
         self._route_service = RouteService(session, redis, self._settings)
         self._views = TripViewRepository(session)
         self._geometries = RouteGeometryRepository(session)
@@ -249,9 +252,24 @@ class TripSearchService:
             manual_stop = await self._route_service.find_stop(origin_stop_id)
             origin_stop_ids = [origin_stop_id]
         elif pickup_latitude is not None and pickup_longitude is not None:
-            candidates = await self._route_service.pickup_candidates(
-                latitude=pickup_latitude, longitude=pickup_longitude
-            )
+            try:
+                candidates = await self._route_service.pickup_candidates(
+                    latitude=pickup_latitude, longitude=pickup_longitude
+                )
+            except NoPickupNearbyError:
+                # Demand where there is no stop at all: the most telling
+                # search of all for the heat map, so it is kept.
+                await self._record(
+                    travel_date=travel_date,
+                    origin_stop_id=None,
+                    destination_stop_id=destination_stop_id,
+                    latitude=pickup_latitude,
+                    longitude=pickup_longitude,
+                    offers=[],
+                    outcome="no_pickup_nearby",
+                )
+                keep_writes_on_failure(self._session)
+                raise
             origin_stop_ids = [stop.id for stop, _ in candidates]
 
         trips, _ = await self._route_service.search_trips(
@@ -262,7 +280,11 @@ class TripSearchService:
             departure_before=departure_before,
             limit=self._settings.TRIP_SEARCH_MAX_CANDIDATES,
             offset=0,
-            statuses=SEARCHABLE_TRIP_STATUSES,
+            statuses=(
+                SEARCHABLE_TRIP_STATUSES
+                if self._settings.BOOK_MOVING_TRIPS_ENABLED
+                else (TripStatus.SCHEDULED, TripStatus.BOARDING)
+            ),
             with_total=False,
         )
         found = await self._views.summaries_by_ids([trip.id for trip in trips])
@@ -316,7 +338,79 @@ class TripSearchService:
             for summary in summaries
         ]
         offers.sort(key=lambda offer: _sort_key(offer, sort))
+        await self._record(
+            travel_date=travel_date,
+            origin_stop_id=origin_stop_id or (candidates[0][0].id if candidates else None),
+            destination_stop_id=destination_stop_id,
+            latitude=pickup_latitude,
+            longitude=pickup_longitude,
+            offers=offers,
+            outcome="ok",
+        )
         return offers[offset : offset + limit], len(offers)
+
+    async def onward(
+        self, stop_id: uuid.UUID, *, exclude_trip_id: uuid.UUID | None, limit: int
+    ) -> list[TripOffer]:
+        """Vehicles a passenger who has just got off at ``stop_id`` could
+        carry on with: boarding there, not yet past it, with a seat free,
+        leaving within ``ONWARD_TRIPS_WINDOW_MINUTES``; soonest first."""
+        now = datetime.now(UTC)
+        until = now + timedelta(minutes=self._settings.ONWARD_TRIPS_WINDOW_MINUTES)
+        offers, _ = await self.search(
+            origin_stop_id=stop_id,
+            destination_stop_id=None,
+            travel_date=now.date(),
+            departure_after=None,
+            departure_before=until.time() if until.date() == now.date() else None,
+            pickup_latitude=None,
+            pickup_longitude=None,
+            vehicle_type=None,
+            sort="departure",
+            seats=1,
+            limit=self._settings.TRIP_SEARCH_MAX_CANDIDATES,
+            offset=0,
+        )
+        return [
+            offer
+            for offer in offers
+            if offer.summary.trip_id != exclude_trip_id
+            and not offer.has_passed_pickup
+            and offer.summary.available_seats > 0
+        ][:limit]
+
+    async def _record(
+        self,
+        *,
+        travel_date: date,
+        origin_stop_id: uuid.UUID | None,
+        destination_stop_id: uuid.UUID | None,
+        latitude: float | None,
+        longitude: float | None,
+        offers: Sequence[TripOffer],
+        outcome: str,
+    ) -> None:
+        """One search, for the funnel and the demand heat maps."""
+        bookable = sum(
+            1
+            for offer in offers
+            if offer.summary.vehicle_id
+            and offer.summary.available_seats
+            and not offer.has_passed_pickup
+        )
+        self._session.add(
+            SearchEvent(
+                travel_date=travel_date,
+                origin_stop_id=origin_stop_id,
+                destination_stop_id=destination_stop_id,
+                cell_latitude=_grid_cell(latitude),
+                cell_longitude=_grid_cell(longitude),
+                results_count=len(offers),
+                bookable_count=bookable,
+                outcome=outcome,
+            )
+        )
+        await self._session.flush()
 
     @staticmethod
     def _pickup_for(
@@ -384,6 +478,15 @@ class TripSearchService:
             wait = (summary.scheduled_departure_at - datetime.now(UTC)).total_seconds() / 60
             minutes += max(math.ceil(wait), 0)
         return minutes
+
+
+def _grid_cell(coordinate: float | None) -> Decimal | None:
+    """The centre of the ~550 m grid cell holding ``coordinate``: where to
+    count a search on the heat map, without keeping where anyone stood."""
+    if coordinate is None:
+        return None
+    cells = (Decimal(str(coordinate)) / SEARCH_GRID_DEGREES).to_integral_value()
+    return (cells * SEARCH_GRID_DEGREES).quantize(Decimal("0.001"))
 
 
 def _sort_key(offer: TripOffer, sort: SearchSort) -> tuple[object, ...]:

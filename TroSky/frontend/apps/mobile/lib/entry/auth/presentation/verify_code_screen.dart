@@ -121,9 +121,17 @@ class _VerifyCodeScreenState extends ConsumerState<VerifyCodeScreen> {
         target: _request.target,
         code: code,
       ),
+      CodePurpose.verifyAccount => await session.verifyAccount(
+        target: _request.target,
+        code: code,
+      ),
     };
     if (!mounted) return;
     switch (result) {
+      case Ok() when _request.purpose == CodePurpose.verifyAccount:
+        // Back to what needed the verified account.
+        context.pop(true);
+        return;
       case Ok():
         // Signed in: the next step (a route or a modal sheet) takes over,
         // so the button stops spinning.

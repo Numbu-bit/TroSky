@@ -31,8 +31,17 @@ class TripStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+class AssignmentResponse(StrEnum):
+    """The assigned driver's answer to a trip (an admin may give it for them)."""
+
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    DECLINED = "declined"
+
+
 class TripEventType(StrEnum):
     TRIP_SCHEDULED = "trip_scheduled"
+    BOARDING_STARTED = "boarding_started"
     TRIP_STARTED = "trip_started"
     TRIP_PAUSED = "trip_paused"
     TRIP_RESUMED = "trip_resumed"
@@ -102,6 +111,22 @@ class TripDriverAssignment(UUIDAuditBase):
         TIMESTAMP(timezone=True), nullable=False, server_default="now()"
     )
     unassigned_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    response: Mapped[AssignmentResponse] = mapped_column(
+        PgEnum(
+            AssignmentResponse,
+            name="assignment_response",
+            native_enum=True,
+            values_callable=enum_values,
+        ),
+        nullable=False,
+        default=AssignmentResponse.PENDING,
+        server_default="pending",
+    )
+    responded_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    responded_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    response_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     __table_args__ = (
         Index("ix_trip_driver_assignments_trip_id", "trip_id"),

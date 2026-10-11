@@ -8,6 +8,7 @@ from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.admin_events import announce
 from app.core.config import Settings, get_settings
 from app.core.exceptions import (
     ConflictError,
@@ -88,6 +89,14 @@ class DriverService:
         # passenger could never become a driver without a second account.
         await grant_role(self._session, user_id, SystemRole.DRIVER)
         logger.info("driver_registered", driver_id=str(driver.id), user_id=str(user_id))
+        announce(
+            self._session,
+            "approval.requested",
+            kind="driver",
+            driver_id=driver.id,
+            user_id=user_id,
+            license_number=driver.license_number,
+        )
         return driver
 
     async def get_own_profile(self, user_id: uuid.UUID) -> Driver:
@@ -155,6 +164,14 @@ class DriverService:
         )
         logger.info(
             "driver_document_uploaded", driver_id=str(driver.id), document_id=str(document.id)
+        )
+        announce(
+            self._session,
+            "approval.document_uploaded",
+            kind="driver",
+            driver_id=driver.id,
+            document_id=document.id,
+            document_type=document_type,
         )
         return document
 
