@@ -1,6 +1,6 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 
-import { expectAccessible, navigate, signIn } from './support'
+import { expectAccessible, navigate, signIn, test } from './support'
 
 /** The page has drawn its content: a heading, and no requests in flight. */
 async function settled(page: Page) {
@@ -13,6 +13,9 @@ const READY: Record<string, (page: Page) => Promise<void>> = {
   // The map loads, places the buses, then enables "Show all buses".
   '/live': (page) =>
     expect(page.getByRole('button', { name: 'Show all buses' })).toBeEnabled({ timeout: 30_000 }),
+  // "Excel" and "PDF" are disabled until the report arrives, then fade in.
+  '/reports': (page) =>
+    expect(page.getByRole('button', { name: 'PDF', exact: true })).toBeEnabled({ timeout: 30_000 }),
 }
 
 /** Open ``path`` inside the app and wait for it to settle. */
