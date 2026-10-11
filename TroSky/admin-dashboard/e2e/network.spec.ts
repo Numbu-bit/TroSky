@@ -1,6 +1,6 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
 
-import { signIn } from './support'
+import { signIn, test } from './support'
 
 test('won’t retire a route that trips still run on, and says why', async ({ page }) => {
   await signIn(page)
