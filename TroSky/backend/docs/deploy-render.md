@@ -121,8 +121,11 @@ automatically (`autoDeployTrigger: commit` with a build filter).
 With `EMAIL_PROVIDER=console` every code is written to the log instead of being sent.
 
 1. Dashboard → **trosky-api** → **Logs**.
-2. Search for the person's email address, or for `email_sent_console`.
-3. The JSON line has `"to": "<their address>"` and `"message": "… code is 123456 …"`.
+2. Type `email_sent_console` (or part of the person's email address) in the search box above the
+   log and press Enter. Without a search, Render's health checks (`/health/live`, every 5 s) push
+   the line out of view.
+3. The JSON line has `"to": "<their address>"` and
+   `"body_text": "Your TroSky verification code is 123456. It expires in 5 minutes."`.
 
 Codes expire after 5 minutes (`OTP_EXPIRATION_SECONDS`). The log search covers the running
 instance; after a restart, ask for a new code.
@@ -296,6 +299,16 @@ deploy**:
    It must still answer 429. If it doesn't, Render places the client's own header value at the
    right-hand end, and the limit can be dodged. Tell the backend owner: the fix is in code
    (reading the first entry, or Cloudflare's `CF-Connecting-IP`), not in this setting.
+
+**Results on 11 Oct 2026** (details: `TroSky/frontend/docs/staging-test/2026-10-11/README.md`):
+
+1. Render's health checks arrive from `10.231.24.45`, inside `10.0.0.0/8`. Still to read: the
+   `client_ip` of a request from outside (search a response's `request_id` in the log).
+2. **Not shown yet.** Both "clients" were on one public IP: the PC was on the phone's hotspot, so
+   the phone's sign-in after the PC's 11th try got 429 as well, as it should for one address.
+   Repeat with a second phone on another network (another carrier, or Wi-Fi elsewhere).
+3. **Passed.** The 11th wrong login answered 429, and with `X-Forwarded-For: 203.0.113.7` it
+   still answered 429.
 
 ## Upgrading to paid plans later
 
