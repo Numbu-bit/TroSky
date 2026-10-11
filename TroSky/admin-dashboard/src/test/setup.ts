@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest'
 
 import { cleanup, configure } from '@testing-library/react'
-import { afterAll, afterEach, beforeAll } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest'
 
 import { demoConfig, setFailRequests } from '@/api/demo/config'
 import { tokenStore } from '@/api/tokens'
@@ -46,6 +46,18 @@ URL.revokeObjectURL ??= () => {}
 // coverage on and every worker busy, that first render can take over 30 s.
 configure({ asyncUtilTimeout: 60_000 })
 
+// ---- a fixed clock ----
+// The demo platform is built from the current time (which trips are on the
+// road, recent incidents and alerts), so tests saw different data depending
+// on the hour they ran. Every test starts at the same instant instead. Only
+// Date is faked, and it runs on from there, so timers and waits are real.
+const TEST_NOW = new Date('2026-10-11T15:20:00Z')
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true })
+  vi.setSystemTime(TEST_NOW)
+})
+
 // ---- the demo API, answering instantly ----
 demoConfig.latency = [0, 0]
 
@@ -57,5 +69,6 @@ afterEach(() => {
   setFailRequests(false)
   resetDemo()
   document.cookie = 'sidebar_state=; max-age=0'
+  vi.useRealTimers()
 })
 afterAll(() => server.close())
