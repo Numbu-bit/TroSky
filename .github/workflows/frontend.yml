@@ -83,7 +83,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [admin_web, fleet_web]
+        app: [fleet_web]
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2

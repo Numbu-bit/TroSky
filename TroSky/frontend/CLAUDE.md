@@ -6,10 +6,11 @@ Read `docs/frontend-inventory.md` first. It maps every screen to its backend end
 | App | Path | Platform | Users |
 |---|---|---|---|
 | TroSky mobile | `apps/mobile` | Android, iOS | Passenger **and** Driver. A role chooser at entry leads to two fully separate interfaces |
-| Admin web | `apps/admin_web` | Web | admin, super_admin |
 | Fleet owner web | `apps/fleet_web` | Web | fleet_owner |
 
 Shared packages: `trosky_ui` (theme + widgets), `trosky_core`, `trosky_api`, `trosky_auth`. All of it is Flutter, using a Dart pub workspace with Melos scripts.
+
+The admin web app is not part of this workspace: it is the React app in `TroSky/admin-dashboard` (Maahir). See `docs/design-decisions.md`, 26.
 
 ## Design source of truth: the Figma Make file
 - **Never invent a color, font, size, spacing, radius, shadow, icon or illustration.** Every visual value comes from `docs/design-tokens.md`, which is extracted from the Figma Make theme/code, or from the screenshot in `design/<SCREEN-ID>/`.
