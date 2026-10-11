@@ -1,0 +1,72 @@
+name: CI gate
+
+# The one check branch protection requires on main ("ci-gate").
+# Backend CI, Frontend and Admin dashboard only run when their paths change,
+# and a required check that never runs would block a pull request forever.
+# This job runs on every pull request: it waits for the other workflow runs
+# of the pull request's head commit and passes when all of them passed, or
+# when none was triggered (e.g. a docs-only change).
+# If a workflow fails and you re-run it, re-run this job too.
+
+on:
+  pull_request:
+
+concurrency:
+  group: ci-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  ci-gate:
+    name: ci-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Wait for the other workflows of this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          SELF_RUN: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          self=$(gh api "repos/$REPO/actions/runs/$SELF_RUN" --jq .workflow_id)
+          # The other runs are created with this one; leave a moment for them
+          # to be listed.
+          sleep 20
+          last=""
+          while true; do
+            if ! raw=$(gh api --paginate \
+                "repos/$REPO/actions/runs?head_sha=$SHA&event=pull_request&per_page=100" \
+                --jq ".workflow_runs[] | select(.workflow_id != $self)
+                      | [.workflow_id, .created_at, .name, .status, (.conclusion // \"-\")] | @tsv"); then
+              echo "Listing the runs failed; trying again."
+              sleep 15
+              continue
+            fi
+            if [ -z "$raw" ]; then
+              echo "No other workflow ran for this commit: nothing to wait for."
+              exit 0
+            fi
+            # The newest run of each other workflow: name, status, conclusion.
+            runs=$(printf '%s\n' "$raw" | sort -t$'\t' -k1,1 -k2,2r \
+              | awk -F'\t' '!seen[$1]++ { print $3 "\t" $4 "\t" $5 }')
+            if [ "$runs" != "$last" ]; then
+              echo "---- $(date -u +%H:%M:%S)"
+              echo "$runs"
+              last=$runs
+            fi
+            failed=$(echo "$runs" | awk -F'\t' '$2 == "completed" && $3 != "success" && $3 != "skipped" && $3 != "neutral"')
+            if [ -n "$failed" ]; then
+              echo "::error::Not passed: $(echo "$failed" | cut -f1,3 | tr '\t\n' ': ')"
+              exit 1
+            fi
+            if ! echo "$runs" | awk -F'\t' '$2 != "completed" { found = 1 } END { exit !found }'; then
+              echo "Every workflow passed."
+              exit 0
+            fi
+            sleep 30
+          done
