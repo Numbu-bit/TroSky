@@ -2175,3 +2175,12 @@ pause, resume and end trips by hand, and admins cancel as before.
   process, so a burst of sign-ins waits its turn rather than running a
   512 MB server out of memory. The hash itself is unchanged: existing
   passwords keep working.
+- **Background tasks no longer fail every other run.** Each Celery task ran
+  in an event loop of its own, closed when it finished, while the database
+  and Redis connection pools are shared by the whole worker process: the
+  next task took a connection from the closed loop and failed ("attached to
+  a different loop", `'NoneType' object has no attribute 'send'`). Seat-hold
+  sweeps, moving unanswered bookings and the trip-status check were all hit.
+  Tasks now share one loop per worker process (`app/workers/loop.py`), and
+  the pools are closed on it when the process stops. Running Celery with
+  `--max-tasks-per-child 1` to work around it is no longer needed.
