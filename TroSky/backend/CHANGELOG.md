@@ -2195,3 +2195,12 @@ pause, resume and end trips by hand, and admins cancel as before.
   it was last reported instead of jumping back to the first stop (which the
   backend rejected as implausible). `--from-stop` (a number from 1, or part
   of a stop's name) starts a trip partway along its route.
+- **A seat hold that has run out frees its seat at once** (frontend B3).
+  Until now a booking past its `expires_at` (waiting for the driver's answer
+  or for payment) kept its seats until the background sweep marked it
+  expired, every 30 s, or never while the worker was asleep. Now
+  `GET /trips/{id}/seats`, search (`available_seats`) and fare sharing treat
+  it as free (`app/repositories/seat_holds.py`), and booking that seat
+  resolves the old hold on the spot as the sweep would have: an unpaid
+  booking expires, an unanswered one moves to another vehicle or ends. The
+  sweep only tidies up.

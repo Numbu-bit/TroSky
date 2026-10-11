@@ -32,23 +32,10 @@ from app.models.bookings import (
     SeatReservation,
 )
 from app.models.trips import Trip
+from app.repositories.seat_holds import booking_aboard, lapsed_hold, seat_taken
 from app.repositories.trip_view_repository import ACTIVE_TRIP_STATUSES
 
 _REFERENCE_ALPHABET = string.ascii_uppercase + string.digits
-
-
-# A seat is only "aboard" while the booking still holds it: awaiting
-# acceptance, pending and payment_pending hold a reservation that has not
-# lapsed, confirmed and completed have travelled. Cancelled, expired and
-# refunded bookings freed their seat, so they neither block it nor share its
-# cost.
-_OCCUPYING_STATUSES = (
-    BookingStatus.AWAITING_ACCEPTANCE,
-    BookingStatus.PENDING,
-    BookingStatus.PAYMENT_PENDING,
-    BookingStatus.CONFIRMED,
-    BookingStatus.COMPLETED,
-)
 
 
 class SeatAlreadyReservedError(Exception):
@@ -340,7 +327,7 @@ class BookingRepository:
                 Booking.origin_stop_id,
                 Booking.destination_stop_id,
                 Booking.passenger_count,
-            ).where(Booking.trip_id.in_(list(found)), Booking.status.in_(_OCCUPYING_STATUSES))
+            ).where(Booking.trip_id.in_(list(found)), booking_aboard(datetime.now(UTC)))
         )
         for row in rows:
             found[row.trip_id].append(
@@ -349,13 +336,29 @@ class BookingRepository:
         return found
 
     async def list_active_seat_ids_for_trip(self, trip_id: uuid.UUID) -> set[uuid.UUID]:
+        """Seats taken on the trip: paid for, or held and not yet lapsed."""
         result = await self._session.execute(
             select(SeatReservation.seat_id).where(
-                SeatReservation.trip_id == trip_id,
-                SeatReservation.status.in_([ReservationStatus.HELD, ReservationStatus.CONFIRMED]),
+                SeatReservation.trip_id == trip_id, seat_taken(datetime.now(UTC))
             )
         )
         return set(result.scalars().all())
+
+    async def bookings_with_lapsed_holds(
+        self, trip_id: uuid.UUID, seat_ids: Collection[uuid.UUID]
+    ) -> list[uuid.UUID]:
+        """Bookings whose hold on any of ``seat_ids`` has run out but which
+        the sweep has not yet marked expired."""
+        result = await self._session.execute(
+            select(SeatReservation.booking_id)
+            .where(
+                SeatReservation.trip_id == trip_id,
+                SeatReservation.seat_id.in_(list(seat_ids)),
+                lapsed_hold(datetime.now(UTC)),
+            )
+            .distinct()
+        )
+        return list(result.scalars().all())
 
     async def list_reservations_for_booking(self, booking_id: uuid.UUID) -> list[SeatReservation]:
         result = await self._session.execute(
