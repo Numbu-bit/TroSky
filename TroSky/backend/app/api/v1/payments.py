@@ -46,9 +46,7 @@ def _payment_response(payment: Payment) -> PaymentResponse:
 
 @router.post("/payments/webhooks/{channel}", response_model=MessageResponse)
 # The same for PUT, left out of the API description (one operation there).
-@router.put(
-    "/payments/webhooks/{channel}", response_model=MessageResponse, include_in_schema=False
-)
+@router.put("/payments/webhooks/{channel}", response_model=MessageResponse, include_in_schema=False)
 async def receive_payment_webhook(
     channel: PaymentChannel, request: Request, service: PaymentServiceDep
 ) -> MessageResponse:
