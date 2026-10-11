@@ -10,6 +10,10 @@ on:
     branches: [main, develop]
     paths: ["TroSky/backend/**", ".github/workflows/backend.yml"]
 
+# Least privilege for the GITHUB_TOKEN: the jobs only read the code.
+permissions:
+  contents: read
+
 env:
   PYTHON_VERSION: "3.12"
   IMAGE_NAME: trosky-backend

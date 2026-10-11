@@ -33,7 +33,7 @@ kubectl apply -k .                    # after setting the image tag in kustomiza
 Set the image tag either by editing `kustomization.yaml`'s `images.newTag`
 (and `migration-job.yaml`'s `REPLACE_WITH_IMAGE_TAG`) directly, or via
 `kustomize edit set image ghcr.io/trosky/backend=ghcr.io/trosky/backend:<tag>`
-in a CI/CD step — see `.github/workflows/ci.yml`'s `deploy-*` jobs for
+in a CI/CD step — see `.github/workflows/backend.yml`'s `deploy-*` jobs for
 where that step would plug in (those jobs are currently placeholders; no
 cluster credentials are provisioned for this project yet).
 
