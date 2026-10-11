@@ -30,6 +30,61 @@ Map<String, dynamic> _$StopResponseToJson(_StopResponse instance) =>
       'longitude': instance.longitude,
     };
 
+_FareSummaryResponse _$FareSummaryResponseFromJson(Map<String, dynamic> json) =>
+    _FareSummaryResponse(
+      current: decimalString(json['current']),
+      solo: decimalString(json['solo']),
+      minimum: decimalString(json['minimum']),
+      platformFee: decimalString(json['platform_fee']),
+      total: decimalString(json['total']),
+      currency: json['currency'] as String,
+      ridersCount: (json['riders_count'] as num).toInt(),
+      seats: (json['seats'] as num).toInt(),
+    );
+
+Map<String, dynamic> _$FareSummaryResponseToJson(
+  _FareSummaryResponse instance,
+) => <String, dynamic>{
+  'current': instance.current,
+  'solo': instance.solo,
+  'minimum': instance.minimum,
+  'platform_fee': instance.platformFee,
+  'total': instance.total,
+  'currency': instance.currency,
+  'riders_count': instance.ridersCount,
+  'seats': instance.seats,
+};
+
+_FareQuoteResponse _$FareQuoteResponseFromJson(Map<String, dynamic> json) =>
+    _FareQuoteResponse(
+      tripId: json['trip_id'] as String,
+      originStopId: json['origin_stop_id'] as String,
+      destinationStopId: json['destination_stop_id'] as String,
+      current: decimalString(json['current']),
+      solo: decimalString(json['solo']),
+      minimum: decimalString(json['minimum']),
+      platformFee: decimalString(json['platform_fee']),
+      total: decimalString(json['total']),
+      currency: json['currency'] as String,
+      ridersCount: (json['riders_count'] as num).toInt(),
+      seats: (json['seats'] as num).toInt(),
+    );
+
+Map<String, dynamic> _$FareQuoteResponseToJson(_FareQuoteResponse instance) =>
+    <String, dynamic>{
+      'trip_id': instance.tripId,
+      'origin_stop_id': instance.originStopId,
+      'destination_stop_id': instance.destinationStopId,
+      'current': instance.current,
+      'solo': instance.solo,
+      'minimum': instance.minimum,
+      'platform_fee': instance.platformFee,
+      'total': instance.total,
+      'currency': instance.currency,
+      'riders_count': instance.ridersCount,
+      'seats': instance.seats,
+    };
+
 _TripSearchResultResponse _$TripSearchResultResponseFromJson(
   Map<String, dynamic> json,
 ) => _TripSearchResultResponse(
@@ -67,10 +122,13 @@ _TripSearchResultResponse _$TripSearchResultResponseFromJson(
     _$PickupSourceEnumMap,
     json['pickup_source'],
   ),
-  soloFareAmount: decimalStringOrNull(json['solo_fare_amount']),
-  sharedFareAmount: decimalStringOrNull(json['shared_fare_amount']),
-  pickupEtaMinutes: (json['pickup_eta_minutes'] as num?)?.toInt(),
-  passedPickup: json['passed_pickup'] as bool?,
+  fare: json['fare'] == null
+      ? null
+      : FareSummaryResponse.fromJson(json['fare'] as Map<String, dynamic>),
+  rideMinutes: (json['ride_minutes'] as num?)?.toInt(),
+  vehicleEtaToPickupMinutes: (json['vehicle_eta_to_pickup_minutes'] as num?)
+      ?.toInt(),
+  hasPassedPickup: json['has_passed_pickup'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$TripSearchResultResponseToJson(
@@ -94,10 +152,10 @@ Map<String, dynamic> _$TripSearchResultResponseToJson(
   'pickup_stop_name': ?instance.pickupStopName,
   'pickup_distance_m': ?instance.pickupDistanceM,
   'pickup_source': ?_$PickupSourceEnumMap[instance.pickupSource],
-  'solo_fare_amount': ?instance.soloFareAmount,
-  'shared_fare_amount': ?instance.sharedFareAmount,
-  'pickup_eta_minutes': ?instance.pickupEtaMinutes,
-  'passed_pickup': ?instance.passedPickup,
+  'fare': ?instance.fare?.toJson(),
+  'ride_minutes': ?instance.rideMinutes,
+  'vehicle_eta_to_pickup_minutes': ?instance.vehicleEtaToPickupMinutes,
+  'has_passed_pickup': instance.hasPassedPickup,
 };
 
 const _$TripStatusEnumMap = {

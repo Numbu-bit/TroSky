@@ -408,6 +408,19 @@ void main() {
               'pickup_stop_name': 'Accra Madina',
               'pickup_distance_m': 350.4,
               'pickup_source': 'gps',
+              'fare': {
+                'current': '6.50',
+                'solo': '8.00',
+                'minimum': '2.00',
+                'platform_fee': '0.50',
+                'total': '7.00',
+                'currency': 'GHS',
+                'riders_count': 3,
+                'seats': 1,
+              },
+              'ride_minutes': 45,
+              'vehicle_eta_to_pickup_minutes': 4,
+              'has_passed_pickup': false,
             },
           ],
           'total': 21,
@@ -422,6 +435,8 @@ void main() {
           departureAfter: const Duration(hours: 7, minutes: 5, seconds: 9),
           pickupLatitude: 5.67,
           pickupLongitude: -0.166,
+          sort: SearchSort.cheapest,
+          vehicleType: VehicleType.minibus,
         ),
       );
 
@@ -433,6 +448,8 @@ void main() {
         'departure_after': '07:05:09',
         'pickup_latitude': 5.67,
         'pickup_longitude': -0.166,
+        'sort': 'cheapest',
+        'vehicle_type': 'minibus',
         'limit': 20,
         'offset': 0,
       });
@@ -442,10 +459,77 @@ void main() {
       expect(trip.distanceKm, 14);
       expect(trip.vehicleType, VehicleType.minibus);
       expect(trip.pickupSource, PickupSource.gps);
-      expect(trip.soloFareAmount, isNull);
-      expect(trip.pickupEtaMinutes, isNull);
+      expect(
+        (trip.fare?.current, trip.fare?.solo, trip.fare?.minimum),
+        ('6.50', '8.00', '2.00'),
+      );
+      expect((trip.fare?.total, trip.fare?.ridersCount), ('7.00', 3));
+      expect(
+        (
+          trip.rideMinutes,
+          trip.vehicleEtaToPickupMinutes,
+          trip.hasPassedPickup,
+        ),
+        (45, 4, false),
+      );
       expect(page.valueOrNull!.hasMore, isTrue);
     });
+
+    test('a 0.12.0 search result (no fare) still reads', () {
+      final trip = TripSearchResultResponse.fromJson(const {
+        'trip_id': 't1',
+        'route_id': 'r1',
+        'route_name': 'Madina - Circle',
+        'origin_stop_id': 's1',
+        'destination_stop_id': 's4',
+        'scheduled_departure_at': '2026-10-02T07:15:00Z',
+        'fare_amount': '8.00',
+        'status': 'scheduled',
+        'available_seats': 12,
+      });
+      expect((trip.fare, trip.hasPassedPickup), (null, false));
+    });
+
+    test(
+      'GET /trips/{id}/fare-quote: the stops and seats, money as sent',
+      () async {
+        final adapter = FakeAdapter(
+          (_) async => const FakeReply(200, {
+            'current': '4.00',
+            'solo': '8.00',
+            'minimum': '2.00',
+            'platform_fee': '1.00',
+            'total': '9.00',
+            'currency': 'GHS',
+            'riders_count': 0,
+            'seats': 2,
+            'trip_id': 't1',
+            'origin_stop_id': 's1',
+            'destination_stop_id': 's4',
+          }),
+        );
+        final quote = await LiveRouteRepository(dio(adapter)).fareQuote(
+          't1',
+          originStopId: 's1',
+          destinationStopId: 's4',
+          seats: 2,
+        );
+        final request = adapter.requests.single;
+        expect(request.path, '/trips/t1/fare-quote');
+        expect(request.queryParameters, {
+          'origin_stop_id': 's1',
+          'destination_stop_id': 's4',
+          'seats': 2,
+        });
+        expect(request.headers['Authorization'], isNull);
+        final value = quote.valueOrNull!;
+        expect(
+          (value.current, value.solo, value.total),
+          ('4.00', '8.00', '9.00'),
+        );
+        expect(value.summary.platformFee, '1.00');
+      },
+    );
 
     test('GET /stops?q= reads the page of stops', () async {
       final adapter = FakeAdapter(
@@ -499,6 +583,166 @@ void main() {
         'origin_stop_id': 's1',
         'destination_stop_id': 's4',
       });
+    });
+
+    test('GET /trips/{id}/seats is public; G20 fields absent → null', () async {
+      final adapter = FakeAdapter(
+        (_) async => const FakeReply(200, {
+          'trip_id': 't1',
+          'vehicle_id': 'v1',
+          'total_seats': 2,
+          'available_seats': 1,
+          'seats': [
+            {
+              'id': 's1',
+              'seat_number': 'A1',
+              'row_number': 1,
+              'column_number': 1,
+              'seat_type': 'window',
+              'is_available': true,
+            },
+            {
+              'id': 's2',
+              'seat_number': 'A2',
+              'row_number': 1,
+              'column_number': 2,
+              'seat_type': 'recliner',
+              'is_available': false,
+            },
+          ],
+        }),
+      );
+      final seats = await LiveRouteRepository(dio(adapter)).tripSeats('t1');
+      expect(adapter.requests.single.path, '/trips/t1/seats');
+      expect(adapter.requests.single.headers['Authorization'], isNull);
+      final map = seats.valueOrNull!;
+      expect(map.seats.last.seatType, SeatType.standard);
+    });
+
+    test('POST /bookings: the backend names, an Idempotency-Key, money as '
+        'sent', () async {
+      final adapter = FakeAdapter(
+        (_) async => const FakeReply(201, {
+          'id': 'b1',
+          'booking_reference': 'TS-8KQ2',
+          'trip_id': 't1',
+          'status': 'pending',
+          'passenger_count': 2,
+          'origin_stop_id': null,
+          'destination_stop_id': 's4',
+          'fare_amount': '16.00',
+          'platform_fee': '1.00',
+          'total_amount': '17.00',
+          'expires_at': '2026-10-02T09:10:00Z',
+          'created_at': '2026-10-02T09:00:00Z',
+          'passengers': [
+            {
+              'id': 'p1',
+              'seat_id': 's1',
+              'full_name': 'Kwame Asante',
+              'phone_number': '+233240950580',
+            },
+            {
+              'id': 'p2',
+              'seat_id': 's2',
+              'full_name': "Kwame's guest 2",
+              'phone_number': null,
+            },
+          ],
+          'trip': {
+            'scheduled_departure_at': '2026-10-02T09:30:00Z',
+            'route_name': 'Madina - Circle',
+            'origin_stop_name': 'Accra Madina',
+            'destination_stop_name': 'Accra Circle',
+            'status': 'scheduled',
+            'vehicle_registration_number': 'GT 4402-26',
+          },
+          'boarding_stop_name': 'Accra Madina',
+          'alighting_stop_name': 'Accra Circle',
+        }),
+      );
+      final booking = await LiveBookingRepository(dio(adapter)).create(
+        const BookingCreateRequest(
+          tripId: 't1',
+          passengers: [
+            PassengerInput(
+              seatId: 's1',
+              fullName: 'Kwame Asante',
+              phoneNumber: '+233240950580',
+            ),
+            PassengerInput(seatId: 's2', fullName: "Kwame's guest 2"),
+          ],
+          destinationStopId: 's4',
+          pickupLatitude: 5.67,
+          pickupLongitude: -0.166,
+        ),
+        idempotencyKey: 'k-1',
+      );
+      final request = adapter.requests.single;
+      expect(request.path, '/bookings');
+      expect(request.headers['Idempotency-Key'], 'k-1');
+      expect(request.data, {
+        'trip_id': 't1',
+        'passengers': [
+          {
+            'seat_id': 's1',
+            'full_name': 'Kwame Asante',
+            'phone_number': '+233240950580',
+          },
+          {'seat_id': 's2', 'full_name': "Kwame's guest 2"},
+        ],
+        'destination_stop_id': 's4',
+        'pickup_latitude': 5.67,
+        'pickup_longitude': -0.166,
+      });
+      final b = booking.valueOrNull!;
+      expect(
+        (b.fareAmount, b.platformFee, b.totalAmount),
+        ('16.00', '1.00', '17.00'),
+      );
+      expect(b.expiresAt, DateTime.utc(2026, 10, 2, 9, 10));
+      expect(b.status, BookingStatus.pending);
+    });
+
+    test(
+      'GET /bookings?status=pending,payment_pending&upcoming=true',
+      () async {
+        final adapter = FakeAdapter(
+          (_) async => const FakeReply(200, {
+            'items': <Object>[],
+            'total': 0,
+            'limit': 20,
+            'offset': 0,
+          }),
+        );
+        await LiveBookingRepository(dio(adapter)).list(
+          statuses: [BookingStatus.pending, BookingStatus.paymentPending],
+          upcoming: true,
+        );
+        expect(adapter.requests.single.queryParameters, {
+          'status': 'pending,payment_pending',
+          'upcoming': true,
+          'limit': 20,
+          'offset': 0,
+        });
+      },
+    );
+
+    test('POST /bookings/{id}/cancel', () async {
+      final adapter = FakeAdapter(
+        (_) async => const FakeReply(409, {
+          'error': {
+            'code': 'INVALID_STATE_TRANSITION',
+            'message': "A booking in status 'expired' cannot be cancelled.",
+            'details': <String, Object?>{},
+            'request_id': 'r',
+          },
+        }),
+      );
+      final result = await LiveBookingRepository(dio(adapter)).cancel('b1');
+      expect(adapter.requests.single.path, '/bookings/b1/cancel');
+      expect(adapter.requests.single.data, <String, Object?>{});
+      expect(result.failureOrNull?.code, 'INVALID_STATE_TRANSITION');
     });
 
     test('GET /users/me/favourite-routes', () async {

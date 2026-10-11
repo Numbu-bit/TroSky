@@ -9,7 +9,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from app.models.trips import TripStatus
+from app.models.trips import AssignmentResponse, TripStatus
 from app.models.vehicles import SeatType, VehicleType
 from app.schemas.common import ApiModel, RequestModel
 
@@ -186,6 +186,16 @@ class CancelTripRequest(RequestModel):
     reason: str | None = Field(default=None, max_length=500)
 
 
+class TripCancellationResponse(TripResponse):
+    """The cancelled trip, and what happened to its bookings."""
+
+    bookings_cancelled: int = Field(..., description="Every booking that still held seats.")
+    refunds_queued: int = Field(
+        ..., description="Paid bookings now awaiting refund approval (/admin/refund-requests)."
+    )
+    refund_amount: Decimal = Field(..., description="What those refunds add up to.")
+
+
 class PauseTripRequest(RequestModel):
     reason: str | None = Field(default=None, max_length=500)
 
@@ -226,8 +236,17 @@ class TripSummaryResponse(ApiModel):
     vehicle_id: uuid.UUID | None
     vehicle_registration_number: str | None
     seats_total: int
-    seats_booked: int = Field(..., description="Paid seats: the passengers on the trip's manifest.")
+    seats_booked: int = Field(
+        ...,
+        description=(
+            "Paid seats: the passengers on the trip's manifest, including those who have got "
+            "off. A seat booked again after its passenger got off counts twice."
+        ),
+    )
     boarded_count: int = Field(..., description="Passengers whose ticket has been scanned.")
+    driver_response: AssignmentResponse | None = Field(
+        ..., description="The assigned driver's answer to the trip. None: no driver assigned."
+    )
 
 
 class AdminTripSummaryResponse(TripSummaryResponse):
@@ -256,6 +275,9 @@ class LiveTripResponse(ApiModel):
 
 class ManifestEntryResponse(ApiModel):
     ticket_id: uuid.UUID
+    booking_passenger_id: uuid.UUID = Field(
+        ..., description="Who to mark off: POST .../passengers/{booking_passenger_id}/alight."
+    )
     booking_reference: str
     seat_id: uuid.UUID
     seat_label: str
@@ -265,3 +287,6 @@ class ManifestEntryResponse(ApiModel):
     dropoff_stop_name: str
     boarded: bool
     boarded_at: datetime | None
+    alighted_at: datetime | None = Field(
+        ..., description="When they got off; their seat is free from then on. None: aboard."
+    )

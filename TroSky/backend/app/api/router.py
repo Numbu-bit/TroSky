@@ -7,10 +7,20 @@ phases.
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.api.v1 import (
     admin,
+    admin_accounts,
+    admin_analytics,
+    admin_complaints,
+    admin_directory,
+    admin_dispatch,
+    admin_fraud,
+    admin_ops,
+    admin_platform,
+    admin_reports,
+    admin_stream,
     auth,
     bookings,
     complaints,
@@ -26,8 +36,11 @@ from app.api.v1 import (
     tracking,
     users,
 )
+from app.core.audit import audit_admin_requests
 
 api_router = APIRouter()
+# Every admin request that writes is audited (app.core.audit).
+_AUDITED = [Depends(audit_admin_requests)]
 
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
@@ -56,7 +69,38 @@ api_router.include_router(complaints.router, prefix="/complaints", tags=["compla
 # safety.router declares its own full paths (/trips/*, /incidents/*, /sos/*)
 # for the same reason as fleets/routes/payments/tracking above.
 api_router.include_router(safety.router, tags=["safety"])
-api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
+api_router.include_router(admin.router, prefix="/admin", tags=["admin"], dependencies=_AUDITED)
+# After admin.router, whose /drivers/pending and /vehicles/pending -- and
+# admin_analytics' /drivers/performance -- must match before the directory's
+# /drivers/{driver_id} and /vehicles/{vehicle_id}.
+api_router.include_router(
+    admin_analytics.router, prefix="/admin", tags=["admin"], dependencies=_AUDITED
+)
+api_router.include_router(
+    admin_platform.router, prefix="/admin", tags=["admin"], dependencies=_AUDITED
+)
+api_router.include_router(
+    admin_directory.router, prefix="/admin", tags=["admin"], dependencies=_AUDITED
+)
+api_router.include_router(
+    admin_complaints.router, prefix="/admin", tags=["admin"], dependencies=_AUDITED
+)
+api_router.include_router(admin_ops.router, prefix="/admin", tags=["admin"], dependencies=_AUDITED)
+api_router.include_router(
+    admin_stream.router, prefix="/admin", tags=["admin"], dependencies=_AUDITED
+)
+api_router.include_router(
+    admin_fraud.router, prefix="/admin", tags=["admin"], dependencies=_AUDITED
+)
+api_router.include_router(
+    admin_reports.router, prefix="/admin", tags=["admin"], dependencies=_AUDITED
+)
+api_router.include_router(
+    admin_accounts.router, prefix="/admin", tags=["admin"], dependencies=_AUDITED
+)
+api_router.include_router(
+    admin_dispatch.router, prefix="/admin", tags=["admin"], dependencies=_AUDITED
+)
 
 # ... additional domain routers are attached here as each phase lands.
 

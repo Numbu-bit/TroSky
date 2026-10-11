@@ -8,16 +8,18 @@ schedule/trip management, and read-only booking review.
 from __future__ import annotations
 
 import uuid
+from dataclasses import asdict
 from datetime import date
+from decimal import Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 
+from app.api.common_dependencies import DbSession
 from app.api.dependencies import (
     AdminServiceDep,
     AnalyticsServiceDep,
     BookingServiceDep,
-    ComplaintServiceDep,
     CurrentPrincipal,
     DriverServiceDep,
     FleetServiceDep,
@@ -32,6 +34,14 @@ from app.api.dependencies import (
     TripServiceDep,
     WithdrawalServiceDep,
 )
+from app.api.v1.analytics_views import count_figure, money_figure, period_response
+from app.api.v1.listing import (
+    CSV_RESPONSE,
+    ExportFormat,
+    FormatQuery,
+    csv_response,
+    export_window,
+)
 from app.api.v1.views import (
     booking_responses,
     driver_response,
@@ -42,13 +52,17 @@ from app.api.v1.views import (
 )
 from app.core.permissions import Permission, require_permissions
 from app.models.bookings import BookingStatus, CancellationStatus
-from app.models.feedback import ComplaintStatus
 from app.models.payments import RefundStatus, WithdrawalStatus
 from app.models.routes import Stop
 from app.models.safety import IncidentStatus, SosAlertStatus
 from app.models.trips import TripStatus
 from app.schemas.admin import AdminUserSummaryResponse, SuspendUserRequest
-from app.schemas.analytics import PlatformOverviewResponse
+from app.schemas.analytics import (
+    CountFigure,
+    MoneyFigure,
+    OverviewFiguresResponse,
+    PlatformOverviewResponse,
+)
 from app.schemas.booking import (
     BookingResponse,
     CancellationRequestResponse,
@@ -56,8 +70,6 @@ from app.schemas.booking import (
 from app.schemas.common import MessageResponse, PaginatedResponse
 from app.schemas.driver import ApprovalReviewRequest, DriverResponse
 from app.schemas.feedback import (
-    ComplaintDecisionRequest,
-    ComplaintResponse,
     DriverRatingSummaryResponse,
 )
 from app.schemas.fleet import VehicleResponse
@@ -89,6 +101,7 @@ from app.schemas.trip import (
     AssignTripVehicleRequest,
     CancelTripRequest,
     LiveTripResponse,
+    TripCancellationResponse,
     TripCreateRequest,
     TripResponse,
 )
@@ -98,6 +111,7 @@ from app.schemas.withdrawal import (
     WithdrawalDecisionRequest,
     WithdrawalResponse,
 )
+from app.services.admin_analytics_service import AdminAnalyticsService, Figure, Period
 from app.utilities.geo import wkb_to_latlng
 from app.utilities.query_params import parse_enum_list
 
@@ -366,6 +380,7 @@ async def deactivate_route(route_id: uuid.UUID, service: RouteServiceDep) -> Non
 # ---------------------------------------------------------------------------
 @router.get(
     "/trips",
+    responses=CSV_RESPONSE,
     response_model=PaginatedResponse[AdminTripSummaryResponse],
     dependencies=[
         Depends(require_permissions(Permission.TRIPS_MANAGE, Permission.TRIPS_MONITOR_LIVE))
@@ -383,18 +398,23 @@ async def list_trips(
     ] = None,
     route_id: uuid.UUID | None = None,
     driver_id: uuid.UUID | None = None,
-) -> PaginatedResponse[AdminTripSummaryResponse]:
+    export: ExportFormat = FormatQuery,
+) -> PaginatedResponse[AdminTripSummaryResponse] | Response:
     """Trips matching every filter given, soonest departure first."""
+    limit, offset = export_window(pagination, export)
     summaries, total = await service.list_trips(
         statuses=parse_enum_list(status_filter, TripStatus, param="status"),
         on_date=on_date,
         route_id=route_id,
         driver_id=driver_id,
-        limit=pagination.limit,
-        offset=pagination.offset,
+        limit=limit,
+        offset=offset,
     )
+    items = [AdminTripSummaryResponse.model_validate(s) for s in summaries]
+    if export == "csv":
+        return csv_response(items, name="trips")
     return PaginatedResponse(
-        items=[AdminTripSummaryResponse.model_validate(s) for s in summaries],
+        items=items,
         total=total,
         limit=pagination.limit,
         offset=pagination.offset,
@@ -482,7 +502,7 @@ async def assign_trip_vehicle(
 
 @router.post(
     "/trips/{trip_id}/cancel",
-    response_model=TripResponse,
+    response_model=TripCancellationResponse,
     dependencies=[Depends(require_permissions(Permission.TRIPS_MANAGE))],
 )
 async def cancel_trip(
@@ -490,9 +510,23 @@ async def cancel_trip(
     body: CancelTripRequest,
     principal: CurrentPrincipal,
     service: TripServiceDep,
-) -> TripResponse:
+    bookings: BookingServiceDep,
+    payments: PaymentServiceDep,
+) -> TripCancellationResponse:
+    """Cancel the trip and, in the same transaction, every booking still
+    holding seats on it. Paid bookings get a refund request each (approve
+    them at ``/admin/refund-requests``); every passenger is notified."""
     trip = await service.cancel_trip(trip_id, cancelled_by=principal.user_id, reason=body.reason)
-    return TripResponse.model_validate(trip)
+    cancelled = await bookings.cancel_all_for_trip(
+        trip.id, cancelled_by=principal.user_id, reason=body.reason
+    )
+    refunds = await payments.queue_refunds(cancelled, requested_by=principal.user_id)
+    return TripCancellationResponse(
+        **TripResponse.model_validate(trip).model_dump(),
+        bookings_cancelled=len(cancelled),
+        refunds_queued=len(refunds),
+        refund_amount=sum((refund.amount for refund in refunds), Decimal("0.00")),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -500,6 +534,7 @@ async def cancel_trip(
 # ---------------------------------------------------------------------------
 @router.get(
     "/bookings",
+    responses=CSV_RESPONSE,
     response_model=PaginatedResponse[BookingResponse],
     dependencies=[Depends(require_permissions(Permission.BOOKINGS_VIEW_ANY))],
 )
@@ -507,11 +542,15 @@ async def list_all_bookings(
     pagination: Pagination,
     service: BookingServiceDep,
     booking_status: BookingStatus | None = None,
-) -> PaginatedResponse[BookingResponse]:
+    export: ExportFormat = FormatQuery,
+) -> PaginatedResponse[BookingResponse] | Response:
+    limit, offset = export_window(pagination, export)
     records, total = await service.list_all_bookings(
-        status=booking_status, limit=pagination.limit, offset=pagination.offset
+        status=booking_status, limit=limit, offset=offset
     )
     items = await booking_responses(service, records)
+    if export == "csv":
+        return csv_response(items, name="bookings")
     return PaginatedResponse(
         items=items, total=total, limit=pagination.limit, offset=pagination.offset
     )
@@ -630,68 +669,11 @@ async def reject_refund_request(
 
 
 # ---------------------------------------------------------------------------
-# Complaints
-# ---------------------------------------------------------------------------
-@router.get(
-    "/complaints",
-    response_model=PaginatedResponse[ComplaintResponse],
-    dependencies=[Depends(require_permissions(Permission.COMPLAINTS_MANAGE))],
-)
-async def list_complaints(
-    pagination: Pagination,
-    complaints: ComplaintServiceDep,
-    complaint_status: ComplaintStatus | None = None,
-) -> PaginatedResponse[ComplaintResponse]:
-    records, total = await complaints.list_all_complaints(
-        status=complaint_status, limit=pagination.limit, offset=pagination.offset
-    )
-    return PaginatedResponse(
-        items=[ComplaintResponse.model_validate(c) for c in records],
-        total=total,
-        limit=pagination.limit,
-        offset=pagination.offset,
-    )
-
-
-@router.post(
-    "/complaints/{complaint_id}/resolve",
-    response_model=ComplaintResponse,
-    dependencies=[Depends(require_permissions(Permission.COMPLAINTS_MANAGE))],
-)
-async def resolve_complaint(
-    complaint_id: uuid.UUID,
-    body: ComplaintDecisionRequest,
-    principal: CurrentPrincipal,
-    complaints: ComplaintServiceDep,
-) -> ComplaintResponse:
-    complaint = await complaints.resolve(
-        complaint_id, reviewer_id=principal.user_id, notes=body.notes
-    )
-    return ComplaintResponse.model_validate(complaint)
-
-
-@router.post(
-    "/complaints/{complaint_id}/dismiss",
-    response_model=ComplaintResponse,
-    dependencies=[Depends(require_permissions(Permission.COMPLAINTS_MANAGE))],
-)
-async def dismiss_complaint(
-    complaint_id: uuid.UUID,
-    body: ComplaintDecisionRequest,
-    principal: CurrentPrincipal,
-    complaints: ComplaintServiceDep,
-) -> ComplaintResponse:
-    complaint = await complaints.dismiss(
-        complaint_id, reviewer_id=principal.user_id, notes=body.notes
-    )
-    return ComplaintResponse.model_validate(complaint)
-
-
-# ---------------------------------------------------------------------------
 # Incidents
 # ---------------------------------------------------------------------------
 @router.get(
     "/incidents",
+    responses=CSV_RESPONSE,
     response_model=PaginatedResponse[IncidentResponse],
     dependencies=[Depends(require_permissions(Permission.INCIDENTS_MANAGE))],
 )
@@ -700,12 +682,15 @@ async def list_incidents(
     safety: SafetyServiceDep,
     storage: StorageProviderDep,
     incident_status: IncidentStatus | None = None,
-) -> PaginatedResponse[IncidentResponse]:
-    records, total = await safety.list_incidents(
-        status=incident_status, limit=pagination.limit, offset=pagination.offset
-    )
+    export: ExportFormat = FormatQuery,
+) -> PaginatedResponse[IncidentResponse] | Response:
+    limit, offset = export_window(pagination, export)
+    records, total = await safety.list_incidents(status=incident_status, limit=limit, offset=offset)
+    items = [await incident_response(i, storage) for i in records]
+    if export == "csv":
+        return csv_response(items, name="incidents")
     return PaginatedResponse(
-        items=[await incident_response(i, storage) for i in records],
+        items=items,
         total=total,
         limit=pagination.limit,
         offset=pagination.offset,
@@ -800,25 +785,6 @@ async def get_driver_rating_summary(
 # ---------------------------------------------------------------------------
 # User management
 # ---------------------------------------------------------------------------
-@router.get(
-    "/users",
-    response_model=PaginatedResponse[AdminUserSummaryResponse],
-    dependencies=[Depends(require_permissions(Permission.USERS_MANAGE))],
-)
-async def list_users(
-    pagination: Pagination, admin: AdminServiceDep, search: str | None = None
-) -> PaginatedResponse[AdminUserSummaryResponse]:
-    records, total = await admin.list_users(
-        search=search, limit=pagination.limit, offset=pagination.offset
-    )
-    return PaginatedResponse(
-        items=[AdminUserSummaryResponse.model_validate(u) for u in records],
-        total=total,
-        limit=pagination.limit,
-        offset=pagination.offset,
-    )
-
-
 @router.post(
     "/users/{user_id}/suspend",
     response_model=AdminUserSummaryResponse,
@@ -851,6 +817,7 @@ async def reactivate_user(
 # ---------------------------------------------------------------------------
 @router.get(
     "/withdrawals",
+    responses=CSV_RESPONSE,
     response_model=PaginatedResponse[WithdrawalResponse],
     dependencies=[Depends(require_permissions(Permission.WITHDRAWALS_REVIEW))],
 )
@@ -858,12 +825,17 @@ async def list_withdrawals(
     pagination: Pagination,
     withdrawals: WithdrawalServiceDep,
     withdrawal_status: WithdrawalStatus | None = None,
-) -> PaginatedResponse[WithdrawalResponse]:
+    export: ExportFormat = FormatQuery,
+) -> PaginatedResponse[WithdrawalResponse] | Response:
+    limit, offset = export_window(pagination, export)
     records, total = await withdrawals.list_all_withdrawals(
-        status=withdrawal_status, limit=pagination.limit, offset=pagination.offset
+        status=withdrawal_status, limit=limit, offset=offset
     )
+    items = [WithdrawalResponse.model_validate(w) for w in records]
+    if export == "csv":
+        return csv_response(items, name="payouts")
     return PaginatedResponse(
-        items=[WithdrawalResponse.model_validate(w) for w in records],
+        items=items,
         total=total,
         limit=pagination.limit,
         offset=pagination.offset,
@@ -953,6 +925,36 @@ async def fail_withdrawal(
     response_model=PlatformOverviewResponse,
     dependencies=[Depends(require_permissions(Permission.REPORTS_VIEW))],
 )
-async def get_platform_overview(analytics: AnalyticsServiceDep) -> PlatformOverviewResponse:
+async def get_platform_overview(
+    analytics: AnalyticsServiceDep,
+    db: DbSession,
+    date_from: Annotated[
+        date | None, Query(alias="from", description="Inclusive. Default: 29 days before 'to'.")
+    ] = None,
+    date_to: Annotated[date | None, Query(alias="to", description="Inclusive. Default: today.")] = (
+        None
+    ),
+    city: Annotated[str | None, Query(max_length=100)] = None,
+) -> PlatformOverviewResponse:
+    """The KPI tiles: all-time totals and live counts, and per-period
+    figures (value, previous period, change, daily series) for the period
+    and city asked for. Dates are Ghana dates."""
+    period = Period.resolve(date_from, date_to)
     overview = await analytics.get_platform_overview()
-    return PlatformOverviewResponse.model_validate(overview)
+    figures = await AdminAnalyticsService(db).overview_figures(period, city)
+    return PlatformOverviewResponse(
+        **asdict(overview),
+        period=period_response(period, city),
+        figures=OverviewFiguresResponse(
+            **{
+                name: _figure_response(figures.get(name), money=name == "booking_payments")
+                for name in OverviewFiguresResponse.model_fields
+            }
+        ),
+    )
+
+
+def _figure_response(figure: Figure | None, *, money: bool) -> CountFigure | MoneyFigure | None:
+    if figure is None:
+        return None
+    return money_figure(figure) if money else count_figure(figure)

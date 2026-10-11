@@ -119,16 +119,10 @@ class OtpService:
         code_hash = hash_otp_code(code, self._settings)
         expires_at = datetime.now(UTC) + timedelta(seconds=self._settings.OTP_EXPIRATION_SECONDS)
 
-        challenge = await self._repo.create_challenge(
-            target=target,
-            channel=channel,
-            purpose=purpose,
-            code_hash=code_hash,
-            user_id=user_id,
-            expires_at=expires_at,
-            max_attempts=self._settings.OTP_MAX_ATTEMPTS,
-        )
-
+        # The code is on its way before it is stored: storing it is part of
+        # the request, which cannot be answered -- nor the code checked --
+        # until it commits, so nothing is lost by sending first, and the
+        # person waits one round trip less.
         subject, template = _MESSAGES.get(purpose, _DEFAULT_MESSAGE)
         message = template.format(code=code, minutes=self._settings.OTP_EXPIRATION_SECONDS // 60)
         delivery = self._deliver(
@@ -143,6 +137,16 @@ class OtpService:
             run_in_background(delivery, name=f"otp-{purpose.value}-{channel.value}")
         else:
             await delivery
+
+        challenge = await self._repo.create_challenge(
+            target=target,
+            channel=channel,
+            purpose=purpose,
+            code_hash=code_hash,
+            user_id=user_id,
+            expires_at=expires_at,
+            max_attempts=self._settings.OTP_MAX_ATTEMPTS,
+        )
 
         logger.info("otp_requested", target=target, purpose=purpose.value, channel=channel.value)
         return challenge

@@ -105,6 +105,18 @@ TrackingRepository trackingRepository(Ref ref) =>
       ),
     };
 
+/// Seat holds and bookings.
+@Riverpod(keepAlive: true)
+BookingRepository bookingRepository(Ref ref) =>
+    switch (ref.watch(envProvider).apiMode) {
+      ApiMode.live => LiveBookingRepository(ref.watch(apiClientProvider)),
+      ApiMode.mock => MockBookingRepository(
+        ref.watch(mockBackendProvider),
+        tokens: () => ref.read(tokenManagerProvider),
+        latency: ref.watch(mockLatencyProvider),
+      ),
+    };
+
 @Riverpod(keepAlive: true)
 UserCache userCache(Ref ref) =>
     SharedPreferencesUserCache(SharedPreferencesAsync());

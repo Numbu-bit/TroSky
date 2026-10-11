@@ -135,6 +135,10 @@ class Settings(BaseSettings):
     EMAIL_SMTP_USERNAME: str = ""
     EMAIL_SMTP_PASSWORD: SecretStr = SecretStr("")
     EMAIL_SMTP_USE_TLS: bool = False
+    # How often an idle connection to the SMTP server is checked (NOOP) and,
+    # if none is left, a new one opened -- so a verification code never
+    # waits for a connect and login (~1.5 s to Gmail). 0 turns it off.
+    EMAIL_SMTP_KEEPALIVE_SECONDS: int = Field(default=40, ge=0, le=3600)
 
     # --- SMS ---------------------------------------------------------------
     SMS_PROVIDER: SmsProviderName = SmsProviderName.CONSOLE
@@ -159,6 +163,9 @@ class Settings(BaseSettings):
     # aboard. The floor stops a full bus pricing a seat into the ground:
     # 0.25 means nobody ever pays less than a quarter of the solo fare.
     FARE_SHARING_ENABLED: bool = True
+    # Search shows, and booking accepts, trips already on the road (from stops
+    # still ahead of the vehicle). Switched by the book_moving_trips flag.
+    BOOK_MOVING_TRIPS_ENABLED: bool = True
     FARE_SHARING_MIN_RATIO: Decimal = Field(default=Decimal("0.25"), gt=0, le=1)
     FARE_MINIMUM_AMOUNT: Decimal = Field(default=Decimal("1.00"), ge=0)
 
@@ -212,6 +219,17 @@ class Settings(BaseSettings):
 
     # --- Reservations / OTP / rate limits ---------------------------------
     SEAT_RESERVATION_HOLD_SECONDS: int = Field(default=600, gt=0)
+    # A new booking waits for the trip's driver (or an admin) to accept it
+    # before the passenger pays. Unanswered after the timeout, it is moved to
+    # another trip going the same way, up to BOOKING_MAX_MOVES times, among
+    # trips leaving within BOOKING_MOVE_WINDOW_MINUTES of the first.
+    BOOKING_ACCEPTANCE_REQUIRED: bool = True
+    BOOKING_ACCEPT_TIMEOUT_SECONDS: int = Field(default=120, ge=15, le=3600)
+    BOOKING_MAX_MOVES: int = Field(default=3, ge=0, le=10)
+    BOOKING_MOVE_WINDOW_MINUTES: int = Field(default=60, ge=0, le=24 * 60)
+    # Trips offered to a passenger who has reached their stop: those leaving
+    # from it within this many minutes.
+    ONWARD_TRIPS_WINDOW_MINUTES: int = Field(default=120, ge=5, le=24 * 60)
     OTP_LENGTH: int = Field(default=6, ge=4, le=10)
     OTP_EXPIRATION_SECONDS: int = Field(default=300, gt=0)
     OTP_RESEND_COOLDOWN_SECONDS: int = Field(default=60, gt=0)
@@ -233,6 +251,10 @@ class Settings(BaseSettings):
     # Accounts must prove their phone or email (by entering a code sent to
     # it) before they can log in with a password or book a seat.
     REQUIRE_VERIFIED_ACCOUNT: bool = True
+    # Passengers share their location (the phone's GPS) when they sign up,
+    # and it must be in one of these countries (ISO codes, comma-separated;
+    # see app/utilities/regions.py). Empty switches the check off.
+    PASSENGER_SIGNUP_COUNTRIES: str = "GH"
     # Profile photos (POST /users/me/avatar): JPEG/PNG up to this size,
     # served through signed URLs valid for this long.
     AVATAR_MAX_SIZE_BYTES: int = Field(default=5 * 1024 * 1024, gt=0)
@@ -278,6 +300,30 @@ class Settings(BaseSettings):
     GPS_MAX_PLAUSIBLE_SPEED_KMH: int = Field(default=140, gt=0)
     GPS_RAW_RETENTION_DAYS: int = Field(default=30, gt=0)
 
+    # --- Trips changing status on their own (app.services.trip_autopilot) --
+    # Off: only drivers and admins change a trip's status, as before 0.22.0.
+    TRIP_AUTO_STATUS_ENABLED: bool = True
+    # How long before departure the driver's phone may send positions, and
+    # a vehicle at the first stop puts its trip into boarding.
+    TRIP_AUTO_WINDOW_MINUTES: int = Field(default=30, ge=0, le=240)
+    # A vehicle this close to a stop is at it.
+    TRIP_AT_STOP_METERS: int = Field(default=150, gt=0)
+    # A vehicle this far from the first stop, and as far along the route,
+    # has left: its trip is in progress.
+    TRIP_LEFT_STOP_METERS: int = Field(default=300, gt=0)
+    # Standing this long within TRIP_STILL_METERS, away from any stop,
+    # pauses a trip; moving further than TRIP_STILL_METERS resumes it.
+    TRIP_AUTO_PAUSE_MINUTES: int = Field(default=20, gt=0)
+    TRIP_STILL_METERS: int = Field(default=50, gt=0)
+    # At the last stop this long, or silent this long once there: arrived.
+    TRIP_ARRIVAL_MINUTES: int = Field(default=3, ge=0)
+    TRIP_ARRIVAL_SILENCE_MINUTES: int = Field(default=10, gt=0)
+    # A trip not started this long after its departure time raises an alert
+    # for the operations team, and is cancelled later still (0: never) if
+    # nothing has been heard from its vehicle.
+    TRIP_NOT_STARTED_ALERT_MINUTES: int = Field(default=15, gt=0)
+    TRIP_NOT_STARTED_CANCEL_MINUTES: int = Field(default=120, ge=0)
+
     # --- Ticketing -----------------------------------------------------
     TICKET_QR_SIGNING_SECRET: SecretStr
 
@@ -315,6 +361,16 @@ class Settings(BaseSettings):
         return frozenset(
             entry.strip().lstrip("@").lower()
             for entry in self.REGISTRATION_EMAIL_DOMAINS.split(",")
+            if entry.strip()
+        )
+
+    @property
+    def passenger_signup_countries(self) -> frozenset[str]:
+        """Parsed ``PASSENGER_SIGNUP_COUNTRIES``, upper-cased; empty means
+        a passenger may sign up from anywhere, without a location."""
+        return frozenset(
+            entry.strip().upper()
+            for entry in self.PASSENGER_SIGNUP_COUNTRIES.split(",")
             if entry.strip()
         )
 
@@ -368,12 +424,37 @@ class Settings(BaseSettings):
                     raise ValueError(f"TRUSTED_PROXY_CIDRS entry {entry.strip()!r}: {exc}") from exc
         return value
 
+    @field_validator("PASSENGER_SIGNUP_COUNTRIES")
+    @classmethod
+    def _validate_signup_countries(cls, value: str) -> str:
+        from app.utilities.regions import KNOWN_COUNTRIES
+
+        unknown = {
+            entry.strip().upper() for entry in value.split(",") if entry.strip()
+        } - KNOWN_COUNTRIES
+        if unknown:
+            raise ValueError(
+                f"PASSENGER_SIGNUP_COUNTRIES has countries without an outline: {sorted(unknown)}. "
+                f"Known: {sorted(KNOWN_COUNTRIES)}."
+            )
+        return value
+
     @field_validator("PAYMENTS_DEFAULT_CURRENCY")
     @classmethod
     def _currency_must_be_ghs_for_mvp(cls, v: str) -> str:
         if v.upper() != "GHS":
             raise ValueError("Only GHS is supported for MVP monetary storage.")
         return v.upper()
+
+    @model_validator(mode="after")
+    def _cancel_after_the_alert(self) -> Settings:
+        cancel = self.TRIP_NOT_STARTED_CANCEL_MINUTES
+        if cancel and cancel <= self.TRIP_NOT_STARTED_ALERT_MINUTES:
+            raise ValueError(
+                "TRIP_NOT_STARTED_CANCEL_MINUTES must be 0 (never) or more than "
+                "TRIP_NOT_STARTED_ALERT_MINUTES, so the team is alerted first."
+            )
+        return self
 
     @model_validator(mode="after")
     def _validate_production_safety(self) -> Settings:

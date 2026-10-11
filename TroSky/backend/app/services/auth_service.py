@@ -11,6 +11,7 @@ import uuid
 from datetime import UTC, datetime
 
 from redis.asyncio import Redis
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +22,7 @@ from app.core.exceptions import (
     AccountNotVerifiedError,
     AccountSuspendedError,
     ConflictError,
+    DeviceBlockedError,
     InvalidCredentialsError,
     NotFoundError,
     OtpNotFoundError,
@@ -39,6 +41,7 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
+from app.models.fraud import BlockedDevice
 from app.models.identity import OtpChannel, OtpPurpose, User, UserSession
 from app.providers.email.base import EmailProvider
 from app.providers.sms.base import SmsProvider
@@ -46,10 +49,16 @@ from app.repositories.otp_repository import OtpRepository
 from app.repositories.profile_repository import DeviceRepository, NotificationPreferenceRepository
 from app.repositories.session_repository import SessionRepository
 from app.repositories.user_repository import DuplicateUserError, UserRepository
-from app.schemas.auth import DeviceContext, RegisterRequest, TokenPairResponse
+from app.schemas.auth import (
+    DeviceContext,
+    RegisterRequest,
+    RegistrableRole,
+    TokenPairResponse,
+)
 from app.services.otp_service import OtpService, normalize_otp_target
 from app.utilities.password_policy import PasswordPolicyError, validate_password_policy
 from app.utilities.phone import InvalidPhoneNumberError, normalize_phone_number
+from app.utilities.regions import country_at, country_names
 
 logger = get_logger(__name__)
 
@@ -110,6 +119,27 @@ class AuthService:
                 details={"allowed_domains": sorted(allowed)},
             )
 
+    def _check_signup_location(self, request: RegisterRequest) -> None:
+        """A passenger shares where they are, and it must be where TroSky
+        runs (``PASSENGER_SIGNUP_COUNTRIES``). Only the check is made: the
+        location itself is not kept."""
+        countries = self._settings.passenger_signup_countries
+        if request.role != RegistrableRole.PASSENGER or not countries:
+            return
+        names = country_names(countries)
+        if request.latitude is None or request.longitude is None:
+            raise ValidationAppError(
+                f"Turn on your location to sign up: TroSky is available in {names} for now.",
+                code="LOCATION_REQUIRED",
+                details={"countries": sorted(countries)},
+            )
+        if country_at(request.latitude, request.longitude, countries) is None:
+            raise ValidationAppError(
+                f"TroSky is only available in {names} for now.",
+                code="LOCATION_NOT_SERVED",
+                details={"countries": sorted(countries)},
+            )
+
     def _code_channel(self, purpose: OtpPurpose, requested: OtpChannel) -> OtpChannel:
         """The channel a code for ``purpose`` is actually sent by.
 
@@ -136,21 +166,23 @@ class AuthService:
                 details={"violations": exc.violations},
             ) from None
         self._check_registration_email(request.email)
+        self._check_signup_location(request)
 
-        if await self._users.get_by_phone(request.phone_number) is not None:
+        # The code goes out as early as it can: every database round trip
+        # before it is time the person waits for their email. So the checks
+        # are one query, the insert needs no savepoint (nothing else here to
+        # keep if it fails), and the role and preferences come after.
+        phone_taken, email_taken = await self._users.contacts_taken(
+            request.phone_number, request.email
+        )
+        if phone_taken:
             raise ConflictError(
                 "An account with this phone number already exists.", code="PHONE_ALREADY_REGISTERED"
             )
-        if request.email is not None and await self._users.get_by_email(request.email) is not None:
+        if email_taken:
             raise ConflictError(
                 "An account with this email already exists.", code="EMAIL_ALREADY_REGISTERED"
             )
-
-        role = await self._users.get_role_by_slug(request.role.value)
-        if role is None:
-            # Roles are seeded at deploy time (see scripts/seed_dev_data.py);
-            # reaching this means the environment was never seeded.
-            raise RuntimeError(f"Role '{request.role.value}' is not seeded in this environment.")
 
         try:
             user = await self._users.create(
@@ -159,6 +191,7 @@ class AuthService:
                 password_hash=hash_password(request.password),
                 full_name=request.full_name,
                 preferred_language=request.preferred_language,
+                savepoint=False,
             )
         except DuplicateUserError as exc:
             # The checks above already rejected the ordinary duplicate; a
@@ -172,9 +205,6 @@ class AuthService:
                 "An account with this phone number already exists.",
                 code="PHONE_ALREADY_REGISTERED",
             ) from None
-        await self._users.assign_role(user.id, role.id)
-        await self._notification_prefs.create_default(user.id)
-
         if self._codes_by_email and user.email is not None:
             # The one code goes to the email address; verifying it verifies
             # that address. If it cannot be sent the registration fails and
@@ -214,6 +244,14 @@ class AuthService:
                     logger.warning(
                         "registration_email_otp_failed", user_id=str(user.id), exc_info=True
                     )
+
+        role = await self._users.get_role_by_slug(request.role.value)
+        if role is None:
+            # Roles are seeded at deploy time (see scripts/seed_dev_data.py);
+            # reaching this means the environment was never seeded.
+            raise RuntimeError(f"Role '{request.role.value}' is not seeded in this environment.")
+        await self._users.assign_role(user.id, role.id)
+        await self._notification_prefs.create_default(user.id)
 
         logger.info("user_registered", user_id=str(user.id), role=request.role.value)
         return user, otp_target
@@ -354,6 +392,13 @@ class AuthService:
     async def _issue_token_pair(
         self, user: User, device: DeviceContext | None, ip_address: str | None
     ) -> TokenPairResponse:
+        if device is not None and device.device_id:
+            blocked = await self._session.scalar(
+                select(BlockedDevice.id).where(BlockedDevice.device_id == device.device_id)
+            )
+            if blocked is not None:
+                logger.warning("login_from_blocked_device", user_id=str(user.id))
+                raise DeviceBlockedError()
         session_record = await self._sessions.create_session(
             user_id=user.id,
             device_id=device.device_id if device else None,

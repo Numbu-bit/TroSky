@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 import pytest_asyncio
 from dotenv import load_dotenv
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete as sa_delete
 from sqlalchemy.exc import IntegrityError
@@ -83,17 +84,41 @@ async def _reset_engine_between_tests() -> AsyncGenerator[None, None]:
     await close_redis()
 
 
+@pytest.fixture(autouse=True)
+def _fresh_runtime_settings():
+    """Admin settings and flags are cached per process; start every test
+    from what the database says."""
+    from app.services.system_settings_service import clear_cache
+
+    clear_cache()
+    yield
+    clear_cache()
+
+
+_shared_app: FastAPI | None = None
+
+
+def _application() -> FastAPI:
+    """One application for the whole run. Building it registers every route
+    -- over 200, a second or more each time -- and no test changes it. The
+    connection pools it uses are tied to an event loop, so ``app_instance``
+    still resets those after every test."""
+    global _shared_app
+    if _shared_app is None:
+        from app.api import dependencies as api_dependencies
+        from app.providers.storage.sandbox import SandboxStorageProvider
+
+        _shared_app = create_app()
+        # Never let API-level tests touch a real S3/MinIO endpoint.
+        _shared_app.dependency_overrides[api_dependencies.get_storage_provider_dep] = (
+            SandboxStorageProvider
+        )
+    return _shared_app
+
+
 @pytest_asyncio.fixture
 async def app_instance():
-    from app.api import dependencies as api_dependencies
-    from app.providers.storage.sandbox import SandboxStorageProvider
-
-    application = create_app()
-    # Never let API-level tests touch a real S3/MinIO endpoint.
-    application.dependency_overrides[api_dependencies.get_storage_provider_dep] = (
-        SandboxStorageProvider
-    )
-    yield application
+    yield _application()
     await dispose_engine()
     await close_redis()
 
@@ -181,19 +206,15 @@ async def seeded_roles(db_session: AsyncSession) -> dict[str, object]:
 
 @pytest_asyncio.fixture
 async def seed_identity_data(require_postgres: None) -> AsyncIterator[None]:
-    """Seeds roles/permissions with a real, committed transaction — for
-    API-level tests that exercise the app's own (separately-committing)
-    request-scoped sessions via the ``client`` fixture. Idempotent, so
-    running it once per test is cheap and side-effect-free across runs."""
-    from scripts.seed_reference_data import ensure_permissions, ensure_roles
+    """Seeds the reference data every deployment has -- roles, permissions,
+    and every permission granted to the admin role -- with a real, committed
+    transaction, for API-level tests that exercise the app's own
+    (separately-committing) request-scoped sessions via the ``client``
+    fixture. Idempotent, so running it once per test is cheap and
+    side-effect-free across runs."""
+    from scripts.seed_reference_data import seed_reference_data
 
-    from app.core.database import get_session_factory
-
-    session_factory = get_session_factory()
-    async with session_factory() as session:
-        await ensure_roles(session)
-        await ensure_permissions(session)
-        await session.commit()
+    await seed_reference_data()
     yield
 
 

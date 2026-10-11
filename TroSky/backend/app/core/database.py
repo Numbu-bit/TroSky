@@ -20,6 +20,8 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import NullPool
 
+from app.core.admin_events import publish_announced
+from app.core.audit import attach_to_session
 from app.core.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.models.base import Base
@@ -91,8 +93,9 @@ def keep_writes_on_failure(session: AsyncSession) -> None:
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """FastAPI dependency yielding a request-scoped AsyncSession.
 
-    Commits on clean completion, rolls back on any exception (unless a
-    safeguard asked for its writes to be kept, see
+    Commits on clean completion, then publishes what the request announced
+    for the admin stream (:mod:`app.core.admin_events`); rolls back on any
+    exception (unless a safeguard asked for its writes to be kept, see
     :func:`keep_writes_on_failure`), and always closes the session. Route
     handlers should not call ``commit()`` themselves for the "request"
     session — service-layer code that needs an explicit transaction
@@ -100,9 +103,11 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     session_factory = get_session_factory()
     async with session_factory() as session:
+        attach_to_session(session.sync_session)
         try:
             yield session
             await session.commit()
+            await publish_announced(session)
         except Exception:
             if session.info.pop(_KEEP_ON_FAILURE, False):
                 try:
@@ -120,10 +125,13 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 @asynccontextmanager
 async def transactional_session() -> AsyncGenerator[AsyncSession, None]:
     """Explicit transaction boundary for use outside the request lifecycle
-    (background workers, scripts, event handlers)."""
+    (background workers, scripts, event handlers). Like ``get_db``, it
+    publishes what was announced for the admin stream once committed."""
     session_factory = get_session_factory()
-    async with session_factory() as session, session.begin():
-        yield session
+    async with session_factory() as session:
+        async with session.begin():
+            yield session
+        await publish_announced(session)
 
 
 async def dispose_engine() -> None:

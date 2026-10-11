@@ -2,12 +2,14 @@ import 'package:trosky_core/trosky_core.dart';
 
 import '../client/interceptors.dart';
 import '../dto/auth_dto.dart';
+import '../dto/booking_dto.dart';
 import '../dto/driver_dto.dart';
 import '../dto/paginated.dart';
 import '../dto/route_dto.dart';
 import '../dto/tracking_dto.dart';
 import '../dto/user_dto.dart';
 import '../repositories/auth_repository.dart';
+import '../repositories/booking_repository.dart';
 import '../repositories/driver_repository.dart';
 import '../repositories/route_repository.dart';
 import '../repositories/tracking_repository.dart';
@@ -168,6 +170,90 @@ class MockRouteRepository implements RouteRepository {
     if (latency > Duration.zero) await Future<void>.delayed(latency);
     return _backend.searchTrips(query);
   }
+
+  @override
+  Future<Result<TripSeatsResponse>> tripSeats(String tripId) async {
+    if (latency > Duration.zero) await Future<void>.delayed(latency);
+    return _backend.tripSeats(tripId);
+  }
+
+  @override
+  Future<Result<FareQuoteResponse>> fareQuote(
+    String tripId, {
+    String? originStopId,
+    String? destinationStopId,
+    int seats = 1,
+  }) async {
+    if (latency > Duration.zero) await Future<void>.delayed(latency);
+    return _backend.fareQuote(
+      tripId,
+      originStopId: originStopId,
+      destinationStopId: destinationStopId,
+      seats: seats,
+    );
+  }
+}
+
+/// [BookingRepository] on a [MockBackend] (`API_MODE=mock`).
+class MockBookingRepository implements BookingRepository {
+  MockBookingRepository(
+    this._backend, {
+    required this._tokens,
+    this.latency = Duration.zero,
+  });
+
+  final MockBackend _backend;
+  final SessionTokens Function() _tokens;
+  final Duration latency;
+
+  /// The booking made for each idempotency key, as the backend keeps it.
+  final Map<String, String> _byKey = {};
+
+  @override
+  Future<Result<BookingResponse>> create(
+    BookingCreateRequest request, {
+    required String idempotencyKey,
+  }) => _authenticated(_tokens(), latency, (token) {
+    if (_byKey[idempotencyKey] case final id?) {
+      return _backend.getBooking(token, id);
+    }
+    final result = _backend.createBooking(token, request);
+    if (result case Ok(:final value)) _byKey[idempotencyKey] = value.id;
+    return result;
+  });
+
+  @override
+  Future<Result<Paginated<BookingResponse>>> list({
+    List<BookingStatus>? statuses,
+    bool? upcoming,
+    int limit = 20,
+    int offset = 0,
+  }) => _authenticated(
+    _tokens(),
+    latency,
+    (token) => _backend.listBookings(
+      token,
+      statuses: statuses,
+      upcoming: upcoming,
+      limit: limit,
+      offset: offset,
+    ),
+  );
+
+  @override
+  Future<Result<BookingResponse>> get(String bookingId) => _authenticated(
+    _tokens(),
+    latency,
+    (token) => _backend.getBooking(token, bookingId),
+  );
+
+  @override
+  Future<Result<BookingResponse>> cancel(String bookingId, {String? reason}) =>
+      _authenticated(
+        _tokens(),
+        latency,
+        (token) => _backend.cancelBooking(token, bookingId),
+      );
 }
 
 /// [TrackingRepository] on a [MockBackend] (`API_MODE=mock`): invented

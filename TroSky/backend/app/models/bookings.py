@@ -10,6 +10,11 @@ on the same trip, so overselling is impossible even under concurrent
 requests, regardless of application-level locking. Redis is used only to
 accelerate/short-circuit obviously-taken seats before hitting the
 database — never as the source of truth.
+
+Acceptance: a new booking waits (``awaiting_acceptance``) for the trip's
+driver or an admin to accept it before the passenger pays. Each trip it is
+put to is a ``BookingOffer``; one nobody answers in time is moved to another
+trip (see ``app.services.booking_acceptance_service``).
 """
 
 from __future__ import annotations
@@ -28,6 +33,9 @@ from app.models.base import UUIDAuditBase, enum_values
 
 
 class BookingStatus(StrEnum):
+    # Waiting for the driver (or an admin) to accept it; holds its seats but
+    # cannot be paid for yet.
+    AWAITING_ACCEPTANCE = "awaiting_acceptance"
     PENDING = "pending"
     PAYMENT_PENDING = "payment_pending"
     CONFIRMED = "confirmed"
@@ -43,6 +51,22 @@ class ReservationStatus(StrEnum):
     CONFIRMED = "confirmed"
     RELEASED = "released"
     EXPIRED = "expired"
+    # The passenger got off: the seat is free for the rest of the route.
+    COMPLETED = "completed"
+
+
+class AlightedHow(StrEnum):
+    DRIVER = "driver"  # the driver marked them off
+    ADMIN = "admin"
+    ARRIVAL = "arrival"  # the vehicle reached their stop
+
+
+class OfferStatus(StrEnum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    DECLINED = "declined"
+    EXPIRED = "expired"  # nobody answered in time
+    WITHDRAWN = "withdrawn"  # the booking ended some other way first
 
 
 class CancellationStatus(StrEnum):
@@ -126,10 +150,63 @@ class BookingPassenger(UUIDAuditBase):
     )
     full_name: Mapped[str] = mapped_column(String(200), nullable=False)
     phone_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # Got off: their seat is then free for the rest of the route.
+    alighted_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    alighted_stop_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("stops.id", ondelete="SET NULL"), nullable=True
+    )
+    alighted_how: Mapped[AlightedHow | None] = mapped_column(
+        PgEnum(AlightedHow, name="alighted_how", native_enum=True, values_callable=enum_values),
+        nullable=True,
+    )
+    alighted_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
 
     __table_args__ = (
         UniqueConstraint("booking_id", "seat_id", name="uq_booking_passengers_booking_seat"),
         Index("ix_booking_passengers_booking_id", "booking_id"),
+    )
+
+
+class BookingOffer(UUIDAuditBase):
+    """A booking put to one trip's driver, and what became of it. A booking
+    moved to another trip has one per trip it was put to."""
+
+    __tablename__ = "booking_offers"
+
+    booking_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("bookings.id", ondelete="CASCADE"), nullable=False
+    )
+    trip_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("trips.id", ondelete="CASCADE"), nullable=False
+    )
+    # The trip's driver when it was offered (None: no driver assigned yet).
+    driver_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("drivers.id", ondelete="SET NULL"), nullable=True
+    )
+    status: Mapped[OfferStatus] = mapped_column(
+        PgEnum(OfferStatus, name="offer_status", native_enum=True, values_callable=enum_values),
+        nullable=False,
+        default=OfferStatus.PENDING,
+    )
+    expires_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    decided_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    decided_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    __table_args__ = (
+        Index("ix_booking_offers_booking_id", "booking_id"),
+        Index("ix_booking_offers_trip_id_status", "trip_id", "status"),
+        Index("ix_booking_offers_status_expires_at", "status", "expires_at"),
+        Index(
+            "uq_booking_offers_pending_booking",
+            "booking_id",
+            unique=True,
+            postgresql_where=status == "pending",
+        ),
     )
 
 

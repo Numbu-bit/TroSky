@@ -35,6 +35,8 @@ class SystemRole(StrEnum):
     FLEET_OWNER = "fleet_owner"
     ADMIN = "admin"
     SUPER_ADMIN = "super_admin"
+    # On the admin team with only the permissions granted to them.
+    STAFF = "staff"
 
 
 class Permission(StrEnum):
@@ -61,6 +63,9 @@ class Permission(StrEnum):
     SYSTEM_SETTINGS_MANAGE = "system_settings:manage"
     FEATURE_FLAGS_MANAGE = "feature_flags:manage"
     AUDIT_LOGS_VIEW = "audit_logs:view"
+    FRAUD_VIEW = "fraud:view"
+    FRAUD_MANAGE = "fraud:manage"
+    ADMINS_MANAGE = "admins:manage"
 
 
 @dataclass(frozen=True, slots=True)

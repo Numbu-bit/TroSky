@@ -21,11 +21,14 @@ Product decisions that settle questions the Figma Make file leaves open. These r
 | 15 | Favourite routes | 1 Oct 2026 | In force; G4 landed, so they come from the backend |
 | 16 | Subscribe banner | 1 Oct 2026 | In force (`Feature.subscriptions`) |
 | 17 | Emoji | 1 Oct 2026 | In force |
-| 18 | SOS on Home | 1 Oct 2026 | In force (SOS placeholder); backend gap G19 |
+| 18 | SOS on Home | 1 Oct 2026 | In force (SOS placeholder); G19 landed in 0.13.0, used when the SOS screen is built |
 | 19 | Search entry screen | 2 Oct 2026 | In force (`SearchScreen`, P-02) |
-| 20 | Fare display | 2 Oct 2026 | In force (`TripCard`); full design waits for G20 |
-| 21 | Approaching / passed | 2 Oct 2026 | In force (`SearchResultsScreen`); full design waits for G21 |
-| 22 | Filter pills | 2 Oct 2026 | In force (`SearchResultsScreen`) |
+| 20 | Fare display | 2 Oct 2026 | **Ended 10 Oct 2026**: G20 landed (backend 0.13.0), live shows the full design |
+| 21 | Approaching / passed | 2 Oct 2026 | **Ended 10 Oct 2026**: G21 landed, live shows the full design |
+| 22 | Filter pills | 2 Oct 2026 | In force; since 10 Oct 2026 the backend sorts and filters |
+| 23 | Passenger names | 2 Oct 2026 | In force (`SeatSelectionScreen`) |
+| 24 | Price on the seat screen | 2 Oct 2026 | **Ended 10 Oct 2026**: the fare quote landed, live shows the full design |
+| 25 | Seat layout | 2 Oct 2026 | In force (`SeatMapLayout`) |
 
 ## 1. Logo
 
@@ -172,10 +175,24 @@ The screen where the passenger enters a journey (P-02) **is not in Figma**. It i
 
 ## 20. Fare display
 
+> **Ended 10 Oct 2026.** G20 landed in backend 0.13.0: every search result has `fare {current, solo, minimum, platform_fee, total, …}` for the passenger's pickup and drop-off. Mock and live now follow one rule:
+> - The main price is `fare.current` (one seat, before the platform fee).
+> - The solo fare is crossed out and "Save X%" shows, with X = (solo − current) / solo rounded to a whole percent, **only when solo is higher than current**. When they're equal (nobody to share with yet) neither shows; when the saving rounds to 0 %, only the crossed-out price shows.
+> - A result without `fare` (an older backend) shows `fare_amount`.
+
+What applied until then:
+
 - **Live mode:** the backend's `fare_amount` is the main price. The crossed-out solo price and "Save X%" show only when the API provides a solo and a shared fare for the passenger's stretch (backend gap G20).
 - **Mock mode:** the full design: ₵38 crossed out, ₵14, "Save 63%".
 
 ## 21. Approaching and passed vehicles
+
+> **Ended 10 Oct 2026.** G21 landed in backend 0.13.0: trips already on the road are in the results, with `vehicle_eta_to_pickup_minutes` and `has_passed_pickup`. Mock and live now show the full design whenever a vehicle is on the road:
+> - The banner shows when any result is approaching or has passed the stop.
+> - A vehicle on the road gets "~N min away · approaching your stop". A trip that hasn't set off still gets "Board at <stop> · <distance> away" in that slot.
+> - Passed vehicles are greyed "Passed" cards behind "Show N vehicles that already passed your stop". The backend sends them **last**, so that block now closes the list instead of following the approaching vehicles as in P6.
+
+What applied until then:
 
 The "Showing vehicles still approaching your stop" banner, the "~N min away · approaching your stop" badge, the "Passed" cards and the "Show N vehicles that already passed your stop" button appear **only when the API provides them** (backend gap G21).
 
@@ -193,4 +210,39 @@ In live mode the badge slot shows where the passenger boards, from the search re
 
 Now and Schedule pick the time; Cheapest and Fastest pick the order (tap again for departure order); Minibus is an on/off filter. Several pills can be on at once.
 
+**Since 10 Oct 2026 (backend 0.13.0) the backend sorts and filters**, across every page rather than the loaded ones: Cheapest sends `sort=cheapest` (lowest current fare), Fastest `sort=fastest`, Minibus `vehicle_type=minibus`. The backend's **fastest is the shortest scheduled ride**, not the earliest arrival as first written above. Vehicles that passed the stop always come last.
+
 **"BEST MATCH"** is the first card after sorting that can still be booked (free seats, not passed).
+
+## 23. Passenger names
+
+The design has no passenger-details step (P-06 is skipped for now). A booking names one passenger per seat:
+
+- **Seat 1:** the signed-in user's full name and phone number.
+- **Every other seat:** "<first name>'s guest 2", "<first name>'s guest 3" and so on, with no phone number.
+- **At most 10 seats** per booking, the backend's limit.
+
+## 24. Price on the seat screen
+
+> **Ended 10 Oct 2026.** The seat screen prices the choice with `GET /trips/{id}/fare-quote` for the passenger's stops and the number of seats (one when none is chosen), in mock and live mode alike:
+> - "You pay now" (or "₵X × N seats") and the big price are `current` × seats, before the platform fee. The booking response's `fare_amount` is the same number; its total adds the fee.
+> - The solo fare × seats is crossed out only when it's higher than `current`. "↓ Drops to ₵<minimum> / as more riders join" shows only when `minimum` is lower than `current`. No "Estimated" label.
+> - The quote is fetched again with every 10 s seat refresh and whenever the number of seats changes (the backend shares the fare within a group too). The price flashes when it changes. While a new quote loads, the last one stays.
+> - If the quote fails, the search result's `fare` is used, so the screen stays usable.
+
+What applied until then:
+
+- **Mock mode:** the full design. The fare drops as other riders book, the solo price is crossed out, and "↓ Drops to ₵6.00 / as more riders join" shows. The price flashes green when it changes (`.anim-price`).
+- **Live mode, until backend gap G20:** the trip's fare × the seats chosen, with a small "Estimated" label where the "Drops to" badge would be. No crossed-out price and no "Drops to". The exact total, with the platform fee, comes from the booking response on the next screen.
+
+## 25. Seat layout
+
+The seat map is drawn from `GET /trips/{id}/seats` (`row_number`, `column_number`, `seat_type`), not from the design's fixed 14 seats. Each seat sits in its row and column; a missing seat leaves its place empty, so seats line up in columns.
+
+The backend has no aisle field: a layout is just seats on a grid, and `seat_type` (`standard`, `vip`, `window`, `aisle`) is optional. The aisle is found in this order:
+
+1. **A column with no seats in most rows** (such as column 3 in a 2 + 2 bus coded as 5 columns) is the aisle. A seat in it (the middle of a back bench) is drawn in the aisle's place.
+2. Otherwise, **two neighbouring columns of `aisle` seats**: the aisle is between them.
+3. Otherwise, by width: **4 columns → between 2 and 3** (as in the design); 3 columns → between 2 and 3 (2 + 1); 5 or more → after the middle column; 1–2 columns → no aisle.
+
+**A shorter last row** (fewer seats than the rows before it, such as the design's 2-seat back bench) is centred under the others without an aisle, as P7 draws seats 13 and 14. A grid wider than the card shrinks to fit.

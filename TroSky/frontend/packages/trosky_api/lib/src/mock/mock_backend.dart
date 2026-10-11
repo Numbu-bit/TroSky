@@ -3,11 +3,13 @@ import 'dart:math' as math;
 import 'package:trosky_core/trosky_core.dart';
 
 import '../dto/auth_dto.dart';
+import '../dto/booking_dto.dart';
 import '../dto/driver_dto.dart';
 import '../dto/paginated.dart';
 import '../dto/route_dto.dart';
 import '../dto/tracking_dto.dart';
 import '../dto/user_dto.dart';
+import '../repositories/booking_repository.dart';
 import '../repositories/route_repository.dart';
 
 /// An in-memory stand-in for the backend's auth and user endpoints, for
@@ -31,6 +33,10 @@ import '../repositories/route_repository.dart';
 /// * Trip search finds trips between any two different stops: for a search
 ///   from now, the five P6 design vehicles (three approaching, two passed),
 ///   then a departure every 15 minutes until 22:00 (see [searchTrips]).
+/// * Trips found by a search can be booked. Minibuses have the P7 seat map
+///   (14 seats, 5 taken); while [simulateRiders] is on, another rider takes
+///   a seat on a minibus every 10 seconds until 12 are booked, and the
+///   shared fare drops as in the design (see [tripSeats]).
 class MockBackend {
   MockBackend({DateTime Function()? clock, this.codesByEmail = false})
     : _now = clock ?? DateTime.now {
@@ -80,6 +86,16 @@ class MockBackend {
   /// When off, `GET /vehicles/nearby` finds nothing, as when no trip is
   /// running.
   bool vehiclesOnTheRoad = true;
+
+  /// Other riders keep booking minibus seats (decision 24's fare drop).
+  bool simulateRiders = true;
+
+  static const Duration seatHold = Duration(seconds: 600);
+  static const int bookingMaxSeats = 10;
+  static const String platformFeePerSeat = '0.50';
+
+  final Map<String, _MockTrip> _tripIndex = {};
+  final Map<String, _MockBooking> _bookings = {};
 
   /// The stops, by name.
   static final Map<String, MockStop> stops = {
@@ -705,10 +721,45 @@ class MockBackend {
     final trips = board == null || alight == null || board == alight
         ? <TripSearchResultResponse>[]
         : _trips(query, board, alight, walk, source!);
+    for (final trip in trips) {
+      _tripIndex.putIfAbsent(
+        trip.tripId,
+        () => _MockTrip(trip, board!, alight!, _now()),
+      );
+    }
+    final shown = [
+      for (final trip in trips)
+        if (query.vehicleType == null || trip.vehicleType == query.vehicleType)
+          trip,
+    ];
+    double current(TripSearchResultResponse t) => double.parse(t.fare!.current);
+    int order(TripSearchResultResponse a, TripSearchResultResponse b) {
+      if (a.hasPassedPickup != b.hasPassedPickup) {
+        return a.hasPassedPickup ? 1 : -1;
+      }
+      final byKey = switch (query.sort) {
+        SearchSort.departure => 0,
+        SearchSort.cheapest => current(a).compareTo(current(b)),
+        SearchSort.fastest => (a.rideMinutes ?? 0).compareTo(
+          b.rideMinutes ?? 0,
+        ),
+      };
+      return byKey != 0
+          ? byKey
+          : a.scheduledDepartureAt.compareTo(b.scheduledDepartureAt);
+    }
+
+    // A stable sort: equal keys keep departure order.
+    final sorted = [for (final (i, trip) in shown.indexed) (i, trip)]
+      ..sort((a, b) {
+        final byOrder = order(a.$2, b.$2);
+        return byOrder != 0 ? byOrder : a.$1.compareTo(b.$1);
+      });
+    final ordered = [for (final (_, trip) in sorted) trip];
     return Ok(
       Paginated(
-        items: trips.skip(query.offset).take(query.limit).toList(),
-        total: trips.length,
+        items: ordered.skip(query.offset).take(query.limit).toList(),
+        total: ordered.length,
         limit: query.limit,
         offset: query.offset,
       ),
@@ -777,10 +828,16 @@ class MockBackend {
         pickupStopName: board.name,
         pickupDistanceM: walk == null ? null : (walk * 10).roundToDouble() / 10,
         pickupSource: source,
-        soloFareAmount: '$solo.00',
-        sharedFareAmount: '$shared.00',
-        pickupEtaMinutes: etaMinutes,
-        passedPickup: passed ?? (fromNow ? false : null),
+        fare: _fareSummary(
+          current: shared.toDouble(),
+          solo: solo.toDouble(),
+          minimum: type == VehicleType.minibus ? 6 : solo * 0.25,
+          seats: 1,
+          riders: 0,
+        ),
+        rideMinutes: minutes,
+        vehicleEtaToPickupMinutes: etaMinutes,
+        hasPassedPickup: passed ?? false,
       );
     }
 
@@ -865,9 +922,368 @@ class MockBackend {
     longitude: stop.longitude,
   );
 
+  /// `GET /trips/{id}/seats` (public), with the G20 fares the P7 design
+  /// shows. On a minibus another rider books a seat each time 10 seconds
+  /// have passed since the last one, while [simulateRiders] is on.
+  Result<TripSeatsResponse> tripSeats(String tripId) {
+    _expireHolds();
+    final trip = _tripIndex[tripId];
+    if (trip == null) return _error(404, 'NOT_FOUND', 'Trip not found.');
+    if (simulateRiders && trip.minibus) _simulateRider(trip);
+    final held = _heldSeatIds(tripId);
+    final seats = [
+      for (final seat in trip.seats)
+        TripSeatResponse(
+          id: seat.id,
+          seatNumber: seat.number,
+          rowNumber: seat.row,
+          columnNumber: seat.column,
+          seatType: seat.type,
+          isAvailable:
+              !trip.takenByOthers.contains(seat.id) && !held.contains(seat.id),
+        ),
+    ];
+    return Ok(
+      TripSeatsResponse(
+        tripId: tripId,
+        vehicleId: 'veh-${trip.result.vehicleRegistrationNumber}',
+        totalSeats: seats.length,
+        availableSeats: seats.where((s) => s.isAvailable).length,
+        seats: seats,
+      ),
+    );
+  }
+
+  /// `GET /trips/{id}/fare-quote` (public): [seats] seats between the
+  /// trip's stops as it stands now, with the P7 fares on a minibus. The
+  /// mock prices each seat the same, however many are asked for.
+  Result<FareQuoteResponse> fareQuote(
+    String tripId, {
+    String? originStopId,
+    String? destinationStopId,
+    int seats = 1,
+  }) {
+    _expireHolds();
+    final trip = _tripIndex[tripId];
+    if (trip == null) return _error(404, 'NOT_FOUND', 'Trip not found.');
+    for (final (id, role) in [
+      (originStopId, 'origin'),
+      (destinationStopId, 'destination'),
+    ]) {
+      if (id != null && id != trip.board.id && id != trip.alight.id) {
+        return _error(
+          422,
+          'STOP_NOT_ON_ROUTE',
+          "That stop is not on this trip's route.",
+          {'stop_id': id, 'role': role},
+        );
+      }
+    }
+    final fares = trip.fares(_booked(trip));
+    final summary = _fareSummary(
+      current: double.parse(fares.shared),
+      solo: double.parse(fares.solo),
+      minimum: double.parse(fares.floor),
+      seats: seats,
+      riders: _booked(trip),
+    );
+    return Ok(
+      FareQuoteResponse(
+        tripId: tripId,
+        originStopId: originStopId ?? trip.board.id,
+        destinationStopId: destinationStopId ?? trip.alight.id,
+        current: summary.current,
+        solo: summary.solo,
+        minimum: summary.minimum,
+        platformFee: summary.platformFee,
+        total: summary.total,
+        currency: summary.currency,
+        ridersCount: summary.ridersCount,
+        seats: summary.seats,
+      ),
+    );
+  }
+
+  /// A fare as the backend sends it: [current] a seat, plus the flat
+  /// platform fee per seat.
+  static FareSummaryResponse _fareSummary({
+    required double current,
+    required double solo,
+    required double minimum,
+    required int seats,
+    required int riders,
+  }) {
+    final fee = double.parse(platformFeePerSeat) * seats;
+    return FareSummaryResponse(
+      current: current.toStringAsFixed(2),
+      solo: solo.toStringAsFixed(2),
+      minimum: minimum.toStringAsFixed(2),
+      platformFee: fee.toStringAsFixed(2),
+      total: (current * seats + fee).toStringAsFixed(2),
+      currency: 'GHS',
+      ridersCount: riders,
+      seats: seats,
+    );
+  }
+
+  /// `POST /bookings`: holds the seats for [seatHold] as a pending booking.
+  Result<BookingResponse> createBooking(
+    String? accessToken,
+    BookingCreateRequest request,
+  ) {
+    final auth = _authenticate(accessToken);
+    if (auth case Err(:final failure)) return Err(failure);
+    _expireHolds();
+    final user = _users.firstWhere((u) => u.id == auth.valueOrNull!.userId);
+    if (!user.isVerified) {
+      return _error(
+        403,
+        'ACCOUNT_NOT_VERIFIED',
+        'Verify your account with the code sent to you before booking.',
+      );
+    }
+    final seatIds = [for (final p in request.passengers) p.seatId];
+    if (seatIds.isEmpty || seatIds.length > bookingMaxSeats) {
+      return _validationError([
+        _fieldError(
+          'passengers',
+          'List should have between 1 and $bookingMaxSeats items',
+        ),
+      ]);
+    }
+    if (seatIds.toSet().length != seatIds.length) {
+      return _validationError([
+        _fieldError(
+          'passengers',
+          'Each passenger must occupy a distinct seat.',
+        ),
+      ]);
+    }
+    if ((request.pickupLatitude == null) != (request.pickupLongitude == null)) {
+      return _validationError([
+        _fieldError(
+          'pickup_latitude',
+          'Provide both pickup_latitude and pickup_longitude, or neither.',
+        ),
+      ]);
+    }
+    final trip = _tripIndex[request.tripId];
+    if (trip == null) return _error(404, 'NOT_FOUND', 'Trip not found.');
+    if (trip.closed) {
+      return _error(
+        409,
+        'TRIP_NOT_BOOKABLE',
+        'This trip is not currently open for booking.',
+      );
+    }
+    final ids = {for (final seat in trip.seats) seat.id};
+    for (final id in seatIds) {
+      if (!ids.contains(id)) {
+        return _error(
+          404,
+          'NOT_FOUND',
+          "Seat $id does not belong to this trip's vehicle.",
+        );
+      }
+    }
+    final held = _heldSeatIds(trip.result.tripId);
+    for (final id in seatIds) {
+      if (trip.takenByOthers.contains(id) || held.contains(id)) {
+        return _error(
+          409,
+          'SEAT_NOT_AVAILABLE',
+          'That seat was just taken. Please choose another seat.',
+          {'seat_id': id},
+        );
+      }
+    }
+    final perSeat = double.parse(trip.fares(_booked(trip)).shared);
+    final fare = perSeat * seatIds.length;
+    final fee = double.parse(platformFeePerSeat) * seatIds.length;
+    final now = _now().toUtc();
+    final booking = _MockBooking(
+      id: _uuid(),
+      reference: 'TS-${_reference()}',
+      userId: user.id,
+      trip: trip,
+      seatIds: seatIds,
+      originStopId: request.originStopId ?? trip.board.id,
+      destinationStopId: request.destinationStopId ?? trip.alight.id,
+      fare: fare.toStringAsFixed(2),
+      fee: fee.toStringAsFixed(2),
+      total: (fare + fee).toStringAsFixed(2),
+      expiresAt: now.add(seatHold),
+      createdAt: now,
+      passengers: [
+        for (final p in request.passengers)
+          BookingPassengerResponse(
+            id: _uuid(),
+            seatId: p.seatId,
+            fullName: p.fullName,
+            phoneNumber: p.phoneNumber,
+          ),
+      ],
+    );
+    _bookings[booking.id] = booking;
+    return Ok(booking.toResponse());
+  }
+
+  /// `GET /bookings`: the passenger's bookings, newest first, or by trip
+  /// time with [upcoming].
+  Result<Paginated<BookingResponse>> listBookings(
+    String? accessToken, {
+    List<BookingStatus>? statuses,
+    bool? upcoming,
+    int limit = 20,
+    int offset = 0,
+  }) {
+    final auth = _authenticate(accessToken);
+    if (auth case Err(:final failure)) return Err(failure);
+    _expireHolds();
+    final now = _now().toUtc();
+    final mine = _bookings.values
+        .where((b) => b.userId == auth.valueOrNull!.userId)
+        .where((b) => statuses == null || statuses.contains(b.status))
+        .where(
+          (b) => switch (upcoming) {
+            null => true,
+            true => !b.trip.result.scheduledDepartureAt.isBefore(now),
+            false => b.trip.result.scheduledDepartureAt.isBefore(now),
+          },
+        )
+        .toList();
+    mine.sort(
+      (a, b) => upcoming == null
+          ? b.createdAt.compareTo(a.createdAt)
+          : a.trip.result.scheduledDepartureAt.compareTo(
+              b.trip.result.scheduledDepartureAt,
+            ),
+    );
+    return Ok(
+      Paginated(
+        items: [for (final b in mine.skip(offset).take(limit)) b.toResponse()],
+        total: mine.length,
+        limit: limit,
+        offset: offset,
+      ),
+    );
+  }
+
+  /// `GET /bookings/{id}`.
+  Result<BookingResponse> getBooking(String? accessToken, String bookingId) {
+    final auth = _authenticate(accessToken);
+    if (auth case Err(:final failure)) return Err(failure);
+    _expireHolds();
+    final booking = _bookings[bookingId];
+    if (booking == null || booking.userId != auth.valueOrNull!.userId) {
+      return _error(404, 'NOT_FOUND', 'Booking not found.');
+    }
+    return Ok(booking.toResponse());
+  }
+
+  /// `POST /bookings/{id}/cancel`: before the trip, at once; the seats go
+  /// back.
+  Result<BookingResponse> cancelBooking(String? accessToken, String bookingId) {
+    final auth = _authenticate(accessToken);
+    if (auth case Err(:final failure)) return Err(failure);
+    _expireHolds();
+    final booking = _bookings[bookingId];
+    if (booking == null || booking.userId != auth.valueOrNull!.userId) {
+      return _error(404, 'NOT_FOUND', 'Booking not found.');
+    }
+    if (const {
+      BookingStatus.cancelled,
+      BookingStatus.expired,
+      BookingStatus.completed,
+      BookingStatus.refunded,
+      BookingStatus.refundPending,
+    }.contains(booking.status)) {
+      return _error(
+        409,
+        'INVALID_STATE_TRANSITION',
+        "A booking in status '${bookingStatusName(booking.status)}' cannot "
+            'be cancelled.',
+      );
+    }
+    booking.status = BookingStatus.cancelled;
+    return Ok(booking.toResponse());
+  }
+
+  int _booked(_MockTrip trip) =>
+      trip.takenByOthers.length + _heldSeatIds(trip.result.tripId).length;
+
+  /// Seats held or confirmed by bookings on [tripId].
+  Set<String> _heldSeatIds(String tripId) => {
+    for (final b in _bookings.values)
+      if (b.trip.result.tripId == tripId &&
+          const {
+            BookingStatus.pending,
+            BookingStatus.paymentPending,
+            BookingStatus.confirmed,
+          }.contains(b.status))
+        ...b.seatIds,
+  };
+
+  /// `expire_stale_bookings`: lapsed holds release their seats.
+  void _expireHolds() {
+    final now = _now().toUtc();
+    for (final b in _bookings.values) {
+      if (b.status == BookingStatus.pending && !b.expiresAt.isAfter(now)) {
+        b.status = BookingStatus.expired;
+      }
+    }
+  }
+
+  /// The P7 riders: one more seat every 10 s, while 12 or fewer are booked.
+  void _simulateRider(_MockTrip trip) {
+    final now = _now();
+    if (now.difference(trip.lastRider) < const Duration(seconds: 10)) return;
+    if (_booked(trip) >= 12) return;
+    final held = _heldSeatIds(trip.result.tripId);
+    for (final number in const ['7', '13', '3', '10', '14', '1', '5', '8']) {
+      final seat = trip.seats.firstWhere((s) => s.number == number);
+      if (!trip.takenByOthers.contains(seat.id) && !held.contains(seat.id)) {
+        trip.takenByOthers.add(seat.id);
+        trip.lastRider = now;
+        return;
+      }
+    }
+  }
+
+  String _reference() {
+    const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final n = ++_counter * 7919;
+    return [
+      for (var i = 0; i < 4; i++) letters[(n ~/ (i + 1) + i * 5) % 32],
+    ].join();
+  }
+
   // ---------------------------------------------------------------------
   // Test controls
   // ---------------------------------------------------------------------
+
+  /// Another rider takes the seat [number] of [tripId] (it must be free).
+  void takeSeat(String tripId, String number) {
+    final trip = _tripIndex[tripId]!;
+    trip.takenByOthers.add(trip.seats.firstWhere((s) => s.number == number).id);
+  }
+
+  /// [tripId] stops taking bookings (it started, or was cancelled).
+  void closeTrip(String tripId) => _tripIndex[tripId]!.closed = true;
+
+  /// The account with [phone] has not verified its phone or email.
+  void markUnverified(String phone) {
+    final user = _byPhone(normalizePhoneNumber(phone))!;
+    user
+      ..phoneVerifiedAt = null
+      ..emailVerifiedAt = null;
+  }
+
+  /// The booking [bookingId] as the backend holds it now.
+  BookingStatus bookingStatus(String bookingId) {
+    _expireHolds();
+    return _bookings[bookingId]!.status;
+  }
 
   /// Removes every favourite route of the account with [phone].
   void clearFavouriteRoutes(String phone) =>
@@ -1208,6 +1624,156 @@ class MockStop {
         .padLeft(8, '0');
     return '$hex-5709-4000-8000-000000000000';
   }
+}
+
+/// The backend's name for a [BookingStatus] ("payment_pending").
+String bookingStatusValue(BookingStatus status) => status.name.replaceAllMapped(
+  RegExp('[A-Z]'),
+  (m) => '_${m[0]!.toLowerCase()}',
+);
+
+class _MockSeat {
+  const _MockSeat(this.id, this.number, this.row, this.column, this.type);
+
+  final String id;
+  final String number;
+  final int row;
+  final int column;
+  final SeatType type;
+}
+
+/// A trip a search found, with its vehicle's seat map.
+class _MockTrip {
+  _MockTrip(this.result, this.board, this.alight, this.lastRider)
+    : seats = _layout(result) {
+    final available = result.availableSeats;
+    final taken = available <= 0
+        ? seats.map((s) => s.number)
+        : minibus
+        ? const ['2', '6', '9', '11', '12']
+        : seats.map((s) => s.number).take(seats.length - available);
+    takenByOthers.addAll([
+      for (final seat in seats)
+        if (taken.contains(seat.number)) seat.id,
+    ]);
+  }
+
+  final TripSearchResultResponse result;
+  final MockStop board;
+  final MockStop alight;
+  final List<_MockSeat> seats;
+  final Set<String> takenByOthers = {};
+  DateTime lastRider;
+  bool closed = false;
+
+  bool get minibus => result.vehicleType == VehicleType.minibus;
+
+  /// The per-seat shared fare as [booked] seats fill (P7: from ₵14.00 down
+  /// to ₵6.00 as 44 / booked), the solo fare and the floor.
+  ({String shared, String solo, String floor}) fares(int booked) {
+    if (minibus) {
+      final shared = booked <= 5 ? 14.0 : math.max(6, 44 / booked).toDouble();
+      return (shared: shared.toStringAsFixed(2), solo: '38.00', floor: '6.00');
+    }
+    final fare = result.fare;
+    return (
+      shared: fare?.current ?? result.fareAmount,
+      solo: fare?.solo ?? result.fareAmount,
+      floor: fare?.minimum ?? result.fareAmount,
+    );
+  }
+
+  static List<_MockSeat> _layout(TripSearchResultResponse trip) {
+    String id(String number) =>
+        '${trip.tripId.substring(0, 8)}-5ea7-4000-'
+        '8000-${number.padLeft(12, '0')}';
+    _MockSeat seat(String number, int row, int column) =>
+        _MockSeat(id(number), number, row, column, SeatType.standard);
+    return switch (trip.vehicleType) {
+      // P7: three rows of 2 + 2, then seats 13 and 14 at the back.
+      VehicleType.minibus => [
+        for (var i = 0; i < 12; i++) seat('${i + 1}', i ~/ 4 + 1, i % 4 + 1),
+        seat('13', 4, 2),
+        seat('14', 4, 3),
+      ],
+      // A saloon car: two rows of two.
+      VehicleType.sedan => [
+        for (var i = 0; i < 4; i++) seat('${i + 1}', i ~/ 2 + 1, i % 2 + 1),
+      ],
+      // A 2 + 2 bus coded with an empty aisle column (3) and a full
+      // 5-seat back bench.
+      _ => [
+        for (var row = 1; row <= 4; row++)
+          for (final (i, column) in const [1, 2, 4, 5].indexed)
+            seat('${(row - 1) * 4 + i + 1}', row, column),
+        for (var column = 1; column <= 5; column++)
+          seat('${16 + column}', 5, column),
+      ],
+    };
+  }
+}
+
+class _MockBooking {
+  _MockBooking({
+    required this.id,
+    required this.reference,
+    required this.userId,
+    required this.trip,
+    required this.seatIds,
+    required this.originStopId,
+    required this.destinationStopId,
+    required this.fare,
+    required this.fee,
+    required this.total,
+    required this.expiresAt,
+    required this.createdAt,
+    required this.passengers,
+  });
+
+  final String id;
+  final String reference;
+  final String userId;
+  final _MockTrip trip;
+  final List<String> seatIds;
+  final String originStopId;
+  final String destinationStopId;
+  final String fare;
+  final String fee;
+  final String total;
+  final DateTime expiresAt;
+  final DateTime createdAt;
+  final List<BookingPassengerResponse> passengers;
+  BookingStatus status = BookingStatus.pending;
+
+  BookingResponse toResponse() => BookingResponse(
+    id: id,
+    bookingReference: reference,
+    tripId: trip.result.tripId,
+    status: status,
+    passengerCount: seatIds.length,
+    originStopId: originStopId,
+    destinationStopId: destinationStopId,
+    fareAmount: fare,
+    platformFee: fee,
+    totalAmount: total,
+    expiresAt: status == BookingStatus.pending ? expiresAt : null,
+    createdAt: createdAt,
+    passengers: passengers,
+    trip: BookingTripSummaryResponse(
+      scheduledDepartureAt: trip.result.scheduledDepartureAt,
+      routeName: trip.result.routeName,
+      originStopName: trip.board.name,
+      destinationStopName: trip.alight.name,
+      status: TripStatus.scheduled,
+      vehicleRegistrationNumber: trip.result.vehicleRegistrationNumber,
+    ),
+    boardingStopName: MockBackend.stops.values
+        .firstWhere((s) => s.id == originStopId, orElse: () => trip.board)
+        .name,
+    alightingStopName: MockBackend.stops.values
+        .firstWhere((s) => s.id == destinationStopId, orElse: () => trip.alight)
+        .name,
+  );
 }
 
 /// A code the mock "sent", for tests and the debug screen.

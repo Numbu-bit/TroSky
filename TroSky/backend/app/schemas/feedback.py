@@ -76,5 +76,13 @@ class ComplaintResponse(ApiModel):
     created_at: datetime
 
 
+class ComplaintMessageResponse(ApiModel):
+    """A message from TroSky support about the complaint."""
+
+    id: uuid.UUID
+    body: str
+    created_at: datetime
+
+
 class ComplaintDecisionRequest(RequestModel):
     notes: str | None = Field(default=None, max_length=1000)

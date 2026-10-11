@@ -10,6 +10,7 @@ export 'src/components/loading_dots.dart';
 export 'src/components/map_markers.dart';
 export 'src/components/page_dots.dart';
 export 'src/components/search_components.dart';
+export 'src/components/seat_components.dart';
 export 'src/components/section_label.dart';
 export 'src/components/skip_text.dart';
 export 'src/components/trosky_button.dart';
