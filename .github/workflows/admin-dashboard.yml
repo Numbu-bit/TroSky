@@ -1,0 +1,146 @@
+name: Admin dashboard CI
+
+# Lives at the repository root because GitHub only reads workflows from
+# .github/workflows there; the dashboard itself sits in TroSky/admin-dashboard.
+on:
+  push:
+    branches: [main, develop]
+    paths: ["TroSky/admin-dashboard/**", ".github/workflows/admin-dashboard.yml"]
+  pull_request:
+    branches: [main, develop]
+    paths: ["TroSky/admin-dashboard/**", ".github/workflows/admin-dashboard.yml"]
+
+env:
+  NODE_VERSION: "22"
+  IMAGE_NAME: trosky-admin-dashboard
+
+# `run:` steps execute in the dashboard folder; `uses:` steps resolve paths
+# from the repository root, hence the TroSky/admin-dashboard/ prefix on theirs.
+defaults:
+  run:
+    working-directory: TroSky/admin-dashboard
+
+jobs:
+  checks:
+    name: Lint, typecheck, unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: TroSky/admin-dashboard/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Fails below 80 % of lines covered (vite.config.ts, test.coverage).
+      - name: Unit and screen tests, with coverage
+        run: npm run coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: TroSky/admin-dashboard/coverage
+          retention-days: 7
+
+  build:
+    name: Production build
+    runs-on: ubuntu-latest
+    needs: [checks]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: TroSky/admin-dashboard/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: No demo data, initial JavaScript within budget
+        run: npm run check:build
+
+      # Spec section 8: CI fails any production build that has demo mode on.
+      - name: A production build with demo mode on is refused
+        run: |
+          if VITE_DEMO_MODE=true npx vite build --outDir "$RUNNER_TEMP/refused"; then
+            echo "::error::A production build with VITE_DEMO_MODE=true succeeded."
+            exit 1
+          fi
+          echo "Refused, as it should be."
+
+  e2e:
+    name: End-to-end and accessibility (demo mode)
+    runs-on: ubuntu-latest
+    needs: [checks]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: TroSky/admin-dashboard/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+
+      # Builds the demo, serves it, and runs every flow plus axe on every page.
+      - name: Playwright
+        run: npm run e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: TroSky/admin-dashboard/playwright-report
+          retention-days: 7
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+    needs: [build, e2e]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
+
+      # The SPA fallback, the health check and the hosting headers.
+      - name: Smoke test
+        run: |
+          docker run -d --name dashboard -p 8080:8080 ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          for attempt in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8080/healthz && break
+            sleep 1
+          done
+          curl -fsS -D headers.txt -o page.html http://127.0.0.1:8080/trips/some-trip
+          grep -q '<div id="root">' page.html
+          for header in content-security-policy strict-transport-security \
+            'x-frame-options: DENY' 'x-content-type-options: nosniff' referrer-policy; do
+            grep -qi "^$header" headers.txt || { echo "::error::Missing header: $header"; exit 1; }
+          done
+          docker rm -f dashboard
