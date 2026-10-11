@@ -1240,6 +1240,24 @@ export function buildDemoDb(now: number = Date.now(), seed = 20_261_004): DemoDb
   }
   driverActions.sort((a, b) => b.created_at.localeCompare(a.created_at))
 
+  // One trip that never started, its departure time 25 minutes gone: nobody
+  // was found to drive it or, as there isn't always such a trip ahead, its
+  // driver never answered. The team is alerted (trip_not_started). Done
+  // last, drawing nothing random, so the rest of the demo is the same as
+  // without it.
+  const ahead = trips
+    .filter((trip) => trip.status === 'scheduled' && Date.parse(trip.scheduled_departure_at) > now)
+    .sort((a, b) => a.scheduled_departure_at.localeCompare(b.scheduled_departure_at))
+  const unstarted =
+    ahead.find((trip) => trip.driver_id === null) ??
+    ahead.find((trip) => trip.driver_response === 'pending')
+  if (unstarted) {
+    const takes =
+      Date.parse(unstarted.scheduled_arrival_at) - Date.parse(unstarted.scheduled_departure_at)
+    unstarted.scheduled_departure_at = iso(now - 25 * MINUTE)
+    unstarted.scheduled_arrival_at = iso(now - 25 * MINUTE + takes)
+  }
+
   return {
     builtAt: now,
     users,

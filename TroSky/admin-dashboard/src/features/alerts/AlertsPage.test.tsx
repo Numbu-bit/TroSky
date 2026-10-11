@@ -39,6 +39,19 @@ describe('Alerts', () => {
     })
   })
 
+  it('flags a trip that never started, and when it will be cancelled', async () => {
+    const late = getDb().trips.find(
+      (trip) => trip.status === 'scheduled' && Date.parse(trip.scheduled_departure_at) < Date.now(),
+    )!
+    renderApp('/alerts?type=trip_not_started', { as: staffWith('trips:monitor_live') })
+    await screen.findByRole('list', { name: 'Alerts' })
+    const [item] = alertItems()
+    expect(item).toHaveTextContent(/^HighTrip not started: .+, due \d\d:\d\d/)
+    // The demo has it due 25 minutes before the data was made.
+    expect(item).toHaveTextContent(/Due 2\d min ago · cancelled in 1 h$/)
+    expect(item).toHaveAttribute('href', `/trips/${late.id}`)
+  })
+
   it('shows only the kinds an admin deals with', async () => {
     renderApp('/alerts', { as: staffWith('complaints:manage') })
     await screen.findByRole('list', { name: 'Alerts' })

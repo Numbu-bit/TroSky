@@ -11,6 +11,7 @@ import { ScreenTabs } from '@/components/layout/ScreenTabs'
 import { DriverPicker } from '@/components/pickers/pickers'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useDriverDetail } from '@/features/approvals/api'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -36,14 +37,23 @@ function DriverFilter({
 }) {
   const { can } = useSession()
   const id = useId()
-  if (!can('drivers:approve', 'trips:monitor_live')) return null
+  const allowed = can('drivers:approve', 'trips:monitor_live')
+  // The driver in the address (a reload, a shared link): who they are.
+  const chosen = useDriverDetail(allowed && value ? value : null)
+  if (!allowed) return null
   return (
-    <div className="grid gap-1.5">
+    <div className="grid min-w-0 gap-1.5">
       <Label htmlFor={id}>Driver</Label>
       <DriverPicker
         id={id}
         value={value || null}
-        selectedLabel="The chosen driver"
+        selectedLabel={
+          chosen.data
+            ? (chosen.data.full_name ?? chosen.data.phone_number)
+            : chosen.isError
+              ? 'A driver no longer listed'
+              : 'Loading…'
+        }
         onChange={(option) => onChange(option?.value ?? null)}
         placeholder="Every driver"
         allowClear
@@ -105,8 +115,10 @@ function ActionsPanel() {
 
   return (
     <>
+      {/* Two rows (who and what, then when) until the screen is wide enough
+          for one in which the longest choices still read in full. */}
       <div
-        className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(5,minmax(0,1fr))_auto] lg:items-end"
+        className="mb-4 grid gap-3 sm:grid-cols-2 sm:items-end lg:grid-cols-3 2xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1.35fr)_minmax(0,1.2fr)_minmax(0,0.85fr)_minmax(0,0.85fr)_auto]"
         role="group"
         aria-label="Filters"
       >
@@ -169,7 +181,12 @@ function ActionsPanel() {
             onChange={(event) => update({ until: event.target.value })}
           />
         </div>
-        <Button variant="outline" onClick={() => void download()} disabled={downloading}>
+        <Button
+          variant="outline"
+          className="justify-self-start"
+          onClick={() => void download()}
+          disabled={downloading}
+        >
           <Download aria-hidden /> CSV
         </Button>
       </div>

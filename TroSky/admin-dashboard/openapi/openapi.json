@@ -1292,7 +1292,7 @@
      "drivers"
     ],
     "summary": "Register Driver",
-    "description": "Create this account's driver verification profile and grant it the\n``driver`` role (status starts ``pending``; see\n``/api/v1/admin/drivers/pending`` for the review flow).\n\nAny signed-in account may call this \u2014 that is what lets one TroSky\nlogin be a passenger and a driver at once. The role takes effect\nimmediately: ``get_current_principal`` reloads roles from the database\non every request, so the existing access token keeps working.",
+    "description": "Create this account's driver verification profile and grant it the\n``driver`` role (status starts ``pending``; see\n``/api/v1/admin/drivers/pending`` for the review flow).\n\nFor an account registered as a driver, or a fleet owner who drives\ntheir own vehicle. A passenger account is refused (409\n``PASSENGER_ACCOUNT``): drivers sign up with an account of their own,\nwith its own phone number and email. The role takes effect immediately:\n``get_current_principal`` reloads roles from the database on every\nrequest, so the existing access token keeps working.",
     "operationId": "register_driver_api_v1_drivers_me_post",
     "requestBody": {
      "content": {
@@ -1867,7 +1867,7 @@
      "fleets"
     ],
     "summary": "Register Fleet Owner",
-    "description": "Create this account's fleet-owner profile and grant it the\n``fleet_owner`` role. Open to any signed-in account; the role takes\neffect immediately, without re-authenticating.",
+    "description": "Create this account's fleet-owner profile and grant it the\n``fleet_owner`` role, for an account registered as a fleet owner or a\ndriver who owns vehicles. A passenger account is refused (409\n``PASSENGER_ACCOUNT``): fleet owners sign up with an account of their\nown. The role takes effect immediately, without re-authenticating.",
     "operationId": "register_fleet_owner_api_v1_fleet_owners_me_post",
     "requestBody": {
      "content": {
@@ -4164,7 +4164,7 @@
      "driver-trips"
     ],
     "summary": "Report Location",
-    "description": "A driver's phone pushes a GPS ping while the trip is in progress.\nRestricted to the trip's actively assigned driver, same guard as\nstart/pause/resume/end/validate.",
+    "description": "A driver's phone pushes a GPS ping while the trip is in progress, and\n(unless ``TRIP_AUTO_STATUS_ENABLED`` is off) also while it is paused and\nfrom ``TRIP_AUTO_WINDOW_MINUTES`` before departure: positions move the\ntrip's status along on their own (see ``trip_status``). Restricted to the\ntrip's actively assigned driver, same guard as\nstart/pause/resume/end/validate.",
     "operationId": "report_location_api_v1_driver_trips__trip_id__location_post",
     "security": [
      {
@@ -4384,7 +4384,7 @@
      "bookings"
     ],
     "summary": "Create Booking",
-    "description": "Reserve one or more seats on a trip.\n\nThe booking first waits for the trip's driver (or an admin) to accept it:\nstatus ``awaiting_acceptance``, with ``expires_at`` the deadline for an\nanswer. Unanswered or declined, it is moved to another vehicle from the\nsame pickup to the same destination (the passenger is notified) or, with\nnone, ends. Once accepted it is ``pending``: pay before the new\n``expires_at`` (``SEAT_RESERVATION_HOLD_SECONDS``) or the seats are\nreleased.",
+    "description": "Reserve one or more seats on a trip.\n\nThe booking first waits for the trip's driver (or an admin) to accept it:\nstatus ``awaiting_acceptance``, with ``expires_at`` the deadline for an\nanswer. Unanswered or declined, it is moved to another vehicle from the\nsame pickup to the same destination (the passenger is notified) or, with\nnone, ends. Once accepted it is ``pending``: pay before the new\n``expires_at`` (``SEAT_RESERVATION_HOLD_SECONDS``) or the seats are\nreleased.\n\nPassenger accounts only (403 ``PASSENGER_ACCOUNT_REQUIRED``): drivers\nand fleet owners ride with a passenger account of their own.",
     "operationId": "create_booking_api_v1_bookings_post",
     "security": [
      {
@@ -16842,7 +16842,8 @@
        "complaint_overdue",
        "document_expiring",
        "approval_waiting",
-       "fraud_high_risk"
+       "fraud_high_risk",
+       "trip_not_started"
       ],
       "title": "Type"
      },
@@ -16867,7 +16868,9 @@
        "sos_alert",
        "complaint",
        "driver",
-       "vehicle"
+       "vehicle",
+       "fraud_flag",
+       "trip"
       ]
      },
      "entity_id": {
@@ -22930,6 +22933,17 @@
      "is_stale": {
       "type": "boolean",
       "title": "Is Stale"
+     },
+     "trip_status": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/TripStatus"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The trip's status after this position, when the driver sent it. Positions change it on their own: at the first stop the trip is boarding, leaving it starts it, standing still a long time pauses it, moving resumes it, and staying at the last stop completes it."
      }
     },
     "type": "object",
@@ -25916,6 +25930,39 @@
       "maxLength": 10,
       "title": "Preferred Language",
       "default": "en"
+     },
+     "latitude": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 90.0,
+        "minimum": -90.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Latitude",
+      "description": "Where the person is now, from the phone's GPS. Required to sign up as a passenger, and it must be where TroSky runs (for now, Ghana).",
+      "examples": [
+       5.6037
+      ]
+     },
+     "longitude": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 180.0,
+        "minimum": -180.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Longitude",
+      "examples": [
+       -0.187
+      ]
      }
     },
     "additionalProperties": false,

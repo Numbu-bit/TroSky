@@ -2,7 +2,7 @@ import type { Schemas } from '@/api/types'
 import { hasAny } from '@/lib/permissions'
 
 import { DEMO_ACCOUNTS } from '../accounts'
-import { DAY, getDb, HOUR, index, userName } from '../db'
+import { DAY, getDb, HOUR, index, MINUTE, userName } from '../db'
 import { endpoint, errorResponse } from '../http'
 import { adminName } from '../views'
 import { fraudAlerts } from './fraud'
@@ -17,6 +17,55 @@ export interface Period {
 }
 
 const dayKey = (value: string | number) => new Date(value).toISOString().slice(0, 10)
+
+// As the backend's defaults: TRIP_NOT_STARTED_ALERT_MINUTES, ..._CANCEL_MINUTES.
+const NOT_STARTED_ALERT = 15 * MINUTE
+const NOT_STARTED_CANCEL = 120 * MINUTE
+
+/** Trips still scheduled or boarding well after their departure time (within a day). */
+function notStartedAlerts(now: number): Schemas['AlertResponse'][] {
+  const lookup = index()
+  return getDb()
+    .trips.filter((trip) => {
+      const departure = Date.parse(trip.scheduled_departure_at)
+      return (
+        (trip.status === 'scheduled' || trip.status === 'boarding') &&
+        departure <= now - NOT_STARTED_ALERT &&
+        departure >= now - DAY
+      )
+    })
+    .map((trip) => {
+      const departure = Date.parse(trip.scheduled_departure_at)
+      const route = lookup.routes.get(trip.route_id)
+      const driver = trip.driver_id ? lookup.drivers.get(trip.driver_id) : undefined
+      const seats = (lookup.bookingsByTrip.get(trip.id) ?? [])
+        .filter((booking) => PAID.has(booking.status))
+        .reduce((sum, booking) => sum + booking.passengers.length, 0)
+      return {
+        type: 'trip_not_started',
+        severity: 'high',
+        title: `Trip not started: ${route?.name ?? 'a trip'}, due ${trip.scheduled_departure_at.slice(11, 16)}`,
+        entity_type: 'trip',
+        entity_id: trip.id,
+        since: trip.scheduled_departure_at,
+        details: {
+          status: trip.status,
+          route_name: route?.name ?? null,
+          scheduled_departure_at: trip.scheduled_departure_at,
+          driver_id: trip.driver_id,
+          driver_name: driver ? (userName(driver.user_id) ?? null) : null,
+          vehicle_registration_number: trip.vehicle_id
+            ? (lookup.vehicles.get(trip.vehicle_id)?.registration_number ?? null)
+            : null,
+          seats_booked: seats,
+          cancels_at:
+            trip.status === 'scheduled'
+              ? new Date(departure + NOT_STARTED_CANCEL).toISOString()
+              : null,
+        },
+      } satisfies Schemas['AlertResponse']
+    })
+}
 
 /** The backend's period rules: Ghana dates, default 30 days, at most 366. */
 export function resolvePeriod(url: URL): Period | Response {
@@ -198,6 +247,8 @@ export const overviewHandlers = [
       'vehicles:approve',
       'fraud:view',
       'fraud:manage',
+      'trips:manage',
+      'trips:monitor_live',
     ],
     ({ url, admin }): Schemas['AlertsResponse'] => {
       const limit = Math.min(Number(url.searchParams.get('limit') ?? 50), 200)
@@ -360,6 +411,11 @@ export const overviewHandlers = [
         const risky = fraudAlerts()
         counts.fraud_high_risk = risky.length
         items.push(...risky)
+      }
+      if (hasAny(granted, ['trips:manage', 'trips:monitor_live'])) {
+        const late = notStartedAlerts(now)
+        counts.trip_not_started = late.length
+        items.push(...late)
       }
       items.sort(
         (a, b) =>

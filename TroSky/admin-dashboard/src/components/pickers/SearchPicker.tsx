@@ -51,9 +51,15 @@ export function SearchPicker({
 }) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
+  // What was last chosen here: its label is known even once the search that
+  // found it has moved on.
+  const [picked, setPicked] = useState<PickerOption | null>(null)
   const debounced = useDebounced(search, 300)
   const { options, loading } = useOptions(debounced, open)
-  const current = options.find((option) => option.value === value)
+  const label =
+    options.find((option) => option.value === value)?.label ??
+    (picked?.value === value ? picked.label : undefined) ??
+    selectedLabel
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -64,12 +70,14 @@ export function SearchPicker({
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
-          className={cn('w-full justify-between font-normal', className)}
+          // min-w-0: a long name is cut short instead of widening the field
+          // past its column.
+          className={cn('w-full min-w-0 justify-between font-normal', className)}
         >
-          <span className={cn('truncate', !value && 'text-muted-foreground')}>
-            {value ? (selectedLabel ?? current?.label ?? placeholder) : placeholder}
+          <span className={cn('min-w-0 truncate', !value && 'text-muted-foreground')}>
+            {value ? (label ?? placeholder) : placeholder}
           </span>
-          <ChevronsUpDown className="opacity-50" aria-hidden />
+          <ChevronsUpDown className="shrink-0 opacity-50" aria-hidden />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-(--radix-popover-trigger-width) min-w-72 p-0" align="start">
@@ -94,6 +102,7 @@ export function SearchPicker({
                   key={option.value}
                   value={option.value}
                   onSelect={() => {
+                    setPicked(option)
                     onChange(option)
                     setOpen(false)
                   }}

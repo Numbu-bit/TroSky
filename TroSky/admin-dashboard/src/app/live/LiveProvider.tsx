@@ -12,7 +12,7 @@ import { LiveContext, type LiveStatus } from './live-context'
 const SAVER_KEY = 'trosky-admin:data-saver'
 const SOUND_KEY = 'trosky-admin:sos-sound'
 
-/** Which cached data each pushed event makes stale. */
+/** Which cached data each pushed event (by its full type, else its topic) makes stale. */
 const INVALIDATES: Record<string, string[]> = {
   sos: ['sos', 'alerts', 'overview', 'notifications'],
   complaint: ['complaints', 'alerts', 'overview', 'notifications'],
@@ -22,6 +22,8 @@ const INVALIDATES: Record<string, string[]> = {
   booking: ['dispatch', 'trips', 'notifications'],
   trip: ['dispatch', 'trips'],
   passenger: ['dispatch', 'trips'],
+  // Any status change, the driver's, an admin's or the system's own.
+  'trip.status_changed': ['trips', 'trip', 'live-trips', 'dispatch', 'alerts', 'overview'],
 }
 
 interface PositionEvent {
@@ -94,7 +96,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
         )
         return
       }
-      const roots = INVALIDATES[type.split('.')[0] ?? ''] ?? []
+      const roots = INVALIDATES[type] ?? INVALIDATES[type.split('.')[0] ?? ''] ?? []
       for (const root of roots) void queryClient.invalidateQueries({ queryKey: [root] })
     }
 
@@ -131,6 +133,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
         'booking.not_accepted',
         'trip.accepted',
         'trip.declined',
+        'trip.status_changed',
         'passenger.alighted',
         'position',
       ]) {

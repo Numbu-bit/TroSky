@@ -553,10 +553,12 @@ export interface paths {
          *     ``driver`` role (status starts ``pending``; see
          *     ``/api/v1/admin/drivers/pending`` for the review flow).
          *
-         *     Any signed-in account may call this — that is what lets one TroSky
-         *     login be a passenger and a driver at once. The role takes effect
-         *     immediately: ``get_current_principal`` reloads roles from the database
-         *     on every request, so the existing access token keeps working.
+         *     For an account registered as a driver, or a fleet owner who drives
+         *     their own vehicle. A passenger account is refused (409
+         *     ``PASSENGER_ACCOUNT``): drivers sign up with an account of their own,
+         *     with its own phone number and email. The role takes effect immediately:
+         *     ``get_current_principal`` reloads roles from the database on every
+         *     request, so the existing access token keeps working.
          */
         post: operations["register_driver_api_v1_drivers_me_post"];
         delete?: never;
@@ -723,8 +725,10 @@ export interface paths {
         /**
          * Register Fleet Owner
          * @description Create this account's fleet-owner profile and grant it the
-         *     ``fleet_owner`` role. Open to any signed-in account; the role takes
-         *     effect immediately, without re-authenticating.
+         *     ``fleet_owner`` role, for an account registered as a fleet owner or a
+         *     driver who owns vehicles. A passenger account is refused (409
+         *     ``PASSENGER_ACCOUNT``): fleet owners sign up with an account of their
+         *     own. The role takes effect immediately, without re-authenticating.
          */
         post: operations["register_fleet_owner_api_v1_fleet_owners_me_post"];
         delete?: never;
@@ -1356,8 +1360,11 @@ export interface paths {
         put?: never;
         /**
          * Report Location
-         * @description A driver's phone pushes a GPS ping while the trip is in progress.
-         *     Restricted to the trip's actively assigned driver, same guard as
+         * @description A driver's phone pushes a GPS ping while the trip is in progress, and
+         *     (unless ``TRIP_AUTO_STATUS_ENABLED`` is off) also while it is paused and
+         *     from ``TRIP_AUTO_WINDOW_MINUTES`` before departure: positions move the
+         *     trip's status along on their own (see ``trip_status``). Restricted to the
+         *     trip's actively assigned driver, same guard as
          *     start/pause/resume/end/validate.
          */
         post: operations["report_location_api_v1_driver_trips__trip_id__location_post"];
@@ -1460,6 +1467,9 @@ export interface paths {
          *     none, ends. Once accepted it is ``pending``: pay before the new
          *     ``expires_at`` (``SEAT_RESERVATION_HOLD_SECONDS``) or the seats are
          *     released.
+         *
+         *     Passenger accounts only (403 ``PASSENGER_ACCOUNT_REQUIRED``): drivers
+         *     and fleet owners ride with a passenger account of their own.
          */
         post: operations["create_booking_api_v1_bookings_post"];
         delete?: never;
@@ -4977,7 +4987,7 @@ export interface components {
              * Type
              * @enum {string}
              */
-            type: "sos_active" | "complaint_overdue" | "document_expiring" | "approval_waiting" | "fraud_high_risk";
+            type: "sos_active" | "complaint_overdue" | "document_expiring" | "approval_waiting" | "fraud_high_risk" | "trip_not_started";
             /**
              * Severity
              * @enum {string}
@@ -4991,6 +5001,8 @@ export interface components {
              * @example complaint
              * @example driver
              * @example vehicle
+             * @example fraud_flag
+             * @example trip
              */
             entity_type: string;
             /**
@@ -7331,6 +7343,8 @@ export interface components {
             recorded_at: string;
             /** Is Stale */
             is_stale: boolean;
+            /** @description The trip's status after this position, when the driver sent it. Positions change it on their own: at the first stop the trip is boarding, leaving it starts it, standing still a long time pauses it, moving resumes it, and staying at the last stop completes it. */
+            trip_status?: components["schemas"]["TripStatus"] | null;
         };
         /**
          * LiveTripResponse
@@ -8403,6 +8417,17 @@ export interface components {
              * @default en
              */
             preferred_language: string;
+            /**
+             * Latitude
+             * @description Where the person is now, from the phone's GPS. Required to sign up as a passenger, and it must be where TroSky runs (for now, Ghana).
+             * @example 5.6037
+             */
+            latitude?: number | null;
+            /**
+             * Longitude
+             * @example -0.187
+             */
+            longitude?: number | null;
         };
         /** RegisterResponse */
         RegisterResponse: {

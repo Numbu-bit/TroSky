@@ -87,6 +87,8 @@ export const SCREENS: Screen[] = [
       'vehicles:approve',
       'fraud:view',
       'fraud:manage',
+      'trips:manage',
+      'trips:monitor_live',
     ],
     module: 'alerts',
     Component: lazy(() => import('@/features/alerts/AlertsPage')),

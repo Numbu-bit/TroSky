@@ -14,6 +14,13 @@ import { ALERT_TYPES, alertLink, SEVERITY_TONE, type Alert } from './links'
 
 const SEVERITIES = ['critical', 'high', 'medium', 'low'] as const
 
+/** When a trip that has not started was due, and when it is cancelled if it still has not. */
+function tripDue(alert: Alert, now: number): string {
+  const due = `Due ${formatRelative(alert.since, now)}`
+  const cancels = alert.details.cancels_at
+  return typeof cancels === 'string' ? `${due} · cancelled ${formatRelative(cancels, now)}` : due
+}
+
 /**
  * Everything that needs an admin, in one feed: SOS first, then by severity
  * and how long it has waited. Each opens where it is dealt with.
@@ -117,7 +124,9 @@ export default function AlertsPage() {
                         <span className="text-xs whitespace-nowrap text-muted-foreground">
                           {alert.type === 'document_expiring'
                             ? `${Date.parse(alert.since) > now ? 'Runs out' : 'Ran out'} ${formatRelative(alert.since, now)}`
-                            : formatRelative(alert.since, now)}
+                            : alert.type === 'trip_not_started'
+                              ? tripDue(alert, now)
+                              : formatRelative(alert.since, now)}
                         </span>
                       </Link>
                     </li>

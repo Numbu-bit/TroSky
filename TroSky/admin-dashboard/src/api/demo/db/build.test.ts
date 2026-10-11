@@ -80,6 +80,17 @@ describe('the demo platform', () => {
       new Set(['minibus', 'bus']),
     )
   })
+
+  // The demo's trip_not_started alert needs one, at any hour it is opened.
+  it.each([0, 5, 10, 14, 18, 23])('has a trip that never started, at %i:30', (hour) => {
+    const at = Date.UTC(2026, 9, 4, hour, 30)
+    const late = buildDemoDb(at).trips.filter(
+      (trip) => trip.status === 'scheduled' && Date.parse(trip.scheduled_departure_at) < at,
+    )
+    expect(late.map((trip) => trip.scheduled_departure_at)).toEqual([
+      new Date(at - 25 * 60_000).toISOString(),
+    ])
+  })
 })
 
 describe('live positions', () => {

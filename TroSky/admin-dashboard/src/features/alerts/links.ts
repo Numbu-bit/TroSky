@@ -16,6 +16,7 @@ export const ALERT_TYPES: Record<Alert['type'], string> = {
   document_expiring: 'Documents running out',
   approval_waiting: 'Approvals waiting too long',
   fraud_high_risk: 'High-risk fraud flags',
+  trip_not_started: 'Trips not started',
 }
 
 /** Where each alert is dealt with. */
@@ -35,6 +36,8 @@ export function alertLink(alert: Alert): string {
         : `/fleet/vehicles/${alert.entity_id}`
     case 'fraud_flag':
       return `/fraud/${alert.entity_id}`
+    case 'trip':
+      return `/trips/${alert.entity_id}`
     default:
       return '/alerts'
   }

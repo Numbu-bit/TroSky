@@ -104,6 +104,25 @@ describe('What drivers did', () => {
     })
   })
 
+  it('names the driver it is filtered by, from the address or as picked', async () => {
+    const { driver_id: driverId } = getDb().driverActions.find((action) => action.driver_id)!
+    const driver = index().drivers.get(driverId!)!
+    const name = index().users.get(driver.user_id)!.full_name!
+    const { user, router } = renderApp(`/dispatch/actions?driver=${driverId}`, { as: ADMIN })
+    const picker = await screen.findByRole('combobox', { name: 'Driver' })
+    await waitFor(() => expect(picker).toHaveTextContent(name))
+
+    await user.click(picker)
+    const other = (await screen.findAllByRole('option')).find(
+      (option) =>
+        option.textContent && !option.textContent.startsWith(name) && option.textContent !== 'Any',
+    )!
+    const otherName = within(other).getAllByText(/./)[0]!.textContent!
+    await user.click(other)
+    await waitFor(() => expect(router.state.location.search).not.toContain(driverId!))
+    expect(screen.getByRole('combobox', { name: 'Driver' })).toHaveTextContent(otherName)
+  })
+
   it('shows who acted for the driver', async () => {
     const { user } = renderApp('/dispatch/actions', { as: ADMIN })
     await screen.findByRole('table', { name: 'What drivers did' })
