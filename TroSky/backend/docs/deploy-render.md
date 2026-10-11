@@ -13,7 +13,7 @@ Render docs: [Blueprint spec](https://render.com/docs/blueprint-spec) ·
 
 | Render resource | Plan | What it is |
 |---|---|---|
-| **trosky-api** (web service, Docker) | Free: 512 MB RAM, 0.1 CPU | This image (`TroSky/backend/Dockerfile`) started by `scripts/render-start.sh`. It runs the API **and** a Celery worker with beat in one container, because free plans have no background workers. |
+| **trosky-api** (web service, Docker) | Free: 512 MB RAM, 0.1 CPU | This image (`dockerfilePath: ./TroSky/backend/Dockerfile`, `dockerContext: ./TroSky/backend`, both from the repo root) started by `/app/scripts/render-start.sh`. It runs the API **and** a Celery worker with beat in one container, because free plans have no background workers. |
 | **trosky-db** (Postgres 17) | Free: 256 MB RAM, 1 GB storage | The database. Migration `20260804_0001` enables `postgis`, `pgcrypto` and `citext`. |
 | **trosky-redis** (Key Value) | Free: 25 MB | Rate limits, seat-hold hints, live vehicle positions, the Celery queue and its results, all in one database. `maxmemoryPolicy: noeviction`, Render's advice for job queues. |
 
@@ -364,7 +364,7 @@ logins at once (each Argon2 hash takes 64 MiB, one at a time).
 ```sh
 docker build --target runtime -t trosky-api:render-test TroSky/backend
 docker run --memory=512m --memory-swap=512m -p 18000:10000 --env-file render.env \
-  trosky-api:render-test bash ./scripts/render-start.sh
+  trosky-api:render-test bash /app/scripts/render-start.sh
 curl -H "Host: trosky-api.onrender.com" http://localhost:18000/health/live
 ```
 

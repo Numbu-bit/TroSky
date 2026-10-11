@@ -188,6 +188,9 @@ jobs:
     environment: development
     steps:
       - name: Deploy (placeholder)
+        # No checkout in these jobs, so TroSky/backend (the default above)
+        # doesn't exist: run from the empty workspace instead.
+        working-directory: .
         run: echo "Wire this step to your k8s/Helm deploy pipeline for the development cluster."
 
   deploy-staging:
@@ -198,6 +201,9 @@ jobs:
     environment: staging
     steps:
       - name: Deploy (placeholder)
+        # No checkout in these jobs, so TroSky/backend (the default above)
+        # doesn't exist: run from the empty workspace instead.
+        working-directory: .
         run: echo "Wire this step to your k8s/Helm deploy pipeline for the staging cluster."
 
   deploy-production:
@@ -208,4 +214,7 @@ jobs:
     environment: production # configure required reviewers on this Environment in GitHub settings
     steps:
       - name: Deploy (placeholder)
+        # No checkout in these jobs, so TroSky/backend (the default above)
+        # doesn't exist: run from the empty workspace instead.
+        working-directory: .
         run: echo "Wire this step to your k8s/Helm deploy pipeline for the production cluster."
