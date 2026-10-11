@@ -12,10 +12,12 @@ services:
     plan: free
     region: frankfurt
     branch: main
-    rootDir: TroSky/backend
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
-    dockerCommand: bash ./scripts/render-start.sh
+    # Both relative to the repository root (no rootDir: Render read
+    # dockerfilePath from the repo root even with rootDir set).
+    dockerfilePath: ./TroSky/backend/Dockerfile
+    dockerContext: ./TroSky/backend
+    # The image's own path (WORKDIR /app).
+    dockerCommand: bash /app/scripts/render-start.sh
     healthCheckPath: /health/live
     autoDeployTrigger: commit
     # Paths are relative to the repository root.

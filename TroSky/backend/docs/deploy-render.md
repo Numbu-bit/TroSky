@@ -13,7 +13,7 @@ Render docs: [Blueprint spec](https://render.com/docs/blueprint-spec) ·
 
 | Render resource | Plan | What it is |
 |---|---|---|
-| **trosky-api** (web service, Docker) | Free: 512 MB RAM, 0.1 CPU | This image (`TroSky/backend/Dockerfile`) started by `scripts/render-start.sh`. It runs the API **and** a Celery worker with beat in one container, because free plans have no background workers. |
+| **trosky-api** (web service, Docker) | Free: 512 MB RAM, 0.1 CPU | This image (`dockerfilePath: ./TroSky/backend/Dockerfile`, `dockerContext: ./TroSky/backend`, both from the repo root) started by `/app/scripts/render-start.sh`. It runs the API **and** a Celery worker with beat in one container, because free plans have no background workers. |
 | **trosky-db** (Postgres 17) | Free: 256 MB RAM, 1 GB storage | The database. Migration `20260804_0001` enables `postgis`, `pgcrypto` and `citext`. |
 | **trosky-redis** (Key Value) | Free: 25 MB | Rate limits, seat-hold hints, live vehicle positions, the Celery queue and its results, all in one database. `maxmemoryPolicy: noeviction`, Render's advice for job queues. |
 
@@ -133,6 +133,38 @@ When `DEV_ADMIN_PASSWORD` is set (12 characters or more), the first start create
 Later starts leave it alone, so **changing `DEV_ADMIN_PASSWORD` afterwards doesn't change the
 password**: use the app's password reset (`POST /auth/password/forgot`, the code arrives in the
 logs). Unset, or the old public development default: no administrator is created.
+
+## The admin dashboard
+
+The React dashboard in `TroSky/admin-dashboard` takes the API's address from its build settings;
+nothing is hard-coded (its README, "Environment variables"). Sign in with the administrator account
+above.
+
+**From your machine (`npm run dev`).** In `TroSky/admin-dashboard`, create `.env.local`:
+
+```sh
+VITE_API_BASE_URL=/api/v1
+VITE_API_PROXY_TARGET=https://trosky-api.onrender.com
+```
+
+The dev server forwards `/api` to Render, so the browser only talks to `localhost:5173`, and the
+backend needs no CORS change.
+
+**A deployed dashboard** (on its own address, e.g. `https://admin.example.com`):
+
+1. Build it with `VITE_API_BASE_URL=https://trosky-api.onrender.com/api/v1`:
+   - as a Docker image:
+     `docker build --build-arg VITE_API_BASE_URL=https://trosky-api.onrender.com/api/v1 -t trosky-admin-dashboard TroSky/admin-dashboard`;
+   - or as static files: put the line in `.env.staging` and run `npm run build -- --mode staging`.
+2. When running the image, set `API_ORIGIN=https://trosky-api.onrender.com`. Without it, the
+   image's Content-Security-Policy blocks the calls to Render.
+3. Allow the dashboard's address on Render: `CORS_ALLOWED_ORIGINS`, comma-separated, e.g.
+   `https://admin.example.com`. It isn't in `render.yaml` yet, so the backend default applies
+   (`http://localhost:3000`), and browsers block the dashboard's requests. Add it under `envVars`
+   in `render.yaml`, or under Environment.
+
+Free services sleep (see "Free-tier limits"): after a quiet spell, the first requests wait for the
+server to start, and the dashboard shows errors until it is up.
 
 ## Demo data
 
@@ -332,7 +364,7 @@ logins at once (each Argon2 hash takes 64 MiB, one at a time).
 ```sh
 docker build --target runtime -t trosky-api:render-test TroSky/backend
 docker run --memory=512m --memory-swap=512m -p 18000:10000 --env-file render.env \
-  trosky-api:render-test bash ./scripts/render-start.sh
+  trosky-api:render-test bash /app/scripts/render-start.sh
 curl -H "Host: trosky-api.onrender.com" http://localhost:18000/health/live
 ```
 
