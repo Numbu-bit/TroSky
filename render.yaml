@@ -79,6 +79,23 @@ services:
       # S3_* stay unset: uploads (avatars, documents, incident photos) fail
       # until object storage is configured.
 
+      # TEMPORARY — set back to GH once the app sends location (next
+      # frontend step). Since backend 0.21.0 a passenger signs up only with
+      # the phone's location, in Ghana; empty switches that check off, so
+      # the team can register from the current app. The value is a single
+      # space: the backend ignores blank entries (so it reads as empty),
+      # and Render doesn't document keeping an empty value. The start log
+      # says which applies ("passenger sign-up: …").
+      - key: PASSENGER_SIGNUP_COUNTRIES
+        value: " "
+
+      # Normal behaviour: a new booking waits for its driver (or an admin)
+      # to accept it, up to 120 s. "false" skips that step on this test
+      # server: bookings go straight to payment. docs/deploy-render.md,
+      # "Booking acceptance".
+      - key: BOOKING_ACCEPTANCE_REQUIRED
+        value: "true"
+
       # Render's proxies, so rate limits key on each client's own address
       # (app/core/client_ip.py): Render's private network, where its load
       # balancer connects from, and Cloudflare, which fronts every Render

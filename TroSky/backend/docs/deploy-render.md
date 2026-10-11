@@ -96,6 +96,8 @@ automatically (`autoDeployTrigger: commit` with a build filter).
 | `OTP_DELIVERY_CHANNEL=email`, `EMAIL_PROVIDER=console`, `SMS_PROVIDER=console`, `PAYMENTS_ACTIVE_PROVIDER=sandbox`, `FIREBASE_ENABLED=false`, `MAPS_PROVIDER=local` | `render.yaml` |
 | `TRUSTED_PROXY_CIDRS` | `render.yaml` (see "Rate limits behind Render's proxy") |
 | `DATABASE_POOL_SIZE=5`, `DATABASE_MAX_OVERFLOW=5`, `SEED_DEMO_DATA=false` | `render.yaml` |
+| `PASSENGER_SIGNUP_COUNTRIES=" "` (empty) | `render.yaml`. **TEMPORARY — set back to GH once the app sends location (next frontend step).** See "Passenger sign-up" |
+| `BOOKING_ACCEPTANCE_REQUIRED=true` | `render.yaml`, the normal behaviour. See "Booking acceptance" |
 | `DATABASE_URL_SYNC`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `TRUSTED_HOSTS`, `MALLOC_ARENA_MAX` | Derived by `render-start.sh` |
 | `PORT`, `RENDER_EXTERNAL_HOSTNAME` | Set by Render |
 | `S3_*` | Not set: uploads don't work yet |
@@ -134,10 +136,105 @@ logs). Unset, or the old public development default: no administrator is created
 
 ## Demo data
 
-Set `SEED_DEMO_DATA=true` (Environment tab) and save: the next start loads 10 Accra stops,
-6 routes, a trip every 30 minutes for 7 days, and the demo accounts (password `TroSkyDemo!2026`,
-listed in the backend changelog, 0.13.0, D1). Then set it back to `false`: while it is on, every
-start (every wake-up from sleep) tops the timetable up again, which slows waking.
+Set `SEED_DEMO_DATA=true` (Environment tab) and save. The next start loads:
+- 10 Accra stops and 6 routes;
+- 12 vehicles with drivers;
+- a trip every 30 minutes from 05:30 to 21:00 (Ghana time) on every route, from now **until 7 days
+  ahead**;
+- the demo accounts (password `TroSkyDemo!2026`, listed in the backend changelog, 0.13.0, D1);
+- for the demo passenger: GHS 200 in the wallet, 3 past trips and 1 upcoming booking.
+
+### Keeping trips available
+
+The timetable stops 7 days after the last run of the seed: a run on 12 Oct leaves trips up to
+19 Oct, 21:00. Every run fills the timetable up to 7 days ahead of *that* day. There are two ways
+to keep trips coming:
+
+- **Leave `SEED_DEMO_DATA=true`.** Every start, including every wake-up from sleep, tops the
+  timetable up, so it never runs out while people use the server. The cost is a slower start: a
+  run with nothing to add took 5 s with a whole CPU, so roughly a minute on 0.1 CPU.
+- **Top up by hand when needed.** Set `SEED_DEMO_DATA=true` and save; Render restarts the
+  service, and the start adds the missing days. Then set it back to `false`, which restarts once
+  more. Free services have no shell, so this is the manual way. Do it at least once a week.
+
+Re-running **duplicates nothing** (checked locally: a second run added 0 trips, users, vehicles,
+routes, stops, bookings or wallet entries).
+- Stops (by code), routes (by name), accounts (by phone), vehicles (by registration) and drivers
+  are created only when missing.
+- Trips are added only for route-and-departure pairs that don't exist yet.
+- The wallet top-up has an idempotency key.
+- The demo passenger's history (3 past trips, 1 upcoming booking) is only created while they have
+  no bookings at all. After a week their "upcoming" booking is in the past and isn't renewed.
+
+Past trips are never deleted. They add about 190 trips a day while topping up, which is small
+for the 1 GB database.
+
+The demo seed books and confirms its sample trip directly. Since backend 0.20.0 that would fail
+(new bookings wait for the driver), so `render-start.sh` runs the seed with
+`BOOKING_ACCEPTANCE_REQUIRED=false` for that one process only.
+
+## Passenger sign-up (TEMPORARY)
+
+**TEMPORARY — set back to GH once the app sends location (next frontend step).**
+
+Since backend 0.21.0 a passenger can only sign up with the phone's location, and it must be in
+Ghana (`PASSENGER_SIGNUP_COUNTRIES=GH`). The current app doesn't send a location yet, so on this
+test server the check is switched off:
+- **The value:** `PASSENGER_SIGNUP_COUNTRIES` is a single space in `render.yaml`. The backend
+  ignores blank entries, so it reads as empty, and an empty value is guaranteed to reach the
+  service (Render doesn't document keeping one that is truly empty).
+- **Checking it:** the start log says `passenger sign-up: no location needed` (or
+  `the phone's location must be in GH`).
+- **Tested locally:** registering without `latitude`/`longitude` succeeds with this setting; with
+  `GH` it answers 422 `LOCATION_REQUIRED`.
+
+To turn the check back on, set the value to `GH` in `render.yaml` and push, or edit it under
+Environment.
+
+## Booking acceptance
+
+Since backend 0.20.0 a new booking waits for the trip's driver, or an admin, to accept it:
+- **Waiting:** the booking is `awaiting_acceptance`, and `expires_at` is the deadline for an
+  answer (`BOOKING_ACCEPT_TIMEOUT_SECONDS`, 120 s).
+- **Unanswered or declined:** it moves to another vehicle going the same way, or ends uncharged.
+- **Once accepted:** it is `pending`, and the passenger has 10 minutes to pay.
+
+`render.yaml` keeps this normal behaviour (`BOOKING_ACCEPTANCE_REQUIRED=true`). Two ways to test
+on the staging server:
+
+**Switch acceptance off.** Set `BOOKING_ACCEPTANCE_REQUIRED=false` (Environment tab, or in
+`render.yaml`) and save; Render restarts the service. New bookings then go straight to `pending`
+with 10 minutes to pay, as before 0.20.0. The start log shows
+`booking acceptance by the driver: false`. The current app expects this behaviour: it doesn't know
+the waiting state yet.
+
+**Keep it on and accept as the admin** (or as the demo driver of that trip, in the driver app or
+its API). Every call needs the admin's access token (`POST /api/v1/auth/login` with
+`+233200000000` and `DEV_ADMIN_PASSWORD`):
+
+```sh
+API=https://trosky-api.onrender.com/api/v1
+TOKEN=$(curl -s -X POST $API/auth/login -H "Content-Type: application/json" \
+  -d '{"identifier":"+233200000000","password":"<DEV_ADMIN_PASSWORD>"}' | jq -r .access_token)
+
+# Bookings waiting for an answer, the nearest deadline first
+curl -s $API/admin/booking-requests -H "Authorization: Bearer $TOKEN"
+
+# Accept one: it becomes "pending" and the passenger is told to pay
+curl -s -X POST $API/admin/bookings/<booking_id>/accept -H "Authorization: Bearer $TOKEN"
+
+# Or decline it, moving it to another vehicle if one has seats
+curl -s -X POST $API/admin/bookings/<booking_id>/decline -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" -d '{"reason":"Testing","move_to_another_trip":true}'
+```
+
+Tested locally:
+- **Acceptance on:** a booking was `awaiting_acceptance` with 120 s left. It appeared in
+  `/admin/booking-requests`. After `accept` it was `pending` with 600 s to pay.
+- **Acceptance off:** the booking was `pending` with 600 s straight away.
+
+To give testers more time to answer without switching acceptance off, raise
+`BOOKING_ACCEPT_TIMEOUT_SECONDS` (15 to 3600).
 
 ## Rate limits behind Render's proxy
 

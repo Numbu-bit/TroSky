@@ -47,6 +47,16 @@ if [ -n "${RENDER_EXTERNAL_HOSTNAME:-}" ]; then
 fi
 export TRUSTED_HOSTS
 
+# --- Say which test-server switches are on -----------------------------------
+signup_countries="${PASSENGER_SIGNUP_COUNTRIES-GH}"
+signup_countries="${signup_countries//[ ,]/}"
+if [ -z "$signup_countries" ]; then
+    log "passenger sign-up: no location needed (PASSENGER_SIGNUP_COUNTRIES is empty)"
+else
+    log "passenger sign-up: the phone's location must be in ${PASSENGER_SIGNUP_COUNTRIES-GH}"
+fi
+log "booking acceptance by the driver: ${BOOKING_ACCEPTANCE_REQUIRED:-true}"
+
 # --- Wait for Postgres and Key Value ---------------------------------------
 # A plain TCP check in bash: on Render's 0.1 CPU every Python process that
 # imports the app costs most of a minute, and this runs on every start
