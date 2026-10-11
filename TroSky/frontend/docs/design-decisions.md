@@ -29,6 +29,7 @@ Product decisions that settle questions the Figma Make file leaves open. These r
 | 23 | Passenger names | 2 Oct 2026 | In force (`SeatSelectionScreen`) |
 | 24 | Price on the seat screen | 2 Oct 2026 | **Ended 10 Oct 2026**: the fare quote landed, live shows the full design |
 | 25 | Seat layout | 2 Oct 2026 | In force (`SeatMapLayout`) |
+| 26 | Admin web | 11 Oct 2026 | In force: `apps/admin_web` removed |
 
 ## 1. Logo
 
@@ -246,3 +247,12 @@ The backend has no aisle field: a layout is just seats on a grid, and `seat_type
 3. Otherwise, by width: **4 columns → between 2 and 3** (as in the design); 3 columns → between 2 and 3 (2 + 1); 5 or more → after the middle column; 1–2 columns → no aisle.
 
 **A shorter last row** (fewer seats than the rows before it, such as the design's 2-seat back bench) is centred under the others without an aisle, as P7 draws seats 13 and 14. A grid wider than the card shrinks to fit.
+
+## 26. Admin web
+
+Admin web = React app in TroSky/admin-dashboard (Maahir). Flutter admin_web removed.
+
+- The dashboard has its own README, tests and CI (`.github/workflows/admin-dashboard.yml`).
+- `apps/admin_web` was only a placeholder ("TroSky Admin — setup OK"); its planned screens A-01 to
+  A-14 are gone from `frontend-inventory.md`.
+- `apps/fleet_web` stays for now; the fleet-owner app is decided later.
