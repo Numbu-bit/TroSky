@@ -2164,3 +2164,14 @@ pause, resume and end trips by hand, and admins cancel as before.
   until the trip ends, paused included, and keep sending while standing
   still.** Until it does, boarding still comes from ticket scans, and the
   driver starts the trip by hand; everything after that follows on its own.
+
+## [0.22.1] - 2026-10-11 - Fixes for the staging server
+
+- **Signing in no longer holds up the server.** Hashing and checking a
+  password (Argon2id, 64 MiB) ran in the event loop: on Render's free CPU a
+  sign-in took 17 s, during which no other request, health checks included,
+  was answered. It now runs in a thread pool of its own, at most
+  `PASSWORD_HASH_CONCURRENCY` (new setting, default 2) at a time per
+  process, so a burst of sign-ins waits its turn rather than running a
+  512 MB server out of memory. The hash itself is unchanged: existing
+  passwords keep working.

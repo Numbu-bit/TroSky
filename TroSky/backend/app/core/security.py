@@ -7,10 +7,12 @@ the low-level, well-tested primitives they build on.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import secrets
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
@@ -45,6 +47,41 @@ def verify_password(plain_password: str, password_hash: str) -> bool:
         return _password_hasher.verify(password_hash, plain_password)
     except (VerifyMismatchError, InvalidHashError):
         return False
+
+
+# Hashing or checking a password takes a lot of CPU and 64 MiB: a fraction
+# of a second on a fast machine, many seconds on a small shared one. In the
+# event loop it would hold up every other request, health checks included,
+# so the server's code uses the async versions below, which run it in a
+# thread of its own (argon2 lets go of the GIL while it works). The pool
+# has PASSWORD_HASH_CONCURRENCY threads: a burst of sign-ins waits its turn
+# instead of running the server out of memory. Scripts may call the plain
+# versions.
+_hash_pool: ThreadPoolExecutor | None = None
+
+
+def _password_pool() -> ThreadPoolExecutor:
+    global _hash_pool
+    if _hash_pool is None:
+        _hash_pool = ThreadPoolExecutor(
+            max_workers=get_settings().PASSWORD_HASH_CONCURRENCY,
+            thread_name_prefix="password-hash",
+        )
+    return _hash_pool
+
+
+async def hash_password_async(plain_password: str) -> str:
+    """``hash_password``, without holding up the event loop."""
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(_password_pool(), hash_password, plain_password)
+
+
+async def verify_password_async(plain_password: str, password_hash: str) -> bool:
+    """``verify_password``, without holding up the event loop."""
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        _password_pool(), verify_password, plain_password, password_hash
+    )
 
 
 def password_needs_rehash(password_hash: str) -> bool:

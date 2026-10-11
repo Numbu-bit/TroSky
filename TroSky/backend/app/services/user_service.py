@@ -14,7 +14,7 @@ from app.core.exceptions import (
     NotFoundError,
 )
 from app.core.logging import get_logger
-from app.core.security import verify_password
+from app.core.security import verify_password_async
 from app.models.identity import (
     DevicePlatform,
     DeviceRegistration,
@@ -81,7 +81,7 @@ class UserService:
         user = await self._users.get_by_id(user_id)
         if user is None:
             raise NotFoundError("User not found.")
-        if not verify_password(password, user.password_hash):
+        if not await verify_password_async(password, user.password_hash):
             raise InvalidCredentialsError("Incorrect password.")
         await self._sessions.revoke_all_sessions_for_user(user_id, reason="account_deleted")
         await self._users.soft_delete(user)

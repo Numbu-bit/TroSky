@@ -38,8 +38,8 @@ from app.core.security import (
     create_token,
     decode_token,
     hash_opaque_token,
-    hash_password,
-    verify_password,
+    hash_password_async,
+    verify_password_async,
 )
 from app.models.fraud import BlockedDevice
 from app.models.identity import OtpChannel, OtpPurpose, User, UserSession
@@ -188,7 +188,7 @@ class AuthService:
             user = await self._users.create(
                 phone_number=request.phone_number,
                 email=request.email,
-                password_hash=hash_password(request.password),
+                password_hash=await hash_password_async(request.password),
                 full_name=request.full_name,
                 preferred_language=request.preferred_language,
                 savepoint=False,
@@ -348,7 +348,7 @@ class AuthService:
 
         self._assert_login_allowed(user)
 
-        if not verify_password(password, user.password_hash):
+        if not await verify_password_async(password, user.password_hash):
             await self._users.record_login_failure(
                 user,
                 max_attempts=self._settings.LOGIN_MAX_FAILED_ATTEMPTS,
@@ -568,7 +568,7 @@ class AuthService:
             target=target, purpose=OtpPurpose.PASSWORD_RESET, code=code
         )
         await self._mark_contact_verified(user, challenge.channel)
-        await self._users.update_password(user, hash_password(new_password))
+        await self._users.update_password(user, await hash_password_async(new_password))
         await self._sessions.revoke_all_sessions_for_user(user.id, reason="password_reset")
         logger.info("password_reset_completed", user_id=str(user.id), method="code")
 
@@ -604,7 +604,7 @@ class AuthService:
         if user is None:
             raise PasswordResetTokenInvalidError()
 
-        await self._users.update_password(user, hash_password(new_password))
+        await self._users.update_password(user, await hash_password_async(new_password))
         await self._otp_repo.consume_password_reset_token(token_record)
         await self._sessions.revoke_all_sessions_for_user(user.id, reason="password_reset")
         logger.info("password_reset_completed", user_id=str(user.id))
