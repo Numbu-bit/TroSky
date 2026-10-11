@@ -23,4 +23,7 @@ To use one:
    `flutter run --dart-define-from-file=../../env/dev.json`
 
 On the Android emulator the host machine is `10.0.2.2`, not `localhost`.
-The staging and prod hosts are placeholders until real ones exist.
+`staging.example.json` points at the Render test server (`trosky-api.onrender.com`; replace the
+hostname with the one Render assigns, see `TroSky/backend/docs/deploy-render.md`). It sleeps after
+15 minutes without requests, so the first request after a quiet spell takes about a minute. The
+prod host is a placeholder until a real one exists.

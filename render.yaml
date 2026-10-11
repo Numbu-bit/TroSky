@@ -1,0 +1,140 @@
+# Render Blueprint: the TroSky staging server, on Render's free tier.
+# What runs where, the free-tier limits and how to upgrade:
+# TroSky/backend/docs/deploy-render.md
+# Field reference: https://render.com/docs/blueprint-spec
+
+services:
+  # The API, plus a Celery worker with embedded beat in the same container
+  # (the free tier has no background workers): scripts/render-start.sh.
+  - type: web
+    name: trosky-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    branch: main
+    rootDir: TroSky/backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: bash ./scripts/render-start.sh
+    healthCheckPath: /health/live
+    autoDeployTrigger: commit
+    # Paths are relative to the repository root.
+    buildFilter:
+      paths:
+        - TroSky/backend/**
+        - render.yaml
+    envVars:
+      # Connections. render-start.sh turns these into the URLs the app uses
+      # (DATABASE_URL / DATABASE_URL_SYNC with drivers, the Celery URLs).
+      - key: DATABASE_URL
+        fromDatabase:
+          name: trosky-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: trosky-redis
+          type: keyvalue
+          property: connectionString
+
+      # Secrets: generated once by Render, never in the repository.
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: TICKET_QR_SIGNING_SECRET
+        generateValue: true
+      - key: PAYMENTS_WEBHOOK_SIGNING_SECRET
+        generateValue: true
+      # Password of the administrator account (+233200000000,
+      # admin@trosky.africa). Asked for in the dashboard; at least 12
+      # characters. Unset: no administrator is created.
+      - key: DEV_ADMIN_PASSWORD
+        sync: false
+
+      # A shared test server, not production.
+      - key: APP_ENV
+        value: staging
+      - key: DEBUG
+        value: "false"
+      - key: EXPOSE_HEALTH_DETAILS
+        value: "false"
+      - key: LOG_JSON
+        value: "true"
+
+      # Providers. Free web services can't use SMTP (ports 25, 465 and 587
+      # are blocked), so verification codes go to the console provider and
+      # appear in Render's logs (event "email_sent_console").
+      - key: OTP_DELIVERY_CHANNEL
+        value: email
+      - key: EMAIL_PROVIDER
+        value: console
+      - key: SMS_PROVIDER
+        value: console
+      - key: PAYMENTS_ACTIVE_PROVIDER
+        value: sandbox
+      - key: FIREBASE_ENABLED
+        value: "false"
+      - key: MAPS_PROVIDER
+        value: local
+      # S3_* stay unset: uploads (avatars, documents, incident photos) fail
+      # until object storage is configured.
+
+      # TEMPORARY — set back to GH once the app sends location (next
+      # frontend step). Since backend 0.21.0 a passenger signs up only with
+      # the phone's location, in Ghana; empty switches that check off, so
+      # the team can register from the current app. The value is a single
+      # space: the backend ignores blank entries (so it reads as empty),
+      # and Render doesn't document keeping an empty value. The start log
+      # says which applies ("passenger sign-up: …").
+      - key: PASSENGER_SIGNUP_COUNTRIES
+        value: " "
+
+      # Normal behaviour: a new booking waits for its driver (or an admin)
+      # to accept it, up to 120 s. "false" skips that step on this test
+      # server: bookings go straight to payment. docs/deploy-render.md,
+      # "Booking acceptance".
+      - key: BOOKING_ACCEPTANCE_REQUIRED
+        value: "true"
+
+      # Render's proxies, so rate limits key on each client's own address
+      # (app/core/client_ip.py): Render's private network, where its load
+      # balancer connects from, and Cloudflare, which fronts every Render
+      # service (https://www.cloudflare.com/ips/). Check after deploying:
+      # docs/deploy-render.md, "Rate limits behind Render's proxy".
+      - key: TRUSTED_PROXY_CIDRS
+        value: "10.0.0.0/8,173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,141.101.64.0/18,108.162.192.0/18,190.93.240.0/20,188.114.96.0/20,197.234.240.0/22,198.41.128.0/17,162.158.0.0/15,104.16.0.0/13,104.24.0.0/14,172.64.0.0/13,131.0.72.0/22,2400:cb00::/32,2606:4700::/32,2803:f800::/32,2405:b500::/32,2405:8100::/32,2a06:98c0::/29,2c0f:f248::/32"
+
+      # Small pools: one API process and one Celery process share the free
+      # database (100 connections) and 512 MB of memory.
+      - key: DATABASE_POOL_SIZE
+        value: "5"
+      - key: DATABASE_MAX_OVERFLOW
+        value: "5"
+
+      # "true" loads the demo stops, routes, a week of trips and the demo
+      # accounts (public password TroSkyDemo!2026) on the next start.
+      - key: SEED_DEMO_DATA
+        value: "false"
+
+  # Rate limits, seat-hold hints, live positions and the Celery queue.
+  # ipAllowList [] blocks the external URL; trosky-api connects internally.
+  # noeviction: Render's advice for job queues (no queued task is dropped).
+  - type: keyvalue
+    name: trosky-redis
+    plan: free
+    region: frankfurt
+    ipAllowList: []
+    maxmemoryPolicy: noeviction
+
+databases:
+  # PostgreSQL 17; migration 20260804_0001 enables postgis, pgcrypto and
+  # citext. Free databases expire 30 days after creation (see the docs).
+  # ipAllowList [] allows internal connections only; add your IP in the
+  # dashboard to use psql from outside.
+  - name: trosky-db
+    plan: free
+    region: frankfurt
+    postgresMajorVersion: "17"
+    databaseName: trosky
+    user: trosky
+    ipAllowList: []
