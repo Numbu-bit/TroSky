@@ -1181,10 +1181,6 @@
   "@seatsAsMoreJoin": {
     "description": "Under the \"Drops to\" pill (P7)."
   },
-  "seatsEstimated": "Estimated",
-  "@seatsEstimated": {
-    "description": "Live mode fare panel tag until G20 (decision 24)."
-  },
   "seatsWas": "was {price}",
   "@seatsWas": {
     "description": "Screen reader: the crossed-out solo price.",

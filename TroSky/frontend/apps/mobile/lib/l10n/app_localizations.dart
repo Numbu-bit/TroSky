@@ -1520,12 +1520,6 @@ abstract class AppLocalizations {
   /// **'as more riders join'**
   String get seatsAsMoreJoin;
 
-  /// Live mode fare panel tag until G20 (decision 24).
-  ///
-  /// In en, this message translates to:
-  /// **'Estimated'**
-  String get seatsEstimated;
-
   /// Screen reader: the crossed-out solo price.
   ///
   /// In en, this message translates to:

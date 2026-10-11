@@ -294,10 +294,7 @@ as bool,
 /// @nodoc
 mixin _$TripSeatsResponse {
 
- String get tripId; String get vehicleId; int get totalSeats; int get availableSeats; List<TripSeatResponse> get seats;/// G20: one seat, shared, if booked now.
-@JsonKey(fromJson: decimalStringOrNull) String? get sharedFareAmount;/// G20: one seat for the stretch alone.
-@JsonKey(fromJson: decimalStringOrNull) String? get soloFareAmount;/// G20: the lowest the shared fare can drop to.
-@JsonKey(fromJson: decimalStringOrNull) String? get floorFareAmount;
+ String get tripId; String get vehicleId; int get totalSeats; int get availableSeats; List<TripSeatResponse> get seats;
 /// Create a copy of TripSeatsResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -310,16 +307,16 @@ $TripSeatsResponseCopyWith<TripSeatsResponse> get copyWith => _$TripSeatsRespons
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is TripSeatsResponse&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.vehicleId, vehicleId) || other.vehicleId == vehicleId)&&(identical(other.totalSeats, totalSeats) || other.totalSeats == totalSeats)&&(identical(other.availableSeats, availableSeats) || other.availableSeats == availableSeats)&&const DeepCollectionEquality().equals(other.seats, seats)&&(identical(other.sharedFareAmount, sharedFareAmount) || other.sharedFareAmount == sharedFareAmount)&&(identical(other.soloFareAmount, soloFareAmount) || other.soloFareAmount == soloFareAmount)&&(identical(other.floorFareAmount, floorFareAmount) || other.floorFareAmount == floorFareAmount));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TripSeatsResponse&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.vehicleId, vehicleId) || other.vehicleId == vehicleId)&&(identical(other.totalSeats, totalSeats) || other.totalSeats == totalSeats)&&(identical(other.availableSeats, availableSeats) || other.availableSeats == availableSeats)&&const DeepCollectionEquality().equals(other.seats, seats));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,tripId,vehicleId,totalSeats,availableSeats,const DeepCollectionEquality().hash(seats),sharedFareAmount,soloFareAmount,floorFareAmount);
+int get hashCode => Object.hash(runtimeType,tripId,vehicleId,totalSeats,availableSeats,const DeepCollectionEquality().hash(seats));
 
 @override
 String toString() {
-  return 'TripSeatsResponse(tripId: $tripId, vehicleId: $vehicleId, totalSeats: $totalSeats, availableSeats: $availableSeats, seats: $seats, sharedFareAmount: $sharedFareAmount, soloFareAmount: $soloFareAmount, floorFareAmount: $floorFareAmount)';
+  return 'TripSeatsResponse(tripId: $tripId, vehicleId: $vehicleId, totalSeats: $totalSeats, availableSeats: $availableSeats, seats: $seats)';
 }
 
 
@@ -330,7 +327,7 @@ abstract mixin class $TripSeatsResponseCopyWith<$Res>  {
   factory $TripSeatsResponseCopyWith(TripSeatsResponse value, $Res Function(TripSeatsResponse) _then) = _$TripSeatsResponseCopyWithImpl;
 @useResult
 $Res call({
- String tripId, String vehicleId, int totalSeats, int availableSeats, List<TripSeatResponse> seats,@JsonKey(fromJson: decimalStringOrNull) String? sharedFareAmount,@JsonKey(fromJson: decimalStringOrNull) String? soloFareAmount,@JsonKey(fromJson: decimalStringOrNull) String? floorFareAmount
+ String tripId, String vehicleId, int totalSeats, int availableSeats, List<TripSeatResponse> seats
 });
 
 
@@ -347,17 +344,14 @@ class _$TripSeatsResponseCopyWithImpl<$Res>
 
 /// Create a copy of TripSeatsResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? tripId = null,Object? vehicleId = null,Object? totalSeats = null,Object? availableSeats = null,Object? seats = null,Object? sharedFareAmount = freezed,Object? soloFareAmount = freezed,Object? floorFareAmount = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? tripId = null,Object? vehicleId = null,Object? totalSeats = null,Object? availableSeats = null,Object? seats = null,}) {
   return _then(TripSeatsResponse(
 tripId: null == tripId ? _self.tripId : tripId // ignore: cast_nullable_to_non_nullable
 as String,vehicleId: null == vehicleId ? _self.vehicleId : vehicleId // ignore: cast_nullable_to_non_nullable
 as String,totalSeats: null == totalSeats ? _self.totalSeats : totalSeats // ignore: cast_nullable_to_non_nullable
 as int,availableSeats: null == availableSeats ? _self.availableSeats : availableSeats // ignore: cast_nullable_to_non_nullable
 as int,seats: null == seats ? _self.seats : seats // ignore: cast_nullable_to_non_nullable
-as List<TripSeatResponse>,sharedFareAmount: freezed == sharedFareAmount ? _self.sharedFareAmount : sharedFareAmount // ignore: cast_nullable_to_non_nullable
-as String?,soloFareAmount: freezed == soloFareAmount ? _self.soloFareAmount : soloFareAmount // ignore: cast_nullable_to_non_nullable
-as String?,floorFareAmount: freezed == floorFareAmount ? _self.floorFareAmount : floorFareAmount // ignore: cast_nullable_to_non_nullable
-as String?,
+as List<TripSeatResponse>,
   ));
 }
 
@@ -442,10 +436,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String tripId,  String vehicleId,  int totalSeats,  int availableSeats,  List<TripSeatResponse> seats, @JsonKey(fromJson: decimalStringOrNull)  String? sharedFareAmount, @JsonKey(fromJson: decimalStringOrNull)  String? soloFareAmount, @JsonKey(fromJson: decimalStringOrNull)  String? floorFareAmount)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String tripId,  String vehicleId,  int totalSeats,  int availableSeats,  List<TripSeatResponse> seats)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _TripSeatsResponse() when $default != null:
-return $default(_that.tripId,_that.vehicleId,_that.totalSeats,_that.availableSeats,_that.seats,_that.sharedFareAmount,_that.soloFareAmount,_that.floorFareAmount);case _:
+return $default(_that.tripId,_that.vehicleId,_that.totalSeats,_that.availableSeats,_that.seats);case _:
   return orElse();
 
 }
@@ -463,10 +457,10 @@ return $default(_that.tripId,_that.vehicleId,_that.totalSeats,_that.availableSea
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String tripId,  String vehicleId,  int totalSeats,  int availableSeats,  List<TripSeatResponse> seats, @JsonKey(fromJson: decimalStringOrNull)  String? sharedFareAmount, @JsonKey(fromJson: decimalStringOrNull)  String? soloFareAmount, @JsonKey(fromJson: decimalStringOrNull)  String? floorFareAmount)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String tripId,  String vehicleId,  int totalSeats,  int availableSeats,  List<TripSeatResponse> seats)  $default,) {final _that = this;
 switch (_that) {
 case _TripSeatsResponse():
-return $default(_that.tripId,_that.vehicleId,_that.totalSeats,_that.availableSeats,_that.seats,_that.sharedFareAmount,_that.soloFareAmount,_that.floorFareAmount);case _:
+return $default(_that.tripId,_that.vehicleId,_that.totalSeats,_that.availableSeats,_that.seats);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -483,10 +477,10 @@ return $default(_that.tripId,_that.vehicleId,_that.totalSeats,_that.availableSea
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String tripId,  String vehicleId,  int totalSeats,  int availableSeats,  List<TripSeatResponse> seats, @JsonKey(fromJson: decimalStringOrNull)  String? sharedFareAmount, @JsonKey(fromJson: decimalStringOrNull)  String? soloFareAmount, @JsonKey(fromJson: decimalStringOrNull)  String? floorFareAmount)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String tripId,  String vehicleId,  int totalSeats,  int availableSeats,  List<TripSeatResponse> seats)?  $default,) {final _that = this;
 switch (_that) {
 case _TripSeatsResponse() when $default != null:
-return $default(_that.tripId,_that.vehicleId,_that.totalSeats,_that.availableSeats,_that.seats,_that.sharedFareAmount,_that.soloFareAmount,_that.floorFareAmount);case _:
+return $default(_that.tripId,_that.vehicleId,_that.totalSeats,_that.availableSeats,_that.seats);case _:
   return null;
 
 }
@@ -498,7 +492,7 @@ return $default(_that.tripId,_that.vehicleId,_that.totalSeats,_that.availableSea
 @JsonSerializable()
 
 class _TripSeatsResponse implements TripSeatsResponse {
-  const _TripSeatsResponse({required this.tripId, required this.vehicleId, required this.totalSeats, required this.availableSeats, required  List<TripSeatResponse> seats, @JsonKey(fromJson: decimalStringOrNull) this.sharedFareAmount, @JsonKey(fromJson: decimalStringOrNull) this.soloFareAmount, @JsonKey(fromJson: decimalStringOrNull) this.floorFareAmount}): _seats = seats;
+  const _TripSeatsResponse({required this.tripId, required this.vehicleId, required this.totalSeats, required this.availableSeats, required  List<TripSeatResponse> seats}): _seats = seats;
   factory _TripSeatsResponse.fromJson(Map<String, dynamic> json) => _$TripSeatsResponseFromJson(json);
 
 @override final  String tripId;
@@ -512,12 +506,6 @@ class _TripSeatsResponse implements TripSeatsResponse {
   return EqualUnmodifiableListView(_seats);
 }
 
-/// G20: one seat, shared, if booked now.
-@override@JsonKey(fromJson: decimalStringOrNull) final  String? sharedFareAmount;
-/// G20: one seat for the stretch alone.
-@override@JsonKey(fromJson: decimalStringOrNull) final  String? soloFareAmount;
-/// G20: the lowest the shared fare can drop to.
-@override@JsonKey(fromJson: decimalStringOrNull) final  String? floorFareAmount;
 
 /// Create a copy of TripSeatsResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -532,16 +520,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TripSeatsResponse&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.vehicleId, vehicleId) || other.vehicleId == vehicleId)&&(identical(other.totalSeats, totalSeats) || other.totalSeats == totalSeats)&&(identical(other.availableSeats, availableSeats) || other.availableSeats == availableSeats)&&const DeepCollectionEquality().equals(other._seats, _seats)&&(identical(other.sharedFareAmount, sharedFareAmount) || other.sharedFareAmount == sharedFareAmount)&&(identical(other.soloFareAmount, soloFareAmount) || other.soloFareAmount == soloFareAmount)&&(identical(other.floorFareAmount, floorFareAmount) || other.floorFareAmount == floorFareAmount));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TripSeatsResponse&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.vehicleId, vehicleId) || other.vehicleId == vehicleId)&&(identical(other.totalSeats, totalSeats) || other.totalSeats == totalSeats)&&(identical(other.availableSeats, availableSeats) || other.availableSeats == availableSeats)&&const DeepCollectionEquality().equals(other._seats, _seats));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,tripId,vehicleId,totalSeats,availableSeats,const DeepCollectionEquality().hash(_seats),sharedFareAmount,soloFareAmount,floorFareAmount);
+int get hashCode => Object.hash(runtimeType,tripId,vehicleId,totalSeats,availableSeats,const DeepCollectionEquality().hash(_seats));
 
 @override
 String toString() {
-  return 'TripSeatsResponse(tripId: $tripId, vehicleId: $vehicleId, totalSeats: $totalSeats, availableSeats: $availableSeats, seats: $seats, sharedFareAmount: $sharedFareAmount, soloFareAmount: $soloFareAmount, floorFareAmount: $floorFareAmount)';
+  return 'TripSeatsResponse(tripId: $tripId, vehicleId: $vehicleId, totalSeats: $totalSeats, availableSeats: $availableSeats, seats: $seats)';
 }
 
 
@@ -552,7 +540,7 @@ abstract mixin class _$TripSeatsResponseCopyWith<$Res> implements $TripSeatsResp
   factory _$TripSeatsResponseCopyWith(_TripSeatsResponse value, $Res Function(_TripSeatsResponse) _then) = __$TripSeatsResponseCopyWithImpl;
 @override @useResult
 $Res call({
- String tripId, String vehicleId, int totalSeats, int availableSeats, List<TripSeatResponse> seats,@JsonKey(fromJson: decimalStringOrNull) String? sharedFareAmount,@JsonKey(fromJson: decimalStringOrNull) String? soloFareAmount,@JsonKey(fromJson: decimalStringOrNull) String? floorFareAmount
+ String tripId, String vehicleId, int totalSeats, int availableSeats, List<TripSeatResponse> seats
 });
 
 
@@ -569,17 +557,14 @@ class __$TripSeatsResponseCopyWithImpl<$Res>
 
 /// Create a copy of TripSeatsResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? tripId = null,Object? vehicleId = null,Object? totalSeats = null,Object? availableSeats = null,Object? seats = null,Object? sharedFareAmount = freezed,Object? soloFareAmount = freezed,Object? floorFareAmount = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? tripId = null,Object? vehicleId = null,Object? totalSeats = null,Object? availableSeats = null,Object? seats = null,}) {
   return _then(_TripSeatsResponse(
 tripId: null == tripId ? _self.tripId : tripId // ignore: cast_nullable_to_non_nullable
 as String,vehicleId: null == vehicleId ? _self.vehicleId : vehicleId // ignore: cast_nullable_to_non_nullable
 as String,totalSeats: null == totalSeats ? _self.totalSeats : totalSeats // ignore: cast_nullable_to_non_nullable
 as int,availableSeats: null == availableSeats ? _self.availableSeats : availableSeats // ignore: cast_nullable_to_non_nullable
 as int,seats: null == seats ? _self._seats : seats // ignore: cast_nullable_to_non_nullable
-as List<TripSeatResponse>,sharedFareAmount: freezed == sharedFareAmount ? _self.sharedFareAmount : sharedFareAmount // ignore: cast_nullable_to_non_nullable
-as String?,soloFareAmount: freezed == soloFareAmount ? _self.soloFareAmount : soloFareAmount // ignore: cast_nullable_to_non_nullable
-as String?,floorFareAmount: freezed == floorFareAmount ? _self.floorFareAmount : floorFareAmount // ignore: cast_nullable_to_non_nullable
-as String?,
+as List<TripSeatResponse>,
   ));
 }
 

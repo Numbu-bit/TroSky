@@ -422,10 +422,14 @@ void main() {
     });
   });
 
-  group('live mode (decision 24)', () {
-    testWidgets("the trip's fare × seats, marked Estimated; no solo fare or "
-        '"Drops to"', (tester) async {
-      await openLiveSeats(tester, morning(), p7Seats(taken: {'2', '6'}));
+  group('live mode: the fare quote (decision 24 ended)', () {
+    testWidgets('"You pay now", the solo fare crossed out, "Drops to", for '
+        'the chosen stops and seats', (tester) async {
+      final routes = await openLiveSeats(
+        tester,
+        morning(),
+        p7Seats(taken: {'2', '6'}),
+      );
 
       expect(
         find.text('Madina → Circle · GT 4402-26 · Departs 09:15'),
@@ -433,17 +437,97 @@ void main() {
       );
       expect(_counter(tester), (2, 14));
       expect(find.text('You pay now'), findsOneWidget);
-      expect(_price(tester), '₵8.00');
-      expect(find.text('Estimated'), findsOneWidget);
-      expect(find.textContaining('Drops to'), findsNothing);
-      expect(find.text('as more riders join'), findsNothing);
+      expect(_price(tester), '₵6.50');
+      expect(find.text('₵8.00'), findsOneWidget);
+      expect(find.text('↓ Drops to ₵2.00'), findsOneWidget);
+      expect(find.text('as more riders join'), findsOneWidget);
+      expect(find.text('Estimated'), findsNothing);
+      final (trip, origin, destination, seats) = routes.quoteRequests.last;
+      expect(
+        (trip, origin, destination, seats),
+        (
+          't1',
+          MockBackend.stops['Madina']!.id,
+          MockBackend.stops['Circle']!.id,
+          1,
+        ),
+      );
 
       await tapSeat(tester, '4');
       await tapSeat(tester, '5');
-      expect(find.text('₵8.00 × 2 seats'), findsOneWidget);
-      expect(_price(tester), '₵16.00');
-      expect(find.text('₵76.00'), findsNothing);
-      expect(reserveButton(tester).label, 'Reserve 2 Seats · ₵16.00');
+      // Priced again for two seats.
+      expect(routes.quoteRequests.last.$4, 2);
+      expect(find.text('₵6.50 × 2 seats'), findsOneWidget);
+      expect(_price(tester), '₵13.00');
+      expect(find.text('₵16.00'), findsOneWidget);
+      expect(reserveButton(tester).label, 'Reserve 2 Seats · ₵13.00');
+    });
+
+    testWidgets('the quote follows the 10 s refresh', (tester) async {
+      final world = morning();
+      final routes = await openLiveSeats(tester, world, p7Seats());
+      expect(_price(tester), '₵6.50');
+      final asked = routes.quoteRequests.length;
+
+      routes.quotes['t1'] = fareOf('5.00', solo: '8.00');
+      await nextRefresh(tester, world);
+      expect(routes.quoteRequests.length, asked + 1);
+      expect(_price(tester), '₵5.00');
+    });
+
+    testWidgets('solo equal to current: no crossed-out price; minimum not '
+        'lower: no "Drops to"', (tester) async {
+      await openLiveSeats(
+        tester,
+        morning(),
+        p7Seats(),
+        quote: fareOf('8.00', minimum: '8.00'),
+      );
+      expect(_price(tester), '₵8.00');
+      expect(find.text('₵8.00'), findsOneWidget);
+      expect(find.textContaining('Drops to'), findsNothing);
+      expect(find.text('as more riders join'), findsNothing);
+    });
+
+    testWidgets("the quote fails: the search result's fare, and Reserve still "
+        'works', (tester) async {
+      final world = morning();
+      final bookings = RecordingBookings(failures: const [NetworkFailure()]);
+      final routes = ScriptedTrips(
+        world.backend,
+        [
+          liveTrip(
+            id: 't1',
+            departs: DateTime(2026, 10, 1, 9, 15),
+            fare: '7.00',
+            solo: '9.00',
+          ),
+        ],
+        seatMaps: {'t1': seatMap('t1', p7Seats())},
+      )..quoteFailure = const NetworkFailure();
+      final live = liveMode(
+        world,
+        FakeTracking(const []),
+        routes: routes,
+        bookings: bookings,
+      );
+      await openResults(
+        tester,
+        world: world,
+        env: live.env,
+        overrides: live.overrides,
+      );
+
+      await openTrip(tester, '09:15');
+
+      expect(_price(tester), '₵7.00');
+      expect(find.text('₵9.00'), findsOneWidget);
+      expect(find.text('↓ Drops to ₵2.00'), findsOneWidget);
+      await tapSeat(tester, '4');
+      expect(reserveButton(tester).onPressed, isNotNull);
+      await tapReserve(tester);
+      // The booking went out (and failed on its own, offline).
+      expect(bookings.created, hasLength(1));
     });
 
     testWidgets('no vehicle or seat layout yet: said, with Retry', (

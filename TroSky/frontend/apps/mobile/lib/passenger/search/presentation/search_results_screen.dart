@@ -31,9 +31,10 @@ enum ResultsOutcome {
 /// Search Results (P-03, Figma P6): the vehicles for a journey, a page at
 /// a time, with the filter pills of decision 22.
 ///
-/// Mock mode shows the full design. Live mode shows what the backend gives:
-/// the trip's fare (decision 20) and where to board instead of the
-/// approaching badge (decision 21).
+/// Mock and live mode both show the full design from the backend's data:
+/// the fare for the passenger's stretch with the saving (G20), and the
+/// vehicles already on the road, approaching or past the stop (G21).
+/// Trips that haven't set off show where to board instead.
 class SearchResultsScreen extends ConsumerStatefulWidget {
   const SearchResultsScreen({super.key, required this.search});
 
@@ -46,7 +47,7 @@ class SearchResultsScreen extends ConsumerStatefulWidget {
 
 class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
   late JourneySearch _search = widget.search;
-  ResultsSort _sort = ResultsSort.departure;
+  SearchSort _sort = SearchSort.departure;
   bool _minibusOnly = false;
   bool _showPassed = false;
   bool _saving = false;
@@ -67,8 +68,9 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
     super.dispose();
   }
 
-  TripResultsControllerProvider get _results =>
-      tripResultsControllerProvider(_search);
+  TripResultsControllerProvider get _results => tripResultsControllerProvider(
+    ResultsRequest(_search, sort: _sort, minibusOnly: _minibusOnly),
+  );
 
   void _maybeLoadMore() {
     if (!_scroll.hasClients) return;
@@ -168,11 +170,7 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
     final l10n = AppLocalizations.of(context);
     final results = ref.watch(_results);
     final trips = results.value?.trips ?? const <TripSearchResultResponse>[];
-    final view = ResultsView.arrange(
-      trips,
-      sort: _sort,
-      minibusOnly: _minibusOnly,
-    );
+    final view = ResultsView.arrange(trips);
     final offline = ref.watch(
       sessionControllerProvider.select(
         (s) => switch (s.value) {
@@ -260,15 +258,14 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
                   onPressed: _schedule,
                 ),
                 for (final (sort, label) in [
-                  (ResultsSort.cheapest, l10n.filterCheapest),
-                  (ResultsSort.fastest, l10n.filterFastest),
+                  (SearchSort.cheapest, l10n.filterCheapest),
+                  (SearchSort.fastest, l10n.filterFastest),
                 ])
                   TroskyFilterPill(
                     label: label,
                     selected: _sort == sort,
                     onPressed: () => setState(
-                      () =>
-                          _sort = _sort == sort ? ResultsSort.departure : sort,
+                      () => _sort = _sort == sort ? SearchSort.departure : sort,
                     ),
                   ),
                 TroskyFilterPill(
@@ -378,6 +375,15 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
         ),
       ]);
     }
+    if (loaded.trips.isEmpty && _minibusOnly) {
+      return list([
+        _Message(
+          text: l10n.resultsNoMinibus,
+          action: l10n.resultsShowAllVehicles,
+          onAction: () => setState(() => _minibusOnly = false),
+        ),
+      ]);
+    }
     if (loaded.trips.isEmpty) {
       return list([
         _Message(
@@ -387,23 +393,16 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
         ),
       ]);
     }
-    if (view.upcoming.isEmpty && view.passed.isEmpty && _minibusOnly) {
-      return list([
-        _Message(
-          text: l10n.resultsNoMinibus,
-          action: l10n.resultsShowAllVehicles,
-          onAction: () => setState(() => _minibusOnly = false),
-        ),
-      ]);
-    }
     Widget card(TripSearchResultResponse trip) => tripCard(
       l10n,
       trip,
       bestMatch: identical(trip, view.bestMatch),
       onPressed: () => _open(trip),
     );
+    // The backend sends vehicles that passed the stop last, so their block
+    // closes the list.
     return list([
-      for (final trip in view.upcoming.take(view.passedAt)) card(trip),
+      for (final trip in view.upcoming) card(trip),
       if (_showPassed)
         for (final trip in view.passed) tripCard(l10n, trip, bestMatch: false)
       else if (view.passed.isNotEmpty)
@@ -411,7 +410,6 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
           label: l10n.resultsShowPassed(view.passed.length),
           onPressed: () => setState(() => _showPassed = true),
         ),
-      for (final trip in view.upcoming.skip(view.passedAt)) card(trip),
       if (loaded.loadingMore)
         const Padding(
           padding: EdgeInsets.all(TroskySpacing.s12),

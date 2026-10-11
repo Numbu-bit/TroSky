@@ -48,10 +48,93 @@ enum PickupSource {
   manual,
 }
 
+/// The order of `GET /trips/search` (`?sort=`). Vehicles that already
+/// passed the pickup always come last.
+@JsonEnum()
+enum SearchSort {
+  /// Soonest departure first (the backend's default).
+  departure,
+
+  /// Lowest current fare first.
+  cheapest,
+
+  /// Shortest scheduled ride first.
+  fastest,
+}
+
+/// `FareSummaryResponse` (backend app/schemas/trip.py): what a seat costs
+/// from one pickup to one drop-off, as the vehicle stands now. Amounts are
+/// in [currency], exactly as sent ("14.00").
+///
+/// A passenger's fare is fixed when they book; later riders lower it only
+/// for those who book after them.
+@freezed
+abstract class FareSummaryResponse with _$FareSummaryResponse {
+  const factory FareSummaryResponse({
+    /// Per seat right now, before TroSky's platform fee.
+    @JsonKey(fromJson: decimalString) required String current,
+
+    /// Per seat with nobody to share the trip: the crossed-out price.
+    @JsonKey(fromJson: decimalString) required String solo,
+
+    /// The lowest the per-seat price can reach if every free seat fills.
+    @JsonKey(fromJson: decimalString) required String minimum,
+
+    /// TroSky's fee for all [seats].
+    @JsonKey(fromJson: decimalString) required String platformFee,
+
+    /// What booking [seats] costs now: [current] × [seats] + [platformFee].
+    @JsonKey(fromJson: decimalString) required String total,
+    required String currency,
+
+    /// Seats already taken on the trip.
+    required int ridersCount,
+    required int seats,
+  }) = _FareSummaryResponse;
+
+  factory FareSummaryResponse.fromJson(Map<String, dynamic> json) =>
+      _$FareSummaryResponseFromJson(json);
+}
+
+/// `FareQuoteResponse` from `GET /trips/{id}/fare-quote`: a
+/// [FareSummaryResponse] for the stops and seats asked about. [total] is
+/// what `POST /bookings` would charge now.
+@freezed
+abstract class FareQuoteResponse with _$FareQuoteResponse {
+  const factory FareQuoteResponse({
+    required String tripId,
+    required String originStopId,
+    required String destinationStopId,
+    @JsonKey(fromJson: decimalString) required String current,
+    @JsonKey(fromJson: decimalString) required String solo,
+    @JsonKey(fromJson: decimalString) required String minimum,
+    @JsonKey(fromJson: decimalString) required String platformFee,
+    @JsonKey(fromJson: decimalString) required String total,
+    required String currency,
+    required int ridersCount,
+    required int seats,
+  }) = _FareQuoteResponse;
+
+  const FareQuoteResponse._();
+
+  factory FareQuoteResponse.fromJson(Map<String, dynamic> json) =>
+      _$FareQuoteResponseFromJson(json);
+
+  /// The price part, as search results carry it.
+  FareSummaryResponse get summary => FareSummaryResponse(
+    current: current,
+    solo: solo,
+    minimum: minimum,
+    platformFee: platformFee,
+    total: total,
+    currency: currency,
+    ridersCount: ridersCount,
+    seats: seats,
+  );
+}
+
 /// `TripSearchResultResponse` from `GET /trips/search` (backend
-/// app/schemas/trip.py), plus the fields proposed in backend gaps G20 and
-/// G21. Those stay null until the backend sends them, and the app only
-/// shows what they drive when they are there (decisions 20 and 21).
+/// app/schemas/trip.py).
 @freezed
 abstract class TripSearchResultResponse with _$TripSearchResultResponse {
   const factory TripSearchResultResponse({
@@ -76,17 +159,19 @@ abstract class TripSearchResultResponse with _$TripSearchResultResponse {
     double? pickupDistanceM,
     PickupSource? pickupSource,
 
-    /// G20: the searched stretch ridden alone.
-    @JsonKey(fromJson: decimalStringOrNull) String? soloFareAmount,
+    /// The price of one seat from the pickup to the searched destination
+    /// (G20, backend 0.13.0). Null only from an older backend.
+    FareSummaryResponse? fare,
 
-    /// G20: the searched stretch, shared, if booked now.
-    @JsonKey(fromJson: decimalStringOrNull) String? sharedFareAmount,
+    /// Scheduled minutes from the pickup to the destination.
+    int? rideMinutes,
 
-    /// G21: minutes until the vehicle reaches the pickup.
-    int? pickupEtaMinutes,
+    /// Minutes until a vehicle already on the road reaches the pickup (0:
+    /// there now). Null for trips that haven't set off (G21).
+    int? vehicleEtaToPickupMinutes,
 
-    /// G21: the vehicle already passed the pickup.
-    bool? passedPickup,
+    /// The vehicle already passed the pickup and can't be booked from it.
+    @Default(false) bool hasPassedPickup,
   }) = _TripSearchResultResponse;
 
   factory TripSearchResultResponse.fromJson(Map<String, dynamic> json) =>

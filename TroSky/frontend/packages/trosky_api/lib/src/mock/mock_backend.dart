@@ -727,10 +727,39 @@ class MockBackend {
         () => _MockTrip(trip, board!, alight!, _now()),
       );
     }
+    final shown = [
+      for (final trip in trips)
+        if (query.vehicleType == null || trip.vehicleType == query.vehicleType)
+          trip,
+    ];
+    double current(TripSearchResultResponse t) => double.parse(t.fare!.current);
+    int order(TripSearchResultResponse a, TripSearchResultResponse b) {
+      if (a.hasPassedPickup != b.hasPassedPickup) {
+        return a.hasPassedPickup ? 1 : -1;
+      }
+      final byKey = switch (query.sort) {
+        SearchSort.departure => 0,
+        SearchSort.cheapest => current(a).compareTo(current(b)),
+        SearchSort.fastest => (a.rideMinutes ?? 0).compareTo(
+          b.rideMinutes ?? 0,
+        ),
+      };
+      return byKey != 0
+          ? byKey
+          : a.scheduledDepartureAt.compareTo(b.scheduledDepartureAt);
+    }
+
+    // A stable sort: equal keys keep departure order.
+    final sorted = [for (final (i, trip) in shown.indexed) (i, trip)]
+      ..sort((a, b) {
+        final byOrder = order(a.$2, b.$2);
+        return byOrder != 0 ? byOrder : a.$1.compareTo(b.$1);
+      });
+    final ordered = [for (final (_, trip) in sorted) trip];
     return Ok(
       Paginated(
-        items: trips.skip(query.offset).take(query.limit).toList(),
-        total: trips.length,
+        items: ordered.skip(query.offset).take(query.limit).toList(),
+        total: ordered.length,
         limit: query.limit,
         offset: query.offset,
       ),
@@ -799,10 +828,16 @@ class MockBackend {
         pickupStopName: board.name,
         pickupDistanceM: walk == null ? null : (walk * 10).roundToDouble() / 10,
         pickupSource: source,
-        soloFareAmount: '$solo.00',
-        sharedFareAmount: '$shared.00',
-        pickupEtaMinutes: etaMinutes,
-        passedPickup: passed ?? (fromNow ? false : null),
+        fare: _fareSummary(
+          current: shared.toDouble(),
+          solo: solo.toDouble(),
+          minimum: type == VehicleType.minibus ? 6 : solo * 0.25,
+          seats: 1,
+          riders: 0,
+        ),
+        rideMinutes: minutes,
+        vehicleEtaToPickupMinutes: etaMinutes,
+        hasPassedPickup: passed ?? false,
       );
     }
 
@@ -908,7 +943,6 @@ class MockBackend {
               !trip.takenByOthers.contains(seat.id) && !held.contains(seat.id),
         ),
     ];
-    final fares = trip.fares(_booked(trip));
     return Ok(
       TripSeatsResponse(
         tripId: tripId,
@@ -916,10 +950,79 @@ class MockBackend {
         totalSeats: seats.length,
         availableSeats: seats.where((s) => s.isAvailable).length,
         seats: seats,
-        sharedFareAmount: fares.shared,
-        soloFareAmount: fares.solo,
-        floorFareAmount: fares.floor,
       ),
+    );
+  }
+
+  /// `GET /trips/{id}/fare-quote` (public): [seats] seats between the
+  /// trip's stops as it stands now, with the P7 fares on a minibus. The
+  /// mock prices each seat the same, however many are asked for.
+  Result<FareQuoteResponse> fareQuote(
+    String tripId, {
+    String? originStopId,
+    String? destinationStopId,
+    int seats = 1,
+  }) {
+    _expireHolds();
+    final trip = _tripIndex[tripId];
+    if (trip == null) return _error(404, 'NOT_FOUND', 'Trip not found.');
+    for (final (id, role) in [
+      (originStopId, 'origin'),
+      (destinationStopId, 'destination'),
+    ]) {
+      if (id != null && id != trip.board.id && id != trip.alight.id) {
+        return _error(
+          422,
+          'STOP_NOT_ON_ROUTE',
+          "That stop is not on this trip's route.",
+          {'stop_id': id, 'role': role},
+        );
+      }
+    }
+    final fares = trip.fares(_booked(trip));
+    final summary = _fareSummary(
+      current: double.parse(fares.shared),
+      solo: double.parse(fares.solo),
+      minimum: double.parse(fares.floor),
+      seats: seats,
+      riders: _booked(trip),
+    );
+    return Ok(
+      FareQuoteResponse(
+        tripId: tripId,
+        originStopId: originStopId ?? trip.board.id,
+        destinationStopId: destinationStopId ?? trip.alight.id,
+        current: summary.current,
+        solo: summary.solo,
+        minimum: summary.minimum,
+        platformFee: summary.platformFee,
+        total: summary.total,
+        currency: summary.currency,
+        ridersCount: summary.ridersCount,
+        seats: summary.seats,
+      ),
+    );
+  }
+
+  /// A fare as the backend sends it: [current] a seat, plus the flat
+  /// platform fee per seat.
+  static FareSummaryResponse _fareSummary({
+    required double current,
+    required double solo,
+    required double minimum,
+    required int seats,
+    required int riders,
+  }) {
+    final fee = double.parse(platformFeePerSeat) * seats;
+    return FareSummaryResponse(
+      current: current.toStringAsFixed(2),
+      solo: solo.toStringAsFixed(2),
+      minimum: minimum.toStringAsFixed(2),
+      platformFee: fee.toStringAsFixed(2),
+      total: (current * seats + fee).toStringAsFixed(2),
+      currency: 'GHS',
+      ridersCount: riders,
+      seats: seats,
     );
   }
 
@@ -1572,11 +1675,11 @@ class _MockTrip {
       final shared = booked <= 5 ? 14.0 : math.max(6, 44 / booked).toDouble();
       return (shared: shared.toStringAsFixed(2), solo: '38.00', floor: '6.00');
     }
-    final solo = double.parse(result.soloFareAmount ?? result.fareAmount);
+    final fare = result.fare;
     return (
-      shared: result.sharedFareAmount ?? result.fareAmount,
-      solo: solo.toStringAsFixed(2),
-      floor: (solo * 0.25).toStringAsFixed(2),
+      shared: fare?.current ?? result.fareAmount,
+      solo: fare?.solo ?? result.fareAmount,
+      floor: fare?.minimum ?? result.fareAmount,
     );
   }
 

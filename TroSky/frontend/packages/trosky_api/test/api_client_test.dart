@@ -408,6 +408,19 @@ void main() {
               'pickup_stop_name': 'Accra Madina',
               'pickup_distance_m': 350.4,
               'pickup_source': 'gps',
+              'fare': {
+                'current': '6.50',
+                'solo': '8.00',
+                'minimum': '2.00',
+                'platform_fee': '0.50',
+                'total': '7.00',
+                'currency': 'GHS',
+                'riders_count': 3,
+                'seats': 1,
+              },
+              'ride_minutes': 45,
+              'vehicle_eta_to_pickup_minutes': 4,
+              'has_passed_pickup': false,
             },
           ],
           'total': 21,
@@ -422,6 +435,8 @@ void main() {
           departureAfter: const Duration(hours: 7, minutes: 5, seconds: 9),
           pickupLatitude: 5.67,
           pickupLongitude: -0.166,
+          sort: SearchSort.cheapest,
+          vehicleType: VehicleType.minibus,
         ),
       );
 
@@ -433,6 +448,8 @@ void main() {
         'departure_after': '07:05:09',
         'pickup_latitude': 5.67,
         'pickup_longitude': -0.166,
+        'sort': 'cheapest',
+        'vehicle_type': 'minibus',
         'limit': 20,
         'offset': 0,
       });
@@ -442,10 +459,77 @@ void main() {
       expect(trip.distanceKm, 14);
       expect(trip.vehicleType, VehicleType.minibus);
       expect(trip.pickupSource, PickupSource.gps);
-      expect(trip.soloFareAmount, isNull);
-      expect(trip.pickupEtaMinutes, isNull);
+      expect(
+        (trip.fare?.current, trip.fare?.solo, trip.fare?.minimum),
+        ('6.50', '8.00', '2.00'),
+      );
+      expect((trip.fare?.total, trip.fare?.ridersCount), ('7.00', 3));
+      expect(
+        (
+          trip.rideMinutes,
+          trip.vehicleEtaToPickupMinutes,
+          trip.hasPassedPickup,
+        ),
+        (45, 4, false),
+      );
       expect(page.valueOrNull!.hasMore, isTrue);
     });
+
+    test('a 0.12.0 search result (no fare) still reads', () {
+      final trip = TripSearchResultResponse.fromJson(const {
+        'trip_id': 't1',
+        'route_id': 'r1',
+        'route_name': 'Madina - Circle',
+        'origin_stop_id': 's1',
+        'destination_stop_id': 's4',
+        'scheduled_departure_at': '2026-10-02T07:15:00Z',
+        'fare_amount': '8.00',
+        'status': 'scheduled',
+        'available_seats': 12,
+      });
+      expect((trip.fare, trip.hasPassedPickup), (null, false));
+    });
+
+    test(
+      'GET /trips/{id}/fare-quote: the stops and seats, money as sent',
+      () async {
+        final adapter = FakeAdapter(
+          (_) async => const FakeReply(200, {
+            'current': '4.00',
+            'solo': '8.00',
+            'minimum': '2.00',
+            'platform_fee': '1.00',
+            'total': '9.00',
+            'currency': 'GHS',
+            'riders_count': 0,
+            'seats': 2,
+            'trip_id': 't1',
+            'origin_stop_id': 's1',
+            'destination_stop_id': 's4',
+          }),
+        );
+        final quote = await LiveRouteRepository(dio(adapter)).fareQuote(
+          't1',
+          originStopId: 's1',
+          destinationStopId: 's4',
+          seats: 2,
+        );
+        final request = adapter.requests.single;
+        expect(request.path, '/trips/t1/fare-quote');
+        expect(request.queryParameters, {
+          'origin_stop_id': 's1',
+          'destination_stop_id': 's4',
+          'seats': 2,
+        });
+        expect(request.headers['Authorization'], isNull);
+        final value = quote.valueOrNull!;
+        expect(
+          (value.current, value.solo, value.total),
+          ('4.00', '8.00', '9.00'),
+        );
+        expect(value.summary.platformFee, '1.00');
+      },
+    );
 
     test('GET /stops?q= reads the page of stops', () async {
       final adapter = FakeAdapter(
@@ -533,7 +617,6 @@ void main() {
       expect(adapter.requests.single.headers['Authorization'], isNull);
       final map = seats.valueOrNull!;
       expect(map.seats.last.seatType, SeatType.standard);
-      expect(map.sharedFareAmount, isNull);
     });
 
     test('POST /bookings: the backend names, an Idempotency-Key, money as '

@@ -75,6 +75,41 @@ Future<List<NearbyStopResponse>> nearbyStopList(Ref ref) async {
   };
 }
 
+/// A search with the order and filter its results come in (decision 22).
+/// The backend sorts and filters, across every page.
+@immutable
+class ResultsRequest {
+  const ResultsRequest(
+    this.search, {
+    this.sort = SearchSort.departure,
+    this.minibusOnly = false,
+  });
+
+  final JourneySearch search;
+  final SearchSort sort;
+  final bool minibusOnly;
+
+  ResultsRequest copyWith({
+    JourneySearch? search,
+    SearchSort? sort,
+    bool? minibusOnly,
+  }) => ResultsRequest(
+    search ?? this.search,
+    sort: sort ?? this.sort,
+    minibusOnly: minibusOnly ?? this.minibusOnly,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is ResultsRequest &&
+      other.search == search &&
+      other.sort == sort &&
+      other.minibusOnly == minibusOnly;
+
+  @override
+  int get hashCode => Object.hash(search, sort, minibusOnly);
+}
+
 /// The phone gave no position for a "Current location" search.
 class LocationUnavailable implements Exception {
   const LocationUnavailable();
@@ -90,7 +125,8 @@ class TripResults {
     this.loadMoreError,
   });
 
-  /// In the backend's order: earliest departure first.
+  /// In the backend's order ([ResultsRequest.sort]; vehicles that passed
+  /// the pickup last).
   final List<TripSearchResultResponse> trips;
   final int total;
   final bool loadingMore;
@@ -107,7 +143,8 @@ class TripResults {
       );
 }
 
-/// The results of [search] (`GET /trips/search`), a page at a time.
+/// The results of a [ResultsRequest] (`GET /trips/search`), a page at a
+/// time.
 ///
 /// Fails with an [AppFailure] (e.g. 422 `NO_PICKUP_NEARBY`) or
 /// [LocationUnavailable].
@@ -116,8 +153,8 @@ class TripResultsController extends _$TripResultsController {
   late TripSearchQuery _query;
 
   @override
-  Future<TripResults> build(JourneySearch search) async {
-    _query = await _queryFor(search);
+  Future<TripResults> build(ResultsRequest request) async {
+    _query = await _queryFor(request);
     final result = await ref.read(routeRepositoryProvider).searchTrips(_query);
     return switch (result) {
       Ok(:final value) => TripResults(trips: value.items, total: value.total),
@@ -145,7 +182,8 @@ class TripResultsController extends _$TripResultsController {
     });
   }
 
-  Future<TripSearchQuery> _queryFor(JourneySearch search) async {
+  Future<TripSearchQuery> _queryFor(ResultsRequest request) async {
+    final search = request.search;
     final at = (search.when.at ?? ref.read(clockProvider)()).toUtc();
     double? latitude;
     double? longitude;
@@ -170,6 +208,8 @@ class TripResultsController extends _$TripResultsController {
       departureAfter: Duration(hours: at.hour, minutes: at.minute),
       pickupLatitude: latitude,
       pickupLongitude: longitude,
+      sort: request.sort,
+      vehicleType: request.minibusOnly ? VehicleType.minibus : null,
       limit: tripsPageSize,
     );
   }
