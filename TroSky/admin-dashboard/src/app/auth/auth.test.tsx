@@ -55,6 +55,27 @@ describe('signing in', () => {
     expect(screen.getByLabelText('Password')).toHaveValue('')
   })
 
+  it('says the server is waking up when signing in takes a while', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      // A server asleep on a free plan: no answer for a long time.
+      server.use(http.post('*/api/v1/auth/login', () => new Promise<never>(() => {})))
+      const { user } = renderApp('/login')
+      await signIn(user, ADMIN.email, DEMO_PASSWORD)
+      expect(screen.queryByText(/waking up/)).not.toBeInTheDocument()
+
+      await vi.advanceTimersByTimeAsync(6_000)
+
+      const hint = await screen.findByText(
+        'The server is waking up. After a quiet spell this can take up to a minute.',
+      )
+      // In a live region, so screen readers announce it.
+      expect(hint.closest('[aria-live="polite"]')).not.toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('validates the form before sending it', async () => {
     const { user } = renderApp('/login')
     await user.click(await screen.findByRole('button', { name: 'Sign in' }))
