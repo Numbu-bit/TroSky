@@ -17,6 +17,10 @@
 # SEED_DEMO_DATA=true. No secret is ever printed.
 set -euo pipefail
 
+# Run from the image's /app (this script's parent folder), whatever the
+# working directory: alembic.ini and the `scripts` package live there.
+cd "$(dirname "$0")/.."
+
 log() { echo "[render-start] $*"; }
 
 # Fewer malloc arenas: less memory per Python process, to fit 512 MB.
