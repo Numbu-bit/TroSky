@@ -1,0 +1,325 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import '@fontsource-variable/inter';
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * TroSky Brand Identity.
+ *   Emerald      #00A86B  accents, focus rings, large elements, single-series charts
+ *   Emerald 700  #00855A  the brand's buttons and links (white text 4.7:1). White
+ *                         on #00A86B is only 3.1:1, so it never carries normal-size
+ *                         text. On the #F5F5F5 page background #00855A text is
+ *                         4.3:1, short of AA's 4.5:1, so buttons and links use a
+ *                         slightly deeper emerald, #007A52 (5.4:1 on white, 4.9:1
+ *                         on #F5F5F5).
+ *   Midnight     #12355B  sidebar, information
+ *   Golden Route #F9A825  highlights, active status, warnings -- only with #333333
+ *                         text, never as text on white
+ *   Neutrals     #FFFFFF cards, #F5F5F5 section backgrounds, #333333 body text
+ */
+:root {
+  --radius: 0.625rem;
+
+  --background: #f5f5f5;
+  --foreground: #333333;
+  --card: #ffffff;
+  --card-foreground: #333333;
+  --popover: #ffffff;
+  --popover-foreground: #333333;
+  --primary: #007a52;
+  --primary-foreground: #ffffff;
+  --secondary: #eef1f4;
+  --secondary-foreground: #12355b;
+  --muted: #eef0f2;
+  --muted-foreground: #5c6670;
+  --accent: #e8f0f8;
+  --accent-foreground: #12355b;
+  --destructive: #d32f2f;
+  --destructive-foreground: #ffffff;
+  --border: #dfe3e8;
+  --input: #cfd5dc;
+  --ring: #00a86b;
+
+  --brand: #00a86b;
+  --brand-strong: #00855a;
+  --navy: #12355b;
+  --gold: #f9a825;
+  --gold-foreground: #333333;
+
+  /* Status: always shown with an icon and a label, never colour alone. */
+  --success: #2e7d32;
+  --success-foreground: #ffffff;
+  --success-soft: #e6f4ea;
+  --success-text: #1e6524;
+  --warning: #f9a825;
+  --warning-foreground: #333333;
+  --warning-soft: #fff4d6;
+  --warning-text: #6b4a00;
+  --danger: #d32f2f;
+  --danger-foreground: #ffffff;
+  --danger-soft: #fdecec;
+  --danger-text: #a8201f;
+  --info: #12355b;
+  --info-foreground: #ffffff;
+  --info-soft: #e8eef6;
+  --info-text: #12355b;
+
+  /* Charts: categorical colours in fixed order; colour follows the entity. */
+  --chart-1: #00a86b;
+  --chart-2: #2a78d6;
+  --chart-3: #eb6834;
+  --chart-4: #4a3aa7;
+  --chart-5: #eda100;
+  --chart-6: #e87ba4;
+  --chart-other: #9aa3ad;
+  /* Magnitude: one-hue blue ramp, light = less. */
+  --heat-1: #cde2fb;
+  --heat-2: #9cc4f2;
+  --heat-3: #5f9be0;
+  --heat-4: #2c6ebd;
+  --heat-5: #0d366b;
+  --heat-text: #0d366b;
+  --heat-text-mid: #08213f;
+  --heat-text-strong: #ffffff;
+
+  --sidebar: #12355b;
+  --sidebar-foreground: #e9f0f7;
+  --sidebar-primary: #00a86b;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1b4471;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #224b78;
+  --sidebar-ring: #00a86b;
+}
+
+/* Navy-tinted dark surfaces with colours chosen for them, not inverted. */
+.dark {
+  --background: #0a1726;
+  --foreground: #e3eaf2;
+  --card: #0f2135;
+  --card-foreground: #e3eaf2;
+  --popover: #10243a;
+  --popover-foreground: #e3eaf2;
+  --primary: #2bc98f;
+  --primary-foreground: #04170f;
+  --secondary: #17304c;
+  --secondary-foreground: #e3eaf2;
+  --muted: #142a42;
+  --muted-foreground: #9db0c4;
+  --accent: #1a3554;
+  --accent-foreground: #e3eaf2;
+  --destructive: #d32f2f;
+  --destructive-foreground: #ffffff;
+  --border: #213d5c;
+  --input: #2b4b70;
+  --ring: #2bc98f;
+
+  --brand: #00a86b;
+  --brand-strong: #2bc98f;
+  --navy: #12355b;
+  --gold: #f9a825;
+  --gold-foreground: #333333;
+
+  --success: #43a047;
+  --success-foreground: #04170f;
+  --success-soft: #133524;
+  --success-text: #8fd694;
+  --warning: #f9a825;
+  --warning-foreground: #333333;
+  --warning-soft: #3a2f10;
+  --warning-text: #ffd36b;
+  /* A fill behind white text (5.6:1); danger text uses --danger-text. */
+  --danger: #c62828;
+  --danger-foreground: #ffffff;
+  --danger-soft: #3d1a1d;
+  --danger-text: #ff9e9b;
+  --info: #3d7cc7;
+  --info-foreground: #ffffff;
+  --info-soft: #15304f;
+  --info-text: #9cc6f5;
+
+  --chart-1: #00a86b;
+  --chart-2: #3987e5;
+  --chart-3: #d95926;
+  --chart-4: #9085e9;
+  --chart-5: #c98500;
+  --chart-6: #d55181;
+  --chart-other: #6b7c8f;
+  /* In dark mode lighter means more. */
+  --heat-1: #0d366b;
+  --heat-2: #2c6ebd;
+  --heat-3: #5f9be0;
+  --heat-4: #9cc4f2;
+  --heat-5: #cde2fb;
+  --heat-text: #ffffff;
+  --heat-text-strong: #0d366b;
+
+  --sidebar: #08131f;
+  --sidebar-foreground: #dbe5ef;
+  --sidebar-primary: #2bc98f;
+  --sidebar-primary-foreground: #04170f;
+  --sidebar-accent: #12263c;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #182c43;
+  --sidebar-ring: #2bc98f;
+}
+
+@theme inline {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-navy: var(--navy);
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-soft: var(--success-soft);
+  --color-success-text: var(--success-text);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-text: var(--warning-text);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-text: var(--danger-text);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-soft: var(--info-soft);
+  --color-info-text: var(--info-text);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-other: var(--chart-other);
+  --color-heat-1: var(--heat-1);
+  --color-heat-2: var(--heat-2);
+  --color-heat-3: var(--heat-3);
+  --color-heat-4: var(--heat-4);
+  --color-heat-5: var(--heat-5);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-bold tracking-tight;
+  }
+  h4,
+  h5,
+  h6 {
+    @apply font-semibold;
+  }
+  /* Tables and chart axes line their digits up. */
+  table,
+  .recharts-cartesian-axis-tick {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  /* Fares, ETAs and other figures. */
+  .figure {
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* A text link: underlined, so it is never told apart by colour alone. */
+  .link-inline {
+    color: var(--primary);
+    text-decoration-line: underline;
+    text-underline-offset: 2px;
+    text-decoration-color: color-mix(in oklab, var(--primary) 45%, transparent);
+  }
+  .link-inline:hover {
+    text-decoration-color: currentColor;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Printing (reports' "Save as PDF"): the page's content only, in light colours. */
+@media print {
+  [data-slot='sidebar'],
+  [data-slot='sidebar-gap'],
+  [data-slot='sidebar-container'],
+  [data-print='hide'],
+  header.sticky {
+    display: none !important;
+  }
+  [data-slot='sidebar-inset'] {
+    margin: 0 !important;
+  }
+  body {
+    background: #ffffff !important;
+    color: #333333 !important;
+  }
+  table {
+    break-inside: auto;
+  }
+  tr {
+    break-inside: avoid;
+  }
+}

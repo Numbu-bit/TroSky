@@ -1,0 +1,17 @@
+# Only what the build needs. Local env files stay out, so the image gets
+# its settings from build arguments alone (see the Dockerfile).
+node_modules
+dist
+dist-demo
+coverage
+playwright-report
+test-results
+blob-report
+.vite
+*.tsbuildinfo
+.env
+.env.*
+.git
+.DS_Store
+Dockerfile
+.dockerignore
