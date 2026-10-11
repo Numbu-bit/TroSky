@@ -2189,3 +2189,9 @@ pause, resume and end trips by hand, and admins cancel as before.
   still waiting for the driver, and stopped there. The driver now accepts it
   first, as in the app. Seeding no longer needs
   `BOOKING_ACCEPTANCE_REQUIRED=false`.
+- **GPS simulator (`scripts.simulate_gps`):** stays signed in past the
+  15-minute access token (refreshes it, or signs in again, and resends the
+  ping). Run again on a trip already on the road, it carries on from where
+  it was last reported instead of jumping back to the first stop (which the
+  backend rejected as implausible). `--from-stop` (a number from 1, or part
+  of a stop's name) starts a trip partway along its route.
