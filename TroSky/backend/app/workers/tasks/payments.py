@@ -8,12 +8,11 @@ the primary confirmation mechanism (the webhook is).
 
 from __future__ import annotations
 
-import asyncio
-
 from app.core.database import transactional_session
 from app.core.logging import get_logger
 from app.services.payment_service import PaymentService
 from app.workers.celery_app import celery_app
+from app.workers.loop import run_task
 
 logger = get_logger(__name__)
 
@@ -26,6 +25,6 @@ async def _reconcile_pending_payments_async() -> int:
 
 @celery_app.task(name="app.workers.tasks.payments.reconcile_pending_payments")
 def reconcile_pending_payments() -> int:
-    count = asyncio.run(_reconcile_pending_payments_async())
+    count = run_task(_reconcile_pending_payments_async())
     logger.info("reconcile_pending_payments_task_complete", reconciled_count=count)
     return count

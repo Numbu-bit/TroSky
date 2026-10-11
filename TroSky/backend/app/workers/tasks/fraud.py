@@ -7,14 +7,13 @@ picks up whatever it would have found.
 
 from __future__ import annotations
 
-import asyncio
-
 from app.api.v1.admin_fraud import DETECTION_LOCK, DETECTION_LOCK_SECONDS
 from app.core.database import transactional_session
 from app.core.logging import get_logger
 from app.core.redis import RedisLock, get_redis_client
 from app.services.fraud_service import FraudService
 from app.workers.celery_app import celery_app
+from app.workers.loop import run_task
 
 logger = get_logger(__name__)
 
@@ -34,6 +33,6 @@ async def _detect_fraud_async() -> int | None:
 
 @celery_app.task(name="app.workers.tasks.fraud.detect_fraud")
 def detect_fraud() -> int | None:
-    raised = asyncio.run(_detect_fraud_async())
+    raised = run_task(_detect_fraud_async())
     logger.info("detect_fraud_task_complete", raised=raised)
     return raised
