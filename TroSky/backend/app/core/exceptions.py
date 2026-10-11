@@ -57,7 +57,7 @@ class AppError(Exception):
 
 class ValidationAppError(AppError):
     code = "VALIDATION_ERROR"
-    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
     message = "The submitted data is invalid."
 
 
@@ -159,7 +159,7 @@ class PasswordResetTokenInvalidError(AppError):
 
 class FileValidationError(AppError):
     code = "FILE_VALIDATION_ERROR"
-    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
     message = "The uploaded file failed validation."
 
 
@@ -176,7 +176,7 @@ class NoPickupNearbyError(AppError):
     fall back to letting the passenger search for a pickup point by name."""
 
     code = "NO_PICKUP_NEARBY"
-    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
     message = "No pickup point is within walking distance of your location."
 
 
@@ -199,7 +199,7 @@ class ShareLinkGoneError(AppError):
 
 class StopNotOnRouteError(AppError):
     code = "STOP_NOT_ON_ROUTE"
-    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
     message = "The selected stop is not on this trip's route."
 
 
@@ -321,7 +321,7 @@ def register_exception_handlers(app: FastAPI) -> None:
             "validation_error", path=request.url.path, request_id=request_id, errors=details
         )
         return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             content=_error_body(
                 code="VALIDATION_ERROR",
                 message="The submitted data is invalid.",
@@ -338,7 +338,7 @@ def register_exception_handlers(app: FastAPI) -> None:
             status.HTTP_401_UNAUTHORIZED: "UNAUTHORIZED",
             status.HTTP_403_FORBIDDEN: "FORBIDDEN",
             status.HTTP_405_METHOD_NOT_ALLOWED: "METHOD_NOT_ALLOWED",
-            status.HTTP_413_REQUEST_ENTITY_TOO_LARGE: "PAYLOAD_TOO_LARGE",
+            status.HTTP_413_CONTENT_TOO_LARGE: "PAYLOAD_TOO_LARGE",
             status.HTTP_429_TOO_MANY_REQUESTS: "RATE_LIMIT_EXCEEDED",
         }.get(exc.status_code, "HTTP_ERROR")
         return JSONResponse(

@@ -2204,3 +2204,20 @@ pause, resume and end trips by hand, and admins cancel as before.
   resolves the old hold on the spot as the sweep would have: an unpaid
   booking expires, an unanswered one moves to another vehicle or ends. The
   sweep only tidies up.
+
+## [0.22.2] - 2026-10-11 - Security updates
+
+- **Dependencies with known vulnerabilities upgraded** (the 6 HIGH findings
+  of the backend workflow's scan, and the rest of what `pip-audit` reports):
+  `cryptography` 43 to 50 (six advisories, all fixed by 49.0.0); `starlette`
+  0.46 to 1.7 (seven advisories, fixed by 1.3.1), which needs FastAPI 0.115
+  to 0.143 and `prometheus-fastapi-instrumentator` 7 to 8; and, for the
+  tests only, `pytest` 8 to 9 (one advisory) with `pytest-asyncio` 0.24 to
+  1.4. `pip-audit` now finds no known vulnerability in the installed set.
+  `starlette` is named in `pyproject.toml` so its fixed version is required.
+- **A JSON body must say it is JSON** (`Content-Type: application/json`):
+  FastAPI no longer reads one sent without it, and answers 422. The app,
+  the dashboard and the GPS simulator already send it.
+- The audit log still records each admin action's full route path
+  (`/api/v1/admin/users/{user_id}/suspend`): FastAPI now keeps included
+  routers nested, and a route knows only its path within its router.

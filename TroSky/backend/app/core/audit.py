@@ -233,6 +233,25 @@ async def _reason(request: Request) -> str | None:
     return None
 
 
+def _path_template(request: Request, route: Any) -> str:
+    """The matched route's full path, its parameters left as names
+    ("/api/v1/admin/users/{user_id}/suspend").
+
+    A route included through routers knows only its path within its own
+    router (as in FastAPI 0.143, used here), so the routers' prefix is read off the
+    request: the part of its path before the piece the route's own pattern
+    matches. Exact while no route takes a ``{name:path}`` parameter."""
+    path: str = request.scope.get("path") or request.url.path
+    relative = getattr(route, "path", None)
+    pattern = getattr(route, "path_regex", None)
+    if not relative or pattern is None:
+        return path
+    for start, char in enumerate(path):
+        if char == "/" and pattern.match(path[start:]):
+            return path[:start] + str(relative)
+    return str(relative)
+
+
 async def audit_admin_requests(request: Request) -> AsyncIterator[None]:
     """Router dependency: record what this admin request changes. Reads
     pass straight through.
@@ -250,7 +269,7 @@ async def audit_admin_requests(request: Request) -> AsyncIterator[None]:
         request=request,
         action=getattr(route, "name", None) or request.url.path,
         method=request.method,
-        path=getattr(route, "path", None) or request.url.path,
+        path=_path_template(request, route),
         ip_address=resolve_client_ip(request, get_settings().trusted_proxy_networks),
         user_agent=request.headers.get("user-agent"),
         request_id=getattr(request.state, "request_id", None),
