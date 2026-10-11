@@ -148,12 +148,8 @@ PY
 # --- Demo data: only on request --------------------------------------------
 if [ "${SEED_DEMO_DATA:-false}" = "true" ]; then
     log "SEED_DEMO_DATA=true: loading demo stops, routes, trips and accounts"
-    # The demo seed confirms its sample booking straight away, which a
-    # booking still waiting for its driver can't be (0.20.0, booking
-    # acceptance), so the seed alone runs without that step; the server
-    # keeps it. Demo data is optional: if loading it fails, the server
-    # starts anyway.
-    if ! BOOKING_ACCEPTANCE_REQUIRED=false python -m scripts.seed_demo_data; then
+    # Demo data is optional: if loading it fails, the server starts anyway.
+    if ! python -m scripts.seed_demo_data; then
         log "loading the demo data failed (see above): starting without it"
     fi
 fi
@@ -206,19 +202,15 @@ for i in $(seq 1 300); do
 done
 
 # --- Celery worker with embedded beat ---------------------------------------
-# One task at a time, each in a fresh child process (--max-tasks-per-child 1).
-# The tasks call asyncio.run(), a new event loop per task, while the
-# database engine and Redis client are process-wide; a second task in the
-# same process gets connections tied to the first task's closed loop
-# ("attached to a different loop"). The solo pool runs every task in one
-# process, and about half of them failed that way. A fresh child per task
-# costs a fork every few seconds and stays inside 512 MB.
+# One task at a time, in one child process kept for good: its tasks share
+# one event loop, and with it the database and Redis connections
+# (app/workers/loop.py), so no fresh child per task is needed.
 # /app isn't writable by the trosky user, so beat keeps its schedule in
 # /tmp (lost on restart, which only means each periodic task runs at start).
 log "starting the Celery worker with beat"
 celery -A app.workers.celery_app worker \
     --beat --schedule /tmp/celerybeat-schedule \
-    --pool prefork --concurrency 1 --max-tasks-per-child 1 \
+    --pool prefork --concurrency 1 \
     --loglevel INFO &
 celery_pid=$!
 
