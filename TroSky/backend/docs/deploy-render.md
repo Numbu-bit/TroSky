@@ -98,6 +98,7 @@ automatically (`autoDeployTrigger: commit` with a build filter).
 | `DATABASE_POOL_SIZE=5`, `DATABASE_MAX_OVERFLOW=5`, `SEED_DEMO_DATA=false` | `render.yaml` |
 | `PASSENGER_SIGNUP_COUNTRIES=" "` (empty) | `render.yaml`. **TEMPORARY — set back to GH once the app sends location (next frontend step).** See "Passenger sign-up" |
 | `BOOKING_ACCEPTANCE_REQUIRED=true` | `render.yaml`, the normal behaviour. See "Booking acceptance" |
+| `CORS_ALLOWED_ORIGINS=http://localhost:3000` | `render.yaml`, the backend default for now. Add the admin dashboard's URL once it is deployed. See "The admin dashboard" |
 | `DATABASE_URL_SYNC`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `TRUSTED_HOSTS`, `MALLOC_ARENA_MAX` | Derived by `render-start.sh` |
 | `PORT`, `RENDER_EXTERNAL_HOSTNAME` | Set by Render |
 | `S3_*` | Not set: uploads don't work yet |
@@ -158,10 +159,10 @@ backend needs no CORS change.
    - or as static files: put the line in `.env.staging` and run `npm run build -- --mode staging`.
 2. When running the image, set `API_ORIGIN=https://trosky-api.onrender.com`. Without it, the
    image's Content-Security-Policy blocks the calls to Render.
-3. Allow the dashboard's address on Render: `CORS_ALLOWED_ORIGINS`, comma-separated, e.g.
-   `https://admin.example.com`. It isn't in `render.yaml` yet, so the backend default applies
-   (`http://localhost:3000`), and browsers block the dashboard's requests. Add it under `envVars`
-   in `render.yaml`, or under Environment.
+3. Allow the dashboard's address on Render: add it to `CORS_ALLOWED_ORIGINS` in `render.yaml`
+   (comma-separated, e.g. `http://localhost:3000,https://admin.example.com`) and push. Until then
+   only the backend default, `http://localhost:3000`, is allowed, and browsers block the
+   dashboard's requests.
 
 Free services sleep (see "Free-tier limits"): after a quiet spell, the first requests wait for the
 server to start, and the dashboard shows errors until it is up.
