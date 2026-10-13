@@ -2290,3 +2290,12 @@ pause, resume and end trips by hand, and admins cancel as before.
   now shielded from the cancellation (`close_pubsub` in `app/core/redis.py`).
   The trip-tracking WebSocket closes its subscription the same way.
 - `anyio` is now a named dependency (Starlette already brought it).
+
+## [0.22.7] - 2026-10-13 - A deleted account's number can sign up again
+
+- **Fixed: deleting an account kept its phone number and email taken for
+  good.** Sign-up refused them with "An account with this phone number
+  already exists", and no admin could find that account, since deleted
+  accounts are left out of every list. Phone numbers and emails are now
+  unique only among accounts that are not deleted (migration
+  `20261013_0022`). The deleted account keeps its record and its history.

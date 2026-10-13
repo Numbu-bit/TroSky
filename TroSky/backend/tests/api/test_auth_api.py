@@ -7,6 +7,7 @@ import secrets
 import pytest
 from httpx import AsyncClient
 
+from app.core.redis import get_redis_client
 from app.providers.email.sandbox import SandboxEmailProvider
 from app.providers.sms.sandbox import SandboxSmsProvider
 
@@ -232,3 +233,77 @@ class TestPassengerSignUpLocation:
             },
         )
         assert response.status_code == 422
+
+
+async def _signed_up(client: AsyncClient, phone: str, email: str, name: str) -> dict[str, str]:
+    """Registers, verifies and signs in: the new account's auth header."""
+    registered = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "phone_number": phone,
+            "email": email,
+            "password": "Str0ngPass",
+            "full_name": name,
+            "role": "passenger",
+        },
+    )
+    assert registered.status_code == 201, registered.text
+    target = registered.json()["otp_sent_to"]
+    message = SandboxSmsProvider.get_last_message(target)
+    assert message is not None
+    verified = await client.post(
+        "/api/v1/auth/verify-otp",
+        json={"target": target, "purpose": "registration", "code": _extract_otp(message)},
+    )
+    assert verified.status_code == 200, verified.text
+    signed_in = await client.post(
+        "/api/v1/auth/login", json={"identifier": phone, "password": "Str0ngPass"}
+    )
+    assert signed_in.status_code == 200, signed_in.text
+    return {"Authorization": f"Bearer {signed_in.json()['access_token']}"}
+
+
+class TestADeletedAccount:
+    async def test_frees_its_number_and_email_for_a_new_sign_up(
+        self, client: AsyncClient, seed_identity_data: None, require_redis: None
+    ) -> None:
+        """A deleted account's number and email used to stay taken for good:
+        sign-up answered that an account already had them, and no admin
+        could find one, deleted accounts being left out of every list."""
+        phone, email = _fresh_local_number(), f"kofi.{secrets.token_hex(4)}@example.com"
+        first = await _signed_up(client, phone, email, "Kofi Boateng")
+        first_id = (await client.get("/api/v1/users/me", headers=first)).json()["id"]
+
+        deleted = await client.request(
+            "DELETE", "/api/v1/users/me", headers=first, json={"password": "Str0ngPass"}
+        )
+        assert deleted.status_code == 200, deleted.text
+        # A minute later, when the first sign-up's code cooldown is over.
+        redis = get_redis_client()
+        async for key in redis.scan_iter("otp:cooldown:*"):
+            await redis.delete(key)
+        second = await _signed_up(client, phone, email, "Kofi Boateng")
+
+        me = (await client.get("/api/v1/users/me", headers=second)).json()
+        assert me["id"] != first_id
+        assert me["email"] == email
+        assert (await client.get("/api/v1/users/me", headers=first)).status_code == 401
+
+    async def test_a_live_account_still_keeps_its_number(
+        self, client: AsyncClient, seed_identity_data: None, require_redis: None
+    ) -> None:
+        phone = _fresh_local_number()
+        await _signed_up(client, phone, f"esi.{secrets.token_hex(4)}@example.com", "Esi Mensah")
+
+        again = await client.post(
+            "/api/v1/auth/register",
+            json={
+                "phone_number": phone,
+                "password": "Str0ngPass",
+                "full_name": "Esi Mensah",
+                "role": "passenger",
+            },
+        )
+
+        assert again.status_code == 409
+        assert again.json()["error"]["code"] == "PHONE_ALREADY_REGISTERED"
