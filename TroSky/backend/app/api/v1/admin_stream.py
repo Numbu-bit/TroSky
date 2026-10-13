@@ -33,7 +33,7 @@ import asyncio
 import json
 import re
 import time
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Header, Query, Request
@@ -54,7 +54,7 @@ from app.core.exceptions import (
 )
 from app.core.logging import get_logger
 from app.core.permissions import Permission, Principal, bearer_scheme
-from app.core.redis import get_redis_client
+from app.core.redis import close_pubsub, get_redis_client
 
 logger = get_logger(__name__)
 
@@ -132,7 +132,7 @@ async def admin_events(
     heartbeat_seconds: float = HEARTBEAT_SECONDS,
     position_interval: float = POSITION_INTERVAL_SECONDS,
     poll_seconds: float = 1.0,
-) -> AsyncIterator[str]:
+) -> AsyncGenerator[str, None]:
     """The stream's body. Ends by itself only when access is withdrawn; a
     client that disconnects cancels it.
 
@@ -191,9 +191,7 @@ async def admin_events(
                 next_heartbeat = now + heartbeat_seconds
     finally:
         if pubsub is not None:
-            await pubsub.punsubscribe(POSITIONS_PATTERN)
-            # redis-py's own inline types omit a signature for aclose().
-            await pubsub.aclose()  # type: ignore[no-untyped-call]
+            await close_pubsub(pubsub)
 
 
 async def _principal(token: str) -> Principal:
@@ -203,7 +201,7 @@ async def _principal(token: str) -> Principal:
         return await resolve_principal(session, token)
 
 
-async def _counted(events: AsyncIterator[str]) -> AsyncIterator[str]:
+async def _counted(events: AsyncGenerator[str, None]) -> AsyncIterator[str]:
     global _open_streams
     _open_streams += 1
     try:
@@ -211,6 +209,10 @@ async def _counted(events: AsyncIterator[str]) -> AsyncIterator[str]:
             yield chunk
     finally:
         _open_streams -= 1
+        # A stream dropped between two events waits at a yield; this ends
+        # it, and frees its subscription, now rather than whenever it is
+        # garbage collected.
+        await events.aclose()
 
 
 @router.get(

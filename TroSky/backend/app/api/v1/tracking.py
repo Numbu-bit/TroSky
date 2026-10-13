@@ -34,7 +34,7 @@ from app.core.exceptions import AppError, ForbiddenError, NotFoundError
 from app.core.logging import get_logger
 from app.core.permissions import Principal
 from app.core.ratelimit import rate_limit
-from app.core.redis import get_redis_client
+from app.core.redis import close_pubsub, get_redis_client
 from app.core.telemetry import ACTIVE_WEBSOCKET_CONNECTIONS
 from app.schemas.tracking import EtaResponse, LiveLocationResponse, NearbyVehicleResponse
 from app.services.tracking_service import TrackingService, channel_name
@@ -185,9 +185,7 @@ async def track_trip(websocket: WebSocket, trip_id: uuid.UUID) -> None:
         pass
     finally:
         ACTIVE_WEBSOCKET_CONNECTIONS.labels(event="disconnected").inc()
-        await pubsub.unsubscribe(channel_name(trip_id))
-        # redis-py's own inline types omit a signature for aclose().
-        await pubsub.aclose()  # type: ignore[no-untyped-call]
+        await close_pubsub(pubsub)
 
 
 @vehicles_router.get(
