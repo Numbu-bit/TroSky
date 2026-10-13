@@ -216,10 +216,22 @@ instance; after a restart, ask for a new code.
 Render's free plan blocks SMTP, so real email goes through an HTTPS API instead (backend
 0.22.3). Both services have a free tier:
 
-- **Brevo** (about 300 emails a day free): Settings → **Senders** → add and verify the address codes come
-  from (a Gmail address works); then SMTP & API → **API keys** → generate one.
+- **Brevo** (about 300 emails a day free, to any address): Settings → **Senders, Domains &
+  Dedicated IPs** → **Senders** → add the address codes come from and confirm it from the email
+  Brevo sends; then Settings → **SMTP & API** → **API Keys** → generate one. The key starts with
+  `xkeysib-` and is shown only once. If Brevo says the transactional platform is not activated,
+  its support activates new accounts.
 - **Resend** (about 100 a day free): it sends only from a domain you verify; its test sender reaches only
   your own address.
+
+**The sender's domain.** Gmail and Yahoo have required senders to authenticate their domain since
+February 2024. A free address such as a Gmail one can be added as a Brevo sender, but nobody but
+Google can authenticate gmail.com, so Brevo sends such mail from an address of its own
+(`…@….brevosend.com`): codes still arrive, more often in spam. Good enough for testing. For real
+users, send from a domain you own: add it under **Senders, Domains & Dedicated IPs** →
+**Domains**, publish the DNS records Brevo shows (a Brevo code, DKIM and DMARC; they can take up
+to 48 hours), and set `EMAIL_FROM_ADDRESS` to an address on it, such as
+`no-reply@trosky.africa`.
 
 Then in `render.yaml` (or the service's **Environment** tab) set `EMAIL_PROVIDER` to `brevo` or
 `resend` and `EMAIL_FROM_ADDRESS` to the verified sender, and add **`EMAIL_API_KEY`** in the
@@ -227,6 +239,10 @@ Environment tab only, never in `render.yaml` (it's a secret). The server refuses
 `brevo` or `resend` and no key. A code the service refuses to send (a sender not verified yet, the
 day's quota reached) is reported to the person, who can ask again at once; the reason is in the
 logs (`otp_delivery_failed`, `email_api_refused`).
+
+The same settings work on a developer's machine, in `.env` (which git ignores), in place of
+MailHog: `EMAIL_PROVIDER=brevo`, `EMAIL_API_KEY`, `EMAIL_FROM_ADDRESS` and `EMAIL_FROM_NAME`.
+Every code then goes to the real inbox and counts against the day's quota.
 
 ## File uploads (Cloudflare R2)
 
