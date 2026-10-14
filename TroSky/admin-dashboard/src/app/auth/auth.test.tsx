@@ -188,6 +188,32 @@ describe('an ended session', () => {
     expect(refused).toBe(true)
     expect(router.state.location.pathname).toBe('/me/sessions')
   })
+
+  it('stays signed in when the server cannot renew the session for a moment', async () => {
+    // Back from a break: the access token has expired, and the refresh meets
+    // a gateway error (a restart, the network waking up). That says nothing
+    // about the session, which used to be ended, refresh token and all.
+    const { router } = renderApp('/overview', { as: ADMIN })
+    await screen.findByRole('heading', { name: 'Overview' })
+    server.use(
+      http.get('*/api/v1/admin/me/sessions', () =>
+        HttpResponse.json(
+          { error: { code: 'UNAUTHORIZED', message: 'Expired', details: {}, request_id: 'x' } },
+          { status: 401 },
+        ),
+      ),
+      http.post('*/api/v1/auth/refresh', () => new HttpResponse('Bad Gateway', { status: 502 })),
+    )
+    tokenStore.set({ access_token: 'spent', refresh_token: 'still-good' })
+
+    await router.navigate('/me/sessions')
+
+    expect(
+      await screen.findByText(/could not be reached to renew your session/),
+    ).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/me/sessions')
+    expect(tokenStore.refresh).toBe('still-good')
+  })
 })
 
 describe('signing out', () => {
