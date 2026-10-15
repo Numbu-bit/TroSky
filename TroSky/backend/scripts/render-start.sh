@@ -26,15 +26,18 @@ log() { echo "[render-start] $*"; }
 # Fewer malloc arenas: less memory per Python process, to fit 512 MB.
 export MALLOC_ARENA_MAX="${MALLOC_ARENA_MAX:-2}"
 
-# --- Database: Render gives postgres://… or postgresql://… ------------------
-# The app talks asyncpg, Alembic talks psycopg 3. Only the scheme changes:
-# Render's internal URL has no query string, and both drivers default to
-# sslmode "prefer", which Render's internal connections accept (they offer
-# TLS with a self-signed certificate, so "verify-*" modes can't be used).
-db_url="${DATABASE_URL:?DATABASE_URL is not set (render.yaml: fromDatabase trosky-db)}"
+# --- Database: Supabase's Session pooler URI, postgres(ql)://… -------------
+# The app talks asyncpg, Alembic talks psycopg 3, and they spell TLS
+# differently: asyncpg rejects "sslmode", psycopg doesn't know "ssl". So any
+# ?query part is dropped and each driver gets its own. Supabase requires TLS
+# ("require": encrypted, certificate not checked); DATABASE_SSLMODE can
+# change it, e.g. "disable" for a local Postgres without TLS.
+db_url="${DATABASE_URL:?DATABASE_URL is not set (render.yaml: sync: false, set it under Environment)}"
 db_rest="${db_url#*://}"
-export DATABASE_URL="postgresql+asyncpg://${db_rest}"
-export DATABASE_URL_SYNC="postgresql+psycopg://${db_rest}"
+db_rest="${db_rest%%\?*}"
+ssl_mode="${DATABASE_SSLMODE:-require}"
+export DATABASE_URL="postgresql+asyncpg://${db_rest}?ssl=${ssl_mode}"
+export DATABASE_URL_SYNC="postgresql+psycopg://${db_rest}?sslmode=${ssl_mode}"
 
 # --- Key Value: one database for everything -------------------------------
 # Render documents no logical database indexes for Key Value, so the cache,
@@ -86,8 +89,10 @@ wait_for() {  # name host port
     log "$1 ($2:$3) did not answer within 2 minutes"
     return 1
 }
+read -r db_host db_port <<<"$(endpoint "$db_url" 5432)"
+log "database: $db_host:$db_port (TLS $ssl_mode)"  # host only, never the URL
 log "waiting for Postgres and Key Value"
-wait_for Postgres $(endpoint "$db_url" 5432)
+wait_for Postgres "$db_host" "$db_port"
 wait_for "Key Value" $(endpoint "$redis_url" 6379)
 
 log "migrating the database"

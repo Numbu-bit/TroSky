@@ -27,11 +27,15 @@ services:
         - render.yaml
     envVars:
       # Connections. render-start.sh turns these into the URLs the app uses
-      # (DATABASE_URL / DATABASE_URL_SYNC with drivers, the Celery URLs).
+      # (DATABASE_URL / DATABASE_URL_SYNC with drivers and TLS, the Celery
+      # URLs).
+      # The database is Supabase (Frankfurt), not trosky-db: its Session
+      # pooler URI (postgresql://postgres.<ref>:<password>@aws-…pooler
+      # .supabase.com:5432/postgres), set under Environment in the
+      # dashboard. Blueprint syncs leave sync: false values alone.
+      # docs/deploy-render.md, "Database: Supabase".
       - key: DATABASE_URL
-        fromDatabase:
-          name: trosky-db
-          property: connectionString
+        sync: false
       - key: REDIS_URL
         fromService:
           name: trosky-redis
@@ -91,12 +95,13 @@ services:
       - key: PASSENGER_SIGNUP_COUNTRIES
         value: " "
 
-      # Normal behaviour: a new booking waits for its driver (or an admin)
-      # to accept it, up to 120 s. "false" skips that step on this test
-      # server: bookings go straight to payment. docs/deploy-render.md,
-      # "Booking acceptance".
+      # "false" on this test server: bookings go straight to payment, which
+      # the app expects. "true" (the backend's normal behaviour) makes a new
+      # booking wait for its driver or an admin to accept it, up to 120 s.
+      # Set here, not in the dashboard: a Blueprint sync overwrites dashboard
+      # edits. docs/deploy-render.md, "Booking acceptance".
       - key: BOOKING_ACCEPTANCE_REQUIRED
-        value: "true"
+        value: "false"
 
       # Render's proxies, so rate limits key on each client's own address
       # (app/core/client_ip.py): Render's private network, where its load
@@ -114,12 +119,14 @@ services:
       - key: TRUSTED_PROXY_CIDRS
         value: "10.0.0.0/8,173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,141.101.64.0/18,108.162.192.0/18,190.93.240.0/20,188.114.96.0/20,197.234.240.0/22,198.41.128.0/17,162.158.0.0/15,104.16.0.0/13,104.24.0.0/14,172.64.0.0/13,131.0.72.0/22,2400:cb00::/32,2606:4700::/32,2803:f800::/32,2405:b500::/32,2405:8100::/32,2a06:98c0::/29,2c0f:f248::/32"
 
-      # Small pools: one API process and one Celery process share the free
-      # database (100 connections) and 512 MB of memory.
+      # Small pools: the API process and the Celery task process can open
+      # at most 5 each, well inside the Supabase session pooler's pool
+      # (15-20 server connections on the free plan), also while an old and
+      # a new instance overlap during a deploy.
       - key: DATABASE_POOL_SIZE
-        value: "5"
+        value: "3"
       - key: DATABASE_MAX_OVERFLOW
-        value: "5"
+        value: "2"
 
       # "true" loads the demo stops, routes, a week of trips and the demo
       # accounts (public password TroSkyDemo!2026) on the next start.
@@ -137,10 +144,11 @@ services:
     maxmemoryPolicy: noeviction
 
 databases:
-  # PostgreSQL 17; migration 20260804_0001 enables postgis, pgcrypto and
-  # citext. Free databases expire 30 days after creation (see the docs).
-  # ipAllowList [] allows internal connections only; add your IP in the
-  # dashboard to use psql from outside.
+  # No longer used by trosky-api (the database moved to Supabase on
+  # 15 Oct 2026). Kept as a read-only fallback until it expires on 10 Nov
+  # 2026; remove this block then. PostgreSQL 17 with postgis, pgcrypto and
+  # citext. ipAllowList [] allows internal connections only; add your IP in
+  # the dashboard to use psql from outside.
   - name: trosky-db
     plan: free
     region: frankfurt
