@@ -68,14 +68,26 @@ services:
         value: "true"
 
       # Providers. Free web services can't use SMTP (ports 25, 465 and 587
-      # are blocked), so verification codes go to the console provider and
-      # appear in Render's logs (event "email_sent_console"). To email them
-      # for real through Brevo or Resend (HTTPS): docs/deploy-render.md,
-      # "Sending real email".
+      # are blocked), so verification codes are emailed through Gmail's
+      # HTTPS API, from TroSky's Gmail account. The three GMAIL_ values are
+      # secrets: set them in the Environment tab, never here
+      # (docs/deploy-render.md, "Sending real email"). The server refuses to
+      # start without them. EMAIL_PROVIDER "console" puts codes in Render's
+      # logs instead (event "email_sent_console").
       - key: OTP_DELIVERY_CHANNEL
         value: email
       - key: EMAIL_PROVIDER
-        value: console
+        value: gmail_api
+      - key: EMAIL_FROM_ADDRESS
+        value: troskynoreply@gmail.com
+      - key: EMAIL_FROM_NAME
+        value: TroSky
+      - key: GMAIL_CLIENT_ID
+        sync: false
+      - key: GMAIL_CLIENT_SECRET
+        sync: false
+      - key: GMAIL_REFRESH_TOKEN
+        sync: false
       - key: SMS_PROVIDER
         value: console
       # "mtn_momo" takes payments through MTN's MoMo sandbox:
