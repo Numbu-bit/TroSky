@@ -40,6 +40,9 @@ page lists the demo accounts.
 To point the dev server at another API, copy `.env.example` to `.env.local` and change
 `VITE_API_PROXY_TARGET`.
 
+For the Render staging server, set `VITE_API_PROXY_TARGET=https://trosky-api.onrender.com`. To
+deploy a build against it, see "The admin dashboard" in `TroSky/backend/docs/deploy-render.md`.
+
 ## Scripts
 
 | Script                                     | What it does                                                            |

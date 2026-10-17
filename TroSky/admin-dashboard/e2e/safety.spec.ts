@@ -1,6 +1,6 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
 
-import { expectToast, signIn } from './support'
+import { expectToast, signIn, test } from './support'
 
 test('acknowledges an SOS from the banner, then resolves it with a note', async ({ page }) => {
   await signIn(page)

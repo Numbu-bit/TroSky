@@ -1,146 +1,139 @@
-name: Admin dashboard CI
+name: Admin dashboard
 
-# Lives at the repository root because GitHub only reads workflows from
-# .github/workflows there; the dashboard itself sits in TroSky/admin-dashboard.
+# The React admin dashboard in TroSky/admin-dashboard (its README,
+# "Continuous integration"). Lives at the repository root because GitHub only
+# runs workflows from <repo>/.github/workflows.
+
 on:
   push:
-    branches: [main, develop]
-    paths: ["TroSky/admin-dashboard/**", ".github/workflows/admin-dashboard.yml"]
+    paths:
+      - "TroSky/admin-dashboard/**"
+      - ".github/workflows/admin-dashboard.yml"
   pull_request:
-    branches: [main, develop]
-    paths: ["TroSky/admin-dashboard/**", ".github/workflows/admin-dashboard.yml"]
+    paths:
+      - "TroSky/admin-dashboard/**"
+      - ".github/workflows/admin-dashboard.yml"
+
+concurrency:
+  group: admin-dashboard-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 env:
   NODE_VERSION: "22"
-  IMAGE_NAME: trosky-admin-dashboard
 
-# `run:` steps execute in the dashboard folder; `uses:` steps resolve paths
-# from the repository root, hence the TroSky/admin-dashboard/ prefix on theirs.
 defaults:
   run:
     working-directory: TroSky/admin-dashboard
 
 jobs:
   checks:
-    name: Lint, typecheck, unit tests
+    name: Lint, format, typecheck, unit tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: TroSky/admin-dashboard/package-lock.json
-
-      - name: Install
-        run: npm ci
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Format check
-        run: npm run format:check
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      # Fails below 80 % of lines covered (vite.config.ts, test.coverage).
-      - name: Unit and screen tests, with coverage
-        run: npm run coverage
-
-      - name: Upload coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage
-          path: TroSky/admin-dashboard/coverage
-          retention-days: 7
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      # Vitest with coverage; vite.config.ts fails the run below 80 % of lines.
+      - run: npm run coverage
 
   build:
     name: Production build
     runs-on: ubuntu-latest
-    needs: [checks]
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: TroSky/admin-dashboard/package-lock.json
-
-      - name: Install
-        run: npm ci
-
-      - name: Build
-        run: npm run build
-
-      - name: No demo data, initial JavaScript within budget
-        run: npm run check:build
-
-      # Spec section 8: CI fails any production build that has demo mode on.
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+      # No demo data in the bundle, initial JavaScript within budget.
+      - run: npm run check:build
       - name: A production build with demo mode on is refused
         run: |
-          if VITE_DEMO_MODE=true npx vite build --outDir "$RUNNER_TEMP/refused"; then
-            echo "::error::A production build with VITE_DEMO_MODE=true succeeded."
+          if VITE_DEMO_MODE=true npx vite build --outDir dist-refused --logLevel error; then
+            echo "::error::vite build accepted VITE_DEMO_MODE=true outside demo mode"
             exit 1
           fi
           echo "Refused, as it should be."
 
   e2e:
-    name: End-to-end and accessibility (demo mode)
+    name: End-to-end (Playwright, demo build)
     runs-on: ubuntu-latest
-    needs: [checks]
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: TroSky/admin-dashboard/package-lock.json
-
-      - name: Install
-        run: npm ci
-
-      - name: Install the browser
-        run: npx playwright install --with-deps chromium
-
-      # Builds the demo, serves it, and runs every flow plus axe on every page.
-      - name: Playwright
-        run: npm run e2e
-
-      - name: Upload Playwright report
-        if: always()
-        uses: actions/upload-artifact@v4
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      # Builds and serves the demo (playwright.config.ts): every request is
+      # answered in the browser, so no backend is needed.
+      - run: npm run e2e
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
         with:
           name: playwright-report
           path: TroSky/admin-dashboard/playwright-report
           retention-days: 7
 
   docker:
-    name: Docker image
+    name: Docker image smoke test
     runs-on: ubuntu-latest
-    needs: [build, e2e]
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-
       - name: Build image
-        run: docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
-
-      # The SPA fallback, the health check and the hosting headers.
-      - name: Smoke test
+        run: docker build -t trosky-admin-dashboard:ci .
+      - name: Start it
         run: |
-          docker run -d --name dashboard -p 8080:8080 ${{ env.IMAGE_NAME }}:${{ github.sha }}
-          for attempt in $(seq 1 30); do
-            curl -fsS http://127.0.0.1:8080/healthz && break
+          docker run -d --name dashboard -p 8080:8080 \
+            -e API_ORIGIN=https://api.example.test trosky-admin-dashboard:ci
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8080/healthz && exit 0
             sleep 1
           done
-          curl -fsS -D headers.txt -o page.html http://127.0.0.1:8080/trips/some-trip
-          grep -q '<div id="root">' page.html
-          for header in content-security-policy strict-transport-security \
-            'x-frame-options: DENY' 'x-content-type-options: nosniff' referrer-policy; do
-            grep -qi "^$header" headers.txt || { echo "::error::Missing header: $header"; exit 1; }
+          docker logs dashboard
+          exit 1
+      - name: SPA fallback, source maps and security headers
+        run: |
+          fail() { echo "::error::$*"; exit 1; }
+          curl -fsS http://127.0.0.1:8080/some/deep/link | grep -q 'id="root"' \
+            || fail "a deep link doesn't fall back to index.html"
+          map=$(docker exec dashboard sh -c 'ls /usr/share/nginx/html/assets/*.map 2>/dev/null | head -n 1')
+          if [ -n "$map" ]; then
+            code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8080/assets/$(basename "$map")")
+            [ "$code" = 404 ] || fail "source map served ($code)"
+          fi
+          headers=$(curl -fsSI http://127.0.0.1:8080/)
+          echo "$headers"
+          for expected in \
+            "content-security-policy:.*connect-src 'self' https://api.example.test" \
+            "content-security-policy:.*frame-ancestors 'none'" \
+            "strict-transport-security: max-age=" \
+            "x-frame-options: DENY" \
+            "x-content-type-options: nosniff" \
+            "referrer-policy: " \
+            "permissions-policy: " \
+            "cross-origin-opener-policy: same-origin"; do
+            echo "$headers" | grep -qiE "^$expected" || fail "missing header: $expected"
           done
-          docker rm -f dashboard
+      - name: Container logs
+        if: ${{ failure() }}
+        run: docker logs dashboard
