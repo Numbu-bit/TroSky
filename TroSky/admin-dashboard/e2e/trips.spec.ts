@@ -1,6 +1,6 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 
-import { accraDate, confirm, expectToast, signIn } from './support'
+import { accraDate, confirm, expectToast, signIn, test } from './support'
 
 async function choose(page: Page, label: string, option: RegExp) {
   await page.getByRole('combobox', { name: label }).click()

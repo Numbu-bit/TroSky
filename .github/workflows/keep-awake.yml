@@ -1,0 +1,49 @@
+name: Keep staging awake
+
+# Supabase pauses a free project after 7 days without activity, and Render's
+# free web service sleeps after 15 minutes. Every 2 days this wakes the API
+# and asks /health/ready, which runs "SELECT 1" on the database through it,
+# so the database sees a real query. No secrets needed.
+# GitHub turns scheduled workflows off after 60 days without commits; then
+# re-enable it under Actions, or run it by hand (workflow_dispatch).
+# TroSky/backend/docs/deploy-render.md, "Database: Supabase".
+
+on:
+  schedule:
+    - cron: "17 6 */2 * *" # 06:17 UTC on odd days of the month
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    name: Wake the API and query the database
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      API: https://trosky-api.onrender.com
+    steps:
+      - name: Wake the API (a cold start takes about 30 s, sometimes minutes)
+        run: |
+          for i in $(seq 1 20); do
+            if curl -fsS -m 60 -o /dev/null "$API/health/live"; then
+              echo "awake after $i tries"
+              exit 0
+            fi
+            echo "not awake yet ($i)"
+            sleep 15
+          done
+          echo "::error::$API/health/live did not answer"
+          exit 1
+      - name: Query the database through /health/ready
+        run: |
+          for i in $(seq 1 10); do
+            code=$(curl -s -m 60 -o ready.json -w '%{http_code}' "$API/health/ready" || true)
+            echo "try $i: HTTP $code $(cat ready.json 2>/dev/null)"
+            if [ "$code" = 200 ]; then
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::/health/ready never answered 200: the database or Redis is not reachable"
+          exit 1

@@ -14,14 +14,17 @@ Render docs: [Blueprint spec](https://render.com/docs/blueprint-spec) ·
 | Render resource | Plan | What it is |
 |---|---|---|
 | **trosky-api** (web service, Docker) | Free: 512 MB RAM, 0.1 CPU | This image (`dockerfilePath: ./TroSky/backend/Dockerfile`, `dockerContext: ./TroSky/backend`, both from the repo root) started by `/app/scripts/render-start.sh`. It runs the API **and** a Celery worker with beat in one container, because free plans have no background workers. |
-| **trosky-db** (Postgres 17) | Free: 256 MB RAM, 1 GB storage | The database. Migration `20260804_0001` enables `postgis`, `pgcrypto` and `citext`. |
+| **Supabase project `trosky-staging`** (outside Render) | Free: Postgres 17, 500 MB | **The database**, in Frankfurt, reached through Supabase's Session pooler. See "Database: Supabase". Migration `20260804_0001` enables `postgis`, `pgcrypto` and `citext`. |
+| **trosky-db** (Postgres 17) | Free: 256 MB RAM, 1 GB storage | **Not used since 15 Oct 2026.** The data was copied to Supabase; trosky-db stays as a fallback until it expires on 10 Nov 2026. |
 | **trosky-redis** (Key Value) | Free: 25 MB | Rate limits, seat-hold hints, live vehicle positions, the Celery queue and its results, all in one database. `maxmemoryPolicy: noeviction`, Render's advice for job queues. |
 
 `scripts/render-start.sh`, on every start:
 
-1. Turns Render's `DATABASE_URL` (`postgres://…` or `postgresql://…`) into
-   `DATABASE_URL=postgresql+asyncpg://…` (the app) and `DATABASE_URL_SYNC=postgresql+psycopg://…`
-   (Alembic). Only the scheme changes.
+1. Turns `DATABASE_URL` (Supabase's `postgresql://…` URI) into
+   `DATABASE_URL=postgresql+asyncpg://…?ssl=require` (the app) and
+   `DATABASE_URL_SYNC=postgresql+psycopg://…?sslmode=require` (Alembic). Any `?query` part of the
+   given URL is dropped, because the two drivers spell TLS differently. It logs the database host
+   and port, never the URL.
 2. Points `CELERY_BROKER_URL` and `CELERY_RESULT_BACKEND` at `REDIS_URL`. Render documents no
    logical database indexes for Key Value, so everything shares the URL as given.
 3. Adds `$RENDER_EXTERNAL_HOSTNAME` (`trosky-api.onrender.com`) to `TRUSTED_HOSTS`. Render's
@@ -48,15 +51,14 @@ script calls only its `ensure_dev_admin()`, after checking the password.
 
 ### Database connections and TLS
 
-The URLs are Render's **internal** connection strings (`fromDatabase` / `fromService` in
-`render.yaml`), reachable only from services in the same region. Internal Postgres connections
-offer TLS with a self-signed certificate; both drivers default to `sslmode=prefer`, so they use
-it when offered and need no extra parameters. To *require* TLS, the two drivers spell it
-differently: `?ssl=require` on the asyncpg URL, `?sslmode=require` on the psycopg one. A
-`verify-ca`/`verify-full` mode can't work on internal connections.
-
-Pool sizes are small (`DATABASE_POOL_SIZE=5`, `DATABASE_MAX_OVERFLOW=5`): the API and one Celery
-process share the free database (100 connections) and 512 MB of memory.
+- **Key Value:** `REDIS_URL` is Render's internal connection string (`fromService`), reachable
+  only from services in the same region.
+- **Postgres:** Supabase's Session pooler, over the internet. `render-start.sh` requires TLS:
+  `?ssl=require` on the asyncpg URL, `?sslmode=require` on the psycopg one (TLS 1.3, measured on
+  15 Oct 2026). `require` encrypts without checking the certificate. Set `DATABASE_SSLMODE` to
+  change the mode, e.g. `disable` for a local Postgres without TLS.
+- **Pools:** `DATABASE_POOL_SIZE=3` and `DATABASE_MAX_OVERFLOW=2`, so at most 5 connections per
+  process. "Database: Supabase" has the full count.
 
 ### Celery: one task at a time, each in a fresh process
 
@@ -71,16 +73,98 @@ Until the tasks are fixed in code, the worker runs `--pool prefork --concurrency
 --max-tasks-per-child 1`: each task gets a fresh child process and works. The cost is one fork per
 task (every 15 s at the busiest), which fits in 512 MB.
 
+## Database: Supabase
+
+Since 15 Oct 2026 the database is a free Supabase project, **`trosky-staging`**, in **Central EU
+(Frankfurt)**, the same city as Render. Postgres 17.
+
+### Which connection string, and why
+
+Use the **Session pooler** URI: **Connect** (top of the project page) → **Session pooler**:
+`postgresql://postgres.<project-ref>:<password>@aws-1-eu-central-1.pooler.supabase.com:5432/postgres`.
+
+- **Not Direct:** on the free plan, direct connections (`db.<ref>.supabase.co`) are IPv6 only,
+  and Render's services connect out over IPv4. The poolers are IPv4.
+- **Not the Transaction pooler** (port 6543): it doesn't support prepared statements, and
+  asyncpg uses them. Session mode keeps one server connection per client connection, so they work.
+- **The password** goes into the URL as it is. Special characters (`@ # / ? %` …) must be
+  URL-encoded, so a password of letters and digits is simplest.
+- `render-start.sh` adds the TLS parameters itself (see "Database connections and TLS"). A URI
+  with its own `?query` part works too, because the script drops it.
+
+Put it in **trosky-api → Environment → `DATABASE_URL`**. `render.yaml` marks it `sync: false`,
+so Blueprint syncs leave it alone.
+
+### Settings on the Supabase side
+
+- **Data API: off** (Project Settings → Data API). The app talks to Postgres directly and never
+  uses Supabase's REST API.
+- **The `anon` and `authenticated` roles have no rights in `public`.** Supabase grants them
+  everything by default, which the Data API would expose. This was run once, before the tables
+  were created, and only PostGIS's own reference tables keep their grants:
+  ```sql
+  ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON TABLES    FROM anon, authenticated;
+  ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON SEQUENCES FROM anon, authenticated;
+  ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON FUNCTIONS FROM anon, authenticated;
+  ```
+- **Recommended:** Database settings → SSL Configuration → **Enforce SSL on incoming
+  connections**. The pooler otherwise also accepts unencrypted connections (the start script
+  never makes one).
+
+### Free-plan limits
+
+| Limit | What it means for TroSky |
+|---|---|
+| **The project pauses after 7 days without activity.** | The `Keep staging awake` workflow (`.github/workflows/keep-awake.yml`) runs every 2 days. It wakes the API and calls `/health/ready`, which runs `SELECT 1` on the database. GitHub switches scheduled workflows off after 60 days without commits: re-enable it under **Actions** if that happens. A paused project is restored from its dashboard. |
+| **500 MB of database.** | 21 MB on 15 Oct 2026, most of it the timetable (`SEED_DEMO_DATA` tops it up and never deletes past trips). Check under **Reports → Database**. |
+| **Connections:** 60 to Postgres; the session pooler's pool is 15–20 server connections. | At most 5 per process (`DATABASE_POOL_SIZE=3` + `DATABASE_MAX_OVERFLOW=2`): the API process, and the Celery task process (one task at a time). Beat and the Celery parent use none, and Alembic and the seeds run one at a time before the app starts. That's at most about 11 for one instance, and 4–6 in normal use, leaving room for the old and new instance to overlap during a deploy. |
+| **No backups** on the free plan. | Take them yourself, as below. |
+
+### Taking a backup by hand
+
+With Docker and the Session pooler URI in an environment variable (here `SUPABASE_DB_URL`), so it
+never appears on the command line:
+
+```sh
+docker run --rm -e PGURL="$SUPABASE_DB_URL" -e PGSSLMODE=require -v "$PWD:/backup" postgres:17-alpine \
+  sh -c 'pg_dump "$PGURL" -Fc --schema=public --no-owner --no-privileges -f /backup/trosky-$(date +%F).dump'
+```
+
+- **Use a matching client:** `postgres:17-alpine`, because the server is Postgres 17.
+- **Keep the file out of git:** it contains personal data and password hashes. Store it somewhere
+  private.
+- **To restore into an empty database:** `pg_restore --no-owner --no-privileges -d "$PGURL"
+  trosky-YYYY-MM-DD.dump`.
+
+### How the data got there (15 Oct 2026)
+
+1. The empty schema was built with `alembic upgrade head`, as the app does. PostGIS and citext are
+   in `public`, as on Render.
+2. The data came from a data-only `pg_dump` of trosky-db's `public` schema, without
+   `alembic_version` and PostGIS's `spatial_ref_sys`. It was loaded in one transaction with
+   `SET session_replication_role = replica`, so foreign keys didn't need any order and triggers
+   didn't touch timestamps.
+3. Afterwards, the row counts of all 71 tables matched (5,470 rows of app data), and
+   `alembic_version` was `20261008_0021` on both sides.
+
+trosky-db was only read during this, and stays as a fallback until it expires on 10 Nov 2026.
+
 ## Deploying
 
-1. Render dashboard → **New → Blueprint** → connect the GitHub repo `Numbu-bit/TroSky`, branch
+1. Create the Supabase project first ("Database: Supabase").
+2. Render dashboard → **New → Blueprint** → connect the GitHub repo `Numbu-bit/TroSky`, branch
    `main`. Render reads `render.yaml` and lists `trosky-api`, `trosky-db` and `trosky-redis`.
-2. It asks for the one variable marked `sync: false`: **`DEV_ADMIN_PASSWORD`** (12 characters or
-   more). Leave it empty to create no administrator.
-3. **Apply.** Render creates the database and Key Value, builds the image and deploys. The first
-   start migrates the empty database. Watch the **Logs** tab for
+3. It asks for the variables marked `sync: false`:
+   - **`DATABASE_URL`**: the Supabase Session pooler URI.
+   - **`DEV_ADMIN_PASSWORD`**: 12 characters or more. Leave it empty to create no administrator.
+
+   Render asks only when the Blueprint is created. Later syncs leave `sync: false` variables
+   alone, so change them under **trosky-api → Environment**.
+4. **Apply.** Render creates Key Value (and the unused trosky-db), builds the image and deploys.
+   The first start migrates the empty database. Watch the **Logs** tab for
    `[render-start] starting the API on port 10000`.
-4. Check: `https://<your-service>.onrender.com/health/live` answers `{"status":"alive"}`.
+5. Check: `https://<your-service>.onrender.com/health/live` answers `{"status":"alive"}`, and
+   `/health/ready` answers `"database":true`.
 
 After that, every commit to `main` that changes `TroSky/backend/**` or `render.yaml` deploys
 automatically (`autoDeployTrigger: commit` with a build filter).
@@ -89,15 +173,17 @@ automatically (`autoDeployTrigger: commit` with a build filter).
 
 | Variable | Where it comes from |
 |---|---|
-| `DATABASE_URL`, `REDIS_URL` | Linked to trosky-db / trosky-redis (internal URLs) |
+| `DATABASE_URL` | Supabase's Session pooler URI, typed in the dashboard (`sync: false`) |
+| `REDIS_URL` | Linked to trosky-redis (internal URL) |
 | `SECRET_KEY`, `JWT_SECRET_KEY`, `TICKET_QR_SIGNING_SECRET`, `PAYMENTS_WEBHOOK_SIGNING_SECRET` | Generated by Render once (random 256-bit, base64) |
 | `DEV_ADMIN_PASSWORD` | Typed in the dashboard (`sync: false`) |
 | `APP_ENV=staging`, `DEBUG=false`, `EXPOSE_HEALTH_DETAILS=false`, `LOG_JSON=true` | `render.yaml` |
 | `OTP_DELIVERY_CHANNEL=email`, `EMAIL_PROVIDER=console`, `SMS_PROVIDER=console`, `PAYMENTS_ACTIVE_PROVIDER=sandbox`, `FIREBASE_ENABLED=false`, `MAPS_PROVIDER=local` | `render.yaml` |
 | `TRUSTED_PROXY_CIDRS` | `render.yaml` (see "Rate limits behind Render's proxy") |
-| `DATABASE_POOL_SIZE=5`, `DATABASE_MAX_OVERFLOW=5`, `SEED_DEMO_DATA=false` | `render.yaml` |
+| `DATABASE_POOL_SIZE=3`, `DATABASE_MAX_OVERFLOW=2`, `SEED_DEMO_DATA=false` | `render.yaml` |
 | `PASSENGER_SIGNUP_COUNTRIES=" "` (empty) | `render.yaml`. **TEMPORARY — set back to GH once the app sends location (next frontend step).** See "Passenger sign-up" |
-| `BOOKING_ACCEPTANCE_REQUIRED=true` | `render.yaml`, the normal behaviour. See "Booking acceptance" |
+| `BOOKING_ACCEPTANCE_REQUIRED=false` | `render.yaml`: bookings skip the driver's acceptance on this test server. See "Booking acceptance" |
+| `CORS_ALLOWED_ORIGINS=http://localhost:3000` | `render.yaml`, the backend default for now. Add the admin dashboard's URL once it is deployed. See "The admin dashboard" |
 | `DATABASE_URL_SYNC`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `TRUSTED_HOSTS`, `MALLOC_ARENA_MAX` | Derived by `render-start.sh` |
 | `PORT`, `RENDER_EXTERNAL_HOSTNAME` | Set by Render |
 | `S3_*` | Not set: uploads don't work yet |
@@ -108,7 +194,7 @@ automatically (`autoDeployTrigger: commit` with a build filter).
 |---|---|
 | **The web service sleeps after 15 minutes** without inbound requests. Render's own wake-up takes about a minute. | On top of that comes TroSky's start: the migration check, the seeds and booting the API. With a whole CPU that took 20 s. **Under a hard 0.1-CPU limit (`docker run --cpus=0.1`) it took 302 s.** Render's real figure may be better if its 0.1 CPU can burst, which I couldn't check. So the first request after a quiet spell can take minutes, and the app's request times out once before it works. While asleep **Celery doesn't run either**: seat holds aren't released, unanswered bookings aren't moved and trips don't change status until a request wakes it. |
 | 750 free instance hours per workspace per month | One service awake all month uses about 744. A second free service would run out. |
-| **The free database expires 30 days after it is created**, then has a 14-day grace period before Render deletes it. No backups. 1 GB. | Note the creation date on trosky-db's page. Upgrade before day 30, or at the latest within the grace period, or the data is lost. For a database created on **12 Oct 2026**: expires **11 Nov 2026**, deleted **25 Nov 2026**. Act by **4 Nov 2026**. |
+| **The free Render database expires 30 days after it is created**, then has a 14-day grace period before Render deletes it. | That's why the data moved to Supabase. trosky-db is no longer used and expires on **10 Nov 2026**; then remove its block from `render.yaml`. Supabase's own limits are under "Database: Supabase". |
 | Free Key Value keeps nothing on restart. 25 MB. | A restart forgets rate-limit counters, live positions and queued tasks. Nothing permanent lives there. |
 | **SMTP is blocked** (ports 25, 465 and 587 on free web services). | Verification codes go to the console provider: read them in the logs (below). |
 | **No object storage.** | Avatar, document and incident-photo uploads answer `502 PROVIDER_ERROR` ("Failed to store the uploaded file."). Everything else works. |
@@ -120,8 +206,11 @@ automatically (`autoDeployTrigger: commit` with a build filter).
 With `EMAIL_PROVIDER=console` every code is written to the log instead of being sent.
 
 1. Dashboard → **trosky-api** → **Logs**.
-2. Search for the person's email address, or for `email_sent_console`.
-3. The JSON line has `"to": "<their address>"` and `"message": "… code is 123456 …"`.
+2. Type `email_sent_console` (or part of the person's email address) in the search box above the
+   log and press Enter. Without a search, Render's health checks (`/health/live`, every 5 s) push
+   the line out of view.
+3. The JSON line has `"to": "<their address>"` and
+   `"body_text": "Your TroSky verification code is 123456. It expires in 5 minutes."`.
 
 Codes expire after 5 minutes (`OTP_EXPIRATION_SECONDS`). The log search covers the running
 instance; after a restart, ask for a new code.
@@ -133,6 +222,38 @@ When `DEV_ADMIN_PASSWORD` is set (12 characters or more), the first start create
 Later starts leave it alone, so **changing `DEV_ADMIN_PASSWORD` afterwards doesn't change the
 password**: use the app's password reset (`POST /auth/password/forgot`, the code arrives in the
 logs). Unset, or the old public development default: no administrator is created.
+
+## The admin dashboard
+
+The React dashboard in `TroSky/admin-dashboard` takes the API's address from its build settings;
+nothing is hard-coded (its README, "Environment variables"). Sign in with the administrator account
+above.
+
+**From your machine (`npm run dev`).** In `TroSky/admin-dashboard`, create `.env.local`:
+
+```sh
+VITE_API_BASE_URL=/api/v1
+VITE_API_PROXY_TARGET=https://trosky-api.onrender.com
+```
+
+The dev server forwards `/api` to Render, so the browser only talks to `localhost:5173`, and the
+backend needs no CORS change.
+
+**A deployed dashboard** (on its own address, e.g. `https://admin.example.com`):
+
+1. Build it with `VITE_API_BASE_URL=https://trosky-api.onrender.com/api/v1`:
+   - as a Docker image:
+     `docker build --build-arg VITE_API_BASE_URL=https://trosky-api.onrender.com/api/v1 -t trosky-admin-dashboard TroSky/admin-dashboard`;
+   - or as static files: put the line in `.env.staging` and run `npm run build -- --mode staging`.
+2. When running the image, set `API_ORIGIN=https://trosky-api.onrender.com`. Without it, the
+   image's Content-Security-Policy blocks the calls to Render.
+3. Allow the dashboard's address on Render: add it to `CORS_ALLOWED_ORIGINS` in `render.yaml`
+   (comma-separated, e.g. `http://localhost:3000,https://admin.example.com`) and push. Until then
+   only the backend default, `http://localhost:3000`, is allowed, and browsers block the
+   dashboard's requests.
+
+Free services sleep (see "Free-tier limits"): after a quiet spell, the first requests wait for the
+server to start, and the dashboard shows errors until it is up.
 
 ## Demo data
 
@@ -199,14 +320,17 @@ Since backend 0.20.0 a new booking waits for the trip's driver, or an admin, to 
 - **Unanswered or declined:** it moves to another vehicle going the same way, or ends uncharged.
 - **Once accepted:** it is `pending`, and the passenger has 10 minutes to pay.
 
-`render.yaml` keeps this normal behaviour (`BOOKING_ACCEPTANCE_REQUIRED=true`). Two ways to test
-on the staging server:
+**On this test server acceptance is off:** `render.yaml` sets `BOOKING_ACCEPTANCE_REQUIRED=false`.
+New bookings go straight to `pending` with 10 minutes to pay, as before 0.20.0, which is what the
+current app expects (it doesn't know the waiting state yet). The start log shows
+`booking acceptance by the driver: false`.
 
-**Switch acceptance off.** Set `BOOKING_ACCEPTANCE_REQUIRED=false` (Environment tab, or in
-`render.yaml`) and save; Render restarts the service. New bookings then go straight to `pending`
-with 10 minutes to pay, as before 0.20.0. The start log shows
-`booking acceptance by the driver: false`. The current app expects this behaviour: it doesn't know
-the waiting state yet.
+Change it in `render.yaml`, not in the dashboard: a Blueprint sync overwrites dashboard edits to
+variables `render.yaml` sets. That happened once: the value set in the dashboard was reset to
+`true` by the next sync.
+
+**Switch acceptance on** (`"true"` in `render.yaml`) to test the waiting step, then accept as
+below.
 
 **Keep it on and accept as the admin** (or as the demo driver of that trip, in the driver app or
 its API). Every call needs the admin's access token (`POST /api/v1/auth/login` with
@@ -264,6 +388,16 @@ deploy**:
    right-hand end, and the limit can be dodged. Tell the backend owner: the fix is in code
    (reading the first entry, or Cloudflare's `CF-Connecting-IP`), not in this setting.
 
+**Results on 11 Oct 2026** (details: `TroSky/frontend/docs/staging-test/2026-10-11/README.md`):
+
+1. Render's health checks arrive from `10.231.24.45`, inside `10.0.0.0/8`. Still to read: the
+   `client_ip` of a request from outside (search a response's `request_id` in the log).
+2. **Not shown yet.** Both "clients" were on one public IP: the PC was on the phone's hotspot, so
+   the phone's sign-in after the PC's 11th try got 429 as well, as it should for one address.
+   Repeat with a second phone on another network (another carrier, or Wi-Fi elsewhere).
+3. **Passed.** The 11th wrong login answered 429, and with `X-Forwarded-For: 203.0.113.7` it
+   still answered 429.
+
 ## Upgrading to paid plans later
 
 Change `plan:` in `render.yaml` and push to `main` (the Blueprint syncs), or change the plan on
@@ -272,7 +406,7 @@ the resource's page. Prices change; check [render.com/pricing](https://render.co
 | Part | Paid step | What it fixes | Note |
 |---|---|---|---|
 | trosky-api | `starter` (512 MB, 0.5 CPU, no sleeping) | No cold starts; Celery runs all the time | Then move Celery to its own **background worker** (`type: worker`, same image, `dockerCommand` running only the worker with beat), and drop it from `render-start.sh`. Raise Gunicorn's `--workers` with the RAM. |
-| trosky-db | `basic-256mb` or larger | No 30-day expiry; backups | Upgrade within the grace period at the latest; the data is kept. |
+| Supabase | Pro plan | No pausing, daily backups, more room than 500 MB | Same connection string; nothing changes on Render. |
 | trosky-redis | `starter` | More memory; persistence options | Free data is lost on upgrade; harmless here. |
 | Email | an SMTP or SES provider | Real codes by email | Paid web services can use SMTP. Set `EMAIL_PROVIDER` and its settings. |
 | Uploads | S3-compatible storage | Avatars, documents, photos | Set `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_REGION`, `S3_USE_SSL=true`. |
@@ -293,7 +427,8 @@ new random 32+ character value, e.g. `openssl rand -base64 32`) **→ Save, rebu
 | `TICKET_QR_SIGNING_SECRET` | QR tickets already issued no longer validate. |
 | `PAYMENTS_WEBHOOK_SIGNING_SECRET` | Must match what the payment provider signs with (the sandbox for now). |
 | `DEV_ADMIN_PASSWORD` | No effect on an existing administrator (see above). |
-| Database / Key Value credentials | Linked by `fromDatabase` / `fromService`: after Render issues new credentials, redeploy trosky-api to pick them up. |
+| Database password | Supabase → **Project Settings → Database → Reset database password**, then put the new Session pooler URI in trosky-api's `DATABASE_URL` and **Save, rebuild and deploy**. URL-encode special characters, or use letters and digits only. |
+| Key Value credentials | Linked by `fromService`: after Render issues new credentials, redeploy trosky-api to pick them up. |
 
 ## Known issues found while testing (backend code, not this deployment)
 
@@ -325,6 +460,9 @@ The deployment was tested with:
 - the container limited to 512 MB;
 - only the variables `render.yaml` provides, with connection strings in Render's `postgresql://`
   and `postgres://` forms, plus `PORT`, `RENDER` and `RENDER_EXTERNAL_HOSTNAME`.
+
+A local Postgres without TLS also needs `DATABASE_SSLMODE=disable` (the start script requires
+TLS by default, for Supabase).
 
 Memory: about 385 MiB while running, at most 454 MiB, including bursts of 200 requests and 6
 logins at once (each Argon2 hash takes 64 MiB, one at a time).

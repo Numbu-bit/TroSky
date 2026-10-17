@@ -1,6 +1,6 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
 
-import { ACCOUNTS, PASSWORD, signIn } from './support'
+import { ACCOUNTS, PASSWORD, signIn, test } from './support'
 
 test('signs in to the Overview, and out again', async ({ page }) => {
   await page.goto('/')

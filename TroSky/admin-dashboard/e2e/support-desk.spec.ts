@@ -1,6 +1,6 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
 
-import { confirm, expectToast, signIn } from './support'
+import { confirm, expectToast, signIn, test } from './support'
 
 test.beforeEach(async ({ page }) => {
   await signIn(page)
