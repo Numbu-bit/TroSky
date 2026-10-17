@@ -11,7 +11,7 @@ This is built from a direct read of `backend/app/api/v1/*`, `schemas/*`, `core/e
 | # | Product | Tech | Who | Notes |
 |---|---|---|---|---|
 | 1 | **TroSky mobile app** | Flutter (Android + iOS) | Passenger **and** Driver | One app. The user picks *Passenger* or *Driver* at entry and gets a completely separate interface for each. |
-| 2 | **Admin web app** | Flutter Web | `admin`, `super_admin` | Its own deployable app and URL |
+| 2 | **Admin web app** | React, in `TroSky/admin-dashboard` (Maahir) | `admin`, `super_admin` | Not part of this Flutter workspace (`design-decisions.md`, 26) |
 | 3 | **Fleet owner web app** | Flutter Web | `fleet_owner` | Its own deployable app and URL |
 
 **Visual design:** every color, font, spacing value, radius, icon and illustration comes from the **Figma Make file**. Nothing is invented. Until the Figma values are extracted into `docs/design-tokens.md`, no screen gets built.
@@ -39,7 +39,6 @@ TroSky/
     │   │       ├── entry/        splash, onboarding, role chooser, auth
     │   │       ├── passenger/    passenger shell + features
     │   │       └── driver/       driver shell + features
-    │   ├── admin_web/
     │   └── fleet_web/
     └── packages/
         ├── trosky_ui/            theme + widgets built from Figma tokens
@@ -88,7 +87,7 @@ The backend already supports this. `POST /auth/register` takes `role: passenger 
 | **GPS pickup** | `/trips/search` and `POST /bookings` accept `pickup_latitude` and `pickup_longitude`. Results include `pickup_stop_name`, `pickup_distance_m` and `pickup_source` (`gps` or `manual`). Error `NO_PICKUP_NEARBY` | P-02 and P-03 are built around "pick up near me". Show the pickup stop and walking distance on each result |
 | Stops | `GET /stops?q=` searches by name (≥ 2 characters). `GET /stops/nearby?latitude=&longitude=` returns stops nearest first | Use the server search; no client-side filtering |
 | Rating | `RateBookingRequest` = one `score` (1–5) + optional `comment` | P-14 uses a single score (see G13) |
-| Admin login | `/auth/login` doesn't check role | A-01 and the fleet app must check `/users/me.roles` after login and reject other roles |
+| Admin login | `/auth/login` doesn't check role | The admin dashboard and the fleet app must check `/users/me.roles` after login and reject other roles |
 
 ---
 
@@ -161,23 +160,10 @@ Use the **Screen ID** as the screenshot filename (e.g. `S-04.png`). "Figma" is t
 
 ## 5. Screen inventory, web apps
 
-### 5a. Admin web (`admin_web`)
-| ID | Screen | Endpoints | API |
-|---|---|---|---|
-| A-01 | Admin login | `POST /auth/login`, then **the app checks** `/users/me.roles` for `admin` or `super_admin` (the server doesn't) | ✅ |
-| A-02 | Dashboard overview | `GET /admin/reports/overview` | ✅ |
-| A-03 | Driver approvals (list + review documents) | `GET /admin/drivers/pending`, `approve`, `reject` | ✅ |
-| A-04 | Vehicle approvals | `GET /admin/vehicles/pending`, `approve`, `reject` | ✅ |
-| A-05 | Users (search, suspend, reactivate) | `GET /admin/users`, `suspend`, `reactivate` | ✅ |
-| A-06 | Stops & routes (create) | `POST /admin/stops`, `/admin/routes`, `/admin/routes/{id}/schedules`, `GET /stops`, `/routes` | ⚠️ G9 (no edit/delete) |
-| A-07 | Trips (create, assign, cancel) | `POST /admin/trips`, `from-schedule`, `assign-driver`, `assign-vehicle`, `cancel` | ⚠️ G8 (no list) |
-| A-08 | Live operations map | none that lists active trips | ❌ G8 |
-| A-09 | Bookings | `GET /admin/bookings` | ✅ |
-| A-10 | Cancellations & refunds | `/admin/cancellation-requests`, `/admin/refund-requests` | ✅ |
-| A-11 | Complaints | `/admin/complaints`, `resolve`, `dismiss` | ✅ |
-| A-12 | Incidents & SOS (urgent queue) | `/admin/incidents` (resolve only), `/admin/sos-alerts` (acknowledge + resolve) | ✅ |
-| A-13 | Withdrawals | `/admin/withdrawals` (`approve`, `reject`, `complete`, `fail`) | ✅ |
-| A-14 | Driver rating summary | `GET /admin/drivers/{id}/rating-summary` | ✅ |
+### 5a. Admin web
+Not built in Flutter. The admin web app is the React dashboard in `TroSky/admin-dashboard`
+(Maahir), with its own screens, tests and CI: see its README. The Flutter `admin_web` placeholder
+and its planned screens A-01 to A-14 were removed (`design-decisions.md`, 26).
 
 ### 5b. Fleet owner web (`fleet_web`)
 | ID | Screen | Endpoints | API |
@@ -205,12 +191,12 @@ Ranked by how badly each blocks the frontend. Most are small additions to router
 | **G2** | **A driver can't list their assigned trips.** `/drivers/me/assignments` returns vehicles only, so the driver app has no `trip_id` to start | D-04, D-05, the whole driver flow | `GET /drivers/me/trips?status=&date=` |
 | **G3** | **No passenger manifest** for a trip | D-06 | `GET /driver-trips/{trip_id}/passengers` (seat, name, boarded yes/no) |
 | **G1** | Password reset needs a ≥20-character `token`, which can't be typed from an SMS | S-09 | Accept a 6-digit OTP (`purpose=password_reset`), or have `verify-otp` return a reset token |
-| G8 | No list of active trips / live positions for admin and fleet owners, and no admin trip list | A-07, A-08, F-09 | `GET /admin/trips?status=`, `GET /admin/live-trips`, fleet-scoped equivalent |
+| G8 | No list of active trips / live positions for admin and fleet owners, and no admin trip list | Admin trips and live map, F-09 | `GET /admin/trips?status=`, `GET /admin/live-trips`, fleet-scoped equivalent |
 | G10 | A fleet owner can't search for or invite drivers to get a `driver_id` | F-08 | `GET /fleets/{id}/drivers` + search by phone |
 | G7 | No earnings summary endpoint (SRS FR-010) | D-08 (works with app-side totals) | `GET /drivers/me/earnings?period=day\|week\|month` |
 | G5 | No profile photo upload (only `avatar_url`) | P-21 | `POST /users/me/avatar` (reuse the S3 upload used for documents) |
 | G4 | No favourite routes (SRS FR-003) | P-26 | `/users/me/favourite-routes` CRUD |
-| G9 | Routes and stops can be created but not edited or deleted | A-06 | PATCH/DELETE for both |
+| G9 | Routes and stops can be created but not edited or deleted | Admin stops and routes | PATCH/DELETE for both |
 | G11 | Telecel, AirtelTigo and card payments are placeholders | P-07 | Already known; the UI shows "Coming soon" |
 | G12 | `GET /bookings` has no status or date filter, and bookings don't include departure time | P-01, P-15 (the app makes one extra request per booking) | `?status=&upcoming=true` and embed a trip summary |
 | G13 | The rating is a single score. The SRS asked for safety, cleanliness, professionalism and timeliness | P-14 (only if the Figma "Rate Driver" screen shows categories) | Optional category scores |
@@ -241,7 +227,7 @@ I'll ask for these one batch at a time. Each batch is built, tested and committe
 | 5 | P-11 → P-14 | Tracking, SOS, incident, rating |
 | 6 | P-15 → P-26 | Trips, wallet, profile, settings… |
 | 7 | D-01 → D-12 | Driver app (after G2 and G3 are fixed) |
-| 8 | A-01 → A-14 | Admin web |
+| 8 | — | Admin web: the React app in `TroSky/admin-dashboard` (`design-decisions.md`, 26) |
 | 9 | F-01 → F-09 | Fleet owner web |
 
 ---

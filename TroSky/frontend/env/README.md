@@ -23,7 +23,11 @@ To use one:
    `flutter run --dart-define-from-file=../../env/dev.json`
 
 On the Android emulator the host machine is `10.0.2.2`, not `localhost`.
-`staging.example.json` points at the Render test server (`trosky-api.onrender.com`; replace the
-hostname with the one Render assigns, see `TroSky/backend/docs/deploy-render.md`). It sleeps after
-15 minutes without requests, so the first request after a quiet spell takes about a minute. The
-prod host is a placeholder until a real one exists.
+`staging.example.json` points at the Render test server, `https://trosky-api.onrender.com`
+(live since 11 Oct 2026, see `TroSky/backend/docs/deploy-render.md`). It sleeps after 15 minutes
+without requests, so the first request after a quiet spell can take up to a minute. The prod host
+is a placeholder until a real one exists.
+
+A release APK for testers: `cp env/staging.example.json env/staging.json`, then from
+`apps/mobile` run `flutter build apk --release --dart-define-from-file=../../env/staging.json`.
+It is signed with the debug key (fine for testers, not for the Play Store).
