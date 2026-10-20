@@ -166,6 +166,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get detailsCreateAccount => 'Create account';
 
   @override
+  String get detailsLocationTitle => 'Confirm you\'re in Ghana';
+
+  @override
+  String get detailsLocationBody =>
+      'TroSky is only available in Ghana for now. To create your account, we check your location once. It isn\'t saved.';
+
+  @override
+  String get detailsLocationNeeded =>
+      'TroSky needs your location once to confirm you\'re in Ghana.';
+
+  @override
+  String get detailsLocationBlocked =>
+      'TroSky needs your location once to confirm you\'re in Ghana. Location is blocked for TroSky: allow it in Settings.';
+
+  @override
+  String get detailsLocationServiceOff =>
+      'TroSky needs your location once to confirm you\'re in Ghana. Turn on your phone\'s location, then try again.';
+
+  @override
+  String get detailsLocationNotFound =>
+      'TroSky couldn\'t find your location to confirm you\'re in Ghana. Try again in a moment.';
+
+  @override
+  String get detailsLocationNotServed =>
+      'TroSky is only available in Ghana for now.';
+
+  @override
+  String get detailsTryAgain => 'Try again';
+
+  @override
+  String get detailsOpenSettings => 'Open settings';
+
+  @override
   String get codeTitle => 'Enter the code';
 
   @override

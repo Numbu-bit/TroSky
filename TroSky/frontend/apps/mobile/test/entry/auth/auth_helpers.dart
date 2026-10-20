@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:mobile/entry/splash/presentation/launch_destination_provider.dart';
+import 'package:mobile/passenger/home/data/location_service.dart';
 
 import '../../helpers/fakes.dart';
 
@@ -35,8 +37,14 @@ Future<TestWorld> openWelcome(
   WidgetTester tester, {
   TestWorld? world,
   Size size = const Size(360, 806),
+  List<Object> overrides = const [],
 }) async {
-  final w = await openSignIn(tester, world: world, size: size);
+  final w = await openSignIn(
+    tester,
+    world: world,
+    size: size,
+    overrides: overrides,
+  );
   await tapVisible(tester, link('Create account'));
   return w;
 }
@@ -51,14 +59,30 @@ Future<void> enter(WidgetTester tester, String hint, String text) async {
   await tester.pump();
 }
 
-/// Welcome with [phone] → Continue: Your details.
+/// Where the phone is in sign-up tests: Accra (passengers sign up in Ghana
+/// only).
+const LatLng signUpPosition = LatLng(5.6037, -0.187);
+
+/// Welcome with [phone] → Continue: Your details. Location is allowed and
+/// the phone is in Accra, so a passenger's sign-up goes through; change
+/// `world.location` before submitting to test the other cases.
 Future<TestWorld> openDetails(
   WidgetTester tester, {
   TestWorld? world,
   String phone = '055 123 4567',
   Size size = const Size(360, 806),
+  List<Object> overrides = const [],
 }) async {
-  final w = await openWelcome(tester, world: world, size: size);
+  final w = world ?? TestWorld();
+  w.location
+    ..permission = LocationPermissionStatus.granted
+    ..position = signUpPosition;
+  // With location on, Home's location dot pulses for ever; as in the Home
+  // tests, animations are off so a sign-up can settle on Home.
+  tester.platformDispatcher.accessibilityFeaturesTestValue =
+      const FakeAccessibilityFeatures(disableAnimations: true);
+  addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+  await openWelcome(tester, world: w, size: size, overrides: overrides);
   await enter(tester, 'XX XXX XXXX', phone);
   await tapVisible(tester, find.text('Continue'));
   return w;
