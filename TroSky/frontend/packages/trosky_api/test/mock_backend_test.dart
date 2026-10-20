@@ -12,15 +12,20 @@ void main() {
     backend = MockBackend(clock: () => now);
   });
 
+  /// A new passenger signing up in Accra (the phone's position).
   RegisterRequest newPassenger({
     String phone = '0551234567',
     String? email = 'yaw.asante@gmail.com',
     String password = 'Accra2026',
+    double? latitude = 5.6037,
+    double? longitude = -0.1870,
   }) => RegisterRequest(
     phoneNumber: phone,
     email: email,
     password: password,
     fullName: 'Yaw Asante',
+    latitude: latitude,
+    longitude: longitude,
   );
 
   String? code<T>(Result<T> result) => result.failureOrNull?.code;
@@ -601,6 +606,72 @@ void main() {
       expect((result.failureOrNull! as ValidationFailure).fieldErrors.keys, [
         'phone_number',
       ]);
+    });
+  });
+
+  group('sign-up location (PASSENGER_SIGNUP_COUNTRIES=GH)', () {
+    test('a passenger without a position is LOCATION_REQUIRED', () {
+      final result = backend.register(
+        newPassenger(latitude: null, longitude: null),
+      );
+      expect(code(result), 'LOCATION_REQUIRED');
+      expect(result.failureOrNull?.statusCode, 422);
+      expect(result.failureOrNull?.details, {
+        'countries': ['GH'],
+      });
+      expect(backend.outbox, isEmpty);
+    });
+
+    test('a position outside Ghana is LOCATION_NOT_SERVED', () {
+      // Lagos, Nigeria.
+      final result = backend.register(
+        newPassenger(latitude: 6.5244, longitude: 3.3792),
+      );
+      expect(code(result), 'LOCATION_NOT_SERVED');
+      expect(result.failureOrNull?.statusCode, 422);
+      expect(
+        result.failureOrNull?.message,
+        'TroSky is only available in Ghana for now.',
+      );
+    });
+
+    test('border towns pass, and so does Lomé, inside the margin', () {
+      const places = {
+        'Aflao': (6.1167, 1.1833),
+        'Paga': (10.9850, -1.1120),
+        'Elubo': (5.2833, -2.7667),
+        'Lomé': (6.1319, 1.2228),
+      };
+      var n = 0;
+      for (final MapEntry(key: name, value: (lat, lng)) in places.entries) {
+        final result = backend.register(
+          newPassenger(
+            phone: '055123450${n++}',
+            email: 'yaw.$n@gmail.com',
+            latitude: lat,
+            longitude: lng,
+          ),
+        );
+        expect(result.isOk, isTrue, reason: name);
+      }
+    });
+
+    test('drivers sign up without a position', () {
+      final result = backend.register(
+        newPassenger(
+          latitude: null,
+          longitude: null,
+        ).copyWith(role: RegistrableRole.driver),
+      );
+      expect(result.isOk, isTrue);
+    });
+
+    test('an empty country list switches the check off', () {
+      backend = MockBackend(clock: () => now, passengerSignupCountries: {});
+      final result = backend.register(
+        newPassenger(latitude: null, longitude: null),
+      );
+      expect(result.isOk, isTrue);
     });
   });
 

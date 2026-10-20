@@ -22,24 +22,36 @@ function authorize(request: Request): Request {
   return request
 }
 
-let refreshing: Promise<boolean> | null = null
+/**
+ * What came of renewing the session: a new token pair, the end of the
+ * session (no refresh token, or the backend refused it), or no answer for
+ * now (offline, a server or gateway error, a rate limit), which keeps the
+ * tokens for the next attempt.
+ */
+export type Renewal = 'renewed' | 'ended' | 'unreachable'
 
-async function exchange(refreshToken: string): Promise<boolean> {
+let refreshing: Promise<Renewal> | null = null
+
+async function exchange(refreshToken: string): Promise<Renewal> {
+  let response: Response
   try {
-    const response = await globalThis.fetch(`${apiOrigin}/api/v1/auth/refresh`, {
+    response = await globalThis.fetch(`${apiOrigin}/api/v1/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: refreshToken }),
     })
-    if (!response.ok) {
-      tokenStore.clear()
-      return false
-    }
-    tokenStore.set((await response.json()) as TokenPair)
-    return true
   } catch {
-    return false // offline: keep the tokens and let the caller report it
+    return 'unreachable'
   }
+  // Only the backend's verdict on the token ends the session: an admin back
+  // from a break, or caught by a restart, is not signed out by a 5xx.
+  if (response.status >= 500 || response.status === 429) return 'unreachable'
+  if (!response.ok) {
+    tokenStore.clear()
+    return 'ended'
+  }
+  tokenStore.set((await response.json()) as TokenPair)
+  return 'renewed'
 }
 
 /**
@@ -47,10 +59,10 @@ async function exchange(refreshToken: string): Promise<boolean> {
  * request: refresh tokens rotate, and presenting a spent one would look like
  * token theft to the backend and end every session.
  */
-export function refreshSession(): Promise<boolean> {
+export function refreshSession(): Promise<Renewal> {
   if (refreshing) return refreshing
   const refreshToken = tokenStore.refresh
-  if (!refreshToken) return Promise.resolve(false)
+  if (!refreshToken) return Promise.resolve('ended')
   const attempt = exchange(refreshToken)
   refreshing = attempt
   // Cleared only once this attempt settles, and only if it is still the one
@@ -59,6 +71,24 @@ export function refreshSession(): Promise<boolean> {
     if (refreshing === attempt) refreshing = null
   })
   return attempt
+}
+
+/**
+ * In place of a refused request while the session cannot be renewed for now:
+ * a 503, which queries retry and the admin reads as "try again", not as
+ * being signed out.
+ */
+function renewalUnavailable(): Response {
+  return Response.json(
+    {
+      error: {
+        code: 'SESSION_RENEWAL_UNAVAILABLE',
+        message: 'The server could not be reached to renew your session. Try again in a moment.',
+        details: {},
+      },
+    },
+    { status: 503 },
+  )
 }
 
 /**
@@ -71,10 +101,12 @@ async function authFetch(request: Request): Promise<Response> {
   const retry = retryable ? request.clone() : null
   const response = await globalThis.fetch(authorize(request))
   if (response.status !== 401 || !retry) return response
-  if (!(await refreshSession())) {
+  const renewal = await refreshSession()
+  if (renewal === 'ended') {
     sessionEnded()
     return response
   }
+  if (renewal === 'unreachable') return renewalUnavailable()
   return globalThis.fetch(authorize(retry))
 }
 

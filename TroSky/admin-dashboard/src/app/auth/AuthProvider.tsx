@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false
     async function restore() {
-      if (!tokenStore.access && !(await refreshSession())) {
+      if (!tokenStore.access && (await refreshSession()) !== 'renewed') {
         if (!cancelled) setState({ status: 'signed-out' })
         return
       }
