@@ -13,8 +13,10 @@ from collections.abc import AsyncGenerator, Awaitable
 from types import TracebackType
 from typing import Self, cast
 
+import anyio
 import redis.asyncio as redis_asyncio
 from redis.asyncio import Redis
+from redis.asyncio.client import PubSub
 from redis.asyncio.connection import ConnectionPool
 
 from app.core.config import get_settings
@@ -70,6 +72,21 @@ async def close_redis() -> None:
     _client = None
     _pool = None
     logger.info("redis_connection_closed")
+
+
+async def close_pubsub(pubsub: PubSub) -> None:
+    """Gives a subscription's connection back to the pool, even from a task
+    that is being cancelled.
+
+    A browser that leaves a stream cancels it, and Starlette's cancellation
+    hits every await until the task ends. Unshielded, the close is cancelled
+    while the socket shuts, before the connection goes back: the pool loses
+    it for good, and once ``REDIS_MAX_CONNECTIONS`` are lost every Redis
+    call fails with "Too many connections". Closing ends the subscriptions
+    too, so nothing needs unsubscribing first."""
+    with anyio.CancelScope(shield=True):
+        # redis-py's own inline types omit a signature for aclose().
+        await pubsub.aclose()  # type: ignore[no-untyped-call]
 
 
 async def check_redis_connection() -> bool:

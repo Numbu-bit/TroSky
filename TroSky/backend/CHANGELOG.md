@@ -2277,3 +2277,16 @@ pause, resume and end trips by hand, and admins cancel as before.
   never sends, so every real callback was refused.) A repeat of a callback
   is checked again while the payment is open, so a forged copy can't make
   the real one be ignored. `PUT` callbacks are accepted as well as `POST`.
+
+## [0.22.6] - 2026-10-13 - The live feed gives back its Redis connections
+
+- **Fixed: the admin dashboard's live feed used up Redis.** Each open
+  `GET /admin/stream` holds a Redis connection for bus positions. When a
+  browser left (a reload, a closed tab, a dropped network), the stream was
+  cancelled, and so was the clean-up meant to hand that connection back, so
+  every reload lost one. After about 50 (`REDIS_MAX_CONNECTIONS`), every
+  stream failed with `redis.exceptions.ConnectionError: Too many
+  connections`, and so did anything else that needed Redis. The clean-up is
+  now shielded from the cancellation (`close_pubsub` in `app/core/redis.py`).
+  The trip-tracking WebSocket closes its subscription the same way.
+- `anyio` is now a named dependency (Starlette already brought it).

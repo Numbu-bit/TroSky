@@ -25,6 +25,9 @@ dependencies = [
     "geoalchemy2>=0.18.0,<0.21.0",
     "shapely>=2.0.6,<3.0.0",
     "redis[hiredis]>=5.1.1,<6.0.0",
+    # Starlette brings it; named because the app shields Redis clean-up
+    # with it (app/core/redis.py, close_pubsub).
+    "anyio>=4.5.0,<5.0.0",
     "celery[redis]>=5.4.0,<6.0.0",
     "httpx>=0.27.2,<0.28.0",
     "argon2-cffi>=23.1.0,<24.0.0",

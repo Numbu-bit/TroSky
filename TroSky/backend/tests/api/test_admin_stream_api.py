@@ -20,6 +20,7 @@ from httpx import AsyncClient
 
 from app.api.v1 import admin_stream
 from app.core.permissions import SystemRole
+from app.core.redis import get_redis_pool
 from app.main import create_app
 from tests.api.test_admin_dashboard_api import _committed_user, _login
 
@@ -110,6 +111,35 @@ class TestTheLiveStream:
                 break
             await asyncio.sleep(0.05)
         assert admin_stream._open_streams == 0
+
+    async def test_leaving_gives_back_the_redis_connection(
+        self, client: AsyncClient, live_server: str
+    ) -> None:
+        """Bus positions hold a Redis connection while the stream is open. A
+        browser that leaves cancels the stream, and the connection must
+        still go back to the pool: it once did not, and after some fifty
+        reloads of the dashboard every stream failed with "Too many
+        connections"."""
+        token = await _token(client, SystemRole.ADMIN)
+        pool = get_redis_pool()
+        in_use = len(pool._in_use_connections)
+
+        for _ in range(3):
+            async with (
+                httpx.AsyncClient(base_url=live_server, timeout=15) as http,
+                http.stream(
+                    "GET", "/api/v1/admin/stream", params={"token": token, "topics": "positions"}
+                ) as response,
+            ):
+                first = await asyncio.wait_for(anext(response.aiter_lines()), 15)
+                assert first == "retry: 5000"
+        for _ in range(100):
+            if admin_stream._open_streams == 0 and len(pool._in_use_connections) <= in_use:
+                break
+            await asyncio.sleep(0.05)
+
+        assert admin_stream._open_streams == 0
+        assert len(pool._in_use_connections) == in_use
 
     async def test_a_passenger_token_is_refused(
         self, client: AsyncClient, live_server: str
