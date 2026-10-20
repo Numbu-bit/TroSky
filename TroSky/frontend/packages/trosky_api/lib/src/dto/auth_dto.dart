@@ -30,6 +30,10 @@ enum DevicePlatform { ios, android, web }
 
 /// `POST /auth/register`. [phoneNumber] may be in any form the backend
 /// accepts; [email] must be on an allowed domain (Gmail by default).
+/// A passenger also sends where they are now ([latitude] and [longitude],
+/// both or neither): the backend only lets passengers sign up in the
+/// countries TroSky serves (`PASSENGER_SIGNUP_COUNTRIES`, Ghana). It checks
+/// the position and doesn't keep it; the app doesn't keep it either.
 @freezed
 abstract class RegisterRequest with _$RegisterRequest {
   const factory RegisterRequest({
@@ -39,6 +43,8 @@ abstract class RegisterRequest with _$RegisterRequest {
     required String fullName,
     @Default(RegistrableRole.passenger) RegistrableRole role,
     @Default('en') String preferredLanguage,
+    double? latitude,
+    double? longitude,
   }) = _RegisterRequest;
 
   factory RegisterRequest.fromJson(Map<String, dynamic> json) =>

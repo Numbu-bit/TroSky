@@ -317,6 +317,40 @@ void main() {
     expect(result.valueOrNull?.otpSentTo, '+233241234567');
   });
 
+  test("a passenger's position goes in the register body", () async {
+    final adapter = FakeAdapter(
+      (_) async => const FakeReply(201, {
+        'user_id': 'u2',
+        'phone_number': '+233551234567',
+        'otp_sent_to': 'yaw.asante@gmail.com',
+        'message': 'Registration successful.',
+      }),
+    );
+    await LiveAuthRepository(
+      createApiClient(env: _env, tokens: _FakeTokens.new, adapter: adapter),
+    ).register(
+      const RegisterRequest(
+        phoneNumber: '0551234567',
+        email: 'yaw.asante@gmail.com',
+        password: 'Accra2026',
+        fullName: 'Yaw Asante',
+        latitude: 5.6037,
+        longitude: -0.187,
+      ),
+    );
+
+    expect(adapter.requests.single.data, {
+      'phone_number': '0551234567',
+      'email': 'yaw.asante@gmail.com',
+      'password': 'Accra2026',
+      'full_name': 'Yaw Asante',
+      'role': 'passenger',
+      'preferred_language': 'en',
+      'latitude': 5.6037,
+      'longitude': -0.187,
+    });
+  });
+
   group('Home endpoints parse what the backend sends', () {
     Dio dio(FakeAdapter adapter) =>
         createApiClient(env: _env, tokens: _FakeTokens.new, adapter: adapter);
