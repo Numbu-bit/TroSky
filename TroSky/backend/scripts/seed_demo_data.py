@@ -61,6 +61,7 @@ from app.schemas.fleet import (
     SeatLayoutRequest,
     VehicleCreateRequest,
 )
+from app.services.booking_acceptance_service import BookingAcceptanceService
 from app.services.booking_service import BookingService
 from app.services.driver_service import DriverService
 from app.services.fare_service import FareService
@@ -517,7 +518,7 @@ async def ensure_passenger_history(
     )
     upcoming = found.scalar_one_or_none()
     if upcoming is not None:
-        vehicle, _ = fleet[ROUTES[0].name][vehicle_slot(tomorrow)]
+        vehicle, driver = fleet[ROUTES[0].name][vehicle_slot(tomorrow)]
         stop_ids = await _route_stop_ids(session, route)
         service = BookingService(session)
         booking = await service.create_booking(
@@ -534,6 +535,11 @@ async def ensure_passenger_history(
             ),
             idempotency_key=None,
         )
+        if booking.status == BookingStatus.AWAITING_ACCEPTANCE:
+            # Its driver says yes first, as in the app; then it is paid.
+            await BookingAcceptanceService(session).accept(
+                booking.id, actor_id=driver.user_id, as_admin=False, trip_id=upcoming.id
+            )
         await service.confirm_booking(booking.id)
 
 

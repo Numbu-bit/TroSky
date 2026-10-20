@@ -56,7 +56,8 @@ class TestReports:
             "route": str(scenario.route_id),
             "granularity": "week",
             "from": str(today - timedelta(days=20)),
-            "to": str(today),
+            # The trip leaves in 4 hours: tomorrow, late in the day.
+            "to": str(today + timedelta(days=1)),
         }
 
         weekly = await client.get(

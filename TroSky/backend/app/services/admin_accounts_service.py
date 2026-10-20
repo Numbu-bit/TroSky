@@ -26,7 +26,7 @@ from app.core.config import from_minor_units
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationAppError
 from app.core.logging import get_logger
 from app.core.permissions import Permission, Principal, SystemRole
-from app.core.security import hash_password
+from app.core.security import hash_password_async
 from app.models.bookings import Booking, BookingStatus
 from app.models.drivers import Driver
 from app.models.feedback import Complaint, ComplaintStatus
@@ -452,7 +452,7 @@ class AdminAccountsService:
                 phone_number=phone,
                 email=email,
                 # Unusable until they set their own with the code sent below.
-                password_hash=hash_password(secrets.token_urlsafe(32)),
+                password_hash=await hash_password_async(secrets.token_urlsafe(32)),
                 full_name=full_name,
             )
         elif any(r in _RANK for r in await self._users.get_roles_for_user(user.id)):

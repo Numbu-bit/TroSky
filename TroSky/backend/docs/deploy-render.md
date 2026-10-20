@@ -60,18 +60,14 @@ script calls only its `ensure_dev_admin()`, after checking the password.
 - **Pools:** `DATABASE_POOL_SIZE=3` and `DATABASE_MAX_OVERFLOW=2`, so at most 5 connections per
   process. "Database: Supabase" has the full count.
 
-### Celery: one task at a time, each in a fresh process
+### Celery: one task at a time
 
-The Celery tasks call `asyncio.run()`, which makes a new event loop for each task, while the
-database engine and the Redis client are created once per process. A second task in the same
-process then gets connections tied to the first task's closed loop and fails with
-`RuntimeError: … attached to a different loop`. Locally this failed about half the runs of
-`expire_stale_bookings`, `move_unanswered_bookings` and `reconcile_pending_payments` under the
-solo pool, and 523 task runs on a docker-compose style worker.
-
-Until the tasks are fixed in code, the worker runs `--pool prefork --concurrency 1
---max-tasks-per-child 1`: each task gets a fresh child process and works. The cost is one fork per
-task (every 15 s at the busiest), which fits in 512 MB.
+The worker runs `--pool prefork --concurrency 1`: one child process, kept for good, runs the
+tasks one after another. Since backend 0.22.1 every task in a process shares one event loop, and
+with it the database and Redis connections (`app/workers/loop.py`). Before that, each task made a
+loop of its own and every other run failed with `RuntimeError: … attached to a different loop`,
+which this deployment worked around with `--max-tasks-per-child 1` (a fresh child process, and a
+fork, for every task). That is no longer needed.
 
 ## Database: Supabase
 
@@ -290,9 +286,9 @@ routes, stops, bookings or wallet entries).
 Past trips are never deleted. They add about 190 trips a day while topping up, which is small
 for the 1 GB database.
 
-The demo seed books and confirms its sample trip directly. Since backend 0.20.0 that would fail
-(new bookings wait for the driver), so `render-start.sh` runs the seed with
-`BOOKING_ACCEPTANCE_REQUIRED=false` for that one process only.
+The demo seed books a sample trip for the demo passenger the way the app does: its driver
+accepts it, then it is paid. It runs with booking acceptance on or off (since backend 0.22.1;
+before, `render-start.sh` had to switch acceptance off for the seed).
 
 ## Passenger sign-up
 
@@ -427,25 +423,18 @@ new random 32+ character value, e.g. `openssl rand -base64 32`) **→ Save, rebu
 
 ## Known issues found while testing (backend code, not this deployment)
 
-1. **Celery tasks and event loops.** Each task runs `asyncio.run()` against a process-wide
-   database engine and Redis client, so a second task in the same process fails with
-   `RuntimeError: … attached to a different loop`. The worker setting above avoids it. The
-   lasting fix is in `app/workers/tasks/*`: dispose the engine and close the Redis client at the
-   end of each task, or keep one event loop per worker process. Without either, a docker-compose style
-   worker failed 408 runs of `expire_stale_bookings` in about 16 hours.
-2. **Password hashing blocks the API.** `hash_password` / `verify_password` (Argon2id, 64 MiB,
-   time cost 3) run on the event loop.
-   - Under a hard 0.1-CPU limit one login took 17 s, and `/health/live` waited up to 8 s behind
-     it, longer than Render's 5-second health-check timeout.
-   - Render stops routing to an instance after 15 s of failed checks and restarts it after 60 s,
-     so a run of logins could restart the service.
-   - The fix is in code: hash in a thread (`asyncio.to_thread`; argon2 releases the GIL). Lighter
-     parameters for staging, or the Starter plan's 0.5 CPU, would also help.
-3. **The demo seed and booking acceptance.** `scripts/seed_demo_data.py` confirms its sample
-   booking at once, which fails since 0.20.0 because new bookings wait for the driver
-   (`InvalidStateTransitionError`). The start script runs the seed alone with
-   `BOOKING_ACCEPTANCE_REQUIRED=false`, and a failed demo seed no longer stops the server.
-4. **The Dockerfile's `HEALTHCHECK` probes port 8000**, not `$PORT`; see below.
+Fixed in backend 0.22.1:
+- **Celery tasks and event loops:** tasks now share one event loop per worker process (see
+  "Celery: one task at a time" above).
+- **Password hashing blocked the API:** under a hard 0.1-CPU limit one login took 17 s, and
+  `/health/live` waited up to 8 s behind it, past Render's 5-second health-check timeout. Hashing
+  now runs in a thread pool of its own, `PASSWORD_HASH_CONCURRENCY` (default 2) at a time, so
+  health checks and other requests are answered meanwhile. A login still takes seconds on 0.1
+  CPU; the Starter plan's 0.5 CPU, or lighter hash parameters for staging, would shorten it.
+- **The demo seed and booking acceptance:** see "Demo data" above.
+
+Still open:
+1. **The Dockerfile's `HEALTHCHECK` probes port 8000**, not `$PORT`; see below.
 
 ## Running it locally like Render
 

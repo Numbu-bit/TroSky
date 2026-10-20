@@ -42,6 +42,7 @@ from app.models.trips import (
 )
 from app.models.vehicles import Vehicle, VehicleSeat, VehicleSeatLayout, VehicleType
 from app.providers.payments.base import PaymentChannel
+from app.repositories.seat_holds import seat_taken
 
 # Trips a vehicle is out on: what the live maps and "near me" show.
 ACTIVE_TRIP_STATUSES = (TripStatus.BOARDING, TripStatus.IN_PROGRESS, TripStatus.PAUSED)
@@ -149,6 +150,17 @@ def _reservations(*statuses: ReservationStatus) -> Any:
     )
 
 
+def _seats_taken() -> Any:
+    """Seats paid for, or held with the hold not yet lapsed."""
+    return (
+        select(func.count())
+        .select_from(SeatReservation)
+        .where(SeatReservation.trip_id == Trip.id, seat_taken(datetime.now(UTC)))
+        .correlate(Trip)
+        .scalar_subquery()
+    )
+
+
 def _summary_columns() -> tuple[Any, ...]:
     layout_seats = (
         select(VehicleSeatLayout.total_seats)
@@ -188,7 +200,7 @@ def _summary_columns() -> tuple[Any, ...]:
         _reservations(ReservationStatus.CONFIRMED, ReservationStatus.COMPLETED).label(
             "seats_booked"
         ),
-        _reservations(ReservationStatus.HELD, ReservationStatus.CONFIRMED).label("seats_taken"),
+        _seats_taken().label("seats_taken"),
         boarded.label("boarded_count"),
         Driver.id.label("driver_id"),
         UserProfile.full_name.label("driver_name"),

@@ -287,17 +287,28 @@ class BookingService:
             if seat_id not in valid_seats:
                 raise NotFoundError(f"Seat {seat_id} does not belong to this trip's vehicle.")
 
+        # A hold that has run out frees its seats at once, whether or not
+        # the sweep has been round (on a small server the worker may sleep).
+        await self._free_lapsed_holds(trip.id, requested_seat_ids)
+
         # Redis pre-check: an acceleration/stampede-reduction hint only —
         # a miss here does NOT mean the seat is available (the database
-        # constraint below is what actually decides that).
+        # constraint below is what actually decides that). A hit is checked
+        # against the database before refusing: the set can outlive a hold.
         if self._redis is not None:
             held_key = _held_seats_key(trip.id)
+            taken: set[uuid.UUID] | None = None
             for seat_id in requested_seat_ids:
                 is_held = await cast(
                     Awaitable[object], self._redis.sismember(held_key, str(seat_id))
                 )
-                if is_held:
+                if not is_held:
+                    continue
+                if taken is None:
+                    taken = await self._bookings.list_active_seat_ids_for_trip(trip.id)
+                if seat_id in taken:
                     raise SeatNotAvailableError(details={"seat_id": str(seat_id)})
+                await cast(Awaitable[object], self._redis.srem(held_key, str(seat_id)))
 
         # Waiting for the driver to accept it, or (acceptance switched off)
         # for payment: the seats are held as long as that may take.
@@ -719,25 +730,46 @@ class BookingService:
         expired_count = 0
         candidates = await self._bookings.find_expirable_bookings(limit=batch_size)
         for booking in candidates:
-            # Re-check under the row lock: another request may have
-            # confirmed/cancelled it between the batch query and now.
-            if booking.status not in (BookingStatus.PENDING, BookingStatus.PAYMENT_PENDING):
-                continue
-            if booking.expires_at is None or booking.expires_at > datetime.now(UTC):
-                continue
-            await self._bookings.release_reservations_for_booking(
-                booking.id, new_status=ReservationStatus.EXPIRED
-            )
-            await self._bookings.set_status(
-                booking,
-                new_status=BookingStatus.EXPIRED,
-                changed_by=None,
-                reason="Reservation hold expired",
-            )
-            if self._redis is not None:
-                await self._redis.delete(_held_seats_key(booking.trip_id))
-            RESERVATION_EXPIRATIONS_TOTAL.inc()
-            expired_count += 1
+            expired_count += await self._expire_hold(booking)
         if expired_count:
             logger.info("bookings_expired", count=expired_count)
         return expired_count
+
+    async def _expire_hold(self, booking: Booking) -> bool:
+        """Expire an unpaid booking (held under the caller's row lock) whose
+        hold has run out, freeing its seats. False if it no longer needs it."""
+        # Re-check under the row lock: another request may have
+        # confirmed/cancelled it between the query and now.
+        if booking.status not in (BookingStatus.PENDING, BookingStatus.PAYMENT_PENDING):
+            return False
+        if booking.expires_at is None or booking.expires_at > datetime.now(UTC):
+            return False
+        await self._bookings.release_reservations_for_booking(
+            booking.id, new_status=ReservationStatus.EXPIRED
+        )
+        await self._bookings.set_status(
+            booking,
+            new_status=BookingStatus.EXPIRED,
+            changed_by=None,
+            reason="Reservation hold expired",
+        )
+        if self._redis is not None:
+            await self._redis.delete(_held_seats_key(booking.trip_id))
+        RESERVATION_EXPIRATIONS_TOTAL.inc()
+        return True
+
+    async def _free_lapsed_holds(self, trip_id: uuid.UUID, seat_ids: list[uuid.UUID]) -> None:
+        """Resolve the lapsed holds on ``seat_ids`` the way the background
+        tasks would: an unpaid booking expires, and one its driver never
+        answered goes to another vehicle (or ends)."""
+        for booking_id in await self._bookings.bookings_with_lapsed_holds(trip_id, seat_ids):
+            booking = await self._bookings.get_for_update(booking_id)
+            if booking is None:
+                continue
+            if booking.status == BookingStatus.AWAITING_ACCEPTANCE:
+                await BookingAcceptanceService(
+                    self._session, self._redis, self._settings
+                ).handle_unanswered(booking_id)
+            else:
+                await self._expire_hold(booking)
+            logger.info("lapsed_hold_freed", booking_id=str(booking_id), trip_id=str(trip_id))

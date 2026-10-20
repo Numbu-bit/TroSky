@@ -2164,3 +2164,43 @@ pause, resume and end trips by hand, and admins cancel as before.
   until the trip ends, paused included, and keep sending while standing
   still.** Until it does, boarding still comes from ticket scans, and the
   driver starts the trip by hand; everything after that follows on its own.
+
+## [0.22.1] - 2026-10-11 - Fixes for the staging server
+
+- **Signing in no longer holds up the server.** Hashing and checking a
+  password (Argon2id, 64 MiB) ran in the event loop: on Render's free CPU a
+  sign-in took 17 s, during which no other request, health checks included,
+  was answered. It now runs in a thread pool of its own, at most
+  `PASSWORD_HASH_CONCURRENCY` (new setting, default 2) at a time per
+  process, so a burst of sign-ins waits its turn rather than running a
+  512 MB server out of memory. The hash itself is unchanged: existing
+  passwords keep working.
+- **Background tasks no longer fail every other run.** Each Celery task ran
+  in an event loop of its own, closed when it finished, while the database
+  and Redis connection pools are shared by the whole worker process: the
+  next task took a connection from the closed loop and failed ("attached to
+  a different loop", `'NoneType' object has no attribute 'send'`). Seat-hold
+  sweeps, moving unanswered bookings and the trip-status check were all hit.
+  Tasks now share one loop per worker process (`app/workers/loop.py`), and
+  the pools are closed on it when the process stops. Running Celery with
+  `--max-tasks-per-child 1` to work around it is no longer needed.
+- **`scripts.seed_demo_data` works with booking acceptance on.** Since
+  0.20.0 it confirmed the demo passenger's upcoming booking while it was
+  still waiting for the driver, and stopped there. The driver now accepts it
+  first, as in the app. Seeding no longer needs
+  `BOOKING_ACCEPTANCE_REQUIRED=false`.
+- **GPS simulator (`scripts.simulate_gps`):** stays signed in past the
+  15-minute access token (refreshes it, or signs in again, and resends the
+  ping). Run again on a trip already on the road, it carries on from where
+  it was last reported instead of jumping back to the first stop (which the
+  backend rejected as implausible). `--from-stop` (a number from 1, or part
+  of a stop's name) starts a trip partway along its route.
+- **A seat hold that has run out frees its seat at once** (frontend B3).
+  Until now a booking past its `expires_at` (waiting for the driver's answer
+  or for payment) kept its seats until the background sweep marked it
+  expired, every 30 s, or never while the worker was asleep. Now
+  `GET /trips/{id}/seats`, search (`available_seats`) and fare sharing treat
+  it as free (`app/repositories/seat_holds.py`), and booking that seat
+  resolves the old hold on the spot as the sweep would have: an unpaid
+  booking expires, an unanswered one moves to another vehicle or ends. The
+  sweep only tidies up.

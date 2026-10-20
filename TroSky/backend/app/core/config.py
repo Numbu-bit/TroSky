@@ -293,6 +293,10 @@ class Settings(BaseSettings):
     PASSWORD_REQUIRE_LOWERCASE: bool = True
     PASSWORD_REQUIRE_DIGIT: bool = True
     PASSWORD_REQUIRE_SYMBOL: bool = False
+    # Passwords hashed or checked at once, per server process. Each takes
+    # 64 MiB and a lot of CPU (app.core.security): more sign-ins than this
+    # queue rather than running a small server out of memory.
+    PASSWORD_HASH_CONCURRENCY: int = Field(default=2, ge=1, le=32)
 
     # --- GPS -----------------------------------------------------------
     GPS_UPDATE_MIN_INTERVAL_SECONDS: int = Field(default=5, gt=0)

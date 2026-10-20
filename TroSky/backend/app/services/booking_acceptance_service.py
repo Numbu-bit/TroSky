@@ -320,41 +320,47 @@ class BookingAcceptanceService:
         """Move (or end) bookings whose driver did not answer in time."""
         handled = 0
         for booking_id in await self._offers.unanswered_booking_ids(limit=batch_size):
-            # Booking, then offer: the order every answer takes them in.
-            booking = await self._bookings.get_for_update(booking_id)
-            offer = await self._offers.pending_for_booking(booking_id)
-            if booking is None or offer is None or offer.expires_at > datetime.now(UTC):
-                continue  # answered meanwhile
-            if booking.status != BookingStatus.AWAITING_ACCEPTANCE:
-                await self._offers.decide(
-                    offer, status=OfferStatus.WITHDRAWN, decided_by=None, reason="Already ended"
-                )
-                continue
-            await self._offers.decide(
-                offer, status=OfferStatus.EXPIRED, decided_by=None, reason="Not answered in time"
-            )
-            await self._actions.record(
-                kind=DriverActionKind.BOOKING_UNANSWERED,
-                trip_id=offer.trip_id,
-                driver_id=offer.driver_id,
-                acted_as=ActedAs.SYSTEM,
-                actor_id=None,
-                booking_id=booking.id,
-            )
-            await self._move_or_end(
-                booking,
-                actor_id=None,
-                why="the driver did not answer in time",
-                ending=_Ending(
-                    status=BookingStatus.EXPIRED,
-                    reason="No driver accepted it in time",
-                    told="No driver accepted it in time",
-                ),
-            )
-            handled += 1
+            handled += await self.handle_unanswered(booking_id)
         if handled:
             logger.info("unanswered_bookings_handled", count=handled)
         return handled
+
+    async def handle_unanswered(self, booking_id: uuid.UUID) -> bool:
+        """Move (or end) one booking whose driver did not answer in time.
+        False when there was nothing to do: it was answered meanwhile, or its
+        time is not up."""
+        # Booking, then offer: the order every answer takes them in.
+        booking = await self._bookings.get_for_update(booking_id)
+        offer = await self._offers.pending_for_booking(booking_id)
+        if booking is None or offer is None or offer.expires_at > datetime.now(UTC):
+            return False  # answered meanwhile
+        if booking.status != BookingStatus.AWAITING_ACCEPTANCE:
+            await self._offers.decide(
+                offer, status=OfferStatus.WITHDRAWN, decided_by=None, reason="Already ended"
+            )
+            return False
+        await self._offers.decide(
+            offer, status=OfferStatus.EXPIRED, decided_by=None, reason="Not answered in time"
+        )
+        await self._actions.record(
+            kind=DriverActionKind.BOOKING_UNANSWERED,
+            trip_id=offer.trip_id,
+            driver_id=offer.driver_id,
+            acted_as=ActedAs.SYSTEM,
+            actor_id=None,
+            booking_id=booking.id,
+        )
+        await self._move_or_end(
+            booking,
+            actor_id=None,
+            why="the driver did not answer in time",
+            ending=_Ending(
+                status=BookingStatus.EXPIRED,
+                reason="No driver accepted it in time",
+                told="No driver accepted it in time",
+            ),
+        )
+        return True
 
     # ------------------------------------------------------------------
     # Lists

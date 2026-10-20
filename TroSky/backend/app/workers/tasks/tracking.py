@@ -8,7 +8,6 @@ serves no product purpose this codebase implements.
 
 from __future__ import annotations
 
-import asyncio
 from datetime import UTC, datetime, timedelta
 
 from app.core.config import get_settings
@@ -16,6 +15,7 @@ from app.core.database import transactional_session
 from app.core.logging import get_logger
 from app.repositories.tracking_repository import TripLocationRepository
 from app.workers.celery_app import celery_app
+from app.workers.loop import run_task
 
 logger = get_logger(__name__)
 
@@ -38,6 +38,6 @@ async def _purge_old_trip_locations_async() -> int:
 
 @celery_app.task(name="app.workers.tasks.tracking.purge_old_trip_locations")
 def purge_old_trip_locations() -> int:
-    count = asyncio.run(_purge_old_trip_locations_async())
+    count = run_task(_purge_old_trip_locations_async())
     logger.info("purge_old_trip_locations_task_complete", purged_count=count)
     return count
