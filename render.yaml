@@ -85,15 +85,13 @@ services:
       # S3_* stay unset: uploads (avatars, documents, incident photos) fail
       # until object storage is configured.
 
-      # TEMPORARY — set back to GH once the app sends location (next
-      # frontend step). Since backend 0.21.0 a passenger signs up only with
-      # the phone's location, in Ghana; empty switches that check off, so
-      # the team can register from the current app. The value is a single
-      # space: the backend ignores blank entries (so it reads as empty),
-      # and Render doesn't document keeping an empty value. The start log
-      # says which applies ("passenger sign-up: …").
+      # A passenger signs up only with the phone's location, in Ghana
+      # (backend 0.21.0). The app sends it since frontend Step 12 (PR #44);
+      # older builds of the app can't sign passengers up any more. A single
+      # space would switch the check off (blank entries are ignored). The
+      # start log says which applies ("passenger sign-up: …").
       - key: PASSENGER_SIGNUP_COUNTRIES
-        value: " "
+        value: "GH"
 
       # "false" on this test server: bookings go straight to payment, which
       # the app expects. "true" (the backend's normal behaviour) makes a new

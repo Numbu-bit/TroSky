@@ -11,6 +11,7 @@ import '../dto/tracking_dto.dart';
 import '../dto/user_dto.dart';
 import '../repositories/booking_repository.dart';
 import '../repositories/route_repository.dart';
+import 'mock_regions.dart';
 
 /// An in-memory stand-in for the backend's auth and user endpoints, for
 /// `API_MODE=mock` and tests.
@@ -38,8 +39,11 @@ import '../repositories/route_repository.dart';
 ///   a seat on a minibus every 10 seconds until 12 are booked, and the
 ///   shared fare drops as in the design (see [tripSeats]).
 class MockBackend {
-  MockBackend({DateTime Function()? clock, this.codesByEmail = false})
-    : _now = clock ?? DateTime.now {
+  MockBackend({
+    DateTime Function()? clock,
+    this.codesByEmail = false,
+    this.passengerSignupCountries = const {'GH'},
+  }) : _now = clock ?? DateTime.now {
     _seed();
   }
 
@@ -71,6 +75,11 @@ class MockBackend {
   /// `OTP_DELIVERY_CHANNEL=email`: codes go to the account's email address,
   /// as in the docker-compose setup. The default sends them by SMS.
   final bool codesByEmail;
+
+  /// `PASSENGER_SIGNUP_COUNTRIES`: a passenger signs up only with the
+  /// phone's position, in one of these countries (Ghana, as the backend's
+  /// default). Empty switches the check off, as on the staging server.
+  final Set<String> passengerSignupCountries;
 
   final DateTime Function() _now;
   final List<_User> _users = [];
@@ -224,6 +233,8 @@ class MockBackend {
         {'allowed_domains': registrationEmailDomains.toList()..sort()},
       );
     }
+    final outside = _checkSignupLocation(request);
+    if (outside != null) return outside;
     if (_byPhone(phone!) != null) {
       return _error(
         409,
@@ -1560,6 +1571,37 @@ class MockBackend {
     'The submitted data is invalid.',
     {'errors': errors},
   );
+
+  /// auth_service.py `_check_signup_location`: a passenger shares where
+  /// they are, and it must be in [passengerSignupCountries]. Only checked.
+  Err<RegisterResponse>? _checkSignupLocation(RegisterRequest request) {
+    final countries = passengerSignupCountries;
+    if (request.role != RegistrableRole.passenger || countries.isEmpty) {
+      return null;
+    }
+    final names = countryNamesFor(countries);
+    final details = {'countries': countries.toList()..sort()};
+    final latitude = request.latitude;
+    final longitude = request.longitude;
+    if (latitude == null || longitude == null) {
+      return _error(
+        422,
+        'LOCATION_REQUIRED',
+        'Turn on your location to sign up: TroSky is available in $names '
+            'for now.',
+        details,
+      );
+    }
+    if (countryAt(latitude, longitude, countries) == null) {
+      return _error(
+        422,
+        'LOCATION_NOT_SERVED',
+        'TroSky is only available in $names for now.',
+        details,
+      );
+    }
+    return null;
+  }
 
   Err<T> _error<T>(
     int status,
