@@ -18,3 +18,15 @@ Notable changes to the TroSky admin dashboard, newest last. The dashboard as fir
   takes up to a minute).
 - **LF line endings in every checkout** (`.gitattributes`): on Windows, Git could check files out
   with CRLF, and the format check then failed on almost every file.
+
+## 2026-10-14 - Sessions survive a failed renewal; the live feed comes back
+
+- **No more sign-out over a passing error:** when the access token expired and renewing it met a
+  network error, a server or gateway error (5xx) or a rate limit, the dashboard signed the admin out
+  and deleted a refresh token that was still good. Only the backend refusing the token ends the
+  session now; otherwise the request fails with "try again in a moment" (queries retry by
+  themselves) and the session is renewed once the server answers.
+- **The live feed reconnects after the token expires:** the backend ends the stream once the access
+  token it was opened with expires (they last 15 minutes), and the dashboard stopped there, polling
+  for the rest of the session while saying it was reconnecting. It now renews the token if needed
+  and reconnects.
