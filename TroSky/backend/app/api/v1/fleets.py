@@ -48,7 +48,8 @@ from app.schemas.trip import LiveTripResponse
 router = APIRouter(dependencies=[Depends(require_roles(SystemRole.FLEET_OWNER))])
 
 # Onboarding: authenticated, but deliberately not role-gated -- this is how
-# an account acquires the fleet-owner role.
+# an account registered as a fleet owner (or a driver who owns vehicles)
+# acquires the fleet-owner role.
 onboarding_router = APIRouter()
 
 
@@ -62,8 +63,10 @@ async def register_fleet_owner(
     body: FleetOwnerRegisterRequest, principal: CurrentPrincipal, fleets: FleetServiceDep
 ) -> FleetOwnerResponse:
     """Create this account's fleet-owner profile and grant it the
-    ``fleet_owner`` role. Open to any signed-in account; the role takes
-    effect immediately, without re-authenticating."""
+    ``fleet_owner`` role, for an account registered as a fleet owner or a
+    driver who owns vehicles. A passenger account is refused (409
+    ``PASSENGER_ACCOUNT``): fleet owners sign up with an account of their
+    own. The role takes effect immediately, without re-authenticating."""
     owner = await fleets.register(principal.user_id, body)
     return FleetOwnerResponse.model_validate(owner)
 

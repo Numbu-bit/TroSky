@@ -2328,3 +2328,31 @@ pause, resume and end trips by hand, and admins cancel as before.
   in Render before this reaches main, or the new deploy won't start.
 - Docs: `docs/deploy-render.md`, "Sending real email", has the Google Cloud
   setup.
+
+## [0.23.0] - 2026-10-20 - Passenger accounts and work accounts are separate
+
+An account is now either a **passenger account** (books and rides) or a
+**work account**: a driver, a fleet owner, or an owner who drives their own
+vehicle (both roles on one account). They never mix: someone who drives and
+also rides has two accounts, each with its own phone number and email
+(`app/services/role_service.py`).
+
+- `POST /drivers/me` and `POST /fleet-owners/me` refuse a passenger account:
+  409 `PASSENGER_ACCOUNT`. Drivers and fleet owners sign up with
+  `role: "driver"` or `role: "fleet_owner"` on `POST /auth/register`. A
+  driver may still become a fleet owner, and a fleet owner a driver.
+- `POST /bookings` is for passenger accounts only: 403
+  `PASSENGER_ACCOUNT_REQUIRED` otherwise. Bookings made before stay
+  viewable, payable and cancellable as before.
+- A work account is never given the passenger role (409 `WORK_ACCOUNT`).
+- Team roles (admin, super admin, staff) are outside the rule: a team
+  member's account may also be a passenger or a work account, as before.
+- Migration `20261020_0023`: drivers and fleet owners lose the passenger
+  role most of them were created with. Their bookings so far are kept. Not
+  reversible: which accounts had it is not recorded.
+- `scripts/seed_demo_data.py` creates the demo drivers and fleet owner as
+  work accounts.
+- **The driver app must sign up drivers with `role: "driver"`** rather than
+  as passengers who then create a driver profile; that is now refused. The
+  passenger app should expect `PASSENGER_ACCOUNT_REQUIRED` if a driver signs
+  in to it and tries to book.

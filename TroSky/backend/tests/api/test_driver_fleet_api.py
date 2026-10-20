@@ -173,3 +173,54 @@ class TestFleetApi:
             f"/api/v1/fleets/{fleet_id}", headers={"Authorization": f"Bearer {token_b}"}
         )
         assert forbidden_response.status_code == 404
+
+
+class TestSeparateAccounts:
+    """A passenger account and a work account (driver, fleet owner, or both)
+    are never the same account."""
+
+    async def test_a_passenger_cannot_become_a_driver_or_fleet_owner(
+        self, client: AsyncClient, seed_identity_data: None
+    ) -> None:
+        token = await _register_and_login(client, "0291234572", "Ama Rider", "passenger")
+        headers = {"Authorization": f"Bearer {token}"}
+
+        as_driver = await client.post(
+            "/api/v1/drivers/me",
+            json={
+                "license_number": "GHA-ACCT-01",
+                "license_expiry": (date.today() + timedelta(days=365)).isoformat(),
+            },
+            headers=headers,
+        )
+        as_owner = await client.post(
+            "/api/v1/fleet-owners/me", json={"business_name": "Ama Transport"}, headers=headers
+        )
+
+        for response in (as_driver, as_owner):
+            assert response.status_code == 409, response.text
+            assert response.json()["error"]["code"] == "PASSENGER_ACCOUNT"
+
+    async def test_a_driver_cannot_book_but_may_own_a_fleet(
+        self, client: AsyncClient, seed_identity_data: None
+    ) -> None:
+        token = await _register_and_login(client, "0291234573", "Kojo Driver", "driver")
+        headers = {"Authorization": f"Bearer {token}"}
+
+        booking = await client.post(
+            "/api/v1/bookings",
+            json={
+                "trip_id": "00000000-0000-4000-8000-000000000001",
+                "passengers": [
+                    {"seat_id": "00000000-0000-4000-8000-000000000002", "full_name": "Kojo"}
+                ],
+            },
+            headers=headers,
+        )
+        assert booking.status_code == 403, booking.text
+        assert booking.json()["error"]["code"] == "PASSENGER_ACCOUNT_REQUIRED"
+
+        owner = await client.post(
+            "/api/v1/fleet-owners/me", json={"business_name": "Kojo Transport"}, headers=headers
+        )
+        assert owner.status_code == 201, owner.text

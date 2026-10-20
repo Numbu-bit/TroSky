@@ -208,8 +208,10 @@ class UserPermission(UUIDAuditBase):
 
 
 class UserRole(Base):
-    """Join table: which roles a user holds (a user may hold more than one,
-    e.g. a passenger who is also a driver)."""
+    """Join table: which roles a user holds. More than one only as
+    ``app.services.role_service`` allows: a driver who is also a fleet
+    owner, or a team role alongside an app role. Never passenger and
+    driver or fleet owner together."""
 
     __tablename__ = "user_roles"
 

@@ -49,7 +49,7 @@ from app.schemas.fleet import (
     VehicleUpdateRequest,
 )
 from app.services.document_service import store_uploaded_document
-from app.services.role_service import grant_role
+from app.services.role_service import assert_can_take_role, grant_role
 from app.utilities.phone import (
     InvalidPhoneNumberError,
     mask_phone_number,
@@ -109,6 +109,9 @@ class FleetService:
     async def register(self, user_id: uuid.UUID, request: FleetOwnerRegisterRequest) -> FleetOwner:
         if await self._owners.get_by_user_id(user_id) is not None:
             raise ConflictError("A fleet-owner profile already exists for this account.")
+        # Not a passenger account: fleet owners have accounts of their own
+        # (app.services.role_service). A driver may become one.
+        await assert_can_take_role(self._session, user_id, SystemRole.FLEET_OWNER)
         owner = await self._owners.create(
             user_id=user_id,
             business_name=request.business_name,
