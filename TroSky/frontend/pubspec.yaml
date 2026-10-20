@@ -8,7 +8,6 @@ environment:
 
 workspace:
   - apps/mobile
-  - apps/admin_web
   - apps/fleet_web
   - packages/trosky_ui
   - packages/trosky_core

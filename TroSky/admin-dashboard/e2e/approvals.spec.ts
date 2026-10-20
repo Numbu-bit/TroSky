@@ -1,6 +1,6 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 
-import { confirm, expectToast, signIn } from './support'
+import { confirm, expectToast, signIn, test } from './support'
 
 /** Open the driver who has waited longest; their name heads the review. */
 async function openFirstDriver(page: Page) {

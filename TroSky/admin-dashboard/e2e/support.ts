@@ -1,5 +1,23 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, type Page } from '@playwright/test'
+import { test as base, expect, type Page } from '@playwright/test'
+
+/**
+ * The demo platform is built from the browser's clock (which trips are on the
+ * road, recent incidents, report periods), so screens differed with the hour a
+ * test ran. Every page's clock starts at this instant instead, the same as the
+ * unit tests' (src/test/setup.ts), and runs on from there.
+ */
+export const TEST_NOW = new Date('2026-10-11T15:20:00Z')
+
+/** Playwright's ``test``, with each page's clock starting at ``TEST_NOW``. */
+export const test = base.extend({
+  // (Playwright calls this argument "use"; renamed so React's hook rules
+  // don't mistake it for React's use().)
+  page: async ({ page }, provide) => {
+    await page.clock.install({ time: TEST_NOW })
+    await provide(page)
+  },
+})
 
 /** The demo admins (src/api/demo/accounts.ts), all with the same password. */
 export const PASSWORD = 'TroSky-demo-2026'
@@ -46,9 +64,9 @@ export async function expectToast(page: Page, text: string | RegExp) {
   await expect(page.locator('[data-sonner-toast]').filter({ hasText: text }).first()).toBeVisible()
 }
 
-/** Today's date in Ghana (UTC+0 all year), shifted by ``days``. */
+/** The test day in Ghana (UTC+0 all year, see ``TEST_NOW``), shifted by ``days``. */
 export function accraDate(days = 0): string {
-  return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10)
+  return new Date(TEST_NOW.getTime() + days * 86_400_000).toISOString().slice(0, 10)
 }
 
 /**

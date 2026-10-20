@@ -29,6 +29,8 @@ Product decisions that settle questions the Figma Make file leaves open. These r
 | 23 | Passenger names | 2 Oct 2026 | In force (`SeatSelectionScreen`) |
 | 24 | Price on the seat screen | 2 Oct 2026 | **Ended 10 Oct 2026**: the fare quote landed, live shows the full design |
 | 25 | Seat layout | 2 Oct 2026 | In force (`SeatMapLayout`) |
+| 26 | Admin web | 11 Oct 2026 | In force: `apps/admin_web` removed |
+| 27 | Sign-up location | 20 Oct 2026 | In force (`SignUpLocator`, Your details S-06) |
 
 ## 1. Logo
 
@@ -246,3 +248,38 @@ The backend has no aisle field: a layout is just seats on a grid, and `seat_type
 3. Otherwise, by width: **4 columns → between 2 and 3** (as in the design); 3 columns → between 2 and 3 (2 + 1); 5 or more → after the middle column; 1–2 columns → no aisle.
 
 **A shorter last row** (fewer seats than the rows before it, such as the design's 2-seat back bench) is centred under the others without an aisle, as P7 draws seats 13 and 14. A grid wider than the card shrinks to fit.
+
+## 26. Admin web
+
+Admin web = React app in TroSky/admin-dashboard (Maahir). Flutter admin_web removed.
+
+- The dashboard has its own README, tests and CI (`.github/workflows/admin-dashboard.yml`).
+- `apps/admin_web` was only a placeholder ("TroSky Admin — setup OK"); its planned screens A-01 to
+  A-14 are gone from `frontend-inventory.md`.
+- `apps/fleet_web` stays for now; the fleet-owner app is decided later.
+
+## 27. Sign-up location
+
+Since backend 0.21.0 a **passenger** signs up only with the phone's position, and it must be in
+Ghana (`PASSENGER_SIGNUP_COUNTRIES`, default `GH`; `422 LOCATION_REQUIRED` without one,
+`422 LOCATION_NOT_SERVED` outside). Drivers are approved by an admin and send no position.
+
+On **Create account** (S-06), for a passenger only:
+
+1. **Without location permission**, the Home location sheet explains why first ("Confirm you're in
+   Ghana"); only "Allow location" opens the phone's own dialog.
+2. **One position:** the phone's last fix if it has one (a country check needs no precision),
+   otherwise a fresh fix for up to 10 s.
+3. **It goes only into `POST /auth/register`** (`latitude`, `longitude`). It is never stored on
+   the phone (not in Home's location state, not in preferences), and the backend only checks it.
+4. **No position, no request.** Under the form:
+   - refused, or the server says `LOCATION_REQUIRED`: "TroSky needs your location once to confirm
+     you're in Ghana." with **Try again**;
+   - refused for good: the same, with "allow it in Settings", **Try again** and **Open settings**;
+   - location off: the same, with "turn on your phone's location";
+   - no fix in 10 s: "couldn't find your location";
+   - outside Ghana (`LOCATION_NOT_SERVED`): "TroSky is only available in Ghana for now."
+
+The mock backend checks the same outline as the backend (Ghana plus about 15 km, so Lomé passes and
+Lagos doesn't).
+

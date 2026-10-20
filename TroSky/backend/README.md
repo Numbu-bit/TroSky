@@ -273,10 +273,10 @@ for the full credentials/callback-URL/compliance checklist per vendor.
   allows. See that directory's own `README.md` for the full file-by-file
   breakdown, apply order, and stated assumptions (external managed
   Postgres/Redis/S3, no cloud-provisioning code included).
-* [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) (repository
+* [`.github/workflows/backend.yml`](../../.github/workflows/backend.yml) (repository
   root, not under `backend/` — required for GitHub Actions to discover
   it): lint → typecheck → test against real Postgres+PostGIS/Redis service
-  containers (with an 80% coverage gate) → dependency scan (`pip-audit`) →
+  containers (with an 80% coverage gate) → dependency scan (Trivy) →
   container build & Trivy scan → environment-gated deploys (development /
   staging / production). **Production deploys require manual approval**
   via a protected GitHub Environment — this pipeline never deploys to
