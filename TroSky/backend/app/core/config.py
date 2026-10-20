@@ -36,6 +36,7 @@ class EmailProviderName(StrEnum):
     # HTTPS APIs: for hosts that block SMTP ports (Render's free plan).
     BREVO = "brevo"
     RESEND = "resend"
+    GMAIL_API = "gmail_api"
 
 
 class SmsProviderName(StrEnum):
@@ -146,6 +147,13 @@ class Settings(BaseSettings):
     # EMAIL_FROM_ADDRESS must be a sender (or domain) verified with them.
     EMAIL_API_KEY: SecretStr = SecretStr("")
     EMAIL_FROM_NAME: str = "TroSky"
+    # gmail_api: Gmail's own HTTPS API, sending as the Gmail account the
+    # refresh token belongs to (EMAIL_FROM_ADDRESS should be that address).
+    # The OAuth client comes from Google Cloud; the refresh token from
+    # scripts/gmail_refresh_token.py.
+    GMAIL_CLIENT_ID: str = ""
+    GMAIL_CLIENT_SECRET: SecretStr = SecretStr("")
+    GMAIL_REFRESH_TOKEN: SecretStr = SecretStr("")
 
     # --- SMS ---------------------------------------------------------------
     SMS_PROVIDER: SmsProviderName = SmsProviderName.CONSOLE
@@ -471,11 +479,24 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _email_api_key_given(self) -> Settings:
-        """An HTTPS email provider without its key would fail every code it
-        sends: refuse to start instead."""
+        """An HTTPS email provider without its key (for Gmail: the OAuth
+        client and refresh token) would fail every code it sends: refuse to
+        start instead."""
         api_providers = (EmailProviderName.BREVO, EmailProviderName.RESEND)
         if self.EMAIL_PROVIDER in api_providers and not self.EMAIL_API_KEY.get_secret_value():
             raise ValueError(f"EMAIL_PROVIDER={self.EMAIL_PROVIDER} needs EMAIL_API_KEY.")
+        if self.EMAIL_PROVIDER == EmailProviderName.GMAIL_API:
+            missing = [
+                name
+                for name, value in (
+                    ("GMAIL_CLIENT_ID", self.GMAIL_CLIENT_ID),
+                    ("GMAIL_CLIENT_SECRET", self.GMAIL_CLIENT_SECRET.get_secret_value()),
+                    ("GMAIL_REFRESH_TOKEN", self.GMAIL_REFRESH_TOKEN.get_secret_value()),
+                )
+                if not value.strip()
+            ]
+            if missing:
+                raise ValueError(f"EMAIL_PROVIDER=gmail_api needs {', '.join(missing)}.")
         return self
 
     @model_validator(mode="after")

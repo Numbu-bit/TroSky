@@ -40,7 +40,7 @@ from app.repositories.user_repository import UserRepository
 from app.repositories.vehicle_repository import VehicleRepository
 from app.schemas.driver import DriverRegisterRequest, DriverUpdateRequest
 from app.services.document_service import store_uploaded_document
-from app.services.role_service import grant_role
+from app.services.role_service import assert_can_take_role, grant_role
 
 logger = get_logger(__name__)
 
@@ -65,6 +65,9 @@ class DriverService:
     async def register(self, user_id: uuid.UUID, request: DriverRegisterRequest) -> Driver:
         if await self._drivers.get_by_user_id(user_id) is not None:
             raise ConflictError("A driver profile already exists for this account.")
+        # A passenger account cannot become a driver: drivers have accounts
+        # of their own (app.services.role_service).
+        await assert_can_take_role(self._session, user_id, SystemRole.DRIVER)
         if await self._drivers.get_by_license_number(request.license_number) is not None:
             raise ConflictError(
                 "This driver's license number is already registered.",
@@ -83,10 +86,8 @@ class DriverService:
             changed_by=user_id,
             reason="Initial registration",
         )
-        # Creating the profile is what makes an account a driver. Without
-        # this the holder keeps only the role chosen at registration and is
-        # locked out of every other /drivers and /driver-trips route, so a
-        # passenger could never become a driver without a second account.
+        # Creating the profile is what makes an account a driver: an
+        # account registered as a driver, or a fleet owner who drives.
         await grant_role(self._session, user_id, SystemRole.DRIVER)
         logger.info("driver_registered", driver_id=str(driver.id), user_id=str(user_id))
         announce(

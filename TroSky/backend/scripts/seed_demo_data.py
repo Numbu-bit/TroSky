@@ -191,10 +191,15 @@ def _e164(local: str) -> str:
 
 
 async def ensure_account(
-    session: AsyncSession, local_phone: str, full_name: str, roles: dict[str, Role]
+    session: AsyncSession,
+    local_phone: str,
+    full_name: str,
+    roles: dict[str, Role],
+    role: SystemRole = SystemRole.PASSENGER,
 ) -> User:
-    """A verified passenger account with the demo password (existing ones
-    are left as they are)."""
+    """A verified account with the demo password, a passenger's or (``role``)
+    a driver's or fleet owner's: they never share one (existing accounts are
+    left as they are)."""
     phone = _e164(local_phone)
     found = await session.execute(select(User).where(User.phone_number == phone))
     user = found.scalar_one_or_none()
@@ -209,7 +214,7 @@ async def ensure_account(
     user.profile = UserProfile(full_name=full_name, preferred_language="en")
     session.add(user)
     await session.flush()
-    session.add(UserRole(user_id=user.id, role_id=roles[SystemRole.PASSENGER.value].id))
+    session.add(UserRole(user_id=user.id, role_id=roles[role.value].id))
     session.add(NotificationPreference(user_id=user.id))
     await session.flush()
     return user
@@ -288,7 +293,7 @@ async def ensure_fleet(
             else:
                 pool += 1
                 phone, name = f"02455503{pool:02d}", f"Pool Driver {pool}"
-            user = await ensure_account(session, phone, name, roles)
+            user = await ensure_account(session, phone, name, roles, SystemRole.DRIVER)
             found_driver = await session.execute(select(Driver).where(Driver.user_id == user.id))
             driver = found_driver.scalar_one_or_none()
             if driver is None:
@@ -567,7 +572,7 @@ async def seed_demo_data() -> None:
     async with transactional_session() as session:
         roles = await ensure_roles(session)
         passenger = await ensure_account(session, *PASSENGER, roles)
-        owner = await ensure_account(session, *FLEET_OWNER, roles)
+        owner = await ensure_account(session, *FLEET_OWNER, roles, SystemRole.FLEET_OWNER)
         # Approvals are credited to the dev admin when `make seed` created
         # one, else to the fleet owner (a fresh stack has no admin).
         found = await session.execute(select(User).where(User.phone_number == DEV_ADMIN_PHONE))

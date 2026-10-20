@@ -58,10 +58,12 @@ async def register_driver(
     ``driver`` role (status starts ``pending``; see
     ``/api/v1/admin/drivers/pending`` for the review flow).
 
-    Any signed-in account may call this — that is what lets one TroSky
-    login be a passenger and a driver at once. The role takes effect
-    immediately: ``get_current_principal`` reloads roles from the database
-    on every request, so the existing access token keeps working."""
+    For an account registered as a driver, or a fleet owner who drives
+    their own vehicle. A passenger account is refused (409
+    ``PASSENGER_ACCOUNT``): drivers sign up with an account of their own,
+    with its own phone number and email. The role takes effect immediately:
+    ``get_current_principal`` reloads roles from the database on every
+    request, so the existing access token keeps working."""
     driver = await drivers.register(principal.user_id, body)
     return await driver_response(driver, drivers)
 

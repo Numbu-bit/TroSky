@@ -29,8 +29,8 @@ from app.api.v1.routes import search_result_response
 from app.api.v1.shared_trips import TripShareServiceDep
 from app.api.v1.views import booking_responses, payment_source
 from app.core.config import get_settings
-from app.core.exceptions import NotFoundError
-from app.core.permissions import Permission
+from app.core.exceptions import ForbiddenError, NotFoundError
+from app.core.permissions import Permission, SystemRole
 from app.core.ratelimit import rate_limit
 from app.models.bookings import Booking, BookingStatus
 from app.schemas.booking import (
@@ -70,7 +70,16 @@ async def create_booking(
     same pickup to the same destination (the passenger is notified) or, with
     none, ends. Once accepted it is ``pending``: pay before the new
     ``expires_at`` (``SEAT_RESERVATION_HOLD_SECONDS``) or the seats are
-    released."""
+    released.
+
+    Passenger accounts only (403 ``PASSENGER_ACCOUNT_REQUIRED``): drivers
+    and fleet owners ride with a passenger account of their own."""
+    if not principal.has_role(SystemRole.PASSENGER):
+        raise ForbiddenError(
+            "Only passenger accounts can book. Drivers and fleet owners ride with a "
+            "passenger account of their own.",
+            code="PASSENGER_ACCOUNT_REQUIRED",
+        )
     booking = await service.create_booking(principal.user_id, body, idempotency_key=idempotency_key)
     return await _booking_response(service, booking)
 

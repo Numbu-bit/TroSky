@@ -2290,3 +2290,69 @@ pause, resume and end trips by hand, and admins cancel as before.
   now shielded from the cancellation (`close_pubsub` in `app/core/redis.py`).
   The trip-tracking WebSocket closes its subscription the same way.
 - `anyio` is now a named dependency (Starlette already brought it).
+
+## [0.22.7] - 2026-10-13 - A deleted account's number can sign up again
+
+- **Fixed: deleting an account kept its phone number and email taken for
+  good.** Sign-up refused them with "An account with this phone number
+  already exists", and no admin could find that account, since deleted
+  accounts are left out of every list. Phone numbers and emails are now
+  unique only among accounts that are not deleted (migration
+  `20261013_0022`). The deleted account keeps its record and its history.
+
+## [0.22.8] - 2026-10-13 - Real email setup: the sender's domain
+
+- Docs: `docs/deploy-render.md` said a Gmail address works as Brevo's sender.
+  It can be added, but since Gmail's and Yahoo's sender rules of February
+  2024 Brevo sends such mail from an address of its own (`brevosend.com`),
+  more often into spam. The guide now says so, how to send from a domain of
+  your own (DNS records in Brevo), where the API key is made, and how to
+  use Brevo from a developer's machine in place of MailHog.
+
+## [0.22.9] - 2026-10-16 - Verification codes through Gmail's API
+
+- `EMAIL_PROVIDER=gmail_api` sends email through Gmail's own HTTPS API, as
+  TroSky's Gmail account (`troskynoreply@gmail.com`). Render's free plan
+  blocks SMTP, and Brevo sends a Gmail sender's mail from an address of its
+  own, more often into spam; through Gmail's API a code arrives as an
+  ordinary Gmail message, free and with no domain of our own. Settings:
+  `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET` and `GMAIL_REFRESH_TOKEN`; the
+  server refuses to start with `gmail_api` and any of them missing. Google's
+  refusal is a failed send with its reason (`email_api_refused`), and a
+  refresh token that no longer works says how to make a new one.
+- `scripts/gmail_refresh_token.py` makes the refresh token once: Google's
+  consent page in the browser, a one-off server on 127.0.0.1 for the answer
+  (with PKCE), and an optional test email.
+- Staging (`render.yaml`) now emails codes this way: `EMAIL_PROVIDER=gmail_api`
+  and the sender, with the three secrets as Environment-tab values. Set them
+  in Render before this reaches main, or the new deploy won't start.
+- Docs: `docs/deploy-render.md`, "Sending real email", has the Google Cloud
+  setup.
+
+## [0.23.0] - 2026-10-20 - Passenger accounts and work accounts are separate
+
+An account is now either a **passenger account** (books and rides) or a
+**work account**: a driver, a fleet owner, or an owner who drives their own
+vehicle (both roles on one account). They never mix: someone who drives and
+also rides has two accounts, each with its own phone number and email
+(`app/services/role_service.py`).
+
+- `POST /drivers/me` and `POST /fleet-owners/me` refuse a passenger account:
+  409 `PASSENGER_ACCOUNT`. Drivers and fleet owners sign up with
+  `role: "driver"` or `role: "fleet_owner"` on `POST /auth/register`. A
+  driver may still become a fleet owner, and a fleet owner a driver.
+- `POST /bookings` is for passenger accounts only: 403
+  `PASSENGER_ACCOUNT_REQUIRED` otherwise. Bookings made before stay
+  viewable, payable and cancellable as before.
+- A work account is never given the passenger role (409 `WORK_ACCOUNT`).
+- Team roles (admin, super admin, staff) are outside the rule: a team
+  member's account may also be a passenger or a work account, as before.
+- Migration `20261020_0023`: drivers and fleet owners lose the passenger
+  role most of them were created with. Their bookings so far are kept. Not
+  reversible: which accounts had it is not recorded.
+- `scripts/seed_demo_data.py` creates the demo drivers and fleet owner as
+  work accounts.
+- **The driver app must sign up drivers with `role: "driver"`** rather than
+  as passengers who then create a driver profile; that is now refused. The
+  passenger app should expect `PASSENGER_ACCOUNT_REQUIRED` if a driver signs
+  in to it and tries to book.

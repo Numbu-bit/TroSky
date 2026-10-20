@@ -211,15 +211,74 @@ With `EMAIL_PROVIDER=console` every code is written to the log instead of being 
 Codes expire after 5 minutes (`OTP_EXPIRATION_SECONDS`). The log search covers the running
 instance; after a restart, ask for a new code.
 
-## Sending real email (Brevo or Resend)
+## Sending real email
 
-Render's free plan blocks SMTP, so real email goes through an HTTPS API instead (backend
-0.22.3). Both services have a free tier:
+Render's free plan blocks SMTP, so real email goes through an HTTPS API instead. Staging sends
+through **Gmail's own API**, from TroSky's Gmail account (backend 0.22.9): free, and no domain of
+our own needed. **Brevo** and **Resend** (0.22.3) are for when we send from a domain of our own.
 
-- **Brevo** (about 300 emails a day free): Settings → **Senders** → add and verify the address codes come
-  from (a Gmail address works); then SMTP & API → **API keys** → generate one.
+### Gmail's API (what staging uses)
+
+Codes go out as ordinary Gmail messages from `troskynoreply@gmail.com`, so they arrive like any
+other Gmail mail. Gmail lets a free account send roughly 500 messages a day.
+
+Once, signed in to Google as `troskynoreply@gmail.com`:
+
+1. In [Google Cloud](https://console.cloud.google.com), create a project (for example
+   "TroSky Mail").
+2. **APIs & Services** → **Library** → **Gmail API** → **Enable**.
+3. **Google Auth Platform** (the OAuth consent screen) → **Get started**: app name `TroSky`,
+   support email `troskynoreply@gmail.com`, audience **External**. Under **Data Access**, add the
+   scope `https://www.googleapis.com/auth/gmail.send`.
+4. **Audience** → **Publish app**, so the status reads **In production**. While it says
+   "Testing", Google's refresh tokens stop working after 7 days. Google doesn't have to verify an
+   app that only its own account uses: its consent page warns "Google hasn't verified this app";
+   choose **Advanced** → **Go to TroSky**.
+5. **Clients** → **Create client** → application type **Desktop app**. Copy the client ID and the
+   client secret straight away (Google may not show the secret again).
+6. On your laptop, in `TroSky/backend`:
+
+   ```
+   python -m scripts.gmail_refresh_token --client-id <client ID> --test-to <your email>
+   ```
+
+   Paste the client secret when asked. The browser opens Google's page: sign in as
+   `troskynoreply@gmail.com` and allow **Send email on your behalf**. The script sends a test
+   email to `--test-to` and prints `GMAIL_REFRESH_TOKEN=…`.
+7. In Render → **trosky-api** → **Environment**, add `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET` and
+   `GMAIL_REFRESH_TOKEN`, never in `render.yaml` or a chat. `render.yaml` already sets
+   `EMAIL_PROVIDER=gmail_api`, `EMAIL_FROM_ADDRESS` and `EMAIL_FROM_NAME`. The server refuses to
+   start with `gmail_api` and any of the three missing, so add them **before** that change
+   reaches `main`.
+
+If codes stop arriving, the logs say why (`otp_delivery_failed`, `email_api_refused`).
+`invalid_grant` means the refresh token no longer works: the account's password was changed, its
+access was removed at [myaccount.google.com/permissions](https://myaccount.google.com/permissions),
+or the app was left in "Testing". Run the script again and replace `GMAIL_REFRESH_TOKEN`.
+
+The same settings work on a developer's machine, in `.env` (which git ignores), in place of SMTP
+or MailHog. Every code then goes to a real inbox and counts against the day's limit.
+
+### Brevo or Resend (for a domain of our own)
+
+Both services have a free tier:
+
+- **Brevo** (about 300 emails a day free, to any address): Settings → **Senders, Domains &
+  Dedicated IPs** → **Senders** → add the address codes come from and confirm it from the email
+  Brevo sends; then Settings → **SMTP & API** → **API Keys** → generate one. The key starts with
+  `xkeysib-` and is shown only once. If Brevo says the transactional platform is not activated,
+  its support activates new accounts.
 - **Resend** (about 100 a day free): it sends only from a domain you verify; its test sender reaches only
   your own address.
+
+**The sender's domain.** Gmail and Yahoo have required senders to authenticate their domain since
+February 2024. A free address such as a Gmail one can be added as a Brevo sender, but nobody but
+Google can authenticate gmail.com, so Brevo sends such mail from an address of its own
+(`…@….brevosend.com`): codes still arrive, more often in spam. Good enough for testing. For real
+users, send from a domain you own: add it under **Senders, Domains & Dedicated IPs** →
+**Domains**, publish the DNS records Brevo shows (a Brevo code, DKIM and DMARC; they can take up
+to 48 hours), and set `EMAIL_FROM_ADDRESS` to an address on it, such as
+`no-reply@trosky.africa`.
 
 Then in `render.yaml` (or the service's **Environment** tab) set `EMAIL_PROVIDER` to `brevo` or
 `resend` and `EMAIL_FROM_ADDRESS` to the verified sender, and add **`EMAIL_API_KEY`** in the
@@ -227,6 +286,10 @@ Environment tab only, never in `render.yaml` (it's a secret). The server refuses
 `brevo` or `resend` and no key. A code the service refuses to send (a sender not verified yet, the
 day's quota reached) is reported to the person, who can ask again at once; the reason is in the
 logs (`otp_delivery_failed`, `email_api_refused`).
+
+The same settings work on a developer's machine, in `.env` (which git ignores), in place of
+MailHog: `EMAIL_PROVIDER=brevo`, `EMAIL_API_KEY`, `EMAIL_FROM_ADDRESS` and `EMAIL_FROM_NAME`.
+Every code then goes to the real inbox and counts against the day's quota.
 
 ## File uploads (Cloudflare R2)
 
