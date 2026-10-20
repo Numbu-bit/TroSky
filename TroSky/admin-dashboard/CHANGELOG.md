@@ -30,3 +30,12 @@ Notable changes to the TroSky admin dashboard, newest last. The dashboard as fir
   token it was opened with expires (they last 15 minutes), and the dashboard stopped there, polling
   for the rest of the session while saying it was reconnecting. It now renews the token if needed
   and reconnects.
+
+## 2026-10-17 - The TroSky logo
+
+- **TroSky's pin logo replaces the placeholder bus icon** in the sidebar, on the sign-in page and
+  as the browser tab icon (`public/favicon.svg`, which all three use). It's redrawn as SVG from the
+  logo artwork, in the artwork's own colours, so it stays sharp at every size. It sits on a light
+  rounded tile because the pin's navy would disappear against the navy sidebar and sign-in page.
+  The wordmark version (name and tagline) isn't used: the name is already written beside the icon,
+  and the sidebar folds down to the icon alone.
