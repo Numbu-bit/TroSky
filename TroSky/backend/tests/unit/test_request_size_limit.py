@@ -71,6 +71,9 @@ def _json_of(text_length: int) -> bytes:
 
 
 async def _post(path: str, **kwargs: Any) -> Any:
+    # Labelled as JSON, as clients send it: FastAPI only parses a JSON body
+    # that says it is one.
+    kwargs.setdefault("headers", {"content-type": "application/json"})
     async with AsyncClient(transport=ASGITransport(app=_app()), base_url="http://t") as c:
         return await c.post(path, **kwargs)
 
