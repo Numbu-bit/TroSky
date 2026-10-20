@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:trosky_api/trosky_api.dart';
 import 'package:trosky_auth/trosky_auth.dart';
 import 'package:trosky_core/trosky_core.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
+import '../../../app/location_prompt.dart';
 import '../../../app/routes.dart';
 import '../../../l10n/app_localizations.dart';
+import '../application/signup_location.dart';
 import '../domain/auth_inputs.dart';
 import 'failure_messages.dart';
 import 'sign_in_screen.dart';
@@ -16,6 +19,10 @@ import 'widgets/auth_layout.dart';
 /// S-06 Your details (not in Figma; decision 6): name, Gmail address and
 /// password for the phone from Welcome, then `POST /auth/register` with
 /// the app mode's role.
+///
+/// A passenger's request also carries the phone's position, once, for the
+/// backend's check that they are in Ghana (decision 27). Without a position
+/// nothing is sent, and the form says why, with Try again.
 class DetailsScreen extends ConsumerStatefulWidget {
   const DetailsScreen({super.key, required this.phone});
 
@@ -39,6 +46,9 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
   String? _formError;
   bool _phoneTaken = false;
 
+  /// Why the passenger's position couldn't be read, shown under the form.
+  SignUpLocationProblem? _locationProblem;
+
   @override
   void dispose() {
     _name.dispose();
@@ -59,6 +69,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
       _passwordError = rules.allMet ? null : l10n.errorPasswordRules;
       _formError = null;
       _phoneTaken = false;
+      _locationProblem = null;
     });
     if (_nameError != null || _emailError != null || _passwordError != null) {
       return;
@@ -67,6 +78,25 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
     FocusScope.of(context).unfocus();
     setState(() => _busy = true);
     final driver = ref.read(appModeControllerProvider).value == AppMode.driver;
+    // Only passengers: the backend checks their position (drivers are
+    // approved by an admin instead). Kept in this method only.
+    LatLng? position;
+    if (!driver) {
+      final location = await ref
+          .read(signUpLocatorProvider)
+          .locate(explain: _explainLocation);
+      if (!mounted) return;
+      switch (location) {
+        case Located():
+          position = location.position;
+        case NotLocated(:final problem):
+          setState(() {
+            _busy = false;
+            _locationProblem = problem;
+          });
+          return;
+      }
+    }
     final result = await ref
         .read(sessionControllerProvider.notifier)
         .register(
@@ -76,6 +106,8 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
             password: _password.text,
             fullName: name,
             role: driver ? RegistrableRole.driver : RegistrableRole.passenger,
+            latitude: position?.latitude,
+            longitude: position?.longitude,
           ),
         );
     if (!mounted) return;
@@ -96,10 +128,41 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
     }
   }
 
+  /// The Home location sheet, with why sign-up needs the location. The
+  /// button doesn't spin behind it; it does again while the phone answers.
+  Future<bool> _explainLocation() async {
+    if (!mounted) return false;
+    final l10n = AppLocalizations.of(context);
+    setState(() => _busy = false);
+    final allow = await showLocationPrompt(
+      context,
+      title: l10n.detailsLocationTitle,
+      body: l10n.detailsLocationBody,
+    );
+    if (mounted) setState(() => _busy = true);
+    return allow ?? false;
+  }
+
+  String _locationMessage(SignUpLocationProblem problem) {
+    final l10n = AppLocalizations.of(context);
+    return switch (problem) {
+      SignUpLocationProblem.denied => l10n.detailsLocationNeeded,
+      SignUpLocationProblem.blocked => l10n.detailsLocationBlocked,
+      SignUpLocationProblem.serviceOff => l10n.detailsLocationServiceOff,
+      SignUpLocationProblem.notFound => l10n.detailsLocationNotFound,
+    };
+  }
+
   void _show(AppFailure failure) {
     final l10n = AppLocalizations.of(context);
     setState(() {
       switch (failure.code) {
+        case 'LOCATION_NOT_SERVED':
+          _formError = l10n.detailsLocationNotServed;
+        // The app sends a position, so this means it went missing: as if
+        // the passenger had refused.
+        case 'LOCATION_REQUIRED':
+          _locationProblem = SignUpLocationProblem.denied;
         case 'PHONE_ALREADY_REGISTERED':
           _formError = l10n.errorPhoneTaken;
           _phoneTaken = true;
@@ -205,6 +268,28 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
             ],
           ),
         ),
+        if (_locationProblem case final problem?)
+          FormError(
+            _locationMessage(problem),
+            action: Wrap(
+              alignment: WrapAlignment.center,
+              spacing: TroskySpacing.s16,
+              children: [
+                TroskyTextLink(
+                  prompt: '',
+                  action: l10n.detailsTryAgain,
+                  onPressed: _submit,
+                ),
+                if (problem == SignUpLocationProblem.blocked)
+                  TroskyTextLink(
+                    prompt: '',
+                    action: l10n.detailsOpenSettings,
+                    onPressed: () =>
+                        ref.read(signUpLocatorProvider).openAppSettings(),
+                  ),
+              ],
+            ),
+          ),
         if (_formError != null)
           FormError(
             _formError!,

@@ -394,6 +394,60 @@ abstract class AppLocalizations {
   /// **'Create account'**
   String get detailsCreateAccount;
 
+  /// Title of the sheet on Your details (S-06) before asking for location; the Home location sheet with sign-up copy.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm you\'re in Ghana'**
+  String get detailsLocationTitle;
+
+  /// Body of the sign-up location sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'TroSky is only available in Ghana for now. To create your account, we check your location once. It isn\'t saved.'**
+  String get detailsLocationBody;
+
+  /// S-06, under the form: location was refused (or the server said LOCATION_REQUIRED). Shown with Try again.
+  ///
+  /// In en, this message translates to:
+  /// **'TroSky needs your location once to confirm you\'re in Ghana.'**
+  String get detailsLocationNeeded;
+
+  /// S-06: location refused for good. Shown with Try again and Open settings.
+  ///
+  /// In en, this message translates to:
+  /// **'TroSky needs your location once to confirm you\'re in Ghana. Location is blocked for TroSky: allow it in Settings.'**
+  String get detailsLocationBlocked;
+
+  /// S-06: the phone's location is switched off. Shown with Try again.
+  ///
+  /// In en, this message translates to:
+  /// **'TroSky needs your location once to confirm you\'re in Ghana. Turn on your phone\'s location, then try again.'**
+  String get detailsLocationServiceOff;
+
+  /// S-06: no position came within 10 seconds. Shown with Try again.
+  ///
+  /// In en, this message translates to:
+  /// **'TroSky couldn\'t find your location to confirm you\'re in Ghana. Try again in a moment.'**
+  String get detailsLocationNotFound;
+
+  /// S-06: the server said LOCATION_NOT_SERVED (the phone is outside Ghana).
+  ///
+  /// In en, this message translates to:
+  /// **'TroSky is only available in Ghana for now.'**
+  String get detailsLocationNotServed;
+
+  /// S-06: link under a location message; asks for the location again and creates the account.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get detailsTryAgain;
+
+  /// S-06: link under the blocked-location message; opens TroSky's page in the phone's settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get detailsOpenSettings;
+
   /// Code verification screen (S-07, not in Figma) heading.
   ///
   /// In en, this message translates to:

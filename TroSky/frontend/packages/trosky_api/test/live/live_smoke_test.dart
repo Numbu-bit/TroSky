@@ -117,6 +117,9 @@ void main() {
           email: email,
           password: password,
           fullName: 'Smoke Test',
+          // Accra: a server with PASSENGER_SIGNUP_COUNTRIES=GH needs it.
+          latitude: 5.6037,
+          longitude: -0.187,
         ),
       );
       expect(registered.failureOrNull, isNull);
