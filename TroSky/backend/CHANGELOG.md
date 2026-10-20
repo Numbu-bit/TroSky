@@ -2299,3 +2299,12 @@ pause, resume and end trips by hand, and admins cancel as before.
   accounts are left out of every list. Phone numbers and emails are now
   unique only among accounts that are not deleted (migration
   `20261013_0022`). The deleted account keeps its record and its history.
+
+## [0.22.8] - 2026-10-13 - Real email setup: the sender's domain
+
+- Docs: `docs/deploy-render.md` said a Gmail address works as Brevo's sender.
+  It can be added, but since Gmail's and Yahoo's sender rules of February
+  2024 Brevo sends such mail from an address of its own (`brevosend.com`),
+  more often into spam. The guide now says so, how to send from a domain of
+  your own (DNS records in Brevo), where the API key is made, and how to
+  use Brevo from a developer's machine in place of MailHog.
