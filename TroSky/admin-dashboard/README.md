@@ -242,6 +242,32 @@ generated types, and the backend's rules and refusals (page sizes, validation, s
 
 ## Deployment
 
+### On Vercel (staging, against the Render backend)
+
+`vercel.json` holds the build, the SPA fallback to `index.html`, long caching for hashed assets, and
+the same security headers as the nginx image below. Make two Vercel projects from this repository,
+both with **Root Directory** `TroSky/admin-dashboard`:
+
+| Project                             | Build command                        | Environment variables                                                                                                  |
+| ----------------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `trosky-admin`, the live dashboard  | `npm run build` (from `vercel.json`) | `VITE_API_BASE_URL=https://trosky-api.onrender.com/api/v1`, and `VITE_ENABLED_MODULES` as in `.env.production.example` |
+| `trosky-admin-demo`, demo data only | override it: `npm run build:demo`    | none (`.env.demo` has them)                                                                                            |
+
+The live dashboard calls the API on Render directly, so the backend must allow its address:
+`CORS_ALLOWED_ORIGINS` in the repository's `render.yaml` lists `https://trosky-admin.vercel.app`. If
+Vercel gives the project another address, or it gets a custom domain, change it there
+(comma-separated for several) and let Render redeploy. The API's address is also in the
+`connect-src` of the `Content-Security-Policy` in `vercel.json`.
+
+Sign in with an administrator account of the Render backend (see its `docs/deploy-render.md`, "The
+administrator account"). Render's free plan sleeps after 15 minutes without requests: the first
+sign-in then waits up to a minute while it starts, and the sign-in page says so.
+
+The demo project never talks to a server: `build:demo` is the only build allowed to carry demo mode
+(a production build with `VITE_DEMO_MODE=true` is refused).
+
+### With Docker
+
 The `Dockerfile` builds the app with Node and serves it from nginx on Alpine (the unprivileged image:
 non-root, port 8080). The API's address and the modules are build arguments, so build one image per
 environment:

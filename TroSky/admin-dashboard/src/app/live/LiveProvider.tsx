@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 
+import { refreshSession } from '@/api/client'
 import { tokenStore } from '@/api/tokens'
 import type { Schemas } from '@/api/types'
 import { apiOrigin, env } from '@/lib/env'
@@ -139,11 +140,23 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       ]) {
         source.addEventListener(type, (event) => handle(type, (event as MessageEvent<string>).data))
       }
-      // Access withdrawn (signed out, suspended): stop; requests will say why.
+      // The server re-checks access while the stream is open and ends it
+      // once access is gone: most often just because the access token
+      // expired (they last minutes). Renew it and reconnect. A session that
+      // is over (signed out, suspended) is ended by the next request.
       source.addEventListener('end', () => {
         source?.close()
         setStreaming(false)
+        void resume(token)
       })
+    }
+
+    async function resume(used: string) {
+      // Requests may have renewed the token already.
+      const renewal = tokenStore.access === used ? await refreshSession() : 'renewed'
+      if (stopped) return
+      if (renewal === 'renewed') connect()
+      else schedule()
     }
 
     connect()
