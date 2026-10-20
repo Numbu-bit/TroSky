@@ -7,7 +7,8 @@ Design notes
 * ``users.phone_number`` is stored E.164-normalized (validated at the schema
   layer via ``phonenumbers``) and is the primary login identifier; it is
   always required. ``email`` is optional and stored as ``CITEXT`` so
-  uniqueness is case-insensitive without extra normalization logic.
+  uniqueness is case-insensitive without extra normalization logic. Both
+  are unique only among accounts that are not deleted.
 * Role/permission assignment is fully data-driven (``roles``,
   ``permissions``, ``role_permissions``, ``user_roles``) rather than a
   hard-coded enum on ``users`` — this is what lets administrators tune
@@ -31,6 +32,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy import (
     Enum as PgEnum,
@@ -143,8 +145,15 @@ class User(UUIDAuditBase, SoftDeleteMixin):
         return self.phone_verified_at is not None or self.email_verified_at is not None
 
     __table_args__ = (
-        UniqueConstraint("phone_number", name="uq_users_phone_number"),
-        UniqueConstraint("email", name="uq_users_email"),
+        # Unique among accounts not deleted: a deleted account keeps its
+        # row, and its number and email are free for a new sign-up.
+        Index(
+            "uq_users_phone_number",
+            "phone_number",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+        Index("uq_users_email", "email", unique=True, postgresql_where=text("deleted_at IS NULL")),
         CheckConstraint("failed_login_attempts >= 0", name="failed_login_attempts_non_negative"),
         Index("ix_users_email", "email"),
     )
