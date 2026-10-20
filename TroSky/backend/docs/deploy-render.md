@@ -177,7 +177,7 @@ automatically (`autoDeployTrigger: commit` with a build filter).
 | `OTP_DELIVERY_CHANNEL=email`, `EMAIL_PROVIDER=console`, `SMS_PROVIDER=console`, `PAYMENTS_ACTIVE_PROVIDER=sandbox`, `FIREBASE_ENABLED=false`, `MAPS_PROVIDER=local` | `render.yaml` |
 | `TRUSTED_PROXY_CIDRS` | `render.yaml` (see "Rate limits behind Render's proxy") |
 | `DATABASE_POOL_SIZE=3`, `DATABASE_MAX_OVERFLOW=2`, `SEED_DEMO_DATA=false` | `render.yaml` |
-| `PASSENGER_SIGNUP_COUNTRIES=" "` (empty) | `render.yaml`. **TEMPORARY — set back to GH once the app sends location (next frontend step).** See "Passenger sign-up" |
+| `PASSENGER_SIGNUP_COUNTRIES=GH` | `render.yaml`: passengers sign up only from Ghana. See "Passenger sign-up" |
 | `BOOKING_ACCEPTANCE_REQUIRED=false` | `render.yaml`: bookings skip the driver's acceptance on this test server. See "Booking acceptance" |
 | `CORS_ALLOWED_ORIGINS=http://localhost:3000` | `render.yaml`, the backend default for now. Add the admin dashboard's URL once it is deployed. See "The admin dashboard" |
 | `DATABASE_URL_SYNC`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `TRUSTED_HOSTS`, `MALLOC_ARENA_MAX` | Derived by `render-start.sh` |
@@ -358,23 +358,18 @@ The demo seed books a sample trip for the demo passenger the way the app does: i
 accepts it, then it is paid. It runs with booking acceptance on or off (since backend 0.22.1;
 before, `render-start.sh` had to switch acceptance off for the seed).
 
-## Passenger sign-up (TEMPORARY)
-
-**TEMPORARY — set back to GH once the app sends location (next frontend step).**
+## Passenger sign-up
 
 Since backend 0.21.0 a passenger can only sign up with the phone's location, and it must be in
-Ghana (`PASSENGER_SIGNUP_COUNTRIES=GH`). The current app doesn't send a location yet, so on this
-test server the check is switched off:
-- **The value:** `PASSENGER_SIGNUP_COUNTRIES` is a single space in `render.yaml`. The backend
-  ignores blank entries, so it reads as empty, and an empty value is guaranteed to reach the
-  service (Render doesn't document keeping one that is truly empty).
-- **Checking it:** the start log says `passenger sign-up: no location needed` (or
-  `the phone's location must be in GH`).
-- **Tested locally:** registering without `latitude`/`longitude` succeeds with this setting; with
-  `GH` it answers 422 `LOCATION_REQUIRED`.
-
-To turn the check back on, set the value to `GH` in `render.yaml` and push, or edit it under
-Environment.
+Ghana: `render.yaml` sets `PASSENGER_SIGNUP_COUNTRIES=GH`.
+- **The app:** sends the location since frontend Step 12 (PR #44, the staging APK of 20 Oct
+  2026). **Older builds can't sign passengers up any more** (`422 LOCATION_REQUIRED`): testers
+  need the new APK. Drivers aren't affected.
+- **Checking it:** the start log says `the phone's location must be in GH` (or
+  `passenger sign-up: no location needed` when the check is off).
+- **Switching it off** (e.g. for an old build): set the value to a single space `" "` in
+  `render.yaml` and push. The backend ignores blank entries, so it reads as empty. Change it in
+  `render.yaml`, not the dashboard: a Blueprint sync overwrites dashboard edits.
 
 ## Payments: MTN MoMo sandbox
 

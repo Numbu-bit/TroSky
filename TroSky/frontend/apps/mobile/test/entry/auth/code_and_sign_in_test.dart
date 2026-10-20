@@ -219,6 +219,8 @@ void main() {
           email: 'efua.owusu@gmail.com',
           password: 'Kumasi2026',
           fullName: 'Efua Owusu',
+          latitude: 6.6885,
+          longitude: -1.6244,
         ),
       );
       world.now = world.now.add(const Duration(seconds: 61));
@@ -246,6 +248,8 @@ void main() {
           email: 'efua.owusu@gmail.com',
           password: 'Kumasi2026',
           fullName: 'Efua Owusu',
+          latitude: 6.6885,
+          longitude: -1.6244,
         ),
       );
       world.now = world.now.add(const Duration(seconds: 20));
