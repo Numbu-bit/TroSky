@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:trosky_api/trosky_api.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
+import '../../../app/location_prompt.dart';
 import '../../../app/routes.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../booking/presentation/payment_screen.dart';
@@ -67,7 +68,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _askLocation() async {
     if (!mounted) return;
-    final allow = await showLocationPrompt(context);
+    final l10n = AppLocalizations.of(context);
+    final allow = await showLocationPrompt(
+      context,
+      title: l10n.homeLocationPromptTitle,
+      body: l10n.homeLocationPromptBody,
+    );
     final controller = ref.read(locationControllerProvider.notifier);
     await (allow ?? false ? controller.allow() : controller.notNow());
   }
@@ -107,65 +113,4 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
-}
-
-/// Why Home wants location, before the phone's own dialog. True for "Allow
-/// location"; false or null (dismissed) for not now.
-Future<bool?> showLocationPrompt(BuildContext context) {
-  final l10n = AppLocalizations.of(context);
-  return showModalBottomSheet<bool>(
-    context: context,
-    // Over the tab bar too.
-    useRootNavigator: true,
-    backgroundColor: TroskyColors.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(
-        top: Radius.circular(TroskyRadii.r24),
-      ),
-    ),
-    builder: (context) => SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(
-          TroskySpacing.s24,
-          TroskySpacing.s28,
-          TroskySpacing.s24,
-          TroskySpacing.s24,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Semantics(
-              header: true,
-              child: Text(
-                l10n.homeLocationPromptTitle,
-                style: TroskyTypography.heading20Bold.copyWith(
-                  color: TroskyColors.textPrimary,
-                ),
-              ),
-            ),
-            const SizedBox(height: TroskySpacing.s8),
-            Text(
-              l10n.homeLocationPromptBody,
-              style: TroskyTypography.body14Regular.copyWith(
-                color: TroskyColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: TroskySpacing.s24),
-            TroskyButton(
-              label: l10n.homeLocationAllow,
-              variant: TroskyButtonVariant.primary,
-              onPressed: () => Navigator.of(context).pop(true),
-            ),
-            const SizedBox(height: TroskySpacing.s12),
-            TroskyButton(
-              label: l10n.homeLocationNotNow,
-              variant: TroskyButtonVariant.outline,
-              onPressed: () => Navigator.of(context).pop(false),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
 }
