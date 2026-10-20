@@ -1,0 +1,3 @@
+# LF line endings in every checkout, Windows included, whatever
+# core.autocrlf says: `npm run format:check` (Prettier) expects them.
+* text=auto eol=lf
