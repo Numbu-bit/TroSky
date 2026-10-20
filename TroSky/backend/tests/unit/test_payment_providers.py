@@ -120,13 +120,12 @@ class TestMtnMomoPaymentProvider:
         with pytest.raises(ProviderError):
             MtnMomoPaymentProvider(self._settings(PAYMENTS_MTN_MOMO_BASE_URL=""))
 
-    def test_verify_webhook_signature_matches_shared_secret(self) -> None:
+    def test_a_callback_is_never_believed_only_checked(self) -> None:
+        # MTN signs nothing: any callback is accepted as a prompt, and the
+        # payment service asks MTN for the status (trusts_webhook_status).
         provider = MtnMomoPaymentProvider(self._settings())
-        assert provider.verify_webhook_signature(
-            {"Authorization": "Bearer webhook-secret-value"}, b"{}"
-        )
-        assert not provider.verify_webhook_signature({"Authorization": "Bearer wrong"}, b"{}")
-        assert not provider.verify_webhook_signature({}, b"{}")
+        assert provider.verify_webhook_signature({}, b"{}")
+        assert provider.trusts_webhook_status is False
 
     def test_parse_webhook_event_maps_status(self) -> None:
         provider = MtnMomoPaymentProvider(self._settings())

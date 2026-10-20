@@ -355,6 +355,48 @@ Ghana: `render.yaml` sets `PASSENGER_SIGNUP_COUNTRIES=GH`.
   `render.yaml` and push. The backend ignores blank entries, so it reads as empty. Change it in
   `render.yaml`, not the dashboard: a Blueprint sync overwrites dashboard edits.
 
+## Payments: MTN MoMo sandbox
+
+`render.yaml` pays through the built-in sandbox provider (`PAYMENTS_ACTIVE_PROVIDER=sandbox`), which
+approves everything without calling anyone. To take test payments through MTN's own sandbox
+(backend 0.22.5), where the payer approves a prompt, with play money:
+
+1. Sign up at https://momodeveloper.mtn.com, subscribe to the **Collections** product, and copy
+   its **Primary key** (Profile → Subscriptions).
+2. From a checkout of the backend, make the sandbox API user and key. The script checks them by
+   asking MTN for a token, then prints the settings:
+
+   ```bash
+   python -m scripts.momo_sandbox_setup --subscription-key <primary key> \
+       --callback-host trosky-api.onrender.com
+   ```
+
+3. In `render.yaml` set `PAYMENTS_ACTIVE_PROVIDER` to `mtn_momo` (a Blueprint sync would put back
+   any other value), and in the service's **Environment** tab add the rest the script printed:
+   `PAYMENTS_MTN_MOMO_CURRENCY=EUR` (the sandbox takes only euros),
+   `PAYMENTS_MTN_MOMO_CALLBACK_URL`, and the three secrets (`..._SUBSCRIPTION_KEY`, `..._API_KEY`,
+   `..._API_SECRET`). Wallet payments carry on as before; Telecel Cash, AirtelTigo Money and cards
+   then answer that the channel is unavailable.
+4. Pay for a booking: `POST /api/v1/bookings/{id}/pay` with
+   `{"channel": "mtn_momo", "payer_phone_number": "0241234567"}`. The payment is `processing` until
+   MTN answers, then the booking is confirmed.
+
+How a payment completes. MTN posts the outcome to the callback URL (POST or PUT). It isn't signed,
+so the backend doesn't believe it: it asks MTN for that payment's status and applies MTN's answer.
+The reconciliation task also asks MTN every 2 minutes about payments still processing, so they
+complete even if a callback is lost.
+
+Test numbers: MTN's sandbox documentation lists payer numbers with fixed outcomes (such as one that
+always fails and one that stays pending); other numbers are approved. They aren't Ghanaian numbers,
+so the backend passes them to MTN as typed.
+
+Refunds: MTN Collections has no refund. A refund of a MoMo payment is paid to the passenger's wallet
+or by hand, as before.
+
+Going live later: MTN issues the production API user and key itself. Set
+`PAYMENTS_MTN_MOMO_BASE_URL` to MTN's production address, `PAYMENTS_MTN_MOMO_TARGET_ENVIRONMENT` to
+`mtnghana`, and `PAYMENTS_MTN_MOMO_CURRENCY` empty (GHS).
+
 ## Booking acceptance
 
 Since backend 0.20.0 a new booking waits for the trip's driver, or an admin, to accept it:

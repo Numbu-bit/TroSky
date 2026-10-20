@@ -368,7 +368,12 @@ class PaymentService:
             signature_valid=signature_valid,
             raw_payload=payload,
         )
-        if not is_new:
+        # A repeat of a callback whose content is believed changes nothing.
+        # One that only names a payment to check (MTN MoMo) is checked again
+        # while the payment is open: an earlier, forged copy saying the same
+        # must not make the real one be ignored.
+        trusted = getattr(provider, "trusts_webhook_status", True)
+        if not is_new and trusted:
             WEBHOOK_EVENTS_TOTAL.labels(provider=channel.value, result="duplicate").inc()
             logger.info(
                 "payment_webhook_duplicate_ignored",
@@ -391,9 +396,15 @@ class PaymentService:
             return
 
         WEBHOOK_EVENTS_TOTAL.labels(provider=channel.value, result="processed").inc()
-        await self._apply_provider_status(
-            payment, status=event.status, failure_reason=event.failure_reason
-        )
+        status, failure_reason = event.status, event.failure_reason
+        if not trusted and payment.status in _PENDING_OR_PROCESSING:
+            # An unsigned callback (MTN MoMo) only says which payment to
+            # check: what the provider itself answers is what counts.
+            result = await provider.query_payment(
+                payment.provider_reference or payment.internal_reference
+            )
+            status, failure_reason = result.status, result.failure_reason
+        await self._apply_provider_status(payment, status=status, failure_reason=failure_reason)
         await self._payments.mark_webhook_event_processed(webhook_event, payment_id=payment.id)
 
     async def sync_payment_status(self, payment_id: uuid.UUID) -> Payment:

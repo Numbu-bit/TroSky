@@ -45,9 +45,14 @@ def _payment_response(payment: Payment) -> PaymentResponse:
 
 
 @router.post("/payments/webhooks/{channel}", response_model=MessageResponse)
+# The same for PUT, left out of the API description (one operation there).
+@router.put("/payments/webhooks/{channel}", response_model=MessageResponse, include_in_schema=False)
 async def receive_payment_webhook(
     channel: PaymentChannel, request: Request, service: PaymentServiceDep
 ) -> MessageResponse:
+    """A payment provider reports an outcome. POST or PUT: MTN MoMo has
+    been seen to call back with either. An MTN callback is not believed
+    itself: the payment it names is checked with MTN."""
     raw_body = await request.body()
     await service.process_webhook(channel, dict(request.headers), raw_body)
     return MessageResponse(message="Received.")

@@ -78,6 +78,8 @@ services:
         value: console
       - key: SMS_PROVIDER
         value: console
+      # "mtn_momo" takes payments through MTN's MoMo sandbox:
+      # docs/deploy-render.md, "Payments: MTN MoMo sandbox".
       - key: PAYMENTS_ACTIVE_PROVIDER
         value: sandbox
       - key: FIREBASE_ENABLED

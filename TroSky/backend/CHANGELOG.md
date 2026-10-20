@@ -2251,3 +2251,29 @@ pause, resume and end trips by hand, and admins cancel as before.
   upload, read back through a signed link, refused without one, delete. It
   runs when `TROSKY_TEST_S3_ENDPOINT` and its keys are set (MinIO locally,
   or the R2 bucket to check it), and is skipped otherwise.
+
+## [0.22.5] - 2026-10-11 - MTN MoMo payments through MTN's sandbox
+
+- **MTN MoMo works against MTN's own sandbox:** a passenger pays for a
+  booking with `{"channel": "mtn_momo", "payer_phone_number": ...}`, MTN
+  sends the payer a prompt, and the booking is confirmed when MTN reports
+  the payment successful (callback, or the 2-minute reconciliation). Setup:
+  `docs/deploy-render.md`, "Payments: MTN MoMo sandbox".
+  - `scripts/momo_sandbox_setup.py` makes the sandbox API user and key from
+    the Collections subscription key, checks them, and prints the settings.
+  - New settings: `PAYMENTS_MTN_MOMO_TARGET_ENVIRONMENT` (`sandbox`; Ghana
+    live is `mtnghana`), `PAYMENTS_MTN_MOMO_CURRENCY` (the sandbox takes only
+    `EUR`), `PAYMENTS_MTN_MOMO_CALLBACK_URL`. `PAYMENTS_MTN_MOMO_BASE_URL`
+    defaults to the sandbox.
+- What the adapter got wrong against the real API: MTN wants a UUID as the
+  request's `X-Reference-Id` (it sent our `PAY-...` reference; now a UUID
+  made from it, so asking again is the same request); it asked for no
+  callback; it always sent the payment's currency; it sent the number as
+  typed (now `233...`); it fetched a new token for every payment (now
+  shared until it expires).
+- **MTN callbacks are checked, not believed:** MTN signs nothing, so a
+  callback only says which payment to look at; the backend asks MTN for its
+  status and applies that. (The adapter used to expect a bearer token MTN
+  never sends, so every real callback was refused.) A repeat of a callback
+  is checked again while the payment is open, so a forged copy can't make
+  the real one be ignored. `PUT` callbacks are accepted as well as `POST`.
