@@ -84,8 +84,9 @@ services:
         value: "false"
       - key: MAPS_PROVIDER
         value: local
-      # S3_* stay unset: uploads (avatars, documents, incident photos) fail
-      # until object storage is configured.
+      # S3_*: uploads (avatars, documents, incident photos) need object
+      # storage, Cloudflare R2 here; set them in the Environment tab (the
+      # keys are secrets): docs/deploy-render.md, "File uploads".
 
       # A passenger signs up only with the phone's location, in Ghana
       # (backend 0.21.0). The app sends it since frontend Step 12 (PR #44);

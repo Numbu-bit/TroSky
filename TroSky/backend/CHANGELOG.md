@@ -2235,3 +2235,19 @@ pause, resume and end trips by hand, and admins cancel as before.
   reached) used to be taken as sent, leaving the person waiting for a code
   that never came, behind the resend cooldown. Now the request fails with
   `PROVIDER_ERROR` (502) and the person can ask again at once.
+
+## [0.22.4] - 2026-10-11 - File uploads on Cloudflare R2
+
+- **Uploads on the staging server:** profile photos, driver and vehicle
+  documents and incident photos can be stored in Cloudflare R2 (S3
+  compatible, 10 GB free). No code was missing beyond one fix below; the
+  setup is in `docs/deploy-render.md`, "File uploads (Cloudflare R2)", with
+  the `S3_*` values to set.
+- **Checksums only where required:** newer versions of the S3 library add
+  checksums to every upload, which S3-compatible stores such as R2 have
+  refused. The storage adapter now sends them only where an operation
+  requires them; AWS S3 and MinIO are unaffected.
+- **A storage test against a real bucket** (`tests/integration/test_s3_storage.py`):
+  upload, read back through a signed link, refused without one, delete. It
+  runs when `TROSKY_TEST_S3_ENDPOINT` and its keys are set (MinIO locally,
+  or the R2 bucket to check it), and is skipped otherwise.

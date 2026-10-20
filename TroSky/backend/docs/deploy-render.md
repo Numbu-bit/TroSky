@@ -228,6 +228,41 @@ Environment tab only, never in `render.yaml` (it's a secret). The server refuses
 day's quota reached) is reported to the person, who can ask again at once; the reason is in the
 logs (`otp_delivery_failed`, `email_api_refused`).
 
+## File uploads (Cloudflare R2)
+
+Profile photos, driver and vehicle documents and incident photos go to a private S3-compatible
+bucket; they are read back through signed links that expire after `S3_PRESIGNED_URL_TTL_SECONDS`.
+Render keeps no files across deploys, so use Cloudflare R2 (10 GB free, no download fees):
+
+1. Cloudflare dashboard → **R2** → **Create bucket** `trosky-documents`. Leave public access off.
+2. R2 → **Manage API tokens** → **Create API token** with **Object Read & Write**, for that bucket
+   only. Note its Access Key ID and Secret Access Key, and the account's S3 endpoint,
+   `https://<account-id>.r2.cloudflarestorage.com`.
+3. In trosky-api's **Environment** tab (the two keys are secrets, so not in `render.yaml`):
+
+   | Variable | Value |
+   | --- | --- |
+   | `S3_ENDPOINT` | `https://<account-id>.r2.cloudflarestorage.com` |
+   | `S3_REGION` | `auto` |
+   | `S3_BUCKET` | `trosky-documents` |
+   | `S3_USE_SSL` | `true` |
+   | `S3_ACCESS_KEY` | the token's Access Key ID |
+   | `S3_SECRET_KEY` | the token's Secret Access Key |
+
+4. Check it from a checkout of the backend, with the test database running: the storage test
+   uploads a file to the bucket, reads it back through a signed link, makes sure it can't be read
+   without one, and deletes it:
+
+   ```bash
+   TROSKY_TEST_S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com \
+   TROSKY_TEST_S3_REGION=auto TROSKY_TEST_S3_BUCKET=trosky-documents \
+   TROSKY_TEST_S3_ACCESS_KEY=... TROSKY_TEST_S3_SECRET_KEY=... \
+   pytest tests/integration/test_s3_storage.py
+   ```
+
+Since backend 0.22.4 the uploads send checksums only where an operation requires them: newer
+versions of the S3 library add them to every upload, which R2 has refused.
+
 ## The administrator account
 
 When `DEV_ADMIN_PASSWORD` is set (12 characters or more), the first start creates
