@@ -28,6 +28,10 @@ const schema = z.object({
 
 type Values = z.infer<typeof schema>
 
+/** A sign-in still waiting after this long is most likely waking a server
+ * that went to sleep (Render's free plan, after 15 quiet minutes). */
+const WAKING_UP_AFTER_MS = 6_000
+
 export default function LoginPage() {
   const { state, login } = useAuth()
   const [params] = useSearchParams()
@@ -39,15 +43,23 @@ export default function LoginPage() {
     defaultValues: { identifier: '', password: '' },
   })
   const { errors, isSubmitting } = form.formState
+  const [slow, setSlow] = useState(false)
 
   useEffect(() => {
     document.title = 'Sign in · TroSky Admin'
   }, [])
 
+  useEffect(() => {
+    if (!isSubmitting) return
+    const timer = setTimeout(() => setSlow(true), WAKING_UP_AFTER_MS)
+    return () => clearTimeout(timer)
+  }, [isSubmitting])
+
   if (state.status === 'signed-in') return <Navigate to={next} replace />
 
   const onSubmit = form.handleSubmit(async ({ identifier, password }) => {
     setFailure(null)
+    setSlow(false)
     try {
       await login(identifier, password)
     } catch (error) {
@@ -86,6 +98,14 @@ export default function LoginPage() {
                 {failure}
               </p>
             ) : null}
+            <div role="status" aria-live="polite">
+              {isSubmitting && slow ? (
+                <p className="flex gap-2 rounded-md bg-info-soft p-3 text-sm text-info-text">
+                  <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+                  The server is waking up. After a quiet spell this can take up to a minute.
+                </p>
+              ) : null}
+            </div>
             <form className="space-y-4" onSubmit={onSubmit} noValidate>
               <div className="space-y-1.5">
                 <Label htmlFor="identifier">Phone number or email</Label>

@@ -16,6 +16,8 @@ _RegisterRequest _$RegisterRequestFromJson(Map<String, dynamic> json) =>
           $enumDecodeNullable(_$RegistrableRoleEnumMap, json['role']) ??
           RegistrableRole.passenger,
       preferredLanguage: json['preferred_language'] as String? ?? 'en',
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
     );
 
 Map<String, dynamic> _$RegisterRequestToJson(_RegisterRequest instance) =>
@@ -26,6 +28,8 @@ Map<String, dynamic> _$RegisterRequestToJson(_RegisterRequest instance) =>
       'full_name': instance.fullName,
       'role': _$RegistrableRoleEnumMap[instance.role]!,
       'preferred_language': instance.preferredLanguage,
+      'latitude': ?instance.latitude,
+      'longitude': ?instance.longitude,
     };
 
 const _$RegistrableRoleEnumMap = {
