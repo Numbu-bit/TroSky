@@ -186,19 +186,21 @@ void main() {
       );
       expect(key, matches(RegExp(r'^[0-9a-f-]{36}$')));
 
+      // Payment waits for the driver (P-07).
       expect(find.byType(PaymentScreen), findsOneWidget);
-      expect(find.text('Seats held for 10:00'), findsOneWidget);
-      expect(find.textContaining(RegExp(r'^Booking TS-')), findsOneWidget);
-      expect(find.text('Madina → Circle · GR-4821'), findsOneWidget);
-      expect(find.text('1, 4'), findsOneWidget);
-      expect(find.text('₵28.00'), findsOneWidget);
-      expect(find.text('₵1.00'), findsOneWidget);
+      expect(find.text('Waiting for the driver to accept'), findsOneWidget);
+      expect(find.text('GR-4821'), findsOneWidget);
+      expect(find.text('1 & 4'), findsOneWidget);
+      // ₵28.00 fare and ₵1.00 fee.
       expect(find.text('₵29.00'), findsOneWidget);
       final booking = tester
           .widget<PaymentScreen>(find.byType(PaymentScreen))
           .args
           .booking;
-      expect(world.backend.bookingStatus(booking.id), BookingStatus.pending);
+      expect(
+        world.backend.bookingStatus(booking.id),
+        BookingStatus.awaitingAcceptance,
+      );
     });
 
     testWidgets("a search from the phone's position sends it, not a stop", (

@@ -762,6 +762,50 @@ void main() {
       },
     );
 
+    test(
+      'GET /bookings/{id}: waiting for the driver (backend 0.20.0)',
+      () async {
+        final adapter = FakeAdapter(
+          (_) async => const FakeReply(200, {
+            'id': 'b1',
+            'booking_reference': 'TS-7Q2K',
+            'trip_id': 't2',
+            'status': 'awaiting_acceptance',
+            'passenger_count': 1,
+            'origin_stop_id': 's1',
+            'destination_stop_id': 's4',
+            'fare_amount': '14.00',
+            'platform_fee': '0.50',
+            'total_amount': '14.50',
+            'expires_at': '2026-10-02T09:02:00Z',
+            'created_at': '2026-10-02T09:00:00Z',
+            'passengers': [
+              {
+                'id': 'p1',
+                'seat_id': 's9',
+                'full_name': 'Kwame Asante',
+                'phone_number': null,
+              },
+            ],
+            'trip': null,
+            'boarding_stop_name': 'Accra Madina',
+            'alighting_stop_name': 'Accra Circle',
+          }),
+        );
+        final b = (await LiveBookingRepository(
+          dio(adapter),
+        ).get('b1')).valueOrNull!;
+        expect(adapter.requests.single.path, '/bookings/b1');
+        expect(b.status, BookingStatus.awaitingAcceptance);
+        expect(b.expiresAt, DateTime.utc(2026, 10, 2, 9, 2));
+        expect(b.tripId, 't2');
+        expect(
+          bookingStatusName(BookingStatus.awaitingAcceptance),
+          'awaiting_acceptance',
+        );
+      },
+    );
+
     test('POST /bookings/{id}/cancel', () async {
       final adapter = FakeAdapter(
         (_) async => const FakeReply(409, {

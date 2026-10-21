@@ -33,8 +33,23 @@ abstract final class TroskyIcons {
   /// as one rounded block.
   static Widget bus({required Color color}) => _icon(_bus, color, 16, 10);
 
-  /// Clock on the "approaching your stop" banner (P6), 14 px.
-  static Widget clock({required Color color}) => _icon(_clock, color, 14, 14);
+  /// Clock on the "approaching your stop" banner (P6), 14 px; the P-07
+  /// countdowns draw it larger.
+  static Widget clock({required Color color, double size = 14}) =>
+      _icon(_clock, color, size, size);
+
+  /// "i" in a ring, white on the blue disc of an info banner (P-07), 16 px.
+  static Widget info({required Color color, double size = 16}) =>
+      _icon(_info, color, size, size);
+
+  /// Up arrow on the "New vehicle assigned" tag (P-07), 12 px.
+  static Widget arrowUp({required Color color, double size = 12}) =>
+      _icon(_arrowUp, color, size, size);
+
+  /// A booking card with a minus badge: "No driver accepted your booking"
+  /// (P-07), 42 px.
+  static Widget bookingNotAccepted({required Color color, double size = 42}) =>
+      _icon(_bookingNotAccepted, color, size, size);
 
   /// Small clock on a trip card's badge (P6), 10 px.
   static Widget clockSmall({required Color color}) =>
@@ -117,6 +132,33 @@ abstract final class TroskyIcons {
       '<svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">'
       '<circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.5"/>'
       '<path d="M7 4v3.5l2 1.5" stroke="currentColor" stroke-width="1.5" '
+      'stroke-linecap="round"/>'
+      '</svg>';
+
+  // The three P-07 icons below are drawn from the Figma screenshots (no
+  // Figma Make code), in the stroke style of the icons above.
+  static const String _info =
+      '<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">'
+      '<circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.5"/>'
+      '<path d="M8 7.5v3.5" stroke="currentColor" stroke-width="1.5" '
+      'stroke-linecap="round"/>'
+      '<circle cx="8" cy="5" r="0.9" fill="currentColor"/>'
+      '</svg>';
+
+  static const String _arrowUp =
+      '<svg viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">'
+      '<path d="M5 9V1M2 4l3-3 3 3" stroke="currentColor" stroke-width="1.5" '
+      'stroke-linecap="round" stroke-linejoin="round"/>'
+      '</svg>';
+
+  static const String _bookingNotAccepted =
+      '<svg viewBox="5 4 33 33" fill="none" xmlns="http://www.w3.org/2000/svg">'
+      '<path d="M26 31H11a4 4 0 0 1-4-4V13a4 4 0 0 1 4-4h18a4 4 0 0 1 4 4v8" '
+      'stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
+      '<path d="M13 6v5M27 6v5M12 17h14M12 22h8" stroke="currentColor" '
+      'stroke-width="2" stroke-linecap="round"/>'
+      '<circle cx="31" cy="29" r="6" stroke="currentColor" stroke-width="2"/>'
+      '<path d="M28 29h6" stroke="currentColor" stroke-width="2" '
       'stroke-linecap="round"/>'
       '</svg>';
 

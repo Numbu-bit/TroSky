@@ -205,6 +205,7 @@ Map<String, dynamic> _$BookingResponseToJson(_BookingResponse instance) =>
     };
 
 const _$BookingStatusEnumMap = {
+  BookingStatus.awaitingAcceptance: 'awaiting_acceptance',
   BookingStatus.pending: 'pending',
   BookingStatus.paymentPending: 'payment_pending',
   BookingStatus.confirmed: 'confirmed',

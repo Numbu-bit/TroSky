@@ -12,7 +12,7 @@
 |---|---|---|---|
 | B1 | Lockout, code attempt limit, sign-out on token reuse | **Done**, re-tested live 10 Oct (all three pass) | Safeguard writes kept on failure (`keep_writes_on_failure`) |
 | B2 | Register on a fresh database | **Done** (not re-tested on an empty database) | `scripts.seed_reference_data` after `alembic upgrade head` (compose, image entrypoint, k8s job) |
-| B3 | An expired seat hold keeps its seats until the sweeper runs | **Partly**: availability still ignores `expires_at`; with Celery beat running, the 30 s sweep frees the seats | `expire_stale_bookings` (re-tested 10 Oct, see B3 below) |
+| B3 | An expired seat hold keeps its seats until the sweeper runs | **Done** (0.22.1, 11 Oct; merged 20 Oct) | `app/repositories/seat_holds.py`: a hold past `expires_at` is free at once |
 | CI | Backend workflow never ran (the backend changelog calls this "B3") | **Done** | `.github/workflows/backend.yml` at the repository root |
 | D1 | Demo data | **Done** (in use; replaces the frontend's `tool/seed_local_trips.dart`) | `make seed-demo` / `python -m scripts.seed_demo_data` |
 | D2 | GPS simulator | **Done** (in use) | `make simulate-gps` / `python -m scripts.simulate_gps` |
@@ -33,6 +33,7 @@
 | G31 | Payments on a driver's trip | **Done** | `GET /driver-trips/{trip_id}/payments` |
 | G32 | Incident types and a photo | **Done** | Types `passenger_issue`, `road_hazard`; optional `severity`; `POST /incidents/{id}/photo` |
 | G33 | Drop-off on the manifest | **Done** | `dropoff_stop_name` on manifest entries |
+| G34 | Booking acceptance details | **New** (21 Oct) | See G34 below |
 | E1 | Boarding | **Decided**: the driver scans the passenger's ticket | As built |
 | E2 | Driver trips | **Decided**: scheduled by admins and fleet owners; Go Online/Offline is availability only, no ride requests | As built |
 | E3 | Subscriptions (G14) | **Decided**: out of the MVP | — |
@@ -252,8 +253,37 @@ And for `Now` searches, include trips that already left the first stop but haven
 
 ### B3: an expired seat hold keeps its seats until the sweeper runs
 
+> **Done in 0.22.1** (merged to main 20 Oct 2026): `GET /trips/{id}/seats`, search and booking treat a hold past `expires_at` as free (`app/repositories/seat_holds.py`).
+
 > **Still open in 0.13.0** (the backend changelog's "B3" is the CI workflow). Re-tested on 10 Oct 2026: a hold that expired at 17:36:03 still had its seat taken at 17:36:46 (`pending`, reservation `held`) with no Celery worker running. With the worker and beat started, the next sweep (17:38:16) set it `expired` and freed the seat. So with beat running, a lapsed hold is freed within one sweep interval (30 s).
 
 `GET /trips/{id}/seats` and booking both treat a `HELD` reservation as taken until `expire_stale_bookings` (Celery beat, every 30 s) marks it expired. They don't look at `expires_at`. With the worker down (or in a stack without Celery, like the local `trosky-api-local`), seats from a lapsed hold stay taken indefinitely.
 
 Suggested fix: `list_active_seat_ids_for_trip` (and the reservation check) treat `HELD` rows with `expires_at <= now()` as free. The sweeper then only tidies up.
+
+### G34 — How long a driver has, and why a booking moved
+
+**Needed by:** Payment (P-07), built 21 Oct 2026 (frontend decision 28).
+
+Payment shows "2-minute response window" under the driver's countdown, and after a move "The driver
+didn't respond" or "The driver couldn't take your booking". `BookingResponse` has neither fact, so
+the app works them out:
+
+- the window from a new booking's `expires_at − created_at` (wrong for a booking that already moved,
+  so a booking reopened from Home shows no window);
+- the reason from when the move is seen: before the old deadline means declined, after it means
+  nobody answered (an admin's move reads as "declined").
+
+Suggested, on `BookingResponse` while `awaiting_acceptance` (all optional, so nothing breaks):
+
+```json
+{
+  "accept_timeout_seconds": 120,
+  "moves": 1,
+  "last_move_reason": "unanswered"
+}
+```
+
+`last_move_reason`: `unanswered`, `declined` or `admin` (from the status history reason the service
+already writes: "Moved to another vehicle: …").
+

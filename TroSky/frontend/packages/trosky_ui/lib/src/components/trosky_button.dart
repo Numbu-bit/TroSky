@@ -100,6 +100,22 @@ class TroskyButtonVariant {
     ),
   );
 
+  /// White pill with a grey line, "Cancel request" on Payment (P-07): the
+  /// primary button's 54 px and Plus Jakarta Sans 15/700, in ink, with the
+  /// outline button's 1.5 px border and no shadow.
+  static final outlinePill = TroskyButtonVariant._(
+    height: 54,
+    radius: TroskyRadii.r27,
+    background: TroskyColors.surface,
+    foreground: TroskyColors.ink,
+    textStyle: TroskyTypography.heading15Bold,
+    shadow: const [],
+    border: const BorderSide(
+      color: TroskyColors.border,
+      width: TroskyBorders.w1p5,
+    ),
+  );
+
   final double height;
   final double radius;
   final Color background;
