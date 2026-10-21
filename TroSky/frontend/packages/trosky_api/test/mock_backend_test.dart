@@ -454,14 +454,15 @@ void main() {
       expect(backend.fareQuote(minibus.tripId).valueOrNull!.current, '6.00');
     });
 
-    test('a hold: pending, 10 minutes, the seats taken, the fare and fee', () {
+    test('a request: waiting 2 minutes for the driver, the seats taken, the '
+        'fare and fee', () {
       backend.simulateRiders = false;
       final booking = backend
           .createBooking(token, request(['4', '7']))
           .valueOrNull!;
-      expect(booking.status, BookingStatus.pending);
+      expect(booking.status, BookingStatus.awaitingAcceptance);
       expect(booking.bookingReference, startsWith('TS-'));
-      expect(booking.expiresAt, now.toUtc().add(const Duration(minutes: 10)));
+      expect(booking.expiresAt, now.toUtc().add(const Duration(minutes: 2)));
       expect(
         (booking.fareAmount, booking.platformFee, booking.totalAmount),
         ('28.00', '1.00', '29.00'),
@@ -483,9 +484,11 @@ void main() {
       );
     });
 
-    test('the hold lapses after 10 minutes and the seats come back', () {
+    test('accepted, the hold lapses after 10 minutes and the seats come '
+        'back', () {
       backend.simulateRiders = false;
       final booking = backend.createBooking(token, request(['4'])).valueOrNull!;
+      backend.acceptBooking(booking.id);
       now = now.add(const Duration(minutes: 10, seconds: 1));
       expect(backend.bookingStatus(booking.id), BookingStatus.expired);
       expect(
@@ -516,7 +519,11 @@ void main() {
       final held = backend
           .listBookings(
             token,
-            statuses: [BookingStatus.pending, BookingStatus.paymentPending],
+            statuses: [
+              BookingStatus.awaitingAcceptance,
+              BookingStatus.pending,
+              BookingStatus.paymentPending,
+            ],
             upcoming: true,
           )
           .valueOrNull!;
@@ -548,6 +555,206 @@ void main() {
         );
       },
     );
+  });
+
+  group('Booking acceptance (P-07)', () {
+    late String token;
+    late TripSearchResultResponse minibus;
+    late List<TripSearchResultResponse> trips;
+
+    /// A backend whose drivers answer as [script]; signed in, Madina to
+    /// Circle searched from 09:00.
+    void prepare({MockDriverScript? script, bool acceptance = true}) {
+      backend = MockBackend(
+        clock: () => now,
+        driverScript: script,
+        bookingAcceptanceRequired: acceptance,
+      )..simulateRiders = false;
+      token = signIn('0241234567');
+      trips = backend
+          .searchTrips(
+            TripSearchQuery(
+              originStopId: MockBackend.stops['Madina']!.id,
+              destinationStopId: MockBackend.stops['Circle']!.id,
+              travelDate: now,
+              departureAfter: Duration(hours: now.hour, minutes: now.minute),
+            ),
+          )
+          .valueOrNull!
+          .items;
+      minibus = trips.firstWhere(
+        (t) => t.vehicleRegistrationNumber == 'GR-4821',
+      );
+    }
+
+    BookingResponse book([List<String> numbers = const ['4', '7']]) {
+      final map = backend.tripSeats(minibus.tripId).valueOrNull!;
+      return backend
+          .createBooking(
+            token,
+            BookingCreateRequest(
+              tripId: minibus.tripId,
+              passengers: [
+                for (final (i, n) in numbers.indexed)
+                  PassengerInput(
+                    seatId: map.seats.firstWhere((s) => s.seatNumber == n).id,
+                    fullName: 'Ama guest $i',
+                  ),
+              ],
+            ),
+          )
+          .valueOrNull!;
+    }
+
+    BookingResponse read(BookingResponse b) =>
+        backend.getBooking(token, b.id).valueOrNull!;
+
+    bool free(String tripId, String seatId) => backend
+        .tripSeats(tripId)
+        .valueOrNull!
+        .seats
+        .firstWhere((s) => s.id == seatId)
+        .isAvailable;
+
+    test('accepted: pending, 10 minutes to pay from the answer', () {
+      prepare();
+      final booking = book();
+      now = now.add(const Duration(seconds: 40));
+      backend.acceptBooking(booking.id);
+      final accepted = read(booking);
+      expect(accepted.status, BookingStatus.pending);
+      expect(accepted.expiresAt, now.add(const Duration(minutes: 10)));
+      expect(accepted.tripId, minibus.tripId);
+      expect(free(minibus.tripId, accepted.passengers.first.seatId), isFalse);
+    });
+
+    test('no answer by the deadline: moved to the nearest other vehicle '
+        'going the same way, seats there, a new deadline', () {
+      prepare();
+      final booking = book();
+      final deadline = booking.expiresAt!;
+      now = deadline.add(const Duration(seconds: 3));
+      final moved = read(booking);
+      expect(moved.status, BookingStatus.awaitingAcceptance);
+      expect(moved.tripId, isNot(minibus.tripId));
+      expect(moved.expiresAt, deadline.add(const Duration(minutes: 2)));
+      final to = trips.firstWhere((t) => t.tripId == moved.tripId);
+      final gaps = [
+        for (final t in trips)
+          if (t.tripId != minibus.tripId)
+            t.scheduledDepartureAt
+                .difference(minibus.scheduledDepartureAt)
+                .abs(),
+      ]..sort();
+      expect(
+        to.scheduledDepartureAt.difference(minibus.scheduledDepartureAt).abs(),
+        gaps.first,
+      );
+      expect(
+        moved.trip?.vehicleRegistrationNumber,
+        to.vehicleRegistrationNumber,
+      );
+      // Its seats are on the new vehicle; the old ones are free again.
+      for (final p in moved.passengers) {
+        expect(free(moved.tripId, p.seatId), isFalse);
+      }
+      for (final p in booking.passengers) {
+        expect(free(minibus.tripId, p.seatId), isTrue);
+      }
+      expect(moved.fareAmount, booking.fareAmount);
+      expect(moved.totalAmount, booking.totalAmount);
+    });
+
+    test('declined: moved at once; with nowhere to go, cancelled', () {
+      prepare();
+      final booking = book();
+      now = now.add(const Duration(seconds: 30));
+      backend.declineBooking(booking.id);
+      final moved = read(booking);
+      expect(moved.status, BookingStatus.awaitingAcceptance);
+      expect(moved.tripId, isNot(minibus.tripId));
+      expect(moved.expiresAt, now.add(const Duration(minutes: 2)));
+
+      backend.declineBooking(booking.id, move: false);
+      final ended = read(booking);
+      expect(ended.status, BookingStatus.cancelled);
+      expect(ended.expiresAt, isNull);
+      expect(free(moved.tripId, moved.passengers.first.seatId), isTrue);
+    });
+
+    test('after 3 moves nobody answered: expired', () {
+      prepare();
+      final booking = book();
+      final seen = {minibus.tripId};
+      for (var move = 1; move <= MockBackend.bookingMaxMoves; move++) {
+        now = read(booking).expiresAt!;
+        final moved = read(booking);
+        expect(moved.status, BookingStatus.awaitingAcceptance, reason: '$move');
+        expect(seen.add(moved.tripId), isTrue, reason: 'a new trip each time');
+      }
+      now = read(booking).expiresAt!;
+      expect(read(booking).status, BookingStatus.expired);
+    });
+
+    test('cancelled while waiting for the driver', () {
+      prepare();
+      final booking = book();
+      final cancelled = backend.cancelBooking(token, booking.id).valueOrNull!;
+      expect(cancelled.status, BookingStatus.cancelled);
+      expect(free(minibus.tripId, booking.passengers.first.seatId), isTrue);
+    });
+
+    test('script accept: the driver accepts 8 s after the request', () {
+      prepare(script: MockDriverScript.accept);
+      final booking = book();
+      now = now.add(const Duration(seconds: 7));
+      expect(read(booking).status, BookingStatus.awaitingAcceptance);
+      now = now.add(const Duration(seconds: 1));
+      final accepted = read(booking);
+      expect(accepted.status, BookingStatus.pending);
+      expect(accepted.expiresAt, now.add(const Duration(minutes: 10)));
+    });
+
+    test('script moveThenAccept: moved at the deadline, then accepted by '
+        'the next driver 8 s later', () {
+      prepare(script: MockDriverScript.moveThenAccept);
+      final booking = book();
+      final deadline = booking.expiresAt!;
+      now = deadline.subtract(const Duration(seconds: 1));
+      expect(read(booking).tripId, minibus.tripId);
+      now = deadline;
+      final moved = read(booking);
+      expect(moved.status, BookingStatus.awaitingAcceptance);
+      expect(moved.tripId, isNot(minibus.tripId));
+      now = deadline.add(const Duration(seconds: 8));
+      final accepted = read(booking);
+      expect(accepted.status, BookingStatus.pending);
+      expect(accepted.tripId, moved.tripId);
+    });
+
+    test('script decline: cancelled 8 s after the request', () {
+      prepare(script: MockDriverScript.decline);
+      final booking = book();
+      now = now.add(const Duration(seconds: 8));
+      expect(read(booking).status, BookingStatus.cancelled);
+    });
+
+    test('scripts by name, as MOCK_DRIVER gives them', () {
+      expect(MockDriverScript.named('accept'), MockDriverScript.accept);
+      expect(
+        MockDriverScript.named('moveThenAccept'),
+        MockDriverScript.moveThenAccept,
+      );
+      expect(MockDriverScript.named('decline'), MockDriverScript.decline);
+      expect(MockDriverScript.named('none'), isNull);
+    });
+
+    test('acceptance off (staging): pending at once, 10 minutes', () {
+      prepare(acceptance: false);
+      final booking = book();
+      expect(booking.status, BookingStatus.pending);
+      expect(booking.expiresAt, now.add(const Duration(minutes: 10)));
+    });
   });
 
   group('register', () {

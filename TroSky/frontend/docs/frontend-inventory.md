@@ -93,7 +93,7 @@ The backend already supports this. `POST /auth/register` takes `role: passenger 
 
 ## 4. Screen inventory, mobile app
 
-Use the **Screen ID** as the screenshot filename (e.g. `S-04.png`). "Figma" is the screenshot I need from you.
+Use the **Screen ID** as the screenshot filename (e.g. `S-04.png`). "Figma" is the screenshot I need from you. A screen marked **Design: derived** has no Figma screenshot and is built from existing components (CLAUDE.md, "Derived designs").
 
 ### 4a. Entry (shared)
 | ID | Screen | Endpoints | API |
@@ -118,7 +118,7 @@ Use the **Screen ID** as the screenshot filename (e.g. `S-04.png`). "Figma" is t
 | P-04 | Trip details | `GET /trips/{id}`, `GET /routes/{id}` | ✅ |
 | P-05 | **Seat selection** (P7). Built 2 Oct 2026: the map drawn from the seat rows and columns (decision 25), refreshed every 10 s, up to 10 seats; the fare from the backend's quote for the stops and seats (since 10 Oct 2026); Reserve holds the seats (passengers per decision 23) | `GET /trips/{id}/seats`, `GET /trips/{id}/fare-quote`, `POST /bookings` (`Idempotency-Key`) | ✅ |
 | P-06 | Passenger details + booking review. Not built: decision 23 names the passengers without asking, and Payment shows the review | `POST /bookings` | ✅ |
-| P-07 | Payment method. **Placeholder** since 2 Oct 2026: the held booking (reference, seats, fare, fee, total), a countdown to `expires_at`, Cancel booking; Home reopens an unpaid hold after a restart | `POST /bookings/{id}/pay`, `GET /wallet`; the placeholder uses `POST /bookings/{id}/cancel`, `GET /bookings?status=pending,payment_pending&upcoming=true` | ✅ |
+| P-07 | **Payment** (Figma P-07: waiting for the driver, accepted, moved to another vehicle, not accepted). Built 21 Oct 2026 (decision 28): the booking's states from the server, polled every 5 s while the driver hasn't answered; Cancel request / Cancel booking; Home reopens a booking still waiting or unpaid. **Paying isn't built yet**: the accepted state shows a note and Cancel booking in place of "Pay with" and Pay | `GET /bookings/{id}`, `POST /bookings/{id}/cancel`, `GET /trips/{id}/seats` (seat labels after a move), `GET /bookings?status=awaiting_acceptance,pending,payment_pending&upcoming=true`; to come: `POST /bookings/{id}/pay`, `GET /wallet` | ✅ (G34 open) |
 | P-08 | Approve on your phone (MoMo pending) | `POST /payments/{id}/sync` (poll) | ✅ |
 | P-09 | Payment success / failed | `GET /bookings/{id}` | ✅ |
 | P-10 | Ticket (QR) | `GET /bookings/{id}/tickets`, `GET /tickets/{id}` | ✅ |
@@ -202,6 +202,7 @@ Ranked by how badly each blocks the frontend. Most are small additions to router
 | ✅ G12 | **Done (backend 0.12.0).** `GET /bookings` has no status or date filter, and bookings don't include departure time | P-01, P-15 (the app makes one extra request per booking) | `?status=&upcoming=true` and embed a trip summary |
 | ✅ G13 | **Done (backend 0.12.0).** The rating is a single score. The SRS asked for safety, cleanliness, professionalism and timeliness | P-14 (only if the Figma "Rate Driver" screen shows categories) | Optional category scores |
 | G19 (done, 0.13.0) | An SOS needs a trip (`POST /trips/{trip_id}/sos`), but Home shows SOS at all times | P-01's SOS button, P-12 outside a trip | `POST /sos` with an optional `trip_id` (decision 18) |
+| G34 | A booking doesn't say how long a driver has to answer, or why it moved | P-07 (the app works them out; decision 28) | `accept_timeout_seconds` and `last_move_reason` on `BookingResponse` (backend-requests.md) |
 
 ### Gaps the Figma design creates (it shows features the backend doesn't have)
 | ID | Design shows | Backend today | Decision needed |

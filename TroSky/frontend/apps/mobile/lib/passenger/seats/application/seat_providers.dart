@@ -66,9 +66,9 @@ Future<FareQuoteResponse> fareQuote(Ref ref, FareQuoteRequest request) async =>
       Err(:final failure) => throw failure,
     };
 
-/// A held, unpaid booking of the signed-in passenger whose hold hasn't run
-/// out: the app reopens it instead of losing it (Part 2). Null offline or
-/// when there is none.
+/// A held, unpaid booking of the signed-in passenger whose deadline hasn't
+/// passed (waiting for the driver, or to be paid for): the app reopens it
+/// instead of losing it (Part 2). Null offline or when there is none.
 @Riverpod(retry: noRetry)
 Future<BookingResponse?> heldBooking(Ref ref) async {
   final online = ref.watch(
@@ -83,7 +83,11 @@ Future<BookingResponse?> heldBooking(Ref ref) async {
   final result = await ref
       .read(bookingRepositoryProvider)
       .list(
-        statuses: const [BookingStatus.pending, BookingStatus.paymentPending],
+        statuses: const [
+          BookingStatus.awaitingAcceptance,
+          BookingStatus.pending,
+          BookingStatus.paymentPending,
+        ],
         upcoming: true,
         limit: 5,
       );

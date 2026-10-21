@@ -3,12 +3,14 @@
 library;
 
 export 'src/components/auth_header.dart';
+export 'src/components/booking_status.dart';
 export 'src/components/decorative.dart';
 export 'src/components/form_fields.dart';
 export 'src/components/home_components.dart';
 export 'src/components/loading_dots.dart';
 export 'src/components/map_markers.dart';
 export 'src/components/page_dots.dart';
+export 'src/components/page_header.dart';
 export 'src/components/search_components.dart';
 export 'src/components/seat_components.dart';
 export 'src/components/section_label.dart';

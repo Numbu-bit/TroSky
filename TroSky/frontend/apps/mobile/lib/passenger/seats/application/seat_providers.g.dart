@@ -194,16 +194,16 @@ final class FareQuoteFamily extends $Family
   String toString() => r'fareQuoteProvider';
 }
 
-/// A held, unpaid booking of the signed-in passenger whose hold hasn't run
-/// out: the app reopens it instead of losing it (Part 2). Null offline or
-/// when there is none.
+/// A held, unpaid booking of the signed-in passenger whose deadline hasn't
+/// passed (waiting for the driver, or to be paid for): the app reopens it
+/// instead of losing it (Part 2). Null offline or when there is none.
 
 @ProviderFor(heldBooking)
 final heldBookingProvider = HeldBookingProvider._();
 
-/// A held, unpaid booking of the signed-in passenger whose hold hasn't run
-/// out: the app reopens it instead of losing it (Part 2). Null offline or
-/// when there is none.
+/// A held, unpaid booking of the signed-in passenger whose deadline hasn't
+/// passed (waiting for the driver, or to be paid for): the app reopens it
+/// instead of losing it (Part 2). Null offline or when there is none.
 
 final class HeldBookingProvider
     extends
@@ -213,9 +213,9 @@ final class HeldBookingProvider
           FutureOr<BookingResponse?>
         >
     with $FutureModifier<BookingResponse?>, $FutureProvider<BookingResponse?> {
-  /// A held, unpaid booking of the signed-in passenger whose hold hasn't run
-  /// out: the app reopens it instead of losing it (Part 2). Null offline or
-  /// when there is none.
+  /// A held, unpaid booking of the signed-in passenger whose deadline hasn't
+  /// passed (waiting for the driver, or to be paid for): the app reopens it
+  /// instead of losing it (Part 2). Null offline or when there is none.
   HeldBookingProvider._()
     : super(
         from: null,
@@ -242,7 +242,7 @@ final class HeldBookingProvider
   }
 }
 
-String _$heldBookingHash() => r'7342e600e98bb729baa7d8d09ac7bb5682bef213';
+String _$heldBookingHash() => r'855cf5b7bba80cbcb679e0c9820c02085ce9f8a5';
 
 /// Held bookings already shown on Payment in this run, so Home reopens
 /// each at most once. Added to just before Payment opens.

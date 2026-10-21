@@ -78,10 +78,14 @@ abstract class BookingCreateRequest with _$BookingCreateRequest {
       _$BookingCreateRequestFromJson(json);
 }
 
-/// `BookingStatus` (backend/app/models/bookings.py). A held, unpaid booking
-/// is [pending] (or [paymentPending] once payment started).
+/// `BookingStatus` (backend/app/models/bookings.py). A new booking is
+/// [awaitingAcceptance]: it holds its seats until the trip's driver (or an
+/// admin) answers, by `expires_at`, and can't be paid for yet. Accepted, it
+/// is [pending] (or [paymentPending] once payment started), with a new
+/// `expires_at` to pay by.
 @JsonEnum(fieldRename: FieldRename.snake)
 enum BookingStatus {
+  awaitingAcceptance,
   pending,
   paymentPending,
   confirmed,
@@ -137,7 +141,8 @@ abstract class BookingResponse with _$BookingResponse {
     @JsonKey(fromJson: decimalString) required String platformFee,
     @JsonKey(fromJson: decimalString) required String totalAmount,
 
-    /// When the seat hold lapses (pending bookings).
+    /// The deadline: for the driver's answer ([BookingStatus.
+    /// awaitingAcceptance]), then for paying ([BookingStatus.pending]).
     DateTime? expiresAt,
     required DateTime createdAt,
     required List<BookingPassengerResponse> passengers,

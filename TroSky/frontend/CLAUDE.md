@@ -19,6 +19,17 @@ The admin web app is not part of this workspace: it is the React app in `TroSky/
 - If Figma Make code is provided (React/Tailwind), treat it as a **spec for exact values and layout**, then rebuild it in idiomatic Flutter. Never embed web code.
 - Match screenshots closely: layout, hierarchy, copy text, icon choice, and states.
 
+## Derived designs (Figma Make credits are used up)
+- A screen with no files in `design/<ID>/` may be **derived**. Figma screenshots always win when they exist.
+- Build a derived screen only from existing `trosky_ui` components and tokens, copying layouts from the closest designed screens. **No new colours, fonts, sizes, shadows, radii or icons.** Flag anything truly new in the PR and the summary instead of making it up.
+- Reference screens:
+  - passenger forms, lists and settings: S-06, Search Results (P-03), Profile (Figma P11), Wallet (Figma P9);
+  - status and result screens: the P-07 states (waiting, accepted, moved, not accepted);
+  - code input: S-07;
+  - driver screens: Figma D1–D9.
+- For each derived screen: save golden PNGs of every state to `design/<ID>/derived/`, attach them to the PR, record the screen in `docs/design-decisions.md`, and mark it **Design: derived** in `docs/frontend-inventory.md`. The project owner approves them from the screenshots before the PR merges.
+- Screens to derive later: S-09, P-08, P-09, P-13, P-18, P-19, P-20, P-22–P-25, D-01–D-03, D-06, D-12.
+
 ## Backend is the source of truth for data
 - `../backend` is complete. Read `app/api/v1/`, `app/schemas/` and `app/core/exceptions.py` before building any data layer. Never invent endpoints or fields.
 - Do not modify `../backend`. Record anything the UI needs that the backend lacks in `docs/backend-gaps.md`.

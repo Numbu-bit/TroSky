@@ -767,4 +767,105 @@ void main() {
       width: 360,
     );
   });
+
+  testWidgets('Payment parts (P-07): header, banners, trip cards, pulse, '
+      'countdown, tile, outline pill', (tester) async {
+    // The pulse stands still, as drawn.
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    const facts = [
+      TroskyTripFact('Vehicle', 'GR 1234-24'),
+      TroskyTripFact('Seats', 'B3 & B4'),
+      TroskyTripFact('Total', '₵16.00', valueColor: TroskyColors.greenDark),
+    ];
+    await _golden(
+      tester,
+      'booking_status',
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TroskyPageHeader(
+            title: 'Payment',
+            subtitle: 'Review and confirm your booking',
+            onBack: () {},
+          ),
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const TroskyStatusBanner(
+                  text: 'Driver accepted your booking',
+                  tone: TroskyStatusTone.success,
+                ),
+                const SizedBox(height: 12),
+                const TroskyStatusBanner(
+                  text:
+                      "The driver didn't respond, so we moved you to another "
+                      'vehicle.',
+                  tone: TroskyStatusTone.info,
+                ),
+                const SizedBox(height: 18),
+                const TroskyTripSummaryCard(
+                  from: 'Madina',
+                  to: 'Circle',
+                  day: 'Today',
+                  time: '07:15',
+                  facts: facts,
+                ),
+                const SizedBox(height: 18),
+                const TroskyTripSummaryCard(
+                  from: 'Madina',
+                  to: 'Circle',
+                  day: 'Today',
+                  time: '07:30',
+                  previousTime: '07:15',
+                  tag: 'New vehicle assigned',
+                  highlighted: true,
+                  facts: [
+                    TroskyTripFact('Vehicle', 'GR 5678-23'),
+                    TroskyTripFact('Seats', 'C1 & C2'),
+                    TroskyTripFact(
+                      'Total',
+                      '₵16.00',
+                      valueColor: TroskyColors.greenDark,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                const Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    TroskyPulseDot(),
+                    TroskyStatusTile(icon: _NotAccepted()),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                const TroskyCountdown(
+                  time: '1:42',
+                  caption: '2-minute response window',
+                ),
+                const SizedBox(height: 24),
+                TroskyButton(
+                  label: 'Cancel request',
+                  variant: TroskyButtonVariant.outlinePill,
+                  onPressed: () {},
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      width: 390,
+    );
+  });
+}
+
+class _NotAccepted extends StatelessWidget {
+  const _NotAccepted();
+
+  @override
+  Widget build(BuildContext context) =>
+      TroskyIcons.bookingNotAccepted(color: TroskyColors.textSecondary);
 }

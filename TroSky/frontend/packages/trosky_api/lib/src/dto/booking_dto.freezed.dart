@@ -1678,7 +1678,8 @@ as String?,
 /// @nodoc
 mixin _$BookingResponse {
 
- String get id; String get bookingReference; String get tripId;@JsonKey(unknownEnumValue: BookingStatus.pending) BookingStatus get status; int get passengerCount; String? get originStopId; String? get destinationStopId;@JsonKey(fromJson: decimalString) String get fareAmount;@JsonKey(fromJson: decimalString) String get platformFee;@JsonKey(fromJson: decimalString) String get totalAmount;/// When the seat hold lapses (pending bookings).
+ String get id; String get bookingReference; String get tripId;@JsonKey(unknownEnumValue: BookingStatus.pending) BookingStatus get status; int get passengerCount; String? get originStopId; String? get destinationStopId;@JsonKey(fromJson: decimalString) String get fareAmount;@JsonKey(fromJson: decimalString) String get platformFee;@JsonKey(fromJson: decimalString) String get totalAmount;/// The deadline: for the driver's answer ([BookingStatus.
+/// awaitingAcceptance]), then for paying ([BookingStatus.pending]).
  DateTime? get expiresAt; DateTime get createdAt; List<BookingPassengerResponse> get passengers; BookingTripSummaryResponse? get trip; String? get boardingStopName; String? get alightingStopName;
 /// Create a copy of BookingResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -1913,7 +1914,8 @@ class _BookingResponse implements BookingResponse {
 @override@JsonKey(fromJson: decimalString) final  String fareAmount;
 @override@JsonKey(fromJson: decimalString) final  String platformFee;
 @override@JsonKey(fromJson: decimalString) final  String totalAmount;
-/// When the seat hold lapses (pending bookings).
+/// The deadline: for the driver's answer ([BookingStatus.
+/// awaitingAcceptance]), then for paying ([BookingStatus.pending]).
 @override final  DateTime? expiresAt;
 @override final  DateTime createdAt;
  final  List<BookingPassengerResponse> _passengers;

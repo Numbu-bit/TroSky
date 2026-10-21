@@ -946,23 +946,84 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paymentTitle => 'Payment';
 
   @override
-  String paymentHeldFor(String time) {
-    return 'Seats held for $time';
+  String get paymentSubtitle => 'Review and confirm your booking';
+
+  @override
+  String get paymentToday => 'Today';
+
+  @override
+  String get paymentTomorrow => 'Tomorrow';
+
+  @override
+  String get paymentVehicle => 'Vehicle';
+
+  @override
+  String paymentSeatsAnd(String seats, String last) {
+    return '$seats & $last';
   }
 
   @override
-  String paymentReference(String reference) {
-    return 'Booking $reference';
+  String get paymentWaitingTitle => 'Waiting for the driver to accept';
+
+  @override
+  String get paymentWaitingBody =>
+      'Your seats are held. You\'ll pay only after the driver accepts.';
+
+  @override
+  String paymentAnswerWindow(int minutes) {
+    return '$minutes-minute response window';
   }
+
+  @override
+  String paymentAnswerTimeLeft(String time) {
+    return '$time left for the driver to answer';
+  }
+
+  @override
+  String get paymentCancelRequest => 'Cancel request';
+
+  @override
+  String get paymentMovedUnanswered =>
+      'The driver didn\'t respond, so we moved you to another vehicle.';
+
+  @override
+  String get paymentMovedDeclined =>
+      'The driver couldn\'t take your booking, so we moved you to another vehicle.';
+
+  @override
+  String get paymentNewVehicle => 'New vehicle assigned';
+
+  @override
+  String get paymentNewDriverTitle => 'Waiting for the new driver to accept';
+
+  @override
+  String get paymentNewDriverBody =>
+      'Your seats are held while the new driver reviews your booking.';
+
+  @override
+  String get paymentAccepted => 'Driver accepted your booking';
+
+  @override
+  String get paymentPayWithin => 'Pay within';
+
+  @override
+  String get paymentNotAcceptedTitle => 'No driver accepted your booking';
+
+  @override
+  String get paymentNotAcceptedBody =>
+      'You haven\'t been charged. Your seats have been released.';
+
+  @override
+  String get paymentSearchAgain => 'Search again';
+
+  @override
+  String get paymentBackHome => 'Back to Home';
+
+  @override
+  String get paymentOffline => 'No connection. We\'ll keep checking.';
 
   @override
   String get paymentSeats => 'Seats';
-
-  @override
-  String get paymentFare => 'Fare';
-
-  @override
-  String get paymentPlatformFee => 'Platform fee';
 
   @override
   String get paymentTotal => 'Total';

@@ -338,11 +338,19 @@ class TroskyTextLink extends StatelessWidget {
     required this.prompt,
     required this.action,
     required this.onPressed,
+    this.actionColor = TroskyColors.green,
+    this.actionStyle,
   });
 
   final String prompt;
   final String action;
   final VoidCallback? onPressed;
+
+  /// Green by default; "Back to Home" on Payment (P-07) is blue.
+  final Color actionColor;
+
+  /// Inter 13/600 by default.
+  final TextStyle? actionStyle;
 
   @override
   Widget build(BuildContext context) {
@@ -363,9 +371,8 @@ class TroskyTextLink extends StatelessWidget {
                   if (prompt.isNotEmpty) TextSpan(text: '$prompt '),
                   TextSpan(
                     text: action,
-                    style: TroskyTypography.body13SemiBold.copyWith(
-                      color: TroskyColors.green,
-                    ),
+                    style: (actionStyle ?? TroskyTypography.body13SemiBold)
+                        .copyWith(color: actionColor),
                   ),
                 ],
               ),

@@ -7,9 +7,14 @@ import '../dto/paginated.dart';
 
 /// `/bookings` (backend/app/api/v1/bookings.py).
 abstract interface class BookingRepository {
-  /// Holds the seats for 10 minutes (`SEAT_RESERVATION_HOLD_SECONDS`) as a
-  /// pending booking. [idempotencyKey] makes a retry of the same request
-  /// return the same booking instead of a second one.
+  /// Holds the seats. With booking acceptance on (the backend's default)
+  /// the booking is `awaiting_acceptance` until the driver answers, by
+  /// `expires_at` (`BOOKING_ACCEPT_TIMEOUT_SECONDS`, 120 s); accepted, it is
+  /// `pending` for `SEAT_RESERVATION_HOLD_SECONDS` (600 s) to pay. With it
+  /// off, it is `pending` straight away. Unanswered or declined, it moves to
+  /// another vehicle (a new `trip_id`, still `awaiting_acceptance`) or ends
+  /// (`expired` or `cancelled`). [idempotencyKey] makes a retry of the same
+  /// request return the same booking instead of a second one.
   ///
   /// 409 `SEAT_NOT_AVAILABLE` (`details.seat_id`), 409 `TRIP_NOT_BOOKABLE`,
   /// 403 `ACCOUNT_NOT_VERIFIED`, 422 `STOP_NOT_ON_ROUTE` / validation.
@@ -29,8 +34,9 @@ abstract interface class BookingRepository {
 
   Future<Result<BookingResponse>> get(String bookingId);
 
-  /// Before the trip starts this is decided at once: the seats are
-  /// released and the booking is `cancelled`.
+  /// Before the trip starts, or while the driver hasn't answered, this is
+  /// decided at once: the seats are released and the booking is
+  /// `cancelled`. 409 `INVALID_STATE_TRANSITION` when it already ended.
   Future<Result<BookingResponse>> cancel(String bookingId, {String? reason});
 }
 
