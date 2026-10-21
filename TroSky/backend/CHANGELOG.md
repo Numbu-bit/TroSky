@@ -2308,3 +2308,23 @@ pause, resume and end trips by hand, and admins cancel as before.
   more often into spam. The guide now says so, how to send from a domain of
   your own (DNS records in Brevo), where the API key is made, and how to
   use Brevo from a developer's machine in place of MailHog.
+
+## [0.22.9] - 2026-10-16 - Verification codes through Gmail's API
+
+- `EMAIL_PROVIDER=gmail_api` sends email through Gmail's own HTTPS API, as
+  TroSky's Gmail account (`troskynoreply@gmail.com`). Render's free plan
+  blocks SMTP, and Brevo sends a Gmail sender's mail from an address of its
+  own, more often into spam; through Gmail's API a code arrives as an
+  ordinary Gmail message, free and with no domain of our own. Settings:
+  `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET` and `GMAIL_REFRESH_TOKEN`; the
+  server refuses to start with `gmail_api` and any of them missing. Google's
+  refusal is a failed send with its reason (`email_api_refused`), and a
+  refresh token that no longer works says how to make a new one.
+- `scripts/gmail_refresh_token.py` makes the refresh token once: Google's
+  consent page in the browser, a one-off server on 127.0.0.1 for the answer
+  (with PKCE), and an optional test email.
+- Staging (`render.yaml`) now emails codes this way: `EMAIL_PROVIDER=gmail_api`
+  and the sender, with the three secrets as Environment-tab values. Set them
+  in Render before this reaches main, or the new deploy won't start.
+- Docs: `docs/deploy-render.md`, "Sending real email", has the Google Cloud
+  setup.
