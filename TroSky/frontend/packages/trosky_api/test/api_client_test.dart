@@ -317,6 +317,40 @@ void main() {
     expect(result.valueOrNull?.otpSentTo, '+233241234567');
   });
 
+  test("a passenger's position goes in the register body", () async {
+    final adapter = FakeAdapter(
+      (_) async => const FakeReply(201, {
+        'user_id': 'u2',
+        'phone_number': '+233551234567',
+        'otp_sent_to': 'yaw.asante@gmail.com',
+        'message': 'Registration successful.',
+      }),
+    );
+    await LiveAuthRepository(
+      createApiClient(env: _env, tokens: _FakeTokens.new, adapter: adapter),
+    ).register(
+      const RegisterRequest(
+        phoneNumber: '0551234567',
+        email: 'yaw.asante@gmail.com',
+        password: 'Accra2026',
+        fullName: 'Yaw Asante',
+        latitude: 5.6037,
+        longitude: -0.187,
+      ),
+    );
+
+    expect(adapter.requests.single.data, {
+      'phone_number': '0551234567',
+      'email': 'yaw.asante@gmail.com',
+      'password': 'Accra2026',
+      'full_name': 'Yaw Asante',
+      'role': 'passenger',
+      'preferred_language': 'en',
+      'latitude': 5.6037,
+      'longitude': -0.187,
+    });
+  });
+
   group('Home endpoints parse what the backend sends', () {
     Dio dio(FakeAdapter adapter) =>
         createApiClient(env: _env, tokens: _FakeTokens.new, adapter: adapter);
@@ -725,6 +759,50 @@ void main() {
           'limit': 20,
           'offset': 0,
         });
+      },
+    );
+
+    test(
+      'GET /bookings/{id}: waiting for the driver (backend 0.20.0)',
+      () async {
+        final adapter = FakeAdapter(
+          (_) async => const FakeReply(200, {
+            'id': 'b1',
+            'booking_reference': 'TS-7Q2K',
+            'trip_id': 't2',
+            'status': 'awaiting_acceptance',
+            'passenger_count': 1,
+            'origin_stop_id': 's1',
+            'destination_stop_id': 's4',
+            'fare_amount': '14.00',
+            'platform_fee': '0.50',
+            'total_amount': '14.50',
+            'expires_at': '2026-10-02T09:02:00Z',
+            'created_at': '2026-10-02T09:00:00Z',
+            'passengers': [
+              {
+                'id': 'p1',
+                'seat_id': 's9',
+                'full_name': 'Kwame Asante',
+                'phone_number': null,
+              },
+            ],
+            'trip': null,
+            'boarding_stop_name': 'Accra Madina',
+            'alighting_stop_name': 'Accra Circle',
+          }),
+        );
+        final b = (await LiveBookingRepository(
+          dio(adapter),
+        ).get('b1')).valueOrNull!;
+        expect(adapter.requests.single.path, '/bookings/b1');
+        expect(b.status, BookingStatus.awaitingAcceptance);
+        expect(b.expiresAt, DateTime.utc(2026, 10, 2, 9, 2));
+        expect(b.tripId, 't2');
+        expect(
+          bookingStatusName(BookingStatus.awaitingAcceptance),
+          'awaiting_acceptance',
+        );
       },
     );
 

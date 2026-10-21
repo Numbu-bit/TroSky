@@ -186,17 +186,23 @@ final class ApiClientProvider extends $FunctionalProvider<Dio, Dio, Dio>
 
 String _$apiClientHash() => r'8a8e2f8ae88c30a581a4afda9e9d15bbb2f0613f';
 
-/// The in-memory backend behind `API_MODE=mock`.
+/// The in-memory backend behind `API_MODE=mock`. Its drivers accept booking
+/// requests, or answer as `--dart-define=MOCK_DRIVER=moveThenAccept` (or
+/// `decline`, or `none` for nobody) says.
 
 @ProviderFor(mockBackend)
 final mockBackendProvider = MockBackendProvider._();
 
-/// The in-memory backend behind `API_MODE=mock`.
+/// The in-memory backend behind `API_MODE=mock`. Its drivers accept booking
+/// requests, or answer as `--dart-define=MOCK_DRIVER=moveThenAccept` (or
+/// `decline`, or `none` for nobody) says.
 
 final class MockBackendProvider
     extends $FunctionalProvider<MockBackend, MockBackend, MockBackend>
     with $Provider<MockBackend> {
-  /// The in-memory backend behind `API_MODE=mock`.
+  /// The in-memory backend behind `API_MODE=mock`. Its drivers accept booking
+  /// requests, or answer as `--dart-define=MOCK_DRIVER=moveThenAccept` (or
+  /// `decline`, or `none` for nobody) says.
   MockBackendProvider._()
     : super(
         from: null,
@@ -230,7 +236,7 @@ final class MockBackendProvider
   }
 }
 
-String _$mockBackendHash() => r'742b829f3c4acd6fad1539dee06f861b5f64c5fb';
+String _$mockBackendHash() => r'3caca54993268fdbd541e8c01426d9201e449cd8';
 
 /// How long each mock call takes, so loading states can be seen.
 

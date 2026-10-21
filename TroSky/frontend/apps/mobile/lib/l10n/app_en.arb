@@ -208,6 +208,42 @@
   "@detailsCreateAccount": {
     "description": "Your details screen (S-06, not in Figma) button."
   },
+  "detailsLocationTitle": "Confirm you're in Ghana",
+  "@detailsLocationTitle": {
+    "description": "Title of the sheet on Your details (S-06) before asking for location; the Home location sheet with sign-up copy."
+  },
+  "detailsLocationBody": "TroSky is only available in Ghana for now. To create your account, we check your location once. It isn't saved.",
+  "@detailsLocationBody": {
+    "description": "Body of the sign-up location sheet."
+  },
+  "detailsLocationNeeded": "TroSky needs your location once to confirm you're in Ghana.",
+  "@detailsLocationNeeded": {
+    "description": "S-06, under the form: location was refused (or the server said LOCATION_REQUIRED). Shown with Try again."
+  },
+  "detailsLocationBlocked": "TroSky needs your location once to confirm you're in Ghana. Location is blocked for TroSky: allow it in Settings.",
+  "@detailsLocationBlocked": {
+    "description": "S-06: location refused for good. Shown with Try again and Open settings."
+  },
+  "detailsLocationServiceOff": "TroSky needs your location once to confirm you're in Ghana. Turn on your phone's location, then try again.",
+  "@detailsLocationServiceOff": {
+    "description": "S-06: the phone's location is switched off. Shown with Try again."
+  },
+  "detailsLocationNotFound": "TroSky couldn't find your location to confirm you're in Ghana. Try again in a moment.",
+  "@detailsLocationNotFound": {
+    "description": "S-06: no position came within 10 seconds. Shown with Try again."
+  },
+  "detailsLocationNotServed": "TroSky is only available in Ghana for now.",
+  "@detailsLocationNotServed": {
+    "description": "S-06: the server said LOCATION_NOT_SERVED (the phone is outside Ghana)."
+  },
+  "detailsTryAgain": "Try again",
+  "@detailsTryAgain": {
+    "description": "S-06: link under a location message; asks for the location again and creates the account."
+  },
+  "detailsOpenSettings": "Open settings",
+  "@detailsOpenSettings": {
+    "description": "S-06: link under the blocked-location message; opens TroSky's page in the phone's settings."
+  },
   "codeTitle": "Enter the code",
   "@codeTitle": {
     "description": "Code verification screen (S-07, not in Figma) heading."
@@ -1291,36 +1327,116 @@
   },
   "paymentTitle": "Payment",
   "@paymentTitle": {
-    "description": "Title of the Payment placeholder (P-07)."
+    "description": "Title of Payment (P-07)."
   },
-  "paymentHeldFor": "Seats held for {time}",
-  "@paymentHeldFor": {
-    "description": "Countdown to the end of the seat hold.",
+  "paymentSubtitle": "Review and confirm your booking",
+  "@paymentSubtitle": {
+    "description": "Subtitle under the Payment title (P-07)."
+  },
+  "paymentToday": "Today",
+  "@paymentToday": {
+    "description": "Departure day on the Payment trip card."
+  },
+  "paymentTomorrow": "Tomorrow",
+  "@paymentTomorrow": {
+    "description": "Departure day on the Payment trip card."
+  },
+  "paymentVehicle": "Vehicle",
+  "@paymentVehicle": {
+    "description": "Label of the vehicle registration on the Payment trip card."
+  },
+  "paymentSeatsAnd": "{seats} & {last}",
+  "@paymentSeatsAnd": {
+    "description": "Joins the last seat number to the others: \"B3 & B4\", \"B3, B4 & B5\".",
+    "placeholders": {
+      "seats": {
+        "type": "String"
+      },
+      "last": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentWaitingTitle": "Waiting for the driver to accept",
+  "@paymentWaitingTitle": {
+    "description": "P-07, while the trip's driver hasn't answered the booking."
+  },
+  "paymentWaitingBody": "Your seats are held. You'll pay only after the driver accepts.",
+  "@paymentWaitingBody": {
+    "description": "P-07, under the waiting title."
+  },
+  "paymentAnswerWindow": "{minutes}-minute response window",
+  "@paymentAnswerWindow": {
+    "description": "Under the countdown: how long a driver has to answer.",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "paymentAnswerTimeLeft": "{time} left for the driver to answer",
+  "@paymentAnswerTimeLeft": {
+    "description": "What a screen reader says for the waiting countdown.",
     "placeholders": {
       "time": {
         "type": "String"
       }
     }
   },
-  "paymentReference": "Booking {reference}",
-  "@paymentReference": {
-    "description": "Booking reference on Payment.",
-    "placeholders": {
-      "reference": {
-        "type": "String"
-      }
-    }
+  "paymentCancelRequest": "Cancel request",
+  "@paymentCancelRequest": {
+    "description": "Cancels the booking while the driver hasn't answered."
+  },
+  "paymentMovedUnanswered": "The driver didn't respond, so we moved you to another vehicle.",
+  "@paymentMovedUnanswered": {
+    "description": "Banner after the booking moved because its driver didn't answer in time."
+  },
+  "paymentMovedDeclined": "The driver couldn't take your booking, so we moved you to another vehicle.",
+  "@paymentMovedDeclined": {
+    "description": "Banner after the booking moved because its driver declined it."
+  },
+  "paymentNewVehicle": "New vehicle assigned",
+  "@paymentNewVehicle": {
+    "description": "Tag on the trip card after a move (shown in capitals)."
+  },
+  "paymentNewDriverTitle": "Waiting for the new driver to accept",
+  "@paymentNewDriverTitle": {
+    "description": "P-07, after a move, while the new driver hasn't answered."
+  },
+  "paymentNewDriverBody": "Your seats are held while the new driver reviews your booking.",
+  "@paymentNewDriverBody": {
+    "description": "P-07, under the new-driver title."
+  },
+  "paymentAccepted": "Driver accepted your booking",
+  "@paymentAccepted": {
+    "description": "Banner once the driver accepted the booking."
+  },
+  "paymentPayWithin": "Pay within",
+  "@paymentPayWithin": {
+    "description": "Before the time left to pay, once the driver accepted."
+  },
+  "paymentNotAcceptedTitle": "No driver accepted your booking",
+  "@paymentNotAcceptedTitle": {
+    "description": "P-07 when the booking ended without a driver accepting it."
+  },
+  "paymentNotAcceptedBody": "You haven't been charged. Your seats have been released.",
+  "@paymentNotAcceptedBody": {
+    "description": "Under the not-accepted title."
+  },
+  "paymentSearchAgain": "Search again",
+  "@paymentSearchAgain": {
+    "description": "Opens Search with the same stops, after no driver accepted."
+  },
+  "paymentBackHome": "Back to Home",
+  "@paymentBackHome": {
+    "description": "Goes to Home, after no driver accepted."
+  },
+  "paymentOffline": "No connection. We'll keep checking.",
+  "@paymentOffline": {
+    "description": "On Payment when it can't reach the server while waiting for the driver."
   },
   "paymentSeats": "Seats",
   "@paymentSeats": {
-    "description": "Row label on Payment."
-  },
-  "paymentFare": "Fare",
-  "@paymentFare": {
-    "description": "Row label on Payment."
-  },
-  "paymentPlatformFee": "Platform fee",
-  "@paymentPlatformFee": {
     "description": "Row label on Payment."
   },
   "paymentTotal": "Total",
@@ -1329,11 +1445,11 @@
   },
   "paymentComingSoon": "Paying in the app is coming soon. Your seats stay held until the timer ends.",
   "@paymentComingSoon": {
-    "description": "Note on the Payment placeholder."
+    "description": "Note on Payment once the driver accepted, until paying in the app is built."
   },
   "paymentCancel": "Cancel booking",
   "@paymentCancel": {
-    "description": "Cancels the held booking and frees the seats."
+    "description": "Cancels the booking and frees the seats (P-07: moved, and accepted)."
   },
   "paymentCancelled": "Booking cancelled. Your seats are free again.",
   "@paymentCancelled": {
@@ -1361,10 +1477,10 @@
   },
   "paymentExpired": "Your seat hold has expired. Choose your seats again.",
   "@paymentExpired": {
-    "description": "When the countdown reaches zero."
+    "description": "When the time to pay runs out."
   },
   "paymentExpiredHome": "Your seat hold has expired.",
   "@paymentExpiredHome": {
-    "description": "When a restored hold runs out."
+    "description": "When a reopened booking's time to pay runs out."
   }
 }

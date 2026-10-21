@@ -11,6 +11,7 @@ import '../dto/tracking_dto.dart';
 import '../dto/user_dto.dart';
 import '../repositories/booking_repository.dart';
 import '../repositories/route_repository.dart';
+import 'mock_regions.dart';
 
 /// An in-memory stand-in for the backend's auth and user endpoints, for
 /// `API_MODE=mock` and tests.
@@ -37,9 +38,20 @@ import '../repositories/route_repository.dart';
 ///   (14 seats, 5 taken); while [simulateRiders] is on, another rider takes
 ///   a seat on a minibus every 10 seconds until 12 are booked, and the
 ///   shared fare drops as in the design (see [tripSeats]).
+/// * A booking waits for the trip's driver ([bookingAcceptanceRequired],
+///   as backend/app/services/booking_acceptance_service.py). Drivers answer
+///   as [driverScript] says, [driverAnswersAfter] after each request; with
+///   no script nobody answers, and tests answer with [acceptBooking] and
+///   [declineBooking].
 class MockBackend {
-  MockBackend({DateTime Function()? clock, this.codesByEmail = false})
-    : _now = clock ?? DateTime.now {
+  MockBackend({
+    DateTime Function()? clock,
+    this.codesByEmail = false,
+    this.passengerSignupCountries = const {'GH'},
+    this.bookingAcceptanceRequired = true,
+    this.driverScript,
+    this.driverAnswersAfter = const Duration(seconds: 8),
+  }) : _now = clock ?? DateTime.now {
     _seed();
   }
 
@@ -72,6 +84,11 @@ class MockBackend {
   /// as in the docker-compose setup. The default sends them by SMS.
   final bool codesByEmail;
 
+  /// `PASSENGER_SIGNUP_COUNTRIES`: a passenger signs up only with the
+  /// phone's position, in one of these countries (Ghana, as the backend's
+  /// default). Empty switches the check off, as on the staging server.
+  final Set<String> passengerSignupCountries;
+
   final DateTime Function() _now;
   final List<_User> _users = [];
   final List<_Challenge> _challenges = [];
@@ -93,6 +110,23 @@ class MockBackend {
   static const Duration seatHold = Duration(seconds: 600);
   static const int bookingMaxSeats = 10;
   static const String platformFeePerSeat = '0.50';
+
+  /// `BOOKING_ACCEPT_TIMEOUT_SECONDS`, `BOOKING_MAX_MOVES` and
+  /// `BOOKING_MOVE_WINDOW_MINUTES`.
+  static const Duration acceptTimeout = Duration(seconds: 120);
+  static const int bookingMaxMoves = 3;
+  static const Duration bookingMoveWindow = Duration(minutes: 60);
+
+  /// `BOOKING_ACCEPTANCE_REQUIRED`: new bookings wait for the driver. Off,
+  /// they are pending (payable) at once, as on the staging server.
+  final bool bookingAcceptanceRequired;
+
+  /// How the trips' drivers answer booking requests; null: nobody answers,
+  /// so a request moves to another vehicle when its time is up, or ends.
+  final MockDriverScript? driverScript;
+
+  /// How long a scripted driver takes to answer.
+  final Duration driverAnswersAfter;
 
   final Map<String, _MockTrip> _tripIndex = {};
   final Map<String, _MockBooking> _bookings = {};
@@ -224,6 +258,8 @@ class MockBackend {
         {'allowed_domains': registrationEmailDomains.toList()..sort()},
       );
     }
+    final outside = _checkSignupLocation(request);
+    if (outside != null) return outside;
     if (_byPhone(phone!) != null) {
       return _error(
         409,
@@ -1026,7 +1062,8 @@ class MockBackend {
     );
   }
 
-  /// `POST /bookings`: holds the seats for [seatHold] as a pending booking.
+  /// `POST /bookings`: holds the seats, waiting [acceptTimeout] for the
+  /// driver (or, with [bookingAcceptanceRequired] off, [seatHold] to pay).
   Result<BookingResponse> createBooking(
     String? accessToken,
     BookingCreateRequest request,
@@ -1112,7 +1149,10 @@ class MockBackend {
       fare: fare.toStringAsFixed(2),
       fee: fee.toStringAsFixed(2),
       total: (fare + fee).toStringAsFixed(2),
-      expiresAt: now.add(seatHold),
+      status: bookingAcceptanceRequired
+          ? BookingStatus.awaitingAcceptance
+          : BookingStatus.pending,
+      expiresAt: now.add(bookingAcceptanceRequired ? acceptTimeout : seatHold),
       createdAt: now,
       passengers: [
         for (final p in request.passengers)
@@ -1217,6 +1257,7 @@ class MockBackend {
     for (final b in _bookings.values)
       if (b.trip.result.tripId == tripId &&
           const {
+            BookingStatus.awaitingAcceptance,
             BookingStatus.pending,
             BookingStatus.paymentPending,
             BookingStatus.confirmed,
@@ -1224,15 +1265,113 @@ class MockBackend {
         ...b.seatIds,
   };
 
-  /// `expire_stale_bookings`: lapsed holds release their seats.
+  /// What the background jobs and the scripted drivers did by now: drivers
+  /// answer, unanswered requests move or end (`move_unanswered_bookings`),
+  /// and lapsed holds release their seats (`expire_stale_bookings`).
   void _expireHolds() {
     final now = _now().toUtc();
     for (final b in _bookings.values) {
+      // A move opens a new request, which may be answered or lapse too.
+      for (var step = 0; step <= bookingMaxMoves + 1; step++) {
+        if (b.status != BookingStatus.awaitingAcceptance) break;
+        if (_scriptedAnswer(b, now)) continue;
+        if (b.expiresAt.isAfter(now)) break;
+        _moveOrEnd(b, BookingStatus.expired, from: b.expiresAt);
+      }
       if (b.status == BookingStatus.pending && !b.expiresAt.isAfter(now)) {
         b.status = BookingStatus.expired;
       }
     }
   }
+
+  /// The [driverScript]'s answer to [b]'s request, if it is due by [now].
+  bool _scriptedAnswer(_MockBooking b, DateTime now) {
+    final script = driverScript;
+    if (script == null) return false;
+    final answerAt = b.requestedAt.add(driverAnswersAfter);
+    if (answerAt.isAfter(now) || !answerAt.isBefore(b.expiresAt)) {
+      return false;
+    }
+    switch (script) {
+      case MockDriverScript.accept:
+        _accept(b, answerAt);
+      case MockDriverScript.moveThenAccept:
+        // The first driver lets the request lapse; the next one accepts.
+        if (b.moves == 0) return false;
+        _accept(b, answerAt);
+      case MockDriverScript.decline:
+        // No other vehicle going that way has seats.
+        _end(b, BookingStatus.cancelled);
+    }
+    return true;
+  }
+
+  /// `BookingAcceptanceService.accept`: pending, [seatHold] to pay from [at].
+  void _accept(_MockBooking b, DateTime at) {
+    b
+      ..status = BookingStatus.pending
+      ..expiresAt = at.add(seatHold);
+  }
+
+  /// `_move_or_end`: onto the nearest other trip from the same pickup to the
+  /// same destination that has seats for everyone on [b], still waiting for
+  /// a driver ([acceptTimeout] from [from]); after [bookingMaxMoves] moves,
+  /// or with no such trip, it ends as [ending].
+  void _moveOrEnd(
+    _MockBooking b,
+    BookingStatus ending, {
+    required DateTime from,
+  }) {
+    if (b.moves < bookingMaxMoves) {
+      final departs = b.trip.result.scheduledDepartureAt;
+      final others =
+          _tripIndex.values
+              .where(
+                (t) =>
+                    !t.closed &&
+                    !b.tried.contains(t.result.tripId) &&
+                    t.board.id == b.trip.board.id &&
+                    t.alight.id == b.trip.alight.id &&
+                    t.result.scheduledDepartureAt.difference(departs).abs() <=
+                        bookingMoveWindow,
+              )
+              .toList()
+            ..sort(
+              (x, y) => x.result.scheduledDepartureAt
+                  .difference(departs)
+                  .abs()
+                  .compareTo(
+                    y.result.scheduledDepartureAt.difference(departs).abs(),
+                  ),
+            );
+      for (final trip in others) {
+        final held = _heldSeatIds(trip.result.tripId);
+        final free = [
+          for (final seat in trip.seats)
+            if (!trip.takenByOthers.contains(seat.id) &&
+                !held.contains(seat.id))
+              seat.id,
+        ];
+        if (free.length < b.seatIds.length) continue;
+        final seats = free.take(b.seatIds.length).toList();
+        b
+          ..trip = trip
+          ..seatIds = seats
+          ..passengers = [
+            for (final (i, p) in b.passengers.indexed)
+              p.copyWith(seatId: seats[i]),
+          ]
+          ..tried.add(trip.result.tripId)
+          ..moves += 1
+          ..requestedAt = from
+          ..expiresAt = from.add(acceptTimeout);
+        return;
+      }
+    }
+    _end(b, ending);
+  }
+
+  void _end(_MockBooking b, BookingStatus ending) => b.status = ending;
 
   /// The P7 riders: one more seat every 10 s, while 12 or fewer are booked.
   void _simulateRider(_MockTrip trip) {
@@ -1283,6 +1422,35 @@ class MockBackend {
   BookingStatus bookingStatus(String bookingId) {
     _expireHolds();
     return _bookings[bookingId]!.status;
+  }
+
+  /// The trip the booking [bookingId] is on now (it changes when it moves).
+  String bookingTripId(String bookingId) {
+    _expireHolds();
+    return _bookings[bookingId]!.trip.result.tripId;
+  }
+
+  /// The driver accepts the booking [bookingId], as
+  /// `POST /driver-trips/{trip_id}/bookings/{booking_id}/accept` does.
+  void acceptBooking(String bookingId) {
+    _expireHolds();
+    final booking = _bookings[bookingId]!;
+    assert(booking.status == BookingStatus.awaitingAcceptance);
+    _accept(booking, _now().toUtc());
+  }
+
+  /// The driver declines the booking [bookingId]: it moves to another
+  /// vehicle going the same way, if one has seats ([move]), or ends
+  /// `cancelled`.
+  void declineBooking(String bookingId, {bool move = true}) {
+    _expireHolds();
+    final booking = _bookings[bookingId]!;
+    assert(booking.status == BookingStatus.awaitingAcceptance);
+    if (move) {
+      _moveOrEnd(booking, BookingStatus.cancelled, from: _now().toUtc());
+    } else {
+      _end(booking, BookingStatus.cancelled);
+    }
   }
 
   /// Removes every favourite route of the account with [phone].
@@ -1561,6 +1729,37 @@ class MockBackend {
     {'errors': errors},
   );
 
+  /// auth_service.py `_check_signup_location`: a passenger shares where
+  /// they are, and it must be in [passengerSignupCountries]. Only checked.
+  Err<RegisterResponse>? _checkSignupLocation(RegisterRequest request) {
+    final countries = passengerSignupCountries;
+    if (request.role != RegistrableRole.passenger || countries.isEmpty) {
+      return null;
+    }
+    final names = countryNamesFor(countries);
+    final details = {'countries': countries.toList()..sort()};
+    final latitude = request.latitude;
+    final longitude = request.longitude;
+    if (latitude == null || longitude == null) {
+      return _error(
+        422,
+        'LOCATION_REQUIRED',
+        'Turn on your location to sign up: TroSky is available in $names '
+            'for now.',
+        details,
+      );
+    }
+    if (countryAt(latitude, longitude, countries) == null) {
+      return _error(
+        422,
+        'LOCATION_NOT_SERVED',
+        'TroSky is only available in $names for now.',
+        details,
+      );
+    }
+    return null;
+  }
+
   Err<T> _error<T>(
     int status,
     String code,
@@ -1713,6 +1912,24 @@ class _MockTrip {
   }
 }
 
+/// How the mock's drivers answer booking requests ([MockBackend.driverScript]).
+enum MockDriverScript {
+  /// The driver accepts.
+  accept,
+
+  /// The first driver doesn't answer in time, so the booking moves to
+  /// another vehicle, whose driver accepts.
+  moveThenAccept,
+
+  /// The driver declines and no other vehicle going that way has seats:
+  /// the booking ends `cancelled`.
+  decline;
+
+  /// The script called [name] (`MOCK_DRIVER`), or null for none.
+  static MockDriverScript? named(String name) =>
+      values.where((s) => s.name == name).firstOrNull;
+}
+
 class _MockBooking {
   _MockBooking({
     required this.id,
@@ -1725,25 +1942,37 @@ class _MockBooking {
     required this.fare,
     required this.fee,
     required this.total,
+    required this.status,
     required this.expiresAt,
     required this.createdAt,
     required this.passengers,
-  });
+  }) : requestedAt = createdAt,
+       tried = {trip.result.tripId};
 
   final String id;
   final String reference;
   final String userId;
-  final _MockTrip trip;
-  final List<String> seatIds;
+  _MockTrip trip;
+  List<String> seatIds;
   final String originStopId;
   final String destinationStopId;
   final String fare;
   final String fee;
   final String total;
-  final DateTime expiresAt;
+  BookingStatus status;
+
+  /// The driver's deadline while [BookingStatus.awaitingAcceptance], then
+  /// the deadline to pay.
+  DateTime expiresAt;
   final DateTime createdAt;
-  final List<BookingPassengerResponse> passengers;
-  BookingStatus status = BookingStatus.pending;
+  List<BookingPassengerResponse> passengers;
+
+  /// When the current trip's driver was asked.
+  DateTime requestedAt;
+
+  /// Trips this booking was put to, and how often it moved.
+  final Set<String> tried;
+  int moves = 0;
 
   BookingResponse toResponse() => BookingResponse(
     id: id,
@@ -1756,7 +1985,11 @@ class _MockBooking {
     fareAmount: fare,
     platformFee: fee,
     totalAmount: total,
-    expiresAt: status == BookingStatus.pending ? expiresAt : null,
+    expiresAt:
+        status == BookingStatus.awaitingAcceptance ||
+            status == BookingStatus.pending
+        ? expiresAt
+        : null,
     createdAt: createdAt,
     passengers: passengers,
     trip: BookingTripSummaryResponse(

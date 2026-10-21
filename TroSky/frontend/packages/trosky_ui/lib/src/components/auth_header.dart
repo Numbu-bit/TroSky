@@ -155,8 +155,8 @@ class _BackButton extends StatelessWidget {
   );
 }
 
-/// A round button on a dark header (P6, P7): a 36 px disc at 10 % white
-/// around [child], in a 48 px touch area.
+/// A round button on a dark header (P6, P7): a 36 px disc ([diameter]; 44
+/// on P-07) at 10 % white around [child], in a 48 px touch area.
 class TroskyHeaderIconButton extends StatelessWidget {
   const TroskyHeaderIconButton({
     super.key,
@@ -164,6 +164,7 @@ class TroskyHeaderIconButton extends StatelessWidget {
     required this.onPressed,
     required this.child,
     this.selected,
+    this.diameter = 36,
   });
 
   final String semanticsLabel;
@@ -172,6 +173,8 @@ class TroskyHeaderIconButton extends StatelessWidget {
 
   /// For on/off buttons such as "save this route".
   final bool? selected;
+
+  final double diameter;
 
   static const double touchSize = 48;
 
@@ -191,8 +194,8 @@ class TroskyHeaderIconButton extends StatelessWidget {
           dimension: touchSize,
           child: Center(
             child: Container(
-              width: 36,
-              height: 36,
+              width: diameter,
+              height: diameter,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
                 color: TroskyColors.whiteA10,

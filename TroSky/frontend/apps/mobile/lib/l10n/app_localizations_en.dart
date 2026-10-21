@@ -166,6 +166,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get detailsCreateAccount => 'Create account';
 
   @override
+  String get detailsLocationTitle => 'Confirm you\'re in Ghana';
+
+  @override
+  String get detailsLocationBody =>
+      'TroSky is only available in Ghana for now. To create your account, we check your location once. It isn\'t saved.';
+
+  @override
+  String get detailsLocationNeeded =>
+      'TroSky needs your location once to confirm you\'re in Ghana.';
+
+  @override
+  String get detailsLocationBlocked =>
+      'TroSky needs your location once to confirm you\'re in Ghana. Location is blocked for TroSky: allow it in Settings.';
+
+  @override
+  String get detailsLocationServiceOff =>
+      'TroSky needs your location once to confirm you\'re in Ghana. Turn on your phone\'s location, then try again.';
+
+  @override
+  String get detailsLocationNotFound =>
+      'TroSky couldn\'t find your location to confirm you\'re in Ghana. Try again in a moment.';
+
+  @override
+  String get detailsLocationNotServed =>
+      'TroSky is only available in Ghana for now.';
+
+  @override
+  String get detailsTryAgain => 'Try again';
+
+  @override
+  String get detailsOpenSettings => 'Open settings';
+
+  @override
   String get codeTitle => 'Enter the code';
 
   @override
@@ -913,23 +946,84 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paymentTitle => 'Payment';
 
   @override
-  String paymentHeldFor(String time) {
-    return 'Seats held for $time';
+  String get paymentSubtitle => 'Review and confirm your booking';
+
+  @override
+  String get paymentToday => 'Today';
+
+  @override
+  String get paymentTomorrow => 'Tomorrow';
+
+  @override
+  String get paymentVehicle => 'Vehicle';
+
+  @override
+  String paymentSeatsAnd(String seats, String last) {
+    return '$seats & $last';
   }
 
   @override
-  String paymentReference(String reference) {
-    return 'Booking $reference';
+  String get paymentWaitingTitle => 'Waiting for the driver to accept';
+
+  @override
+  String get paymentWaitingBody =>
+      'Your seats are held. You\'ll pay only after the driver accepts.';
+
+  @override
+  String paymentAnswerWindow(int minutes) {
+    return '$minutes-minute response window';
   }
+
+  @override
+  String paymentAnswerTimeLeft(String time) {
+    return '$time left for the driver to answer';
+  }
+
+  @override
+  String get paymentCancelRequest => 'Cancel request';
+
+  @override
+  String get paymentMovedUnanswered =>
+      'The driver didn\'t respond, so we moved you to another vehicle.';
+
+  @override
+  String get paymentMovedDeclined =>
+      'The driver couldn\'t take your booking, so we moved you to another vehicle.';
+
+  @override
+  String get paymentNewVehicle => 'New vehicle assigned';
+
+  @override
+  String get paymentNewDriverTitle => 'Waiting for the new driver to accept';
+
+  @override
+  String get paymentNewDriverBody =>
+      'Your seats are held while the new driver reviews your booking.';
+
+  @override
+  String get paymentAccepted => 'Driver accepted your booking';
+
+  @override
+  String get paymentPayWithin => 'Pay within';
+
+  @override
+  String get paymentNotAcceptedTitle => 'No driver accepted your booking';
+
+  @override
+  String get paymentNotAcceptedBody =>
+      'You haven\'t been charged. Your seats have been released.';
+
+  @override
+  String get paymentSearchAgain => 'Search again';
+
+  @override
+  String get paymentBackHome => 'Back to Home';
+
+  @override
+  String get paymentOffline => 'No connection. We\'ll keep checking.';
 
   @override
   String get paymentSeats => 'Seats';
-
-  @override
-  String get paymentFare => 'Fare';
-
-  @override
-  String get paymentPlatformFee => 'Platform fee';
 
   @override
   String get paymentTotal => 'Total';

@@ -394,6 +394,60 @@ abstract class AppLocalizations {
   /// **'Create account'**
   String get detailsCreateAccount;
 
+  /// Title of the sheet on Your details (S-06) before asking for location; the Home location sheet with sign-up copy.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm you\'re in Ghana'**
+  String get detailsLocationTitle;
+
+  /// Body of the sign-up location sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'TroSky is only available in Ghana for now. To create your account, we check your location once. It isn\'t saved.'**
+  String get detailsLocationBody;
+
+  /// S-06, under the form: location was refused (or the server said LOCATION_REQUIRED). Shown with Try again.
+  ///
+  /// In en, this message translates to:
+  /// **'TroSky needs your location once to confirm you\'re in Ghana.'**
+  String get detailsLocationNeeded;
+
+  /// S-06: location refused for good. Shown with Try again and Open settings.
+  ///
+  /// In en, this message translates to:
+  /// **'TroSky needs your location once to confirm you\'re in Ghana. Location is blocked for TroSky: allow it in Settings.'**
+  String get detailsLocationBlocked;
+
+  /// S-06: the phone's location is switched off. Shown with Try again.
+  ///
+  /// In en, this message translates to:
+  /// **'TroSky needs your location once to confirm you\'re in Ghana. Turn on your phone\'s location, then try again.'**
+  String get detailsLocationServiceOff;
+
+  /// S-06: no position came within 10 seconds. Shown with Try again.
+  ///
+  /// In en, this message translates to:
+  /// **'TroSky couldn\'t find your location to confirm you\'re in Ghana. Try again in a moment.'**
+  String get detailsLocationNotFound;
+
+  /// S-06: the server said LOCATION_NOT_SERVED (the phone is outside Ghana).
+  ///
+  /// In en, this message translates to:
+  /// **'TroSky is only available in Ghana for now.'**
+  String get detailsLocationNotServed;
+
+  /// S-06: link under a location message; asks for the location again and creates the account.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get detailsTryAgain;
+
+  /// S-06: link under the blocked-location message; opens TroSky's page in the phone's settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get detailsOpenSettings;
+
   /// Code verification screen (S-07, not in Figma) heading.
   ///
   /// In en, this message translates to:
@@ -1616,23 +1670,143 @@ abstract class AppLocalizations {
   /// **'Guest {number}'**
   String bookingGuestFallback(int number);
 
-  /// Title of the Payment placeholder (P-07).
+  /// Title of Payment (P-07).
   ///
   /// In en, this message translates to:
   /// **'Payment'**
   String get paymentTitle;
 
-  /// Countdown to the end of the seat hold.
+  /// Subtitle under the Payment title (P-07).
   ///
   /// In en, this message translates to:
-  /// **'Seats held for {time}'**
-  String paymentHeldFor(String time);
+  /// **'Review and confirm your booking'**
+  String get paymentSubtitle;
 
-  /// Booking reference on Payment.
+  /// Departure day on the Payment trip card.
   ///
   /// In en, this message translates to:
-  /// **'Booking {reference}'**
-  String paymentReference(String reference);
+  /// **'Today'**
+  String get paymentToday;
+
+  /// Departure day on the Payment trip card.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow'**
+  String get paymentTomorrow;
+
+  /// Label of the vehicle registration on the Payment trip card.
+  ///
+  /// In en, this message translates to:
+  /// **'Vehicle'**
+  String get paymentVehicle;
+
+  /// Joins the last seat number to the others: "B3 & B4", "B3, B4 & B5".
+  ///
+  /// In en, this message translates to:
+  /// **'{seats} & {last}'**
+  String paymentSeatsAnd(String seats, String last);
+
+  /// P-07, while the trip's driver hasn't answered the booking.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the driver to accept'**
+  String get paymentWaitingTitle;
+
+  /// P-07, under the waiting title.
+  ///
+  /// In en, this message translates to:
+  /// **'Your seats are held. You\'ll pay only after the driver accepts.'**
+  String get paymentWaitingBody;
+
+  /// Under the countdown: how long a driver has to answer.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes}-minute response window'**
+  String paymentAnswerWindow(int minutes);
+
+  /// What a screen reader says for the waiting countdown.
+  ///
+  /// In en, this message translates to:
+  /// **'{time} left for the driver to answer'**
+  String paymentAnswerTimeLeft(String time);
+
+  /// Cancels the booking while the driver hasn't answered.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel request'**
+  String get paymentCancelRequest;
+
+  /// Banner after the booking moved because its driver didn't answer in time.
+  ///
+  /// In en, this message translates to:
+  /// **'The driver didn\'t respond, so we moved you to another vehicle.'**
+  String get paymentMovedUnanswered;
+
+  /// Banner after the booking moved because its driver declined it.
+  ///
+  /// In en, this message translates to:
+  /// **'The driver couldn\'t take your booking, so we moved you to another vehicle.'**
+  String get paymentMovedDeclined;
+
+  /// Tag on the trip card after a move (shown in capitals).
+  ///
+  /// In en, this message translates to:
+  /// **'New vehicle assigned'**
+  String get paymentNewVehicle;
+
+  /// P-07, after a move, while the new driver hasn't answered.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the new driver to accept'**
+  String get paymentNewDriverTitle;
+
+  /// P-07, under the new-driver title.
+  ///
+  /// In en, this message translates to:
+  /// **'Your seats are held while the new driver reviews your booking.'**
+  String get paymentNewDriverBody;
+
+  /// Banner once the driver accepted the booking.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver accepted your booking'**
+  String get paymentAccepted;
+
+  /// Before the time left to pay, once the driver accepted.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay within'**
+  String get paymentPayWithin;
+
+  /// P-07 when the booking ended without a driver accepting it.
+  ///
+  /// In en, this message translates to:
+  /// **'No driver accepted your booking'**
+  String get paymentNotAcceptedTitle;
+
+  /// Under the not-accepted title.
+  ///
+  /// In en, this message translates to:
+  /// **'You haven\'t been charged. Your seats have been released.'**
+  String get paymentNotAcceptedBody;
+
+  /// Opens Search with the same stops, after no driver accepted.
+  ///
+  /// In en, this message translates to:
+  /// **'Search again'**
+  String get paymentSearchAgain;
+
+  /// Goes to Home, after no driver accepted.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Home'**
+  String get paymentBackHome;
+
+  /// On Payment when it can't reach the server while waiting for the driver.
+  ///
+  /// In en, this message translates to:
+  /// **'No connection. We\'ll keep checking.'**
+  String get paymentOffline;
 
   /// Row label on Payment.
   ///
@@ -1643,28 +1817,16 @@ abstract class AppLocalizations {
   /// Row label on Payment.
   ///
   /// In en, this message translates to:
-  /// **'Fare'**
-  String get paymentFare;
-
-  /// Row label on Payment.
-  ///
-  /// In en, this message translates to:
-  /// **'Platform fee'**
-  String get paymentPlatformFee;
-
-  /// Row label on Payment.
-  ///
-  /// In en, this message translates to:
   /// **'Total'**
   String get paymentTotal;
 
-  /// Note on the Payment placeholder.
+  /// Note on Payment once the driver accepted, until paying in the app is built.
   ///
   /// In en, this message translates to:
   /// **'Paying in the app is coming soon. Your seats stay held until the timer ends.'**
   String get paymentComingSoon;
 
-  /// Cancels the held booking and frees the seats.
+  /// Cancels the booking and frees the seats (P-07: moved, and accepted).
   ///
   /// In en, this message translates to:
   /// **'Cancel booking'**
@@ -1706,13 +1868,13 @@ abstract class AppLocalizations {
   /// **'Seats released. Choose again.'**
   String get paymentReleased;
 
-  /// When the countdown reaches zero.
+  /// When the time to pay runs out.
   ///
   /// In en, this message translates to:
   /// **'Your seat hold has expired. Choose your seats again.'**
   String get paymentExpired;
 
-  /// When a restored hold runs out.
+  /// When a reopened booking's time to pay runs out.
   ///
   /// In en, this message translates to:
   /// **'Your seat hold has expired.'**

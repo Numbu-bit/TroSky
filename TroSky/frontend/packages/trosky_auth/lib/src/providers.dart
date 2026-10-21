@@ -41,9 +41,14 @@ Dio apiClient(Ref ref) {
   return dio;
 }
 
-/// The in-memory backend behind `API_MODE=mock`.
+/// The in-memory backend behind `API_MODE=mock`. Its drivers accept booking
+/// requests, or answer as `--dart-define=MOCK_DRIVER=moveThenAccept` (or
+/// `decline`, or `none` for nobody) says.
 @Riverpod(keepAlive: true)
-MockBackend mockBackend(Ref ref) => MockBackend();
+MockBackend mockBackend(Ref ref) {
+  const script = String.fromEnvironment('MOCK_DRIVER', defaultValue: 'accept');
+  return MockBackend(driverScript: MockDriverScript.named(script));
+}
 
 /// How long each mock call takes, so loading states can be seen.
 @Riverpod(keepAlive: true)

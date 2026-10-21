@@ -93,7 +93,7 @@ The backend already supports this. `POST /auth/register` takes `role: passenger 
 
 ## 4. Screen inventory, mobile app
 
-Use the **Screen ID** as the screenshot filename (e.g. `S-04.png`). "Figma" is the screenshot I need from you.
+Use the **Screen ID** as the screenshot filename (e.g. `S-04.png`). "Figma" is the screenshot I need from you. A screen marked **Design: derived** has no Figma screenshot and is built from existing components (CLAUDE.md, "Derived designs").
 
 ### 4a. Entry (shared)
 | ID | Screen | Endpoints | API |
@@ -103,36 +103,36 @@ Use the **Screen ID** as the screenshot filename (e.g. `S-04.png`). "Figma" is t
 | ~~S-03~~ | ~~Role chooser~~: none, replaced by the Welcome screen's driver link (decision 7) | — | — |
 | S-04 | **Welcome** (phone; P4 Sign Up). Built 1 Oct 2026 | none (checked on the device) | ✅ |
 | S-05 | **Sign in**: phone or email + password, plus "Sign in with a code" (decision 10). Built 1 Oct 2026 | `POST /auth/login`, `POST /auth/resend-otp` (purpose `login`) → `POST /auth/otp-login`, then `GET /users/me` | ✅ |
-| S-06 | **Your details**: name, Gmail, password (not in Figma; decision 6). Built 1 Oct 2026 | `POST /auth/register` (role from the app mode) | ✅ |
+| S-06 | **Your details**: name, Gmail, password (not in Figma; decision 6). Built 1 Oct 2026. Since 20 Oct 2026 a passenger's sign-up sends the phone's position once, for the backend's Ghana check (decision 27) | `POST /auth/register` (role from the app mode; `latitude`, `longitude` for a passenger) | ✅ |
 | S-07 | **Code verification** (target = `otp_sent_to`). Built 1 Oct 2026 | `POST /auth/verify-otp`, `POST /auth/resend-otp`, then a silent `POST /auth/login` | ✅ |
 | S-08 | Forgot password | `POST /auth/password/forgot` | ✅ |
-| S-09 | Reset password | `POST /auth/password/reset` | ❌ G1 |
+| S-09 | Reset password | `POST /auth/password/forgot`, `POST /auth/password/reset` with the 6-digit code | ✅ (G1 done) |
 | S-10 | Wrong-role sheet with "Become a driver", which leads to D-01 | `POST /drivers/me` | ✅ |
 
 ### 4b. Passenger
 | ID | Screen | Endpoints | API |
 |---|---|---|---|
-| P-01 | **Home** (P5: map, favourite routes, subscribe banner, SOS) in the passenger tab bar (decision 12). Built 1 Oct 2026. P5 has no upcoming-trip card, so `GET /bookings` isn't used yet | `GET /stops/nearby`, `GET /users/me/favourite-routes` (G4), `GET /vehicles/nearby` (G16) | ✅ banner behind `subscriptions` (G14); SOS needs G19 |
+| P-01 | **Home** (P5: map, favourite routes, subscribe banner, SOS) in the passenger tab bar (decision 12). Built 1 Oct 2026. P5 has no upcoming-trip card, so `GET /bookings` isn't used yet | `GET /stops/nearby`, `GET /users/me/favourite-routes` (G4), `GET /vehicles/nearby` (G16) | ✅ banner behind `subscriptions` (G14, out of the MVP); SOS can use `POST /sos` (G19 done) once P-12 is built |
 | P-02 | **Search** (from, to, when; not in Figma, decision 19). Built 2 Oct 2026: Current location or a chosen stop, stop search, nearby stops, favourites, last 5 searches | `GET /stops?q=`, `GET /stops/nearby`, `GET /users/me/favourite-routes` | ✅ |
 | P-03 | **Search results** (P6). Built 2 Oct 2026: filter pills (decision 22, sorted and filtered by the backend since 10 Oct), pages, save route. Since 10 Oct 2026 live shows the full design: the passenger's fare with the saving (G20), vehicles approaching or passed (G21) | `GET /trips/search` (+ `pickup_latitude` / `pickup_longitude`, `sort`, `vehicle_type`), `POST /users/me/favourite-routes` | ✅ |
 | P-04 | Trip details | `GET /trips/{id}`, `GET /routes/{id}` | ✅ |
 | P-05 | **Seat selection** (P7). Built 2 Oct 2026: the map drawn from the seat rows and columns (decision 25), refreshed every 10 s, up to 10 seats; the fare from the backend's quote for the stops and seats (since 10 Oct 2026); Reserve holds the seats (passengers per decision 23) | `GET /trips/{id}/seats`, `GET /trips/{id}/fare-quote`, `POST /bookings` (`Idempotency-Key`) | ✅ |
 | P-06 | Passenger details + booking review. Not built: decision 23 names the passengers without asking, and Payment shows the review | `POST /bookings` | ✅ |
-| P-07 | Payment method. **Placeholder** since 2 Oct 2026: the held booking (reference, seats, fare, fee, total), a countdown to `expires_at`, Cancel booking; Home reopens an unpaid hold after a restart | `POST /bookings/{id}/pay`, `GET /wallet`; the placeholder uses `POST /bookings/{id}/cancel`, `GET /bookings?status=pending,payment_pending&upcoming=true` | ✅ |
+| P-07 | **Payment** (Figma P-07: waiting for the driver, accepted, moved to another vehicle, not accepted). Built 21 Oct 2026 (decision 28): the booking's states from the server, polled every 5 s while the driver hasn't answered; Cancel request / Cancel booking; Home reopens a booking still waiting or unpaid. **Paying isn't built yet**: the accepted state shows a note and Cancel booking in place of "Pay with" and Pay | `GET /bookings/{id}`, `POST /bookings/{id}/cancel`, `GET /trips/{id}/seats` (seat labels after a move), `GET /bookings?status=awaiting_acceptance,pending,payment_pending&upcoming=true`; to come: `POST /bookings/{id}/pay`, `GET /wallet` | ✅ (G34 open) |
 | P-08 | Approve on your phone (MoMo pending) | `POST /payments/{id}/sync` (poll) | ✅ |
 | P-09 | Payment success / failed | `GET /bookings/{id}` | ✅ |
 | P-10 | Ticket (QR) | `GET /bookings/{id}/tickets`, `GET /tickets/{id}` | ✅ |
 | P-11 | Live bus tracking (map + ETA) | WS track, `GET /trips/{id}/location`, `/eta` | ✅ |
 | P-12 | SOS (confirm + sent) | `POST /trips/{id}/sos`, `GET /sos/{id}` | ✅ |
 | P-13 | Report incident | `POST /trips/{id}/incidents` | ✅ |
-| P-14 | Rate driver (single 1–5 score + comment) | `POST /bookings/{id}/rating` | ✅ (categories = G13) |
-| P-15 | Trip history (upcoming / past) | `GET /bookings` + one `GET /trips/{id}` per booking | ⚠️ G12 |
+| P-14 | Rate driver (single 1–5 score + comment) | `POST /bookings/{id}/rating` | ✅ (categories: G13 done) |
+| P-15 | Trip history (upcoming / past) | `GET /bookings?status=&upcoming=` (departure time included), `GET /bookings/summary` (G25) | ✅ (G12 done) |
 | P-16 | Booking details + cancel | `GET /bookings/{id}`, `POST /bookings/{id}/cancel` | ✅ |
 | P-17 | Wallet | `GET /wallet`, `GET /wallet/transactions` | ✅ |
 | P-18 | Top up wallet | `POST /wallet/topups` → P-08 | ✅ |
 | P-19 | Payment history | `GET /payments` | ✅ |
 | P-20 | Notifications | `GET /notifications`, `POST /notifications/{id}/read` | ✅ |
-| P-21 | Profile | `GET/PATCH /users/me` | ⚠️ G5 (photo) |
+| P-21 | Profile | `GET/PATCH /users/me`, `POST /users/me/avatar` | ✅ (G5 done; uploads need object storage, which the Render staging server doesn't have) |
 | P-22 | Emergency contacts | `/users/me/emergency-contacts` (CRUD) | ✅ |
 | P-23 | Notification settings | `GET/PATCH /users/me/notification-preferences` | ✅ |
 | P-24 | Complaints (file + list) | `POST/GET /complaints` | ✅ |
@@ -146,15 +146,16 @@ Use the **Screen ID** as the screenshot filename (e.g. `S-04.png`). "Figma" is t
 | D-01 | Driver onboarding (licence details) | `POST /drivers/me` | ✅ |
 | D-02 | Upload documents (licence, insurance, photo…) | `POST/GET /drivers/me/documents` | ✅ |
 | D-03 | Awaiting approval / rejected | `GET /drivers/me` (approval status) | ✅ |
-| D-04 | Driver dashboard (today's trips) | none that lists the driver's trips | ❌ G2 |
+| D-04 | Driver dashboard (today's trips) | `GET /drivers/me/trips` | ✅ (G2 done) |
 | D-05 | Active trip (start / pause / resume / end + map) | `/driver-trips/{id}/start, pause, resume, end`, `/location` (GPS every 5–10 s) | ✅ |
-| D-06 | Passenger list (manifest) | none | ❌ G3 |
+| D-06 | Passenger list (manifest) | `GET /driver-trips/{trip_id}/passengers` (with drop-off, G33) | ✅ (G3 done) |
 | D-07 | QR scanner + result | `POST /driver-trips/{id}/tickets/validate` | ✅ |
-| D-08 | Earnings (daily / weekly / monthly) | `GET /wallet/transactions`, filtered in the app on `reference_type == "trip_earning"` (no server filter, so the app pages through everything) | ⚠️ G7 |
+| D-08 | Earnings (daily / weekly / monthly) | `GET /drivers/me/earnings?period=day\|week\|month` | ✅ (G7 done) |
 | D-09 | Wallet + withdraw | `GET /wallet`, `POST/GET /wallet/withdrawals` | ✅ |
 | D-10 | Driver profile + vehicle | `GET/PATCH /drivers/me`, `GET /drivers/me/assignments` | ✅ |
 | D-11 | Driver SOS / incident | `POST /trips/{id}/sos`, `/incidents` | ✅ |
 | D-12 | Driver settings / notifications | same as P-20, P-23, P-25 | ✅ |
+| D-13 | **Booking requests: accept or decline** (Figma D2 "Ride request"). Added 20 Oct 2026: since backend 0.20.0 a new booking waits up to 120 s for its trip's driver (decision E2's "no ride requests" predates it) | `GET /driver-trips/booking-requests`; `POST /driver-trips/{trip_id}/bookings/{booking_id}/accept` or `/decline` | ✅ |
 
 ---
 
@@ -175,8 +176,8 @@ and its planned screens A-01 to A-14 were removed (`design-decisions.md`, 26).
 | F-05 | Vehicles (list, add, edit) | `/fleets/{id}/vehicles`, `/vehicles/{id}` | ✅ |
 | F-06 | Vehicle documents | `/vehicles/{id}/documents` | ✅ |
 | F-07 | Seat layout editor | `PUT/GET /vehicles/{id}/seat-layout` | ✅ |
-| F-08 | Assign / unassign driver | `/vehicles/{id}/assign-driver` (needs a `driver_id`) | ❌ G10 |
-| F-09 | Live fleet status | none | ❌ G8 |
+| F-08 | Assign / unassign driver | `GET /fleets/{fleet_id}/drivers` (search by phone) for the `driver_id`, then `/vehicles/{id}/assign-driver` | ✅ (G10 done) |
+| F-09 | Live fleet status | `GET /fleets/{fleet_id}/live-trips` | ✅ (G8 done) |
 
 ---
 
@@ -188,26 +189,27 @@ Ranked by how badly each blocks the frontend. Most are small additions to router
 
 | ID | Gap | Blocks | Suggested fix |
 |---|---|---|---|
-| **G2** | **A driver can't list their assigned trips.** `/drivers/me/assignments` returns vehicles only, so the driver app has no `trip_id` to start | D-04, D-05, the whole driver flow | `GET /drivers/me/trips?status=&date=` |
-| **G3** | **No passenger manifest** for a trip | D-06 | `GET /driver-trips/{trip_id}/passengers` (seat, name, boarded yes/no) |
-| **G1** | Password reset needs a ≥20-character `token`, which can't be typed from an SMS | S-09 | Accept a 6-digit OTP (`purpose=password_reset`), or have `verify-otp` return a reset token |
-| G8 | No list of active trips / live positions for admin and fleet owners, and no admin trip list | Admin trips and live map, F-09 | `GET /admin/trips?status=`, `GET /admin/live-trips`, fleet-scoped equivalent |
-| G10 | A fleet owner can't search for or invite drivers to get a `driver_id` | F-08 | `GET /fleets/{id}/drivers` + search by phone |
-| G7 | No earnings summary endpoint (SRS FR-010) | D-08 (works with app-side totals) | `GET /drivers/me/earnings?period=day\|week\|month` |
-| G5 | No profile photo upload (only `avatar_url`) | P-21 | `POST /users/me/avatar` (reuse the S3 upload used for documents) |
-| G4 | No favourite routes (SRS FR-003) | P-26 | `/users/me/favourite-routes` CRUD |
-| G9 | Routes and stops can be created but not edited or deleted | Admin stops and routes | PATCH/DELETE for both |
+| ✅ G2 | **Done (backend 0.12.0).** **A driver can't list their assigned trips.** `/drivers/me/assignments` returns vehicles only, so the driver app has no `trip_id` to start | D-04, D-05, the whole driver flow | `GET /drivers/me/trips?status=&date=` |
+| ✅ G3 | **Done (backend 0.12.0).** **No passenger manifest** for a trip | D-06 | `GET /driver-trips/{trip_id}/passengers` (seat, name, boarded yes/no) |
+| ✅ G1 | **Done (backend 0.12.0).** Password reset needs a ≥20-character `token`, which can't be typed from an SMS | S-09 | Accept a 6-digit OTP (`purpose=password_reset`), or have `verify-otp` return a reset token |
+| ✅ G8 | **Done (backend 0.12.0).** No list of active trips / live positions for admin and fleet owners, and no admin trip list | Admin trips and live map, F-09 | `GET /admin/trips?status=`, `GET /admin/live-trips`, fleet-scoped equivalent |
+| ✅ G10 | **Done (backend 0.12.0).** A fleet owner can't search for or invite drivers to get a `driver_id` | F-08 | `GET /fleets/{id}/drivers` + search by phone |
+| ✅ G7 | **Done (backend 0.12.0).** No earnings summary endpoint (SRS FR-010) | D-08 (works with app-side totals) | `GET /drivers/me/earnings?period=day\|week\|month` |
+| ✅ G5 | **Done (backend 0.12.0).** No profile photo upload (only `avatar_url`) | P-21 | `POST /users/me/avatar` (reuse the S3 upload used for documents) |
+| ✅ G4 | **Done (backend 0.12.0).** No favourite routes (SRS FR-003) | P-26 | `/users/me/favourite-routes` CRUD |
+| ✅ G9 | **Done (backend 0.12.0).** Routes and stops can be created but not edited or deleted | Admin stops and routes | PATCH/DELETE for both |
 | G11 | Telecel, AirtelTigo and card payments are placeholders | P-07 | Already known; the UI shows "Coming soon" |
-| G12 | `GET /bookings` has no status or date filter, and bookings don't include departure time | P-01, P-15 (the app makes one extra request per booking) | `?status=&upcoming=true` and embed a trip summary |
-| G13 | The rating is a single score. The SRS asked for safety, cleanliness, professionalism and timeliness | P-14 (only if the Figma "Rate Driver" screen shows categories) | Optional category scores |
+| ✅ G12 | **Done (backend 0.12.0).** `GET /bookings` has no status or date filter, and bookings don't include departure time | P-01, P-15 (the app makes one extra request per booking) | `?status=&upcoming=true` and embed a trip summary |
+| ✅ G13 | **Done (backend 0.12.0).** The rating is a single score. The SRS asked for safety, cleanliness, professionalism and timeliness | P-14 (only if the Figma "Rate Driver" screen shows categories) | Optional category scores |
 | G19 (done, 0.13.0) | An SOS needs a trip (`POST /trips/{trip_id}/sos`), but Home shows SOS at all times | P-01's SOS button, P-12 outside a trip | `POST /sos` with an optional `trip_id` (decision 18) |
+| G34 | A booking doesn't say how long a driver has to answer, or why it moved | P-07 (the app works them out; decision 28) | `accept_timeout_seconds` and `last_move_reason` on `BookingResponse` (backend-requests.md) |
 
 ### Gaps the Figma design creates (it shows features the backend doesn't have)
 | ID | Design shows | Backend today | Decision needed |
 |---|---|---|---|
 | **G14** | **Subscribe your commute**: onboarding 3, the Home banner and a Subscribe screen ("save up to 40% with a monthly plan") | No subscription model or endpoints | Build the backend feature, or hide it for the MVP |
 | **G15** | **Fare splitting**: onboarding 2 says "as more passengers board, the cost splits", with per-seat prices changing | Each trip has one fixed `fare_amount` | Is the fare dynamic? If yes, this is a pricing change in the backend |
-| G16 | Home map with **nearby vehicle clusters** (badges 5, 2) | Only per-trip location (`/trips/{id}/location`) | Add a "vehicles near me" endpoint, or show nearby **stops** (which exist) instead |
+| ✅ G16 | **Done (backend 0.12.0).** Home map with **nearby vehicle clusters** (badges 5, 2) | Only per-trip location (`/trips/{id}/location`) | Add a "vehicles near me" endpoint, or show nearby **stops** (which exist) instead |
 | G17 | Sign-up card: "Optionally verify your Ghana Card" | `ghana_card_number` and `ghana_card_verified` fields exist, but no verification endpoint | Hide the card for the MVP, or add an endpoint |
 | **G18** | **Sign up is phone → Send OTP only** (passwordless) with a "Continue with Email" option | Register requires phone + **Gmail** email + name + password, *then* the OTP | Decided 1 Oct 2026: keep the backend; see design-decisions.md, decision 6 |
 

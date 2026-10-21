@@ -199,6 +199,9 @@ void main() {
           password: 'Kumasi2026',
           fullName: 'Efua Owusu',
           role: role,
+          // In Kumasi: passengers sign up in Ghana only.
+          latitude: 6.6885,
+          longitude: -1.6244,
         ),
       );
       return controller(c).verifyRegistration(
@@ -240,6 +243,8 @@ void main() {
           email: 'efua.owusu@gmail.com',
           password: 'Kumasi2026',
           fullName: 'Efua Owusu',
+          latitude: 6.6885,
+          longitude: -1.6244,
         ),
       );
       final result = await controller(c).verifyRegistration(

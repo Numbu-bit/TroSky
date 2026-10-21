@@ -30,6 +30,7 @@ Product decisions that settle questions the Figma Make file leaves open. These r
 | 24 | Price on the seat screen | 2 Oct 2026 | **Ended 10 Oct 2026**: the fare quote landed, live shows the full design |
 | 25 | Seat layout | 2 Oct 2026 | In force (`SeatMapLayout`) |
 | 26 | Admin web | 11 Oct 2026 | In force: `apps/admin_web` removed |
+| 27 | Sign-up location | 20 Oct 2026 | In force (`SignUpLocator`, Your details S-06) |
 
 ## 1. Logo
 
@@ -256,3 +257,88 @@ Admin web = React app in TroSky/admin-dashboard (Maahir). Flutter admin_web remo
 - `apps/admin_web` was only a placeholder ("TroSky Admin — setup OK"); its planned screens A-01 to
   A-14 are gone from `frontend-inventory.md`.
 - `apps/fleet_web` stays for now; the fleet-owner app is decided later.
+
+## 27. Sign-up location
+
+Since backend 0.21.0 a **passenger** signs up only with the phone's position, and it must be in
+Ghana (`PASSENGER_SIGNUP_COUNTRIES`, default `GH`; `422 LOCATION_REQUIRED` without one,
+`422 LOCATION_NOT_SERVED` outside). Drivers are approved by an admin and send no position.
+
+On **Create account** (S-06), for a passenger only:
+
+1. **Without location permission**, the Home location sheet explains why first ("Confirm you're in
+   Ghana"); only "Allow location" opens the phone's own dialog.
+2. **One position:** the phone's last fix if it has one (a country check needs no precision),
+   otherwise a fresh fix for up to 10 s.
+3. **It goes only into `POST /auth/register`** (`latitude`, `longitude`). It is never stored on
+   the phone (not in Home's location state, not in preferences), and the backend only checks it.
+4. **No position, no request.** Under the form:
+   - refused, or the server says `LOCATION_REQUIRED`: "TroSky needs your location once to confirm
+     you're in Ghana." with **Try again**;
+   - refused for good: the same, with "allow it in Settings", **Try again** and **Open settings**;
+   - location off: the same, with "turn on your phone's location";
+   - no fix in 10 s: "couldn't find your location";
+   - outside Ghana (`LOCATION_NOT_SERVED`): "TroSky is only available in Ghana for now."
+
+The mock backend checks the same outline as the backend (Ghana plus about 15 km, so Lomé passes and
+Lagos doesn't).
+
+## 28. Booking acceptance on Payment (P-07)
+
+Since backend 0.20.0 a new booking is `awaiting_acceptance`: it holds its seats while the trip's
+driver (or an admin) answers, by `expires_at` (`BOOKING_ACCEPT_TIMEOUT_SECONDS`, 120 s). Accepted,
+it is `pending` with a new `expires_at` to pay by (600 s). Declined, or unanswered at the deadline,
+it moves to another vehicle going the same way (a new `trip_id`, still waiting, a new deadline; up
+to 3 moves) or ends: `cancelled` (declined) or `expired` (nobody answered).
+`backend/app/services/booking_acceptance_service.py`.
+
+Payment (Figma P-07, four screenshots) shows what `GET /bookings/{id}` says:
+
+| State | When | Shows |
+|---|---|---|
+| Waiting | `awaiting_acceptance` | Pulsing dot, "Waiting for the driver to accept", countdown to `expires_at`, "Cancel request" |
+| Moved | `awaiting_acceptance` on a new `trip_id` | Blue banner, "New vehicle assigned", the old time struck through, the new vehicle, time and seats, a new countdown, "Cancel booking" |
+| Accepted | `pending` (or later) | Green banner if it was accepted while the screen was open; "Pay within" the new `expires_at` |
+| Not accepted | `expired` or `cancelled` while waiting | "No driver accepted your booking", "Search again", "Back to Home" |
+
+1. **Polling:** every 5 s while waiting (or moved). After a failed poll the gap doubles to 10 s,
+   then 20 s, at most 30 s; with no connection, "No connection. We'll keep checking." shows until
+   a poll succeeds. In the background (app paused) nothing is polled; on return the booking is read
+   at once, also when accepted (an admin can still take an accepted booking back). Leaving Payment
+   stops it (the controller is disposed with the screen).
+2. **The countdown** runs on the phone's clock to `expires_at`. At 0:00 it keeps waiting: the
+   backend moves or ends the request within its 15 s sweep, and the next poll shows which.
+3. **"2-minute response window":** the API doesn't send `BOOKING_ACCEPT_TIMEOUT_SECONDS`. For a
+   booking just made, `expires_at − created_at` is exactly that (the request opens with the
+   booking), so the caption uses it and keeps it after a move. A booking reopened from Home may
+   have moved already, so it shows no caption (G34).
+4. **Why it moved** isn't in the API either. A move seen before the old deadline means the driver
+   declined ("The driver couldn't take your booking, …"); after it, nobody answered ("The driver
+   didn't respond, …"). The design says "The **first** driver didn't respond"; "first" is dropped
+   because a booking can move up to 3 times (G34).
+5. **Seats after a move:** `BookingResponse` has seat ids only, so the labels come from the new
+   trip's seat map (`GET /trips/{id}/seats`). The price stays as booked.
+6. **Accepted without paying:** paying isn't built yet, so the design's "Pay with" card and
+   "Pay ₵16.00" button are replaced by the existing "coming soon" note and "Cancel booking" until
+   the payment step. With acceptance off (staging, `BOOKING_ACCEPTANCE_REQUIRED=false`) a booking
+   is `pending` at once and Payment opens in this state, without the banner. When the time to pay
+   runs out, Payment closes as before ("Your seat hold has expired").
+7. **Cancel** ("Cancel request" while waiting, "Cancel booking" after a move or once accepted)
+   calls `POST /bookings/{id}/cancel`. If the server ended the booking first
+   (409 `INVALID_STATE_TRANSITION`), Payment reads it again and shows what happened.
+8. **Not accepted:** "Search again" goes to Home and opens Search with the same stops, which
+   searches straight away (as for a favourite route); "Back to Home" goes Home. Back leaves without
+   the "Change your seats?" sheet, since nothing is held.
+9. **Home reopens** a booking still waiting for the driver as well as one waiting to be paid for
+   (`GET /bookings?status=awaiting_acceptance,pending,payment_pending&upcoming=true`).
+10. **Mock mode:** bookings wait for a driver, and scripted drivers answer 8 s after each request:
+    `--dart-define=MOCK_DRIVER=accept` (default), `moveThenAccept` (the first driver lets it
+    lapse, the next accepts), `decline` (no other vehicle) or `none`.
+11. **Staging stays as it is** (`BOOKING_ACCEPTANCE_REQUIRED=false`) until drivers can accept in
+    the app (D-13).
+
+Measured from the screenshots (all colours are existing tokens): an 18 px page margin; the header
+with a 44 px back disc and a 22/800 title (P-05 keeps its own 36 px and 17/700); the trip card with
+`receiptCard`'s shadow; status titles at 20/800 (22/800 when not accepted) with 1.25 line height.
+The info "i", the up arrow and the "not accepted" card icon are drawn from the screenshots in the
+style of the existing icons.
