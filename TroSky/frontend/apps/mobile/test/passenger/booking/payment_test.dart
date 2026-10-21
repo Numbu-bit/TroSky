@@ -481,6 +481,47 @@ void main() {
     });
   });
 
+  group('the deadline stays in sight', () {
+    testWidgets('on the design frame the countdown sits under the message', (
+      tester,
+    ) async {
+      final (world, booking) = await reserve(
+        tester,
+        size: const Size(390, 844),
+      );
+      expect(find.byType(TroskyCountdown), findsOneWidget);
+      await letDeadlinePass(tester, world, booking);
+      expect(find.byType(TroskyCountdown), findsOneWidget);
+    });
+
+    testWidgets('a 360 x 806 phone at 1.15× text: after a move it goes in '
+        'the bottom bar, above Cancel booking', (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 1.15;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      final (world, booking) = await reserve(tester);
+      await letDeadlinePass(tester, world, booking);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TroskyCountdown), findsNothing);
+      final timer = find.text('1:55');
+      expect(timer, findsOneWidget);
+      expect(find.text('2-minute response window'), findsOneWidget);
+      final cancel = tester.getRect(find.text('Cancel booking'));
+      final rect = tester.getRect(timer);
+      expect(rect.bottom, lessThan(cancel.top));
+      expect(rect.top, greaterThan(600));
+      final semantics = tester.ensureSemantics();
+      expect(
+        find.bySemanticsLabel('1:55 left for the driver to answer'),
+        findsOneWidget,
+      );
+      semantics.dispose();
+      // It counts down there too.
+      await waitFor(tester, world, const Duration(seconds: 5));
+      expect(find.text('1:50'), findsOneWidget);
+    });
+  });
+
   testWidgets('360 x 640 at text scale 1.3: no overflow in any state', (
     tester,
   ) async {

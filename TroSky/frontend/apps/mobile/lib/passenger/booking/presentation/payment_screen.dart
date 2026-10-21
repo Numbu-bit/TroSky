@@ -42,6 +42,11 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   late DateTime _now;
   bool _cancelling = false;
   bool _closed = false;
+
+  /// The waiting content is taller than the screen (a small phone, large
+  /// text): the countdown goes in the bottom bar, as "Pay within" does once
+  /// accepted, so the deadline never scrolls out of sight.
+  bool _countdownBelow = false;
   String? _error;
 
   BookingWatchControllerProvider get _watch =>
@@ -202,63 +207,66 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                 onBack: busy ? null : _back,
               ),
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(
-                    TroskySpacing.s18,
-                    TroskySpacing.s16,
-                    TroskySpacing.s18,
-                    TroskySpacing.s24,
-                  ),
-                  children: [
-                    if (stage == PaymentStage.accepted && watch.acceptedHere)
-                      ..._banner(
-                        l10n.paymentAccepted,
-                        TroskyStatusTone.success,
-                      ),
-                    if (stage == PaymentStage.moved)
-                      ..._banner(
-                        watch.moveReason == MoveReason.declined
-                            ? l10n.paymentMovedDeclined
-                            : l10n.paymentMovedUnanswered,
-                        TroskyStatusTone.info,
-                      ),
-                    _card(l10n, watch),
-                    ...switch (stage) {
-                      PaymentStage.waiting ||
-                      PaymentStage.moved => _waiting(l10n, watch),
-                      PaymentStage.accepted => [
+                child: NotificationListener<ScrollMetricsNotification>(
+                  onNotification: _checkFit,
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(
+                      TroskySpacing.s18,
+                      TroskySpacing.s16,
+                      TroskySpacing.s18,
+                      _listBottomPadding,
+                    ),
+                    children: [
+                      if (stage == PaymentStage.accepted && watch.acceptedHere)
+                        ..._banner(
+                          l10n.paymentAccepted,
+                          TroskyStatusTone.success,
+                        ),
+                      if (stage == PaymentStage.moved)
+                        ..._banner(
+                          watch.moveReason == MoveReason.declined
+                              ? l10n.paymentMovedDeclined
+                              : l10n.paymentMovedUnanswered,
+                          TroskyStatusTone.info,
+                        ),
+                      _card(l10n, watch),
+                      ...switch (stage) {
+                        PaymentStage.waiting ||
+                        PaymentStage.moved => _waiting(l10n, watch),
+                        PaymentStage.accepted => [
+                          const SizedBox(height: TroskySpacing.s16),
+                          Text(
+                            l10n.paymentComingSoon,
+                            style: TroskyTypography.body13Regular.copyWith(
+                              color: TroskyColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                        PaymentStage.notAccepted => _notAccepted(l10n),
+                        PaymentStage.holdExpired ||
+                        PaymentStage.cancelled => const [],
+                      },
+                      if (watch.offline &&
+                          (stage == PaymentStage.waiting ||
+                              stage == PaymentStage.moved)) ...[
                         const SizedBox(height: TroskySpacing.s16),
-                        Text(
-                          l10n.paymentComingSoon,
-                          style: TroskyTypography.body13Regular.copyWith(
-                            color: TroskyColors.textSecondary,
+                        _Offline(l10n.paymentOffline),
+                      ],
+                      if (_error case final error?) ...[
+                        const SizedBox(height: TroskySpacing.s12),
+                        Semantics(
+                          liveRegion: true,
+                          child: Text(
+                            error,
+                            textAlign: TextAlign.center,
+                            style: TroskyTypography.body13Regular.copyWith(
+                              color: TroskyColors.red,
+                            ),
                           ),
                         ),
                       ],
-                      PaymentStage.notAccepted => _notAccepted(l10n),
-                      PaymentStage.holdExpired ||
-                      PaymentStage.cancelled => const [],
-                    },
-                    if (watch.offline &&
-                        (stage == PaymentStage.waiting ||
-                            stage == PaymentStage.moved)) ...[
-                      const SizedBox(height: TroskySpacing.s16),
-                      _Offline(l10n.paymentOffline),
                     ],
-                    if (_error case final error?) ...[
-                      const SizedBox(height: TroskySpacing.s12),
-                      Semantics(
-                        liveRegion: true,
-                        child: Text(
-                          error,
-                          textAlign: TextAlign.center,
-                          style: TroskyTypography.body13Regular.copyWith(
-                            color: TroskyColors.red,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
               ),
               _bottom(l10n, watch),
@@ -266,6 +274,32 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  /// Space under the list; scrolling only it away hides nothing.
+  static const double _listBottomPadding = TroskySpacing.s24;
+
+  bool _checkFit(ScrollMetricsNotification notification) {
+    final stage = ref.read(_watch).stage;
+    final waiting =
+        stage == PaymentStage.waiting || stage == PaymentStage.moved;
+    if (waiting &&
+        !_countdownBelow &&
+        notification.metrics.maxScrollExtent > _listBottomPadding) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _countdownBelow = true);
+      });
+    }
+    return false;
+  }
+
+  /// "2-minute response window", when the window is known.
+  String? _windowCaption(AppLocalizations l10n, BookingWatch watch) {
+    final window = watch.answerWindow;
+    if (window == null || window <= Duration.zero) return null;
+    return l10n.paymentAnswerWindow(
+      (window.inSeconds / 60).round().clamp(1, 60),
     );
   }
 
@@ -318,7 +352,6 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     final moved = watch.stage == PaymentStage.moved;
     final left = _left(watch);
     final time = _clock(left);
-    final window = watch.answerWindow;
     return [
       const SizedBox(height: TroskySpacing.s32),
       const Center(child: TroskyPulseDot()),
@@ -327,17 +360,15 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         title: moved ? l10n.paymentNewDriverTitle : l10n.paymentWaitingTitle,
         body: moved ? l10n.paymentNewDriverBody : l10n.paymentWaitingBody,
       ),
-      const SizedBox(height: TroskySpacing.s14),
-      TroskyCountdown(
-        time: time,
-        caption: window == null || window <= Duration.zero
-            ? null
-            : l10n.paymentAnswerWindow(
-                (window.inSeconds / 60).round().clamp(1, 60),
-              ),
-        semanticsLabel: l10n.paymentAnswerTimeLeft(time),
-        announce: left.inSeconds % 30 == 0,
-      ),
+      if (!_countdownBelow) ...[
+        const SizedBox(height: TroskySpacing.s14),
+        TroskyCountdown(
+          time: time,
+          caption: _windowCaption(l10n, watch),
+          semanticsLabel: l10n.paymentAnswerTimeLeft(time),
+          announce: left.inSeconds % 30 == 0,
+        ),
+      ],
     ];
   }
 
@@ -372,54 +403,87 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       loading: _cancelling,
       onPressed: _cancel,
     );
+    // The white bar of the accepted design: a timer row above the button.
+    Widget panel(Widget timer) => DecoratedBox(
+      decoration: const BoxDecoration(
+        color: TroskyColors.surface,
+        border: Border(
+          top: BorderSide(color: TroskyColors.border, width: TroskyBorders.w1),
+        ),
+      ),
+      child: Padding(
+        padding: padding,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            timer,
+            const SizedBox(height: TroskySpacing.s12),
+            cancel,
+          ],
+        ),
+      ),
+    );
     switch (watch.stage) {
       case PaymentStage.waiting || PaymentStage.moved:
-        return Padding(padding: padding, child: cancel);
-      case PaymentStage.accepted:
-        final time = _clock(_left(watch));
-        return DecoratedBox(
-          decoration: const BoxDecoration(
-            color: TroskyColors.surface,
-            border: Border(
-              top: BorderSide(
-                color: TroskyColors.border,
-                width: TroskyBorders.w1,
-              ),
-            ),
-          ),
-          child: Padding(
-            padding: padding,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+        if (!_countdownBelow) return Padding(padding: padding, child: cancel);
+        final left = _left(watch);
+        final time = _clock(left);
+        final caption = _windowCaption(l10n, watch);
+        return panel(
+          Semantics(
+            liveRegion: left.inSeconds % 30 == 0,
+            label: l10n.paymentAnswerTimeLeft(time),
+            excludeSemantics: true,
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: TroskySpacing.s8,
               children: [
-                Semantics(
-                  liveRegion: _left(watch).inSeconds % 60 == 0,
-                  label: '${l10n.paymentPayWithin} $time',
-                  excludeSemantics: true,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      TroskyIcons.clock(color: TroskyColors.green, size: 16),
-                      const SizedBox(width: TroskySpacing.s8),
-                      Text(
-                        l10n.paymentPayWithin,
-                        style: TroskyTypography.body14SemiBold.copyWith(
-                          color: TroskyColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(width: TroskySpacing.s8),
-                      Text(
-                        time,
-                        style: TroskyTypography.heading18ExtraBold.copyWith(
-                          color: TroskyColors.greenDark,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
-                      ),
-                    ],
+                TroskyIcons.clock(color: TroskyColors.green, size: 16),
+                Text(
+                  time,
+                  style: TroskyTypography.heading18ExtraBold.copyWith(
+                    color: TroskyColors.greenDark,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
-                const SizedBox(height: TroskySpacing.s12),
-                cancel,
+                if (caption != null)
+                  Text(
+                    caption,
+                    style: TroskyTypography.body12Regular.copyWith(
+                      color: TroskyColors.textSecondary,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      case PaymentStage.accepted:
+        final time = _clock(_left(watch));
+        return panel(
+          Semantics(
+            liveRegion: _left(watch).inSeconds % 60 == 0,
+            label: '${l10n.paymentPayWithin} $time',
+            excludeSemantics: true,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TroskyIcons.clock(color: TroskyColors.green, size: 16),
+                const SizedBox(width: TroskySpacing.s8),
+                Text(
+                  l10n.paymentPayWithin,
+                  style: TroskyTypography.body14SemiBold.copyWith(
+                    color: TroskyColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(width: TroskySpacing.s8),
+                Text(
+                  time,
+                  style: TroskyTypography.heading18ExtraBold.copyWith(
+                    color: TroskyColors.greenDark,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
               ],
             ),
           ),
