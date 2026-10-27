@@ -90,51 +90,25 @@ class TroskyTripSummaryCard extends StatelessWidget {
             TroskyTag(label: tag),
             const SizedBox(height: TroskySpacing.s12),
           ],
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _Route(from: from, to: to),
-              ),
-              const SizedBox(width: TroskySpacing.s12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  const SizedBox(height: TroskySpacing.s7),
-                  Text(
-                    day,
-                    style: TroskyTypography.body13Regular.copyWith(
-                      color: TroskyColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: TroskySpacing.s3),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      if (previousTime case final previous?) ...[
-                        Text(
-                          previous,
-                          style: TroskyTypography.body13Regular.copyWith(
-                            color: TroskyColors.textSecondary,
-                            decoration: TextDecoration.lineThrough,
-                            decorationColor: TroskyColors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(width: TroskySpacing.s6),
-                      ],
-                      Text(
-                        time,
-                        style: TroskyTypography.heading18ExtraBold.copyWith(
-                          color: timeColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) => Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _Route(from: from, to: to),
+                ),
+                const SizedBox(width: TroskySpacing.s12),
+                _Times(
+                  day: day,
+                  time: time,
+                  previousTime: previousTime,
+                  timeColor: timeColor,
+                  stacked:
+                      previousTime != null &&
+                      !_sideBySideFits(context, constraints.maxWidth),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: TroskySpacing.s16),
           Container(height: TroskyBorders.w1, color: TroskyColors.border),
@@ -170,6 +144,104 @@ class TroskyTripSummaryCard extends StatelessWidget {
   }
 }
 
+extension on TroskyTripSummaryCard {
+  /// Whether the stop names and both times fit on their lines, as drawn.
+  /// Real stop names ("Accra Madina") are longer than the design's, so on a
+  /// narrow phone with large text the struck-through time goes above the
+  /// new one instead, rather than cutting the names short.
+  bool _sideBySideFits(BuildContext context, double width) {
+    final scaler = MediaQuery.textScalerOf(context);
+    final direction = Directionality.of(context);
+    double measure(String text, TextStyle style) {
+      final painter = TextPainter(
+        text: TextSpan(text: text, style: style),
+        textDirection: direction,
+        textScaler: scaler,
+        maxLines: 1,
+      )..layout();
+      final width = painter.width;
+      painter.dispose();
+      return width;
+    }
+
+    final names = [
+      measure(from, _Route.nameStyle),
+      measure(to, _Route.nameStyle),
+    ].reduce((a, b) => a > b ? a : b);
+    final times =
+        measure(previousTime!, _Times.previousStyle) +
+        TroskySpacing.s6 +
+        measure(time, _Times.timeStyle);
+    final right = [
+      measure(day, _Times.dayStyle),
+      times,
+    ].reduce((a, b) => a > b ? a : b);
+    return _Route.leading + names + TroskySpacing.s12 + right <= width;
+  }
+}
+
+/// The day, and the time: after a move, the old one struck through beside
+/// it, or above it when [stacked].
+class _Times extends StatelessWidget {
+  const _Times({
+    required this.day,
+    required this.time,
+    required this.previousTime,
+    required this.timeColor,
+    required this.stacked,
+  });
+
+  final String day;
+  final String time;
+  final String? previousTime;
+  final Color timeColor;
+  final bool stacked;
+
+  static final TextStyle dayStyle = TroskyTypography.body13Regular.copyWith(
+    color: TroskyColors.textSecondary,
+  );
+  static final TextStyle previousStyle = TroskyTypography.body13Regular
+      .copyWith(
+        color: TroskyColors.textSecondary,
+        decoration: TextDecoration.lineThrough,
+        decorationColor: TroskyColors.textSecondary,
+      );
+  static const TextStyle timeStyle = TroskyTypography.heading18ExtraBold;
+
+  @override
+  Widget build(BuildContext context) {
+    final current = Text(time, style: timeStyle.copyWith(color: timeColor));
+    final previous = switch (previousTime) {
+      final previous? => Text(previous, style: previousStyle),
+      null => null,
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        const SizedBox(height: TroskySpacing.s7),
+        Text(day, style: dayStyle),
+        const SizedBox(height: TroskySpacing.s3),
+        if (stacked) ...[
+          ?previous,
+          current,
+        ] else
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              if (previous != null) ...[
+                previous,
+                const SizedBox(width: TroskySpacing.s6),
+              ],
+              current,
+            ],
+          ),
+      ],
+    );
+  }
+}
+
 /// The two stops on a short route line: green where the ride starts, navy
 /// where it ends, each in a pale halo.
 class _Route extends StatelessWidget {
@@ -181,11 +253,16 @@ class _Route extends StatelessWidget {
   static const double _halo = 22;
   static const double _gap = 18;
 
+  /// The indent, the halo and the gap before the names.
+  static const double leading = TroskySpacing.s12 + _halo + TroskySpacing.s28;
+
+  static final TextStyle nameStyle = TroskyTypography.heading17Bold.copyWith(
+    color: TroskyColors.ink,
+  );
+
   @override
   Widget build(BuildContext context) {
-    final style = TroskyTypography.heading17Bold.copyWith(
-      color: TroskyColors.ink,
-    );
+    final style = nameStyle;
     Widget name(String text) => SizedBox(
       height: _halo,
       child: Align(
