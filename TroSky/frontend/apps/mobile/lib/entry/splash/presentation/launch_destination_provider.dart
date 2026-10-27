@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:trosky_auth/trosky_auth.dart';
@@ -20,8 +22,12 @@ Future<void> firstFrameShown(Ref ref) =>
 
 /// Reads the onboarding flag and restores the saved session while the
 /// splash is shown for [splashMinimumDuration], then picks where to go.
+///
+/// It also starts waking the server, so a signed-out user's first request
+/// (signing in) finds it awake or nearly (decision 29).
 @riverpod
 Future<LaunchDestination> launchDestination(Ref ref) async {
+  unawaited(ref.read(serverWakeProvider)?.ready());
   final onboarding = ref.watch(onboardingStoreProvider);
   final session = ref.watch(sessionControllerProvider.future);
   final shown = ref.watch(firstFrameShownProvider.future);

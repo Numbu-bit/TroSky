@@ -54,12 +54,18 @@ String _$firstFrameShownHash() => r'29240b72f72b9bd2e8d0e264b82d6cbafe3fdf51';
 
 /// Reads the onboarding flag and restores the saved session while the
 /// splash is shown for [splashMinimumDuration], then picks where to go.
+///
+/// It also starts waking the server, so a signed-out user's first request
+/// (signing in) finds it awake or nearly (decision 29).
 
 @ProviderFor(launchDestination)
 final launchDestinationProvider = LaunchDestinationProvider._();
 
 /// Reads the onboarding flag and restores the saved session while the
 /// splash is shown for [splashMinimumDuration], then picks where to go.
+///
+/// It also starts waking the server, so a signed-out user's first request
+/// (signing in) finds it awake or nearly (decision 29).
 
 final class LaunchDestinationProvider
     extends
@@ -73,6 +79,9 @@ final class LaunchDestinationProvider
         $FutureProvider<LaunchDestination> {
   /// Reads the onboarding flag and restores the saved session while the
   /// splash is shown for [splashMinimumDuration], then picks where to go.
+  ///
+  /// It also starts waking the server, so a signed-out user's first request
+  /// (signing in) finds it awake or nearly (decision 29).
   LaunchDestinationProvider._()
     : super(
         from: null,
@@ -99,4 +108,4 @@ final class LaunchDestinationProvider
   }
 }
 
-String _$launchDestinationHash() => r'47ac164c8072454883e79947c84af784d3f5f158';
+String _$launchDestinationHash() => r'6be2ac31a1d8571704875384ce172c196b7c8b15';

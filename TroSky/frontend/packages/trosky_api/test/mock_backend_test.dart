@@ -739,6 +739,33 @@ void main() {
       expect(read(booking).status, BookingStatus.cancelled);
     });
 
+    test('script rotate: accepted, moved then accepted, declined, and '
+        'again', () {
+      prepare(script: MockDriverScript.rotate);
+      final free = [
+        for (final s in backend.tripSeats(minibus.tripId).valueOrNull!.seats)
+          if (s.isAvailable) s.seatNumber,
+      ];
+      final bookings = [
+        for (var i = 0; i < 4; i++) book([free[i]]),
+      ];
+
+      now = now.add(const Duration(seconds: 8));
+      expect(
+        [for (final b in bookings) read(b).status],
+        [
+          BookingStatus.pending,
+          BookingStatus.awaitingAcceptance,
+          BookingStatus.cancelled,
+          BookingStatus.pending,
+        ],
+      );
+      now = bookings[1].expiresAt!;
+      expect(read(bookings[1]).tripId, isNot(minibus.tripId));
+      now = now.add(const Duration(seconds: 8));
+      expect(read(bookings[1]).status, BookingStatus.pending);
+    });
+
     test('scripts by name, as MOCK_DRIVER gives them', () {
       expect(MockDriverScript.named('accept'), MockDriverScript.accept);
       expect(
@@ -746,6 +773,7 @@ void main() {
         MockDriverScript.moveThenAccept,
       );
       expect(MockDriverScript.named('decline'), MockDriverScript.decline);
+      expect(MockDriverScript.named('rotate'), MockDriverScript.rotate);
       expect(MockDriverScript.named('none'), isNull);
     });
 

@@ -50,6 +50,16 @@ class InMemoryAppModeStore implements AppModeStore {
   Future<void> write(AppMode mode) async => this.mode = mode;
 }
 
+/// The server always in one [ServerState], e.g. waking for the bar.
+class FixedServerStatus extends ServerStatus {
+  FixedServerStatus(this.fixed);
+
+  final ServerState fixed;
+
+  @override
+  ServerState build() => fixed;
+}
+
 /// A session that is already restored: signed in as a passenger, or not.
 class FakeSessionController extends SessionController {
   FakeSessionController({this.signedIn = false});

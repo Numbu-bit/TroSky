@@ -382,6 +382,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'You\'re offline. Showing your last saved details.';
 
   @override
+  String get serverUnreachableBanner =>
+      'The server isn\'t answering. Showing your last saved details.';
+
+  @override
+  String get serverWaking =>
+      'Waking up the server, this can take up to a minute…';
+
+  @override
   String get offlineRetry => 'Retry';
 
   @override

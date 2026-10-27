@@ -141,6 +141,113 @@ final class TokenManagerProvider
 
 String _$tokenManagerHash() => r'9d647b8c2a646d829e8cf79fde7fab4a74614942';
 
+/// Wakes the server before requests are sent (decision 29). None in mock
+/// mode.
+
+@ProviderFor(serverWake)
+final serverWakeProvider = ServerWakeProvider._();
+
+/// Wakes the server before requests are sent (decision 29). None in mock
+/// mode.
+
+final class ServerWakeProvider
+    extends $FunctionalProvider<ServerWake?, ServerWake?, ServerWake?>
+    with $Provider<ServerWake?> {
+  /// Wakes the server before requests are sent (decision 29). None in mock
+  /// mode.
+  ServerWakeProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'serverWakeProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$serverWakeHash();
+
+  @$internal
+  @override
+  $ProviderElement<ServerWake?> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  ServerWake? create(Ref ref) {
+    return serverWake(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ServerWake? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ServerWake?>(value),
+    );
+  }
+}
+
+String _$serverWakeHash() => r'15f229aaa282eb4b5fbbc3dfbd130f4f9b3e629b';
+
+/// The server's state for screens. Always awake in mock mode.
+
+@ProviderFor(ServerStatus)
+final serverStatusProvider = ServerStatusProvider._();
+
+/// The server's state for screens. Always awake in mock mode.
+final class ServerStatusProvider
+    extends $NotifierProvider<ServerStatus, ServerState> {
+  /// The server's state for screens. Always awake in mock mode.
+  ServerStatusProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'serverStatusProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$serverStatusHash();
+
+  @$internal
+  @override
+  ServerStatus create() => ServerStatus();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ServerState value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ServerState>(value),
+    );
+  }
+}
+
+String _$serverStatusHash() => r'9523b5cec4b8e78ab2f35831760b614f7e2be841';
+
+/// The server's state for screens. Always awake in mock mode.
+
+abstract class _$ServerStatus extends $Notifier<ServerState> {
+  ServerState build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<ServerState, ServerState>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<ServerState, ServerState>,
+              ServerState,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}
+
 /// The HTTP client every live repository shares.
 
 @ProviderFor(apiClient)
@@ -184,25 +291,25 @@ final class ApiClientProvider extends $FunctionalProvider<Dio, Dio, Dio>
   }
 }
 
-String _$apiClientHash() => r'8a8e2f8ae88c30a581a4afda9e9d15bbb2f0613f';
+String _$apiClientHash() => r'8b6de51fca3241397615d55e96e075b2cf128b31';
 
 /// The in-memory backend behind `API_MODE=mock`. Its drivers accept booking
 /// requests, or answer as `--dart-define=MOCK_DRIVER=moveThenAccept` (or
-/// `decline`, or `none` for nobody) says.
+/// `decline`, `rotate` to take turns, or `none` for nobody) says.
 
 @ProviderFor(mockBackend)
 final mockBackendProvider = MockBackendProvider._();
 
 /// The in-memory backend behind `API_MODE=mock`. Its drivers accept booking
 /// requests, or answer as `--dart-define=MOCK_DRIVER=moveThenAccept` (or
-/// `decline`, or `none` for nobody) says.
+/// `decline`, `rotate` to take turns, or `none` for nobody) says.
 
 final class MockBackendProvider
     extends $FunctionalProvider<MockBackend, MockBackend, MockBackend>
     with $Provider<MockBackend> {
   /// The in-memory backend behind `API_MODE=mock`. Its drivers accept booking
   /// requests, or answer as `--dart-define=MOCK_DRIVER=moveThenAccept` (or
-  /// `decline`, or `none` for nobody) says.
+  /// `decline`, `rotate` to take turns, or `none` for nobody) says.
   MockBackendProvider._()
     : super(
         from: null,

@@ -333,7 +333,8 @@ Payment (Figma P-07, four screenshots) shows what `GET /bookings/{id}` says:
    (`GET /bookings?status=awaiting_acceptance,pending,payment_pending&upcoming=true`).
 10. **Mock mode:** bookings wait for a driver, and scripted drivers answer 8 s after each request:
     `--dart-define=MOCK_DRIVER=accept` (default), `moveThenAccept` (the first driver lets it
-    lapse, the next accepts), `decline` (no other vehicle) or `none`.
+    lapse, the next accepts), `decline` (no other vehicle), `rotate` (those three in turn, booking
+    by booking, for the demo APK) or `none`.
 11. **Staging stays as it is** (`BOOKING_ACCEPTANCE_REQUIRED=false`) until drivers can accept in
     the app (D-13).
 12. **Small phones, found on the TECNO (360 × 806, text at 1.15×):**
@@ -350,3 +351,33 @@ with a 44 px back disc and a 22/800 title (P-05 keeps its own 36 px and 17/700);
 `receiptCard`'s shadow; status titles at 20/800 (22/800 when not accepted) with 1.25 line height.
 The info "i", the up arrow and the "not accepted" card icon are drawn from the screenshots in the
 style of the existing icons.
+
+## 29. Waking the server
+
+Staging runs on Render's free plan, which stops the server after 15 minutes without requests. The
+next request waits while it starts again: 88 s measured on 2026-10-26. The app's requests give up
+after 30 s, so an app opened after a quiet spell started "offline" ("You're offline. Showing your
+last saved details.") although the phone was online.
+
+1. **Before the first request**, and before any request after 10 minutes without an answer from
+   the server, the app asks `GET /health/live` (next to `API_BASE_URL`, outside `/api/v1`) and
+   waits for it, up to 2 minutes in all. Requests made meanwhile wait for the same answer instead
+   of timing out (`ServerWake`, trosky_api). The splash starts it, so a signed-out user's sign-in
+   finds the server awake or nearly.
+2. **If the answer takes more than 2 s**, a bar across the top of every screen says "Waking up the
+   server, this can take up to a minute…" with a spinner, and goes when the server answers. The
+   screen moves down below it, so nothing is covered. It has the offline banner's look (amber on
+   white, 13 px text); the spinner follows the button's (as tall as the text, 2 px stroke).
+3. **When an ask fails** (no connection, or Render's proxy answering 502/503), the app looks up
+   the server's host name. If that fails too, the phone has no internet: requests go ahead and
+   fail as before, and the offline start says "You're offline". Otherwise the server is still
+   starting: the app asks again every 3 s, with the bar up.
+4. **After 2 minutes without an answer** requests go ahead anyway. An offline start then says
+   "The server isn't answering. Showing your last saved details." with Retry, not "You're offline".
+5. Mock mode has no server and never shows the bar.
+
+Design: derived (no Figma). Goldens of the bar over the splash and Sign in:
+`apps/mobile/test/app/goldens/server_waking_*.png`.
+
+Mock-mode builds to show the app without a server install next to the live one as "TroSky Demo"
+(`com.trosky.app.demo`), with `flutter build apk -P demo=true` (env/README.md). Same icon.
