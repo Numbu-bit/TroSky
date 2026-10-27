@@ -337,6 +337,14 @@ Payment (Figma P-07, four screenshots) shows what `GET /bookings/{id}` says:
     by booking, for the demo APK) or `none`.
 11. **Staging stays as it is** (`BOOKING_ACCEPTANCE_REQUIRED=false`) until drivers can accept in
     the app (D-13).
+12. **Small phones, found on the TECNO (360 × 806, text at 1.15×):**
+    - The backend's stop names ("Accra Madina") are longer than the design's ("Madina"). When the
+      names and both times don't fit on their lines after a move, the struck-through time goes
+      above the new one instead of beside it, so the names aren't cut short.
+    - The moved state is taller than such a screen, which hid the countdown below "Cancel
+      booking". When the waiting content doesn't fit, the countdown moves into the bottom bar
+      above the button, in the accepted design's "Pay within" bar, so the deadline never scrolls
+      out of sight. On the design frame (390 × 844) everything stays where Figma puts it.
 
 Measured from the screenshots (all colours are existing tokens): an 18 px page margin; the header
 with a 44 px back disc and a 22/800 title (P-05 keeps its own 36 px and 17/700); the trip card with
