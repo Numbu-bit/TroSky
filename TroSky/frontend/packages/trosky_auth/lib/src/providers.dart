@@ -30,12 +30,37 @@ TokenManager tokenManager(Ref ref) {
   return manager;
 }
 
+/// Wakes the server before requests are sent (decision 29). None in mock
+/// mode.
+@Riverpod(keepAlive: true)
+ServerWake? serverWake(Ref ref) {
+  final env = ref.watch(envProvider);
+  if (env.apiMode != ApiMode.live) return null;
+  final wake = ServerWake.forApi(env.apiBaseUrl);
+  ref.onDispose(wake.dispose);
+  return wake;
+}
+
+/// The server's state for screens. Always awake in mock mode.
+@Riverpod(keepAlive: true)
+class ServerStatus extends _$ServerStatus {
+  @override
+  ServerState build() {
+    final wake = ref.watch(serverWakeProvider);
+    if (wake == null) return ServerState.awake;
+    final changes = wake.changes.listen((next) => state = next);
+    ref.onDispose(changes.cancel);
+    return wake.state;
+  }
+}
+
 /// The HTTP client every live repository shares.
 @Riverpod(keepAlive: true)
 Dio apiClient(Ref ref) {
   final dio = createApiClient(
     env: ref.watch(envProvider),
     tokens: () => ref.read(tokenManagerProvider),
+    wake: ref.watch(serverWakeProvider),
   );
   ref.onDispose(dio.close);
   return dio;
@@ -43,7 +68,7 @@ Dio apiClient(Ref ref) {
 
 /// The in-memory backend behind `API_MODE=mock`. Its drivers accept booking
 /// requests, or answer as `--dart-define=MOCK_DRIVER=moveThenAccept` (or
-/// `decline`, or `none` for nobody) says.
+/// `decline`, `rotate` to take turns, or `none` for nobody) says.
 @Riverpod(keepAlive: true)
 MockBackend mockBackend(Ref ref) {
   const script = String.fromEnvironment('MOCK_DRIVER', defaultValue: 'accept');

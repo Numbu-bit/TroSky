@@ -490,6 +490,14 @@
   "@offlineBanner": {
     "description": "Banner on Home after an offline start (decision 9)."
   },
+  "serverUnreachableBanner": "The server isn't answering. Showing your last saved details.",
+  "@serverUnreachableBanner": {
+    "description": "Instead of offlineBanner when the phone has internet but the server didn't answer within 2 minutes (decision 29)."
+  },
+  "serverWaking": "Waking up the server, this can take up to a minute…",
+  "@serverWaking": {
+    "description": "Bar across the top of every screen while the app waits for the server to answer: the test server sleeps when unused (decision 29)."
+  },
   "offlineRetry": "Retry",
   "@offlineRetry": {
     "description": "Banner button that checks the session again."

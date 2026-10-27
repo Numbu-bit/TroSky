@@ -1139,6 +1139,7 @@ class MockBackend {
     final fee = double.parse(platformFeePerSeat) * seatIds.length;
     final now = _now().toUtc();
     final booking = _MockBooking(
+      number: _bookings.length,
       id: _uuid(),
       reference: 'TS-${_reference()}',
       userId: user.id,
@@ -1286,7 +1287,7 @@ class MockBackend {
 
   /// The [driverScript]'s answer to [b]'s request, if it is due by [now].
   bool _scriptedAnswer(_MockBooking b, DateTime now) {
-    final script = driverScript;
+    final script = driverScript?.forBooking(b.number);
     if (script == null) return false;
     final answerAt = b.requestedAt.add(driverAnswersAfter);
     if (answerAt.isAfter(now) || !answerAt.isBefore(b.expiresAt)) {
@@ -1302,6 +1303,9 @@ class MockBackend {
       case MockDriverScript.decline:
         // No other vehicle going that way has seats.
         _end(b, BookingStatus.cancelled);
+      case MockDriverScript.rotate:
+        // forBooking has taken its turn.
+        return false;
     }
     return true;
   }
@@ -1923,15 +1927,26 @@ enum MockDriverScript {
 
   /// The driver declines and no other vehicle going that way has seats:
   /// the booking ends `cancelled`.
-  decline;
+  decline,
+
+  /// Takes turns, booking by booking: [accept], [moveThenAccept],
+  /// [decline], then again. One build shows every Payment state (the demo
+  /// APK).
+  rotate;
 
   /// The script called [name] (`MOCK_DRIVER`), or null for none.
   static MockDriverScript? named(String name) =>
       values.where((s) => s.name == name).firstOrNull;
+
+  /// How the drivers answer the [number]th booking (from 0).
+  MockDriverScript forBooking(int number) => this == rotate
+      ? const [accept, moveThenAccept, decline][number % 3]
+      : this;
 }
 
 class _MockBooking {
   _MockBooking({
+    required this.number,
     required this.id,
     required this.reference,
     required this.userId,
@@ -1949,6 +1964,8 @@ class _MockBooking {
   }) : requestedAt = createdAt,
        tried = {trip.result.tripId};
 
+  /// Which booking this is, from 0 ([MockDriverScript.forBooking]).
+  final int number;
   final String id;
   final String reference;
   final String userId;

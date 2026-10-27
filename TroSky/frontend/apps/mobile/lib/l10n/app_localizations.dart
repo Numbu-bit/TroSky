@@ -772,6 +772,18 @@ abstract class AppLocalizations {
   /// **'You\'re offline. Showing your last saved details.'**
   String get offlineBanner;
 
+  /// Instead of offlineBanner when the phone has internet but the server didn't answer within 2 minutes (decision 29).
+  ///
+  /// In en, this message translates to:
+  /// **'The server isn\'t answering. Showing your last saved details.'**
+  String get serverUnreachableBanner;
+
+  /// Bar across the top of every screen while the app waits for the server to answer: the test server sleeps when unused (decision 29).
+  ///
+  /// In en, this message translates to:
+  /// **'Waking up the server, this can take up to a minute…'**
+  String get serverWaking;
+
   /// Banner button that checks the session again.
   ///
   /// In en, this message translates to:

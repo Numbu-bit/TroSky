@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:trosky_core/trosky_core.dart';
 
 import 'interceptors.dart';
+import 'server_wake.dart';
 
 /// Timeouts for slow mobile networks: allow a slow connection to open, and
 /// a slow response to arrive, without hanging forever.
@@ -11,6 +12,7 @@ const Duration receiveTimeout = Duration(seconds: 30);
 
 /// The HTTP client for the backend at [Env.apiBaseUrl].
 ///
+/// With a [wake], requests wait until the server is up (see [ServerWake]).
 /// Every request gets an `X-Request-ID`. Requests carry the access token
 /// from [tokens] unless marked [AuthInterceptor.skipAuth], and an expired
 /// token is refreshed once for all waiting requests. GETs are retried on
@@ -18,6 +20,7 @@ const Duration receiveTimeout = Duration(seconds: 30);
 Dio createApiClient({
   required Env env,
   required SessionTokens Function() tokens,
+  ServerWake? wake,
   List<Duration> retryDelays = const [
     Duration(seconds: 1),
     Duration(seconds: 3),
@@ -36,6 +39,7 @@ Dio createApiClient({
   );
   if (adapter != null) dio.httpClientAdapter = adapter;
   dio.interceptors.addAll([
+    if (wake != null) ServerWakeInterceptor(wake),
     RequestIdInterceptor(),
     AuthInterceptor(tokens: tokens, dio: () => dio),
     RetryInterceptor(dio: () => dio, delays: retryDelays),

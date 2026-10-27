@@ -4,6 +4,7 @@ library;
 
 export 'src/client/api_client.dart';
 export 'src/client/interceptors.dart';
+export 'src/client/server_wake.dart';
 export 'src/dto/auth_dto.dart';
 export 'src/dto/booking_dto.dart';
 export 'src/dto/driver_dto.dart';

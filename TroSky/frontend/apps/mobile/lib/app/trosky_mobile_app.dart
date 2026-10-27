@@ -5,6 +5,7 @@ import 'package:trosky_ui/trosky_ui.dart';
 
 import '../l10n/app_localizations.dart';
 import 'routes.dart';
+import 'server_wake_bar.dart';
 
 class TroskyMobileApp extends ConsumerWidget {
   const TroskyMobileApp({super.key});
@@ -19,10 +20,11 @@ class TroskyMobileApp extends ConsumerWidget {
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: ref.watch(routerProvider),
       // Dark status bar icons unless the screen on top declares its own
-      // style; the innermost AnnotatedRegion wins.
+      // style; the innermost AnnotatedRegion wins. While the server wakes,
+      // its bar is on top, under dark icons.
       builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
         value: TroskySystemUi.darkIcons,
-        child: child!,
+        child: ServerWakeBar(child: child!),
       ),
     );
   }

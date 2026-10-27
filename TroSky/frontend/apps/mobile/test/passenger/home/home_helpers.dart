@@ -52,6 +52,7 @@ Future<TestWorld> openHome(
     apiMode: 'live',
   ),
   overrides: [
+    serverWakeProvider.overrideWithValue(null),
     authRepositoryProvider.overrideWith(
       (ref) => MockAuthRepository(
         world.backend,
