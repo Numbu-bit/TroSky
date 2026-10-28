@@ -183,7 +183,7 @@ GoRouter router(Ref ref) {
       GoRoute(
         path: AppRoute.payment.path,
         name: AppRoute.payment.name,
-        // The booking only travels in memory; Home reopens a held one.
+        // The booking only travels in memory; Home's card opens a held one.
         redirect: (context, state) =>
             state.extra is PaymentArgs ? null : AppRoute.home.path,
         builder: (context, state) =>

@@ -447,3 +447,23 @@ colours of point 8.
 
 Goldens:
 `apps/mobile/test/passenger/trips/goldens/`, `packages/trosky_ui/test/goldens/trips_components.png`.
+
+## 31. Leaving Payment keeps the seats; Home shows them as a card
+
+Project owner, 28 Oct 2026. Before, Back on a new booking's Payment could only release its seats,
+so a held booking could only be reached again by restarting the app, and Home then opened Payment
+by itself.
+
+1. **Back on a booking just made** (from Seat Selection) shows a sheet: "Leave payment?", "Your
+   seats stay held for 9:12. You can pay from Trips.", **Keep seats & leave** (to Home; the seats
+   stay held) and **Release seats** (as before: released, back to Seat Selection to choose
+   again). Swiping it away stays on Payment. Payment opened from Home or Trips just goes back.
+2. **Home no longer opens Payment by itself.** At the top of its sheet, a card shows a booking
+   with seats held (`heldBookingProvider`): "Seats held · 9:12 left" with **Pay now**, or "Waiting
+   for driver" with **View status**. The card counts down every second; when the deadline passes
+   it goes and the booking is read again (a booking moved to another vehicle comes back with its
+   new deadline). Either action, or the whole card, opens Payment.
+
+Design: derived. The sheet is Payment's earlier release sheet with the new words; the card is
+P13's row (ticket, route, when) with the status tag of decision 30 and a green action. Goldens:
+`design/P-07/derived/leave-sheet.png`, `design/P-01/derived/held-card-*.png`.

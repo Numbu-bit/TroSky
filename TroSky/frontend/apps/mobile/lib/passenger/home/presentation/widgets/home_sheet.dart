@@ -10,8 +10,10 @@ import '../../../../app/routes.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../search/search_prefill.dart';
 import '../../application/home_providers.dart';
+import 'held_booking_card.dart';
 
-/// The white sheet under the Home map (P5): the handle, "Favourite Routes"
+/// The white sheet under the Home map (P5): the handle, a booking with
+/// seats held (decision 31), "Favourite Routes"
 /// with "See all", the route chips (decision 15), and the subscribe banner
 /// when its feature is on (decision 16). Below the handle it scrolls, so
 /// small phones and large text lose nothing.
@@ -50,6 +52,8 @@ class HomeSheet extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // A booking with seats held comes first (decision 31).
+                    const HeldBookingCard(),
                     Row(
                       children: [
                         Expanded(

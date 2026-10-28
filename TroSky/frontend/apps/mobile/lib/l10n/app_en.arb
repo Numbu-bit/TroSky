@@ -1463,21 +1463,9 @@
   "@paymentCancelled": {
     "description": "After cancelling."
   },
-  "paymentReleaseTitle": "Change your seats?",
-  "@paymentReleaseTitle": {
-    "description": "Title of the sheet shown when going back from Payment to Seat Selection."
-  },
-  "paymentReleaseBody": "Going back releases the seats held for you, so you can choose again.",
-  "@paymentReleaseBody": {
-    "description": "Body of the sheet shown when going back from Payment to Seat Selection."
-  },
-  "paymentReleaseKeep": "Keep these seats",
-  "@paymentReleaseKeep": {
-    "description": "Stays on Payment with the seats still held."
-  },
   "paymentReleaseConfirm": "Release seats",
   "@paymentReleaseConfirm": {
-    "description": "Cancels the held booking and goes back to Seat Selection."
+    "description": "Leave-payment sheet: releases the held seats and goes back to choose again."
   },
   "paymentReleased": "Seats released. Choose again.",
   "@paymentReleased": {
@@ -1778,5 +1766,33 @@
   "cancelRequestedBody": "Your trip has already started, so TroSky reviews it. Your booking stays as it is until then.",
   "@cancelRequestedBody": {
     "description": "Line when the cancel waits for TroSky."
+  },
+  "paymentLeaveTitle": "Leave payment?",
+  "@paymentLeaveTitle": {
+    "description": "Sheet when leaving Payment while seats are held (decision 31)."
+  },
+  "paymentLeaveBody": "Your seats stay held for {time}. You can pay from Trips.",
+  "@paymentLeaveBody": {
+    "description": "Leave-payment sheet: how long the seats stay held (minutes:seconds).",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "9:12"
+      }
+    }
+  },
+  "paymentLeaveKeep": "Keep seats & leave",
+  "@paymentLeaveKeep": {
+    "description": "Leave-payment sheet: goes to Home; the seats stay held."
+  },
+  "homeHeldSeats": "Seats held · {time} left",
+  "@homeHeldSeats": {
+    "description": "Home card for a booking to pay: the time left to pay (minutes:seconds).",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "9:12"
+      }
+    }
   }
 }

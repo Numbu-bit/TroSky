@@ -627,7 +627,7 @@ void main() {
       expect(tester.takeException(), isNull);
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
-      expect(find.text('Change your seats?'), findsOneWidget);
+      expect(find.text('Leave payment?'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

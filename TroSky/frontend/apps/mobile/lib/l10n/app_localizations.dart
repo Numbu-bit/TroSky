@@ -1850,25 +1850,7 @@ abstract class AppLocalizations {
   /// **'Booking cancelled. Your seats are free again.'**
   String get paymentCancelled;
 
-  /// Title of the sheet shown when going back from Payment to Seat Selection.
-  ///
-  /// In en, this message translates to:
-  /// **'Change your seats?'**
-  String get paymentReleaseTitle;
-
-  /// Body of the sheet shown when going back from Payment to Seat Selection.
-  ///
-  /// In en, this message translates to:
-  /// **'Going back releases the seats held for you, so you can choose again.'**
-  String get paymentReleaseBody;
-
-  /// Stays on Payment with the seats still held.
-  ///
-  /// In en, this message translates to:
-  /// **'Keep these seats'**
-  String get paymentReleaseKeep;
-
-  /// Cancels the held booking and goes back to Seat Selection.
+  /// Leave-payment sheet: releases the held seats and goes back to choose again.
   ///
   /// In en, this message translates to:
   /// **'Release seats'**
@@ -2233,6 +2215,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your trip has already started, so TroSky reviews it. Your booking stays as it is until then.'**
   String get cancelRequestedBody;
+
+  /// Sheet when leaving Payment while seats are held (decision 31).
+  ///
+  /// In en, this message translates to:
+  /// **'Leave payment?'**
+  String get paymentLeaveTitle;
+
+  /// Leave-payment sheet: how long the seats stay held (minutes:seconds).
+  ///
+  /// In en, this message translates to:
+  /// **'Your seats stay held for {time}. You can pay from Trips.'**
+  String paymentLeaveBody(String time);
+
+  /// Leave-payment sheet: goes to Home; the seats stay held.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep seats & leave'**
+  String get paymentLeaveKeep;
+
+  /// Home card for a booking to pay: the time left to pay (minutes:seconds).
+  ///
+  /// In en, this message translates to:
+  /// **'Seats held · {time} left'**
+  String homeHeldSeats(String time);
 }
 
 class _AppLocalizationsDelegate

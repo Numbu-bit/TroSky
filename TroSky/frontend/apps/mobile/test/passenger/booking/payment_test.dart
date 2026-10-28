@@ -347,7 +347,7 @@ void main() {
       await nextPoll(tester, world);
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
-      expect(find.text('Change your seats?'), findsNothing);
+      expect(find.text('Leave payment?'), findsNothing);
       expect(find.byType(SeatSelectionScreen), findsOneWidget);
       expect(seatState(tester, '4'), TroskySeatState.available);
     });
@@ -402,27 +402,62 @@ void main() {
     });
   });
 
-  testWidgets('Back asks first: keep the seats, or release them and choose '
-      'again', (tester) async {
+  testWidgets('Back asks first: keep the seats and leave for Home, where '
+      'a card leads back', (tester) async {
     final (world, booking) = await reserve(tester, seats: ['4', '5']);
+    await waitFor(tester, world, const Duration(seconds: 18));
 
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
-    expect(find.text('Change your seats?'), findsOneWidget);
-    await tester.tap(find.text('Keep these seats'));
+    expect(find.text('Leave payment?'), findsOneWidget);
+    expect(
+      find.text('Your seats stay held for 1:42. You can pay from Trips.'),
+      findsOneWidget,
+    );
+    // Swiped away: still on Payment.
+    await tester.tapAt(const Offset(180, 80));
     await tester.pumpAndSettle();
+    expect(find.text('Leave payment?'), findsNothing);
     expect(find.byType(PaymentScreen), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Keep seats & leave'));
+    await tester.pumpAndSettle();
+    expect(find.byType(PaymentScreen), findsNothing);
+    expect(find.byType(HomeScreen), findsOneWidget);
     expect(
       world.backend.bookingStatus(booking.id),
       BookingStatus.awaitingAcceptance,
     );
+    final card = tester.widget<TroskyHeldBookingCard>(
+      find.byType(TroskyHeldBookingCard),
+    );
+    expect(
+      (card.route, card.status, card.action),
+      ('Madina → Circle', 'Waiting for driver', 'View status'),
+    );
 
-    // The back button on the screen asks the same.
+    // The card opens the booking again; Back from it just goes back.
+    await tester.tap(find.byType(TroskyHeldBookingCard));
+    await tester.pumpAndSettle();
+    expect(paymentBooking(tester).id, booking.id);
+    expect(stageShown(tester), PaymentStage.waiting);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('Leave payment?'), findsNothing);
+    expect(find.byType(HomeScreen), findsOneWidget);
+  });
+
+  testWidgets('Back, then Release seats: choose again', (tester) async {
+    final (world, booking) = await reserve(tester, seats: ['4', '5']);
+    // The back button on the screen asks the same as the phone's.
     final semantics = tester.ensureSemantics();
     await tester.pump();
     await tester.tap(find.bySemanticsLabel('Back'));
     await tester.pumpAndSettle();
     semantics.dispose();
+    expect(find.text('Leave payment?'), findsOneWidget);
     await tester.tap(find.text('Release seats'));
     await tester.pumpAndSettle();
     expect(world.backend.bookingStatus(booking.id), BookingStatus.cancelled);
@@ -434,14 +469,17 @@ void main() {
   });
 
   group('after the app restarts', () {
-    testWidgets('Home reopens a booking still waiting for the driver, once', (
-      tester,
-    ) async {
+    testWidgets('Home shows a booking still waiting for the driver; View '
+        'status opens it', (tester) async {
       final (world, booking) = await reserve(tester, seats: ['1', '4']);
       world.now = world.now.add(const Duration(seconds: 30));
 
       await _restart(tester, world);
-      expect(find.byType(PaymentScreen), findsOneWidget);
+      // Not opened by itself (decision 31): a card on Home.
+      expect(find.byType(PaymentScreen), findsNothing);
+      expect(find.text('Waiting for driver'), findsOneWidget);
+      await tester.tap(find.text('View status'));
+      await tester.pumpAndSettle();
       expect(paymentBooking(tester).id, booking.id);
       expect(stageShown(tester), PaymentStage.waiting);
       expect(countdownTime(tester), '1:30');
@@ -450,34 +488,54 @@ void main() {
       // The seat numbers come from the seat map.
       expect(find.text('1 & 4'), findsOneWidget);
 
-      // Back leaves it waiting, and Home doesn't reopen it.
+      // Back leaves it waiting, with its card on Home.
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
       expect(find.byType(PaymentScreen), findsNothing);
       expect(find.byType(HomeScreen), findsOneWidget);
+      expect(find.byType(TroskyHeldBookingCard), findsOneWidget);
       expect(
         world.backend.bookingStatus(booking.id),
         BookingStatus.awaitingAcceptance,
       );
     });
 
-    testWidgets('accepted while closed: ready to pay, without the banner', (
-      tester,
-    ) async {
+    testWidgets('accepted while closed: "Seats held", Pay now opens it ready '
+        'to pay, without the banner', (tester) async {
       final (world, booking) = await reserve(tester);
       world.backend.acceptBooking(booking.id);
       await _restart(tester, world);
+      expect(find.byType(PaymentScreen), findsNothing);
+      expect(find.text('Seats held · 10:00 left'), findsOneWidget);
+      await tester.tap(find.text('Pay now'));
+      await tester.pumpAndSettle();
       expect(stageShown(tester), PaymentStage.accepted);
       expect(find.text('Pay within'), findsOneWidget);
       expect(find.text('Driver accepted your booking'), findsNothing);
     });
 
-    testWidgets('ended while closed: not reopened', (tester) async {
+    testWidgets('ended while closed: no card', (tester) async {
       final (world, booking) = await reserve(tester);
       world.backend.declineBooking(booking.id, move: false);
       await _restart(tester, world);
       expect(find.byType(PaymentScreen), findsNothing);
       expect(find.byType(HomeScreen), findsOneWidget);
+      expect(find.byType(TroskyHeldBookingCard), findsNothing);
+    });
+
+    testWidgets('the card counts down and goes when the hold runs out', (
+      tester,
+    ) async {
+      final (world, booking) = await reserve(tester);
+      world.backend.acceptBooking(booking.id);
+      await _restart(tester, world);
+      expect(find.text('Seats held · 10:00 left'), findsOneWidget);
+      await waitFor(tester, world, const Duration(seconds: 5));
+      expect(find.text('Seats held · 9:55 left'), findsOneWidget);
+      await waitFor(tester, world, const Duration(minutes: 10));
+      await tester.pumpAndSettle();
+      expect(find.byType(TroskyHeldBookingCard), findsNothing);
+      expect(world.backend.bookingStatus(booking.id), BookingStatus.expired);
     });
   });
 
