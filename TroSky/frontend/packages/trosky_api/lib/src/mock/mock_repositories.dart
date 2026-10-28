@@ -178,6 +178,12 @@ class MockRouteRepository implements RouteRepository {
   }
 
   @override
+  Future<Result<TripDetailResponse>> trip(String tripId) async {
+    if (latency > Duration.zero) await Future<void>.delayed(latency);
+    return _backend.tripDetail(tripId);
+  }
+
+  @override
   Future<Result<FareQuoteResponse>> fareQuote(
     String tripId, {
     String? originStopId,
@@ -241,6 +247,14 @@ class MockBookingRepository implements BookingRepository {
   );
 
   @override
+  Future<Result<BookingSummaryResponse>> summary({String? month}) =>
+      _authenticated(
+        _tokens(),
+        latency,
+        (token) => _backend.bookingSummary(token, month: month),
+      );
+
+  @override
   Future<Result<BookingResponse>> get(String bookingId) => _authenticated(
     _tokens(),
     latency,
@@ -252,7 +266,7 @@ class MockBookingRepository implements BookingRepository {
       _authenticated(
         _tokens(),
         latency,
-        (token) => _backend.cancelBooking(token, bookingId),
+        (token) => _backend.cancelBooking(token, bookingId, reason: reason),
       );
 }
 

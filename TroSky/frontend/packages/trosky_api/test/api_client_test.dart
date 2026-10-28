@@ -351,6 +351,119 @@ void main() {
     });
   });
 
+  group('Trips tab endpoints (P-15, P-16)', () {
+    Dio dio(FakeAdapter adapter) =>
+        createApiClient(env: _env, tokens: _FakeTokens.new, adapter: adapter);
+
+    test('GET /bookings/summary?month=: money as sent', () async {
+      final adapter = FakeAdapter(
+        (_) async => const FakeReply(200, {
+          'month': '2026-10',
+          'currency': 'GHS',
+          'trips_count': 24,
+          'total_spent': '128.50',
+          'average_fare': '5.35',
+          'total_saved': '18.20',
+        }),
+      );
+      final summary = (await LiveBookingRepository(
+        dio(adapter),
+      ).summary(month: '2026-10')).valueOrNull!;
+      final request = adapter.requests.single;
+      expect(request.path, '/bookings/summary');
+      expect(request.queryParameters, {'month': '2026-10'});
+      expect(
+        (
+          summary.tripsCount,
+          summary.totalSpent,
+          summary.averageFare,
+          summary.totalSaved,
+        ),
+        (24, '128.50', '5.35', '18.20'),
+      );
+    });
+
+    test(
+      'GET /trips/{id} is public: vehicle, driver, rating as a number',
+      () async {
+        final adapter = FakeAdapter(
+          (_) async => const FakeReply(200, {
+            'id': 't1',
+            'route_id': 'r1',
+            'route_schedule_id': null,
+            'scheduled_departure_at': '2026-10-22T07:15:00Z',
+            'scheduled_arrival_at': '2026-10-22T07:55:00Z',
+            'actual_departure_at': null,
+            'actual_arrival_at': null,
+            'status': 'scheduled',
+            'fare_amount': '8.00',
+            'created_at': '2026-10-20T09:00:00Z',
+            'route_name': 'Madina → Circle',
+            'origin_stop_id': 's1',
+            'origin_stop_name': 'Accra Madina',
+            'destination_stop_id': 's4',
+            'destination_stop_name': 'Accra Circle',
+            'vehicle': {
+              'registration_number': 'GR 1234-24',
+              'type': 'minibus',
+              'make_model': 'Toyota Hiace',
+              'capacity': 15,
+            },
+            'driver': {
+              'id': 'd1',
+              'full_name': 'Kwame Mensah',
+              'avatar_url': null,
+              'average_rating': '4.80',
+              'rating_count': 126,
+            },
+            'riders_count': 3,
+            'seats_total': 15,
+            'available_seats': 12,
+          }),
+        );
+        final trip = (await LiveRouteRepository(
+          dio(adapter),
+        ).trip('t1')).valueOrNull!;
+        final request = adapter.requests.single;
+        expect(request.path, '/trips/t1');
+        expect(request.headers['Authorization'], isNull);
+        expect(trip.scheduledArrivalAt, DateTime.utc(2026, 10, 22, 7, 55));
+        expect(trip.vehicle?.makeModel, 'Toyota Hiace');
+        expect(trip.vehicle?.type, VehicleType.minibus);
+        expect(trip.driver?.fullName, 'Kwame Mensah');
+        expect(trip.driver?.averageRating, 4.8);
+        expect(trip.fareAmount, '8.00');
+      },
+    );
+
+    test('POST /bookings/{id}/cancel sends the reason', () async {
+      final adapter = FakeAdapter(
+        (_) async => const FakeReply(200, {
+          'id': 'b1',
+          'booking_reference': 'TS-8KQ2',
+          'trip_id': 't1',
+          'status': 'refund_pending',
+          'passenger_count': 1,
+          'origin_stop_id': null,
+          'destination_stop_id': null,
+          'fare_amount': '8.00',
+          'platform_fee': '0.50',
+          'total_amount': '8.50',
+          'expires_at': null,
+          'created_at': '2026-10-20T09:00:00Z',
+          'passengers': <Object>[],
+        }),
+      );
+      final b = (await LiveBookingRepository(
+        dio(adapter),
+      ).cancel('b1', reason: 'Found another ride')).valueOrNull!;
+      final request = adapter.requests.single;
+      expect(request.path, '/bookings/b1/cancel');
+      expect(request.data, {'reason': 'Found another ride'});
+      expect(b.status, BookingStatus.refundPending);
+    });
+  });
+
   group('Home endpoints parse what the backend sends', () {
     Dio dio(FakeAdapter adapter) =>
         createApiClient(env: _env, tokens: _FakeTokens.new, adapter: adapter);

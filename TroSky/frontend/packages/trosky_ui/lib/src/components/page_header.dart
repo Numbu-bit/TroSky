@@ -19,6 +19,8 @@ class TroskyPageHeader extends StatelessWidget {
     required this.subtitle,
     required this.onBack,
     this.backLabel = 'Back',
+    this.subtitleTrailing,
+    this.trailing,
   });
 
   final String title;
@@ -29,6 +31,12 @@ class TroskyPageHeader extends StatelessWidget {
 
   /// What a screen reader says for the back button.
   final String backLabel;
+
+  /// After the subtitle: the copy button by a booking reference (P-16).
+  final Widget? subtitleTrailing;
+
+  /// On the right: a status chip (P-16).
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -75,15 +83,26 @@ class TroskyPageHeader extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: TroskySpacing.s2),
-                  Text(
-                    subtitle,
-                    style: TroskyTypography.body13Regular.copyWith(
-                      color: TroskyColors.whiteA55,
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          subtitle,
+                          style: TroskyTypography.body13Regular.copyWith(
+                            color: TroskyColors.whiteA55,
+                          ),
+                        ),
+                      ),
+                      ?subtitleTrailing,
+                    ],
                   ),
                 ],
               ),
             ),
+            if (trailing case final trailing?) ...[
+              const SizedBox(width: TroskySpacing.s10),
+              trailing,
+            ],
           ],
         ),
       ),

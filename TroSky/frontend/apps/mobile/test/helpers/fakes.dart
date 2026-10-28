@@ -145,15 +145,24 @@ class FlatTileProvider extends TileProvider {
 
 /// Everything a test app keeps between screens, in memory.
 class TestWorld {
-  TestWorld({AppMode? mode, bool onboardingSeen = true})
-    : modes = InMemoryAppModeStore(mode),
-      onboarding = FakeOnboardingStore(seen: onboardingSeen);
+  TestWorld({
+    AppMode? mode,
+    bool onboardingSeen = true,
+    this.bookingHistory = false,
+  }) : modes = InMemoryAppModeStore(mode),
+       onboarding = FakeOnboardingStore(seen: onboardingSeen);
+
+  /// Ama Mensah starts with a week of bookings ([MockBackend.bookingHistory]).
+  final bool bookingHistory;
 
   /// The mock backend's clock, and the phone's; move it to expire codes or
   /// change the time of day.
   DateTime now = DateTime.now();
 
-  late final MockBackend backend = MockBackend(clock: () => now);
+  late final MockBackend backend = MockBackend(
+    clock: () => now,
+    bookingHistory: bookingHistory,
+  );
   final InMemoryRefreshTokenStore tokens = InMemoryRefreshTokenStore();
   final InMemoryUserCache cache = InMemoryUserCache();
   final InMemoryAppModeStore modes;

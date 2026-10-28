@@ -180,6 +180,107 @@ const _$PickupSourceEnumMap = {
   PickupSource.manual: 'manual',
 };
 
+_TripVehicleResponse _$TripVehicleResponseFromJson(Map<String, dynamic> json) =>
+    _TripVehicleResponse(
+      registrationNumber: json['registration_number'] as String,
+      type: $enumDecode(
+        _$VehicleTypeEnumMap,
+        json['type'],
+        unknownValue: VehicleType.other,
+      ),
+      makeModel: json['make_model'] as String?,
+      capacity: (json['capacity'] as num?)?.toInt(),
+    );
+
+Map<String, dynamic> _$TripVehicleResponseToJson(
+  _TripVehicleResponse instance,
+) => <String, dynamic>{
+  'registration_number': instance.registrationNumber,
+  'type': _$VehicleTypeEnumMap[instance.type]!,
+  'make_model': ?instance.makeModel,
+  'capacity': ?instance.capacity,
+};
+
+_TripDriverResponse _$TripDriverResponseFromJson(Map<String, dynamic> json) =>
+    _TripDriverResponse(
+      id: json['id'] as String,
+      fullName: json['full_name'] as String?,
+      avatarUrl: json['avatar_url'] as String?,
+      averageRating: decimalOrNull(json['average_rating']),
+      ratingCount: (json['rating_count'] as num).toInt(),
+    );
+
+Map<String, dynamic> _$TripDriverResponseToJson(_TripDriverResponse instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'full_name': ?instance.fullName,
+      'avatar_url': ?instance.avatarUrl,
+      'average_rating': ?instance.averageRating,
+      'rating_count': instance.ratingCount,
+    };
+
+_TripDetailResponse _$TripDetailResponseFromJson(Map<String, dynamic> json) =>
+    _TripDetailResponse(
+      id: json['id'] as String,
+      routeId: json['route_id'] as String,
+      scheduledDepartureAt: DateTime.parse(
+        json['scheduled_departure_at'] as String,
+      ),
+      scheduledArrivalAt: json['scheduled_arrival_at'] == null
+          ? null
+          : DateTime.parse(json['scheduled_arrival_at'] as String),
+      actualDepartureAt: json['actual_departure_at'] == null
+          ? null
+          : DateTime.parse(json['actual_departure_at'] as String),
+      actualArrivalAt: json['actual_arrival_at'] == null
+          ? null
+          : DateTime.parse(json['actual_arrival_at'] as String),
+      status: $enumDecode(
+        _$TripStatusEnumMap,
+        json['status'],
+        unknownValue: TripStatus.scheduled,
+      ),
+      fareAmount: decimalString(json['fare_amount']),
+      routeName: json['route_name'] as String,
+      originStopId: json['origin_stop_id'] as String,
+      originStopName: json['origin_stop_name'] as String,
+      destinationStopId: json['destination_stop_id'] as String,
+      destinationStopName: json['destination_stop_name'] as String,
+      vehicle: json['vehicle'] == null
+          ? null
+          : TripVehicleResponse.fromJson(
+              json['vehicle'] as Map<String, dynamic>,
+            ),
+      driver: json['driver'] == null
+          ? null
+          : TripDriverResponse.fromJson(json['driver'] as Map<String, dynamic>),
+      ridersCount: (json['riders_count'] as num).toInt(),
+      seatsTotal: (json['seats_total'] as num).toInt(),
+      availableSeats: (json['available_seats'] as num).toInt(),
+    );
+
+Map<String, dynamic> _$TripDetailResponseToJson(_TripDetailResponse instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'route_id': instance.routeId,
+      'scheduled_departure_at': instance.scheduledDepartureAt.toIso8601String(),
+      'scheduled_arrival_at': ?instance.scheduledArrivalAt?.toIso8601String(),
+      'actual_departure_at': ?instance.actualDepartureAt?.toIso8601String(),
+      'actual_arrival_at': ?instance.actualArrivalAt?.toIso8601String(),
+      'status': _$TripStatusEnumMap[instance.status]!,
+      'fare_amount': instance.fareAmount,
+      'route_name': instance.routeName,
+      'origin_stop_id': instance.originStopId,
+      'origin_stop_name': instance.originStopName,
+      'destination_stop_id': instance.destinationStopId,
+      'destination_stop_name': instance.destinationStopName,
+      'vehicle': ?instance.vehicle?.toJson(),
+      'driver': ?instance.driver?.toJson(),
+      'riders_count': instance.ridersCount,
+      'seats_total': instance.seatsTotal,
+      'available_seats': instance.availableSeats,
+    };
+
 _NearbyStopResponse _$NearbyStopResponseFromJson(Map<String, dynamic> json) =>
     _NearbyStopResponse(
       id: json['id'] as String,

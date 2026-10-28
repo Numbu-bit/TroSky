@@ -116,6 +116,10 @@ abstract interface class RouteRepository {
   /// before a vehicle is assigned; 404 without a seat layout.
   Future<Result<TripSeatsResponse>> tripSeats(String tripId);
 
+  /// A trip with its route, vehicle, driver and how full it is (public).
+  /// 404 for an unknown trip.
+  Future<Result<TripDetailResponse>> trip(String tripId);
+
   /// What [seats] seats from [originStopId] to [destinationStopId] cost now
   /// (public): the amount `POST /bookings` would charge. Without stops, the
   /// route's start and end. 422 `STOP_NOT_ON_ROUTE`, 404 for an unknown
@@ -188,6 +192,12 @@ class LiveRouteRepository implements RouteRepository {
   Future<Result<TripSeatsResponse>> tripSeats(String tripId) => apiCall(
     () => _dio.get<Object?>('/trips/$tripId/seats', options: publicEndpoint()),
     (data) => TripSeatsResponse.fromJson(jsonObject(data)),
+  );
+
+  @override
+  Future<Result<TripDetailResponse>> trip(String tripId) => apiCall(
+    () => _dio.get<Object?>('/trips/$tripId', options: publicEndpoint()),
+    (data) => TripDetailResponse.fromJson(jsonObject(data)),
   );
 
   @override

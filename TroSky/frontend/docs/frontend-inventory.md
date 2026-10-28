@@ -126,8 +126,8 @@ Use the **Screen ID** as the screenshot filename (e.g. `S-04.png`). "Figma" is t
 | P-12 | SOS (confirm + sent) | `POST /trips/{id}/sos`, `GET /sos/{id}` | ✅ |
 | P-13 | Report incident | `POST /trips/{id}/incidents` | ✅ |
 | P-14 | Rate driver (single 1–5 score + comment) | `POST /bookings/{id}/rating` | ✅ (categories: G13 done) |
-| P-15 | Trip history (upcoming / past) | `GET /bookings?status=&upcoming=` (departure time included), `GET /bookings/summary` (G25) | ✅ (G12 done) |
-| P-16 | Booking details + cancel | `GET /bookings/{id}`, `POST /bookings/{id}/cancel` | ✅ |
+| P-15 | **Trip History** (Figma P13). Built 28 Oct 2026 (decision 30): this month's card, Upcoming / Past tabs (in place of the design's All / This Month / Last Month), 20 a page, pull to refresh. "Export" isn't built | `GET /bookings?status=&upcoming=` (departure time included), `GET /bookings/summary` (G25) | ✅ (G12 done; G35 open) |
+| P-16 | **Booking details + cancel** (design/P-16: details, status variants, cancel sheet, cancelled). Built 28 Oct 2026 (decision 30): Pay now and View status open P-07; the cancel sheet sends the reason. "View ticket", "Track trip", "Rate driver" and "Book again" are hidden until built; "Paid with" waits for G35 | `GET /bookings/{id}`, `GET /trips/{id}`, `GET /trips/{id}/seats` (seat labels), `POST /bookings/{id}/cancel` | ✅ (G35 open) |
 | P-17 | Wallet | `GET /wallet`, `GET /wallet/transactions` | ✅ |
 | P-18 | Top up wallet | `POST /wallet/topups` → P-08 | ✅ |
 | P-19 | Payment history | `GET /payments` | ✅ |
@@ -203,6 +203,7 @@ Ranked by how badly each blocks the frontend. Most are small additions to router
 | ✅ G13 | **Done (backend 0.12.0).** The rating is a single score. The SRS asked for safety, cleanliness, professionalism and timeliness | P-14 (only if the Figma "Rate Driver" screen shows categories) | Optional category scores |
 | G19 (done, 0.13.0) | An SOS needs a trip (`POST /trips/{trip_id}/sos`), but Home shows SOS at all times | P-01's SOS button, P-12 outside a trip | `POST /sos` with an optional `trip_id` (decision 18) |
 | G34 | A booking doesn't say how long a driver has to answer, or why it moved | P-07 (the app works them out; decision 28) | `accept_timeout_seconds` and `last_move_reason` on `BookingResponse` (backend-requests.md) |
+| G35 | A passenger can't see a cancel waiting for review or a refund's way back; "Past" takes two filters | P-15, P-16 (decision 30) | `cancellation` and `payment_channel` on `BookingResponse`, `?history=true` (backend-requests.md) |
 
 ### Gaps the Figma design creates (it shows features the backend doesn't have)
 | ID | Design shows | Backend today | Decision needed |

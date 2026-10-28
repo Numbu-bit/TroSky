@@ -1251,6 +1251,921 @@ $FareSummaryResponseCopyWith<$Res>? get fare {
 
 
 /// @nodoc
+mixin _$TripVehicleResponse {
+
+ String get registrationNumber;@JsonKey(unknownEnumValue: VehicleType.other) VehicleType get type;/// "Toyota Hiace".
+ String? get makeModel; int? get capacity;
+/// Create a copy of TripVehicleResponse
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$TripVehicleResponseCopyWith<TripVehicleResponse> get copyWith => _$TripVehicleResponseCopyWithImpl<TripVehicleResponse>(this as TripVehicleResponse, _$identity);
+
+  /// Serializes this TripVehicleResponse to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TripVehicleResponse&&(identical(other.registrationNumber, registrationNumber) || other.registrationNumber == registrationNumber)&&(identical(other.type, type) || other.type == type)&&(identical(other.makeModel, makeModel) || other.makeModel == makeModel)&&(identical(other.capacity, capacity) || other.capacity == capacity));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,registrationNumber,type,makeModel,capacity);
+
+@override
+String toString() {
+  return 'TripVehicleResponse(registrationNumber: $registrationNumber, type: $type, makeModel: $makeModel, capacity: $capacity)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $TripVehicleResponseCopyWith<$Res>  {
+  factory $TripVehicleResponseCopyWith(TripVehicleResponse value, $Res Function(TripVehicleResponse) _then) = _$TripVehicleResponseCopyWithImpl;
+@useResult
+$Res call({
+ String registrationNumber,@JsonKey(unknownEnumValue: VehicleType.other) VehicleType type, String? makeModel, int? capacity
+});
+
+
+
+
+}
+/// @nodoc
+class _$TripVehicleResponseCopyWithImpl<$Res>
+    implements $TripVehicleResponseCopyWith<$Res> {
+  _$TripVehicleResponseCopyWithImpl(this._self, this._then);
+
+  final TripVehicleResponse _self;
+  final $Res Function(TripVehicleResponse) _then;
+
+/// Create a copy of TripVehicleResponse
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? registrationNumber = null,Object? type = null,Object? makeModel = freezed,Object? capacity = freezed,}) {
+  return _then(TripVehicleResponse(
+registrationNumber: null == registrationNumber ? _self.registrationNumber : registrationNumber // ignore: cast_nullable_to_non_nullable
+as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
+as VehicleType,makeModel: freezed == makeModel ? _self.makeModel : makeModel // ignore: cast_nullable_to_non_nullable
+as String?,capacity: freezed == capacity ? _self.capacity : capacity // ignore: cast_nullable_to_non_nullable
+as int?,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [TripVehicleResponse].
+extension TripVehicleResponsePatterns on TripVehicleResponse {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _TripVehicleResponse value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _TripVehicleResponse() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _TripVehicleResponse value)  $default,){
+final _that = this;
+switch (_that) {
+case _TripVehicleResponse():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _TripVehicleResponse value)?  $default,){
+final _that = this;
+switch (_that) {
+case _TripVehicleResponse() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String registrationNumber, @JsonKey(unknownEnumValue: VehicleType.other)  VehicleType type,  String? makeModel,  int? capacity)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _TripVehicleResponse() when $default != null:
+return $default(_that.registrationNumber,_that.type,_that.makeModel,_that.capacity);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String registrationNumber, @JsonKey(unknownEnumValue: VehicleType.other)  VehicleType type,  String? makeModel,  int? capacity)  $default,) {final _that = this;
+switch (_that) {
+case _TripVehicleResponse():
+return $default(_that.registrationNumber,_that.type,_that.makeModel,_that.capacity);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String registrationNumber, @JsonKey(unknownEnumValue: VehicleType.other)  VehicleType type,  String? makeModel,  int? capacity)?  $default,) {final _that = this;
+switch (_that) {
+case _TripVehicleResponse() when $default != null:
+return $default(_that.registrationNumber,_that.type,_that.makeModel,_that.capacity);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _TripVehicleResponse implements TripVehicleResponse {
+  const _TripVehicleResponse({required this.registrationNumber, @JsonKey(unknownEnumValue: VehicleType.other) required this.type, this.makeModel, this.capacity});
+  factory _TripVehicleResponse.fromJson(Map<String, dynamic> json) => _$TripVehicleResponseFromJson(json);
+
+@override final  String registrationNumber;
+@override@JsonKey(unknownEnumValue: VehicleType.other) final  VehicleType type;
+/// "Toyota Hiace".
+@override final  String? makeModel;
+@override final  int? capacity;
+
+/// Create a copy of TripVehicleResponse
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$TripVehicleResponseCopyWith<_TripVehicleResponse> get copyWith => __$TripVehicleResponseCopyWithImpl<_TripVehicleResponse>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$TripVehicleResponseToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TripVehicleResponse&&(identical(other.registrationNumber, registrationNumber) || other.registrationNumber == registrationNumber)&&(identical(other.type, type) || other.type == type)&&(identical(other.makeModel, makeModel) || other.makeModel == makeModel)&&(identical(other.capacity, capacity) || other.capacity == capacity));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,registrationNumber,type,makeModel,capacity);
+
+@override
+String toString() {
+  return 'TripVehicleResponse(registrationNumber: $registrationNumber, type: $type, makeModel: $makeModel, capacity: $capacity)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$TripVehicleResponseCopyWith<$Res> implements $TripVehicleResponseCopyWith<$Res> {
+  factory _$TripVehicleResponseCopyWith(_TripVehicleResponse value, $Res Function(_TripVehicleResponse) _then) = __$TripVehicleResponseCopyWithImpl;
+@override @useResult
+$Res call({
+ String registrationNumber,@JsonKey(unknownEnumValue: VehicleType.other) VehicleType type, String? makeModel, int? capacity
+});
+
+
+
+
+}
+/// @nodoc
+class __$TripVehicleResponseCopyWithImpl<$Res>
+    implements _$TripVehicleResponseCopyWith<$Res> {
+  __$TripVehicleResponseCopyWithImpl(this._self, this._then);
+
+  final _TripVehicleResponse _self;
+  final $Res Function(_TripVehicleResponse) _then;
+
+/// Create a copy of TripVehicleResponse
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? registrationNumber = null,Object? type = null,Object? makeModel = freezed,Object? capacity = freezed,}) {
+  return _then(_TripVehicleResponse(
+registrationNumber: null == registrationNumber ? _self.registrationNumber : registrationNumber // ignore: cast_nullable_to_non_nullable
+as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
+as VehicleType,makeModel: freezed == makeModel ? _self.makeModel : makeModel // ignore: cast_nullable_to_non_nullable
+as String?,capacity: freezed == capacity ? _self.capacity : capacity // ignore: cast_nullable_to_non_nullable
+as int?,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$TripDriverResponse {
+
+ String get id; String? get fullName; String? get avatarUrl;/// 1-5, null until rated.
+@JsonKey(fromJson: decimalOrNull) double? get averageRating; int get ratingCount;
+/// Create a copy of TripDriverResponse
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$TripDriverResponseCopyWith<TripDriverResponse> get copyWith => _$TripDriverResponseCopyWithImpl<TripDriverResponse>(this as TripDriverResponse, _$identity);
+
+  /// Serializes this TripDriverResponse to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TripDriverResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.averageRating, averageRating) || other.averageRating == averageRating)&&(identical(other.ratingCount, ratingCount) || other.ratingCount == ratingCount));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,fullName,avatarUrl,averageRating,ratingCount);
+
+@override
+String toString() {
+  return 'TripDriverResponse(id: $id, fullName: $fullName, avatarUrl: $avatarUrl, averageRating: $averageRating, ratingCount: $ratingCount)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $TripDriverResponseCopyWith<$Res>  {
+  factory $TripDriverResponseCopyWith(TripDriverResponse value, $Res Function(TripDriverResponse) _then) = _$TripDriverResponseCopyWithImpl;
+@useResult
+$Res call({
+ String id, String? fullName, String? avatarUrl,@JsonKey(fromJson: decimalOrNull) double? averageRating, int ratingCount
+});
+
+
+
+
+}
+/// @nodoc
+class _$TripDriverResponseCopyWithImpl<$Res>
+    implements $TripDriverResponseCopyWith<$Res> {
+  _$TripDriverResponseCopyWithImpl(this._self, this._then);
+
+  final TripDriverResponse _self;
+  final $Res Function(TripDriverResponse) _then;
+
+/// Create a copy of TripDriverResponse
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? fullName = freezed,Object? avatarUrl = freezed,Object? averageRating = freezed,Object? ratingCount = null,}) {
+  return _then(TripDriverResponse(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,fullName: freezed == fullName ? _self.fullName : fullName // ignore: cast_nullable_to_non_nullable
+as String?,avatarUrl: freezed == avatarUrl ? _self.avatarUrl : avatarUrl // ignore: cast_nullable_to_non_nullable
+as String?,averageRating: freezed == averageRating ? _self.averageRating : averageRating // ignore: cast_nullable_to_non_nullable
+as double?,ratingCount: null == ratingCount ? _self.ratingCount : ratingCount // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [TripDriverResponse].
+extension TripDriverResponsePatterns on TripDriverResponse {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _TripDriverResponse value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _TripDriverResponse() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _TripDriverResponse value)  $default,){
+final _that = this;
+switch (_that) {
+case _TripDriverResponse():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _TripDriverResponse value)?  $default,){
+final _that = this;
+switch (_that) {
+case _TripDriverResponse() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String? fullName,  String? avatarUrl, @JsonKey(fromJson: decimalOrNull)  double? averageRating,  int ratingCount)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _TripDriverResponse() when $default != null:
+return $default(_that.id,_that.fullName,_that.avatarUrl,_that.averageRating,_that.ratingCount);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String? fullName,  String? avatarUrl, @JsonKey(fromJson: decimalOrNull)  double? averageRating,  int ratingCount)  $default,) {final _that = this;
+switch (_that) {
+case _TripDriverResponse():
+return $default(_that.id,_that.fullName,_that.avatarUrl,_that.averageRating,_that.ratingCount);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String? fullName,  String? avatarUrl, @JsonKey(fromJson: decimalOrNull)  double? averageRating,  int ratingCount)?  $default,) {final _that = this;
+switch (_that) {
+case _TripDriverResponse() when $default != null:
+return $default(_that.id,_that.fullName,_that.avatarUrl,_that.averageRating,_that.ratingCount);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _TripDriverResponse implements TripDriverResponse {
+  const _TripDriverResponse({required this.id, this.fullName, this.avatarUrl, @JsonKey(fromJson: decimalOrNull) this.averageRating, required this.ratingCount});
+  factory _TripDriverResponse.fromJson(Map<String, dynamic> json) => _$TripDriverResponseFromJson(json);
+
+@override final  String id;
+@override final  String? fullName;
+@override final  String? avatarUrl;
+/// 1-5, null until rated.
+@override@JsonKey(fromJson: decimalOrNull) final  double? averageRating;
+@override final  int ratingCount;
+
+/// Create a copy of TripDriverResponse
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$TripDriverResponseCopyWith<_TripDriverResponse> get copyWith => __$TripDriverResponseCopyWithImpl<_TripDriverResponse>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$TripDriverResponseToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TripDriverResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.averageRating, averageRating) || other.averageRating == averageRating)&&(identical(other.ratingCount, ratingCount) || other.ratingCount == ratingCount));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,fullName,avatarUrl,averageRating,ratingCount);
+
+@override
+String toString() {
+  return 'TripDriverResponse(id: $id, fullName: $fullName, avatarUrl: $avatarUrl, averageRating: $averageRating, ratingCount: $ratingCount)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$TripDriverResponseCopyWith<$Res> implements $TripDriverResponseCopyWith<$Res> {
+  factory _$TripDriverResponseCopyWith(_TripDriverResponse value, $Res Function(_TripDriverResponse) _then) = __$TripDriverResponseCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String? fullName, String? avatarUrl,@JsonKey(fromJson: decimalOrNull) double? averageRating, int ratingCount
+});
+
+
+
+
+}
+/// @nodoc
+class __$TripDriverResponseCopyWithImpl<$Res>
+    implements _$TripDriverResponseCopyWith<$Res> {
+  __$TripDriverResponseCopyWithImpl(this._self, this._then);
+
+  final _TripDriverResponse _self;
+  final $Res Function(_TripDriverResponse) _then;
+
+/// Create a copy of TripDriverResponse
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? fullName = freezed,Object? avatarUrl = freezed,Object? averageRating = freezed,Object? ratingCount = null,}) {
+  return _then(_TripDriverResponse(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,fullName: freezed == fullName ? _self.fullName : fullName // ignore: cast_nullable_to_non_nullable
+as String?,avatarUrl: freezed == avatarUrl ? _self.avatarUrl : avatarUrl // ignore: cast_nullable_to_non_nullable
+as String?,averageRating: freezed == averageRating ? _self.averageRating : averageRating // ignore: cast_nullable_to_non_nullable
+as double?,ratingCount: null == ratingCount ? _self.ratingCount : ratingCount // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$TripDetailResponse {
+
+ String get id; String get routeId; DateTime get scheduledDepartureAt;/// At the end of the route.
+ DateTime? get scheduledArrivalAt; DateTime? get actualDepartureAt; DateTime? get actualArrivalAt;@JsonKey(unknownEnumValue: TripStatus.scheduled) TripStatus get status;@JsonKey(fromJson: decimalString) String get fareAmount; String get routeName; String get originStopId; String get originStopName; String get destinationStopId; String get destinationStopName; TripVehicleResponse? get vehicle; TripDriverResponse? get driver; int get ridersCount; int get seatsTotal; int get availableSeats;
+/// Create a copy of TripDetailResponse
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$TripDetailResponseCopyWith<TripDetailResponse> get copyWith => _$TripDetailResponseCopyWithImpl<TripDetailResponse>(this as TripDetailResponse, _$identity);
+
+  /// Serializes this TripDetailResponse to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TripDetailResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.routeId, routeId) || other.routeId == routeId)&&(identical(other.scheduledDepartureAt, scheduledDepartureAt) || other.scheduledDepartureAt == scheduledDepartureAt)&&(identical(other.scheduledArrivalAt, scheduledArrivalAt) || other.scheduledArrivalAt == scheduledArrivalAt)&&(identical(other.actualDepartureAt, actualDepartureAt) || other.actualDepartureAt == actualDepartureAt)&&(identical(other.actualArrivalAt, actualArrivalAt) || other.actualArrivalAt == actualArrivalAt)&&(identical(other.status, status) || other.status == status)&&(identical(other.fareAmount, fareAmount) || other.fareAmount == fareAmount)&&(identical(other.routeName, routeName) || other.routeName == routeName)&&(identical(other.originStopId, originStopId) || other.originStopId == originStopId)&&(identical(other.originStopName, originStopName) || other.originStopName == originStopName)&&(identical(other.destinationStopId, destinationStopId) || other.destinationStopId == destinationStopId)&&(identical(other.destinationStopName, destinationStopName) || other.destinationStopName == destinationStopName)&&(identical(other.vehicle, vehicle) || other.vehicle == vehicle)&&(identical(other.driver, driver) || other.driver == driver)&&(identical(other.ridersCount, ridersCount) || other.ridersCount == ridersCount)&&(identical(other.seatsTotal, seatsTotal) || other.seatsTotal == seatsTotal)&&(identical(other.availableSeats, availableSeats) || other.availableSeats == availableSeats));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,routeId,scheduledDepartureAt,scheduledArrivalAt,actualDepartureAt,actualArrivalAt,status,fareAmount,routeName,originStopId,originStopName,destinationStopId,destinationStopName,vehicle,driver,ridersCount,seatsTotal,availableSeats);
+
+@override
+String toString() {
+  return 'TripDetailResponse(id: $id, routeId: $routeId, scheduledDepartureAt: $scheduledDepartureAt, scheduledArrivalAt: $scheduledArrivalAt, actualDepartureAt: $actualDepartureAt, actualArrivalAt: $actualArrivalAt, status: $status, fareAmount: $fareAmount, routeName: $routeName, originStopId: $originStopId, originStopName: $originStopName, destinationStopId: $destinationStopId, destinationStopName: $destinationStopName, vehicle: $vehicle, driver: $driver, ridersCount: $ridersCount, seatsTotal: $seatsTotal, availableSeats: $availableSeats)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $TripDetailResponseCopyWith<$Res>  {
+  factory $TripDetailResponseCopyWith(TripDetailResponse value, $Res Function(TripDetailResponse) _then) = _$TripDetailResponseCopyWithImpl;
+@useResult
+$Res call({
+ String id, String routeId, DateTime scheduledDepartureAt, DateTime? scheduledArrivalAt, DateTime? actualDepartureAt, DateTime? actualArrivalAt,@JsonKey(unknownEnumValue: TripStatus.scheduled) TripStatus status,@JsonKey(fromJson: decimalString) String fareAmount, String routeName, String originStopId, String originStopName, String destinationStopId, String destinationStopName, TripVehicleResponse? vehicle, TripDriverResponse? driver, int ridersCount, int seatsTotal, int availableSeats
+});
+
+
+$TripVehicleResponseCopyWith<$Res>? get vehicle;$TripDriverResponseCopyWith<$Res>? get driver;
+
+}
+/// @nodoc
+class _$TripDetailResponseCopyWithImpl<$Res>
+    implements $TripDetailResponseCopyWith<$Res> {
+  _$TripDetailResponseCopyWithImpl(this._self, this._then);
+
+  final TripDetailResponse _self;
+  final $Res Function(TripDetailResponse) _then;
+
+/// Create a copy of TripDetailResponse
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? routeId = null,Object? scheduledDepartureAt = null,Object? scheduledArrivalAt = freezed,Object? actualDepartureAt = freezed,Object? actualArrivalAt = freezed,Object? status = null,Object? fareAmount = null,Object? routeName = null,Object? originStopId = null,Object? originStopName = null,Object? destinationStopId = null,Object? destinationStopName = null,Object? vehicle = freezed,Object? driver = freezed,Object? ridersCount = null,Object? seatsTotal = null,Object? availableSeats = null,}) {
+  return _then(TripDetailResponse(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,routeId: null == routeId ? _self.routeId : routeId // ignore: cast_nullable_to_non_nullable
+as String,scheduledDepartureAt: null == scheduledDepartureAt ? _self.scheduledDepartureAt : scheduledDepartureAt // ignore: cast_nullable_to_non_nullable
+as DateTime,scheduledArrivalAt: freezed == scheduledArrivalAt ? _self.scheduledArrivalAt : scheduledArrivalAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,actualDepartureAt: freezed == actualDepartureAt ? _self.actualDepartureAt : actualDepartureAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,actualArrivalAt: freezed == actualArrivalAt ? _self.actualArrivalAt : actualArrivalAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as TripStatus,fareAmount: null == fareAmount ? _self.fareAmount : fareAmount // ignore: cast_nullable_to_non_nullable
+as String,routeName: null == routeName ? _self.routeName : routeName // ignore: cast_nullable_to_non_nullable
+as String,originStopId: null == originStopId ? _self.originStopId : originStopId // ignore: cast_nullable_to_non_nullable
+as String,originStopName: null == originStopName ? _self.originStopName : originStopName // ignore: cast_nullable_to_non_nullable
+as String,destinationStopId: null == destinationStopId ? _self.destinationStopId : destinationStopId // ignore: cast_nullable_to_non_nullable
+as String,destinationStopName: null == destinationStopName ? _self.destinationStopName : destinationStopName // ignore: cast_nullable_to_non_nullable
+as String,vehicle: freezed == vehicle ? _self.vehicle : vehicle // ignore: cast_nullable_to_non_nullable
+as TripVehicleResponse?,driver: freezed == driver ? _self.driver : driver // ignore: cast_nullable_to_non_nullable
+as TripDriverResponse?,ridersCount: null == ridersCount ? _self.ridersCount : ridersCount // ignore: cast_nullable_to_non_nullable
+as int,seatsTotal: null == seatsTotal ? _self.seatsTotal : seatsTotal // ignore: cast_nullable_to_non_nullable
+as int,availableSeats: null == availableSeats ? _self.availableSeats : availableSeats // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
+}
+/// Create a copy of TripDetailResponse
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$TripVehicleResponseCopyWith<$Res>? get vehicle {
+    if (_self.vehicle == null) {
+    return null;
+  }
+
+  return $TripVehicleResponseCopyWith<$Res>(_self.vehicle!, (value) {
+    return _then(_self.copyWith(vehicle: value));
+  });
+}/// Create a copy of TripDetailResponse
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$TripDriverResponseCopyWith<$Res>? get driver {
+    if (_self.driver == null) {
+    return null;
+  }
+
+  return $TripDriverResponseCopyWith<$Res>(_self.driver!, (value) {
+    return _then(_self.copyWith(driver: value));
+  });
+}
+}
+
+
+/// Adds pattern-matching-related methods to [TripDetailResponse].
+extension TripDetailResponsePatterns on TripDetailResponse {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _TripDetailResponse value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _TripDetailResponse() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _TripDetailResponse value)  $default,){
+final _that = this;
+switch (_that) {
+case _TripDetailResponse():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _TripDetailResponse value)?  $default,){
+final _that = this;
+switch (_that) {
+case _TripDetailResponse() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String routeId,  DateTime scheduledDepartureAt,  DateTime? scheduledArrivalAt,  DateTime? actualDepartureAt,  DateTime? actualArrivalAt, @JsonKey(unknownEnumValue: TripStatus.scheduled)  TripStatus status, @JsonKey(fromJson: decimalString)  String fareAmount,  String routeName,  String originStopId,  String originStopName,  String destinationStopId,  String destinationStopName,  TripVehicleResponse? vehicle,  TripDriverResponse? driver,  int ridersCount,  int seatsTotal,  int availableSeats)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _TripDetailResponse() when $default != null:
+return $default(_that.id,_that.routeId,_that.scheduledDepartureAt,_that.scheduledArrivalAt,_that.actualDepartureAt,_that.actualArrivalAt,_that.status,_that.fareAmount,_that.routeName,_that.originStopId,_that.originStopName,_that.destinationStopId,_that.destinationStopName,_that.vehicle,_that.driver,_that.ridersCount,_that.seatsTotal,_that.availableSeats);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String routeId,  DateTime scheduledDepartureAt,  DateTime? scheduledArrivalAt,  DateTime? actualDepartureAt,  DateTime? actualArrivalAt, @JsonKey(unknownEnumValue: TripStatus.scheduled)  TripStatus status, @JsonKey(fromJson: decimalString)  String fareAmount,  String routeName,  String originStopId,  String originStopName,  String destinationStopId,  String destinationStopName,  TripVehicleResponse? vehicle,  TripDriverResponse? driver,  int ridersCount,  int seatsTotal,  int availableSeats)  $default,) {final _that = this;
+switch (_that) {
+case _TripDetailResponse():
+return $default(_that.id,_that.routeId,_that.scheduledDepartureAt,_that.scheduledArrivalAt,_that.actualDepartureAt,_that.actualArrivalAt,_that.status,_that.fareAmount,_that.routeName,_that.originStopId,_that.originStopName,_that.destinationStopId,_that.destinationStopName,_that.vehicle,_that.driver,_that.ridersCount,_that.seatsTotal,_that.availableSeats);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String routeId,  DateTime scheduledDepartureAt,  DateTime? scheduledArrivalAt,  DateTime? actualDepartureAt,  DateTime? actualArrivalAt, @JsonKey(unknownEnumValue: TripStatus.scheduled)  TripStatus status, @JsonKey(fromJson: decimalString)  String fareAmount,  String routeName,  String originStopId,  String originStopName,  String destinationStopId,  String destinationStopName,  TripVehicleResponse? vehicle,  TripDriverResponse? driver,  int ridersCount,  int seatsTotal,  int availableSeats)?  $default,) {final _that = this;
+switch (_that) {
+case _TripDetailResponse() when $default != null:
+return $default(_that.id,_that.routeId,_that.scheduledDepartureAt,_that.scheduledArrivalAt,_that.actualDepartureAt,_that.actualArrivalAt,_that.status,_that.fareAmount,_that.routeName,_that.originStopId,_that.originStopName,_that.destinationStopId,_that.destinationStopName,_that.vehicle,_that.driver,_that.ridersCount,_that.seatsTotal,_that.availableSeats);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _TripDetailResponse implements TripDetailResponse {
+  const _TripDetailResponse({required this.id, required this.routeId, required this.scheduledDepartureAt, this.scheduledArrivalAt, this.actualDepartureAt, this.actualArrivalAt, @JsonKey(unknownEnumValue: TripStatus.scheduled) required this.status, @JsonKey(fromJson: decimalString) required this.fareAmount, required this.routeName, required this.originStopId, required this.originStopName, required this.destinationStopId, required this.destinationStopName, this.vehicle, this.driver, required this.ridersCount, required this.seatsTotal, required this.availableSeats});
+  factory _TripDetailResponse.fromJson(Map<String, dynamic> json) => _$TripDetailResponseFromJson(json);
+
+@override final  String id;
+@override final  String routeId;
+@override final  DateTime scheduledDepartureAt;
+/// At the end of the route.
+@override final  DateTime? scheduledArrivalAt;
+@override final  DateTime? actualDepartureAt;
+@override final  DateTime? actualArrivalAt;
+@override@JsonKey(unknownEnumValue: TripStatus.scheduled) final  TripStatus status;
+@override@JsonKey(fromJson: decimalString) final  String fareAmount;
+@override final  String routeName;
+@override final  String originStopId;
+@override final  String originStopName;
+@override final  String destinationStopId;
+@override final  String destinationStopName;
+@override final  TripVehicleResponse? vehicle;
+@override final  TripDriverResponse? driver;
+@override final  int ridersCount;
+@override final  int seatsTotal;
+@override final  int availableSeats;
+
+/// Create a copy of TripDetailResponse
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$TripDetailResponseCopyWith<_TripDetailResponse> get copyWith => __$TripDetailResponseCopyWithImpl<_TripDetailResponse>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$TripDetailResponseToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TripDetailResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.routeId, routeId) || other.routeId == routeId)&&(identical(other.scheduledDepartureAt, scheduledDepartureAt) || other.scheduledDepartureAt == scheduledDepartureAt)&&(identical(other.scheduledArrivalAt, scheduledArrivalAt) || other.scheduledArrivalAt == scheduledArrivalAt)&&(identical(other.actualDepartureAt, actualDepartureAt) || other.actualDepartureAt == actualDepartureAt)&&(identical(other.actualArrivalAt, actualArrivalAt) || other.actualArrivalAt == actualArrivalAt)&&(identical(other.status, status) || other.status == status)&&(identical(other.fareAmount, fareAmount) || other.fareAmount == fareAmount)&&(identical(other.routeName, routeName) || other.routeName == routeName)&&(identical(other.originStopId, originStopId) || other.originStopId == originStopId)&&(identical(other.originStopName, originStopName) || other.originStopName == originStopName)&&(identical(other.destinationStopId, destinationStopId) || other.destinationStopId == destinationStopId)&&(identical(other.destinationStopName, destinationStopName) || other.destinationStopName == destinationStopName)&&(identical(other.vehicle, vehicle) || other.vehicle == vehicle)&&(identical(other.driver, driver) || other.driver == driver)&&(identical(other.ridersCount, ridersCount) || other.ridersCount == ridersCount)&&(identical(other.seatsTotal, seatsTotal) || other.seatsTotal == seatsTotal)&&(identical(other.availableSeats, availableSeats) || other.availableSeats == availableSeats));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,routeId,scheduledDepartureAt,scheduledArrivalAt,actualDepartureAt,actualArrivalAt,status,fareAmount,routeName,originStopId,originStopName,destinationStopId,destinationStopName,vehicle,driver,ridersCount,seatsTotal,availableSeats);
+
+@override
+String toString() {
+  return 'TripDetailResponse(id: $id, routeId: $routeId, scheduledDepartureAt: $scheduledDepartureAt, scheduledArrivalAt: $scheduledArrivalAt, actualDepartureAt: $actualDepartureAt, actualArrivalAt: $actualArrivalAt, status: $status, fareAmount: $fareAmount, routeName: $routeName, originStopId: $originStopId, originStopName: $originStopName, destinationStopId: $destinationStopId, destinationStopName: $destinationStopName, vehicle: $vehicle, driver: $driver, ridersCount: $ridersCount, seatsTotal: $seatsTotal, availableSeats: $availableSeats)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$TripDetailResponseCopyWith<$Res> implements $TripDetailResponseCopyWith<$Res> {
+  factory _$TripDetailResponseCopyWith(_TripDetailResponse value, $Res Function(_TripDetailResponse) _then) = __$TripDetailResponseCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String routeId, DateTime scheduledDepartureAt, DateTime? scheduledArrivalAt, DateTime? actualDepartureAt, DateTime? actualArrivalAt,@JsonKey(unknownEnumValue: TripStatus.scheduled) TripStatus status,@JsonKey(fromJson: decimalString) String fareAmount, String routeName, String originStopId, String originStopName, String destinationStopId, String destinationStopName, TripVehicleResponse? vehicle, TripDriverResponse? driver, int ridersCount, int seatsTotal, int availableSeats
+});
+
+
+@override $TripVehicleResponseCopyWith<$Res>? get vehicle;@override $TripDriverResponseCopyWith<$Res>? get driver;
+
+}
+/// @nodoc
+class __$TripDetailResponseCopyWithImpl<$Res>
+    implements _$TripDetailResponseCopyWith<$Res> {
+  __$TripDetailResponseCopyWithImpl(this._self, this._then);
+
+  final _TripDetailResponse _self;
+  final $Res Function(_TripDetailResponse) _then;
+
+/// Create a copy of TripDetailResponse
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? routeId = null,Object? scheduledDepartureAt = null,Object? scheduledArrivalAt = freezed,Object? actualDepartureAt = freezed,Object? actualArrivalAt = freezed,Object? status = null,Object? fareAmount = null,Object? routeName = null,Object? originStopId = null,Object? originStopName = null,Object? destinationStopId = null,Object? destinationStopName = null,Object? vehicle = freezed,Object? driver = freezed,Object? ridersCount = null,Object? seatsTotal = null,Object? availableSeats = null,}) {
+  return _then(_TripDetailResponse(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,routeId: null == routeId ? _self.routeId : routeId // ignore: cast_nullable_to_non_nullable
+as String,scheduledDepartureAt: null == scheduledDepartureAt ? _self.scheduledDepartureAt : scheduledDepartureAt // ignore: cast_nullable_to_non_nullable
+as DateTime,scheduledArrivalAt: freezed == scheduledArrivalAt ? _self.scheduledArrivalAt : scheduledArrivalAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,actualDepartureAt: freezed == actualDepartureAt ? _self.actualDepartureAt : actualDepartureAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,actualArrivalAt: freezed == actualArrivalAt ? _self.actualArrivalAt : actualArrivalAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as TripStatus,fareAmount: null == fareAmount ? _self.fareAmount : fareAmount // ignore: cast_nullable_to_non_nullable
+as String,routeName: null == routeName ? _self.routeName : routeName // ignore: cast_nullable_to_non_nullable
+as String,originStopId: null == originStopId ? _self.originStopId : originStopId // ignore: cast_nullable_to_non_nullable
+as String,originStopName: null == originStopName ? _self.originStopName : originStopName // ignore: cast_nullable_to_non_nullable
+as String,destinationStopId: null == destinationStopId ? _self.destinationStopId : destinationStopId // ignore: cast_nullable_to_non_nullable
+as String,destinationStopName: null == destinationStopName ? _self.destinationStopName : destinationStopName // ignore: cast_nullable_to_non_nullable
+as String,vehicle: freezed == vehicle ? _self.vehicle : vehicle // ignore: cast_nullable_to_non_nullable
+as TripVehicleResponse?,driver: freezed == driver ? _self.driver : driver // ignore: cast_nullable_to_non_nullable
+as TripDriverResponse?,ridersCount: null == ridersCount ? _self.ridersCount : ridersCount // ignore: cast_nullable_to_non_nullable
+as int,seatsTotal: null == seatsTotal ? _self.seatsTotal : seatsTotal // ignore: cast_nullable_to_non_nullable
+as int,availableSeats: null == availableSeats ? _self.availableSeats : availableSeats // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
+}
+
+/// Create a copy of TripDetailResponse
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$TripVehicleResponseCopyWith<$Res>? get vehicle {
+    if (_self.vehicle == null) {
+    return null;
+  }
+
+  return $TripVehicleResponseCopyWith<$Res>(_self.vehicle!, (value) {
+    return _then(_self.copyWith(vehicle: value));
+  });
+}/// Create a copy of TripDetailResponse
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$TripDriverResponseCopyWith<$Res>? get driver {
+    if (_self.driver == null) {
+    return null;
+  }
+
+  return $TripDriverResponseCopyWith<$Res>(_self.driver!, (value) {
+    return _then(_self.copyWith(driver: value));
+  });
+}
+}
+
+
+/// @nodoc
 mixin _$NearbyStopResponse {
 
  String get id; String get name; String? get code; String? get address; String? get city; String? get region; double get latitude; double get longitude;/// Metres from the point asked about.

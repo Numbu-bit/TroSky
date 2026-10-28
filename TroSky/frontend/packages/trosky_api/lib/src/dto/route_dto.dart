@@ -178,6 +178,70 @@ abstract class TripSearchResultResponse with _$TripSearchResultResponse {
       _$TripSearchResultResponseFromJson(json);
 }
 
+/// `TripVehicleResponse`: the vehicle assigned to a trip.
+@freezed
+abstract class TripVehicleResponse with _$TripVehicleResponse {
+  const factory TripVehicleResponse({
+    required String registrationNumber,
+    @JsonKey(unknownEnumValue: VehicleType.other) required VehicleType type,
+
+    /// "Toyota Hiace".
+    String? makeModel,
+    int? capacity,
+  }) = _TripVehicleResponse;
+
+  factory TripVehicleResponse.fromJson(Map<String, dynamic> json) =>
+      _$TripVehicleResponseFromJson(json);
+}
+
+/// `TripDriverResponse`: the driver assigned to a trip.
+@freezed
+abstract class TripDriverResponse with _$TripDriverResponse {
+  const factory TripDriverResponse({
+    required String id,
+    String? fullName,
+    String? avatarUrl,
+
+    /// 1-5, null until rated.
+    @JsonKey(fromJson: decimalOrNull) double? averageRating,
+    required int ratingCount,
+  }) = _TripDriverResponse;
+
+  factory TripDriverResponse.fromJson(Map<String, dynamic> json) =>
+      _$TripDriverResponseFromJson(json);
+}
+
+/// `TripDetailResponse` from `GET /trips/{id}`: a trip with its route,
+/// vehicle, driver and how full it is.
+@freezed
+abstract class TripDetailResponse with _$TripDetailResponse {
+  const factory TripDetailResponse({
+    required String id,
+    required String routeId,
+    required DateTime scheduledDepartureAt,
+
+    /// At the end of the route.
+    DateTime? scheduledArrivalAt,
+    DateTime? actualDepartureAt,
+    DateTime? actualArrivalAt,
+    @JsonKey(unknownEnumValue: TripStatus.scheduled) required TripStatus status,
+    @JsonKey(fromJson: decimalString) required String fareAmount,
+    required String routeName,
+    required String originStopId,
+    required String originStopName,
+    required String destinationStopId,
+    required String destinationStopName,
+    TripVehicleResponse? vehicle,
+    TripDriverResponse? driver,
+    required int ridersCount,
+    required int seatsTotal,
+    required int availableSeats,
+  }) = _TripDetailResponse;
+
+  factory TripDetailResponse.fromJson(Map<String, dynamic> json) =>
+      _$TripDetailResponseFromJson(json);
+}
+
 /// `NearbyStopResponse` from `GET /stops/nearby`: a `StopResponse` plus how
 /// far it is from the point asked about.
 @freezed

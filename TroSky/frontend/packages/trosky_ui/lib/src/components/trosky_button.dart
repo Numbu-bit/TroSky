@@ -87,6 +87,18 @@ class TroskyButtonVariant {
     idleForeground: TroskyColors.textSecondary,
   );
 
+  /// Red "Cancel booking" on the cancel sheet (P-16): the primary button's
+  /// 54 px pill and Plus Jakarta Sans 15/700, white on red, no shadow.
+  static final danger = TroskyButtonVariant._(
+    height: 54,
+    radius: TroskyRadii.r27,
+    background: TroskyColors.red,
+    foreground: TroskyColors.white,
+    textStyle: TroskyTypography.heading15Bold,
+    shadow: const [],
+    pressedBackground: TroskyColors.redDark,
+  );
+
   static final outline = TroskyButtonVariant._(
     height: 50,
     radius: TroskyRadii.r14,

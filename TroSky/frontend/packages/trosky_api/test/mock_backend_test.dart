@@ -1149,4 +1149,215 @@ void main() {
     expect(me.profile?.fullName, 'Kofi Boateng');
     expect(me.phoneNumber, MockBackend.driverPhone);
   });
+
+  group('Booking history (P-15, P-16)', () {
+    late MockBackend history;
+    late String token;
+    const open = [
+      BookingStatus.awaitingAcceptance,
+      BookingStatus.pending,
+      BookingStatus.paymentPending,
+      BookingStatus.confirmed,
+    ];
+    const ended = [
+      BookingStatus.completed,
+      BookingStatus.cancelled,
+      BookingStatus.expired,
+      BookingStatus.refundPending,
+      BookingStatus.refunded,
+    ];
+
+    setUp(() {
+      now = DateTime.utc(2026, 10, 15, 10);
+      history = MockBackend(
+        clock: () => now,
+        bookingHistory: true,
+        driverScript: MockDriverScript.rotate,
+      );
+      token = history
+          .login(
+            LoginRequest(
+              identifier: '0241234567',
+              password: MockBackend.seedPassword,
+            ),
+          )
+          .valueOrNull!
+          .accessToken;
+    });
+
+    List<String> refs({List<BookingStatus>? statuses, bool? upcoming}) => [
+      for (final b
+          in history
+              .listBookings(token, statuses: statuses, upcoming: upcoming)
+              .valueOrNull!
+              .items)
+        b.bookingReference,
+    ];
+
+    BookingResponse byRef(String reference) => history
+        .listBookings(token, limit: 50)
+        .valueOrNull!
+        .items
+        .firstWhere((b) => b.bookingReference == reference);
+
+    test('Upcoming: open bookings still ahead or under way, soonest first', () {
+      expect(refs(statuses: open, upcoming: true), [
+        'TS-C2MX',
+        'TS-8KQ2',
+        'TS-4HBN',
+        'TS-Q7RD',
+      ]);
+      expect(byRef('TS-C2MX').trip?.status, TripStatus.inProgress);
+    });
+
+    test('Past: ended bookings, newest booking first, every status', () {
+      expect(refs(statuses: ended), [
+        'TS-RF9P',
+        'TS-W3TE',
+        'TS-KN45',
+        'TS-MD60',
+        'TS-TC90',
+        'TS-RD50',
+        'TS-EX65',
+      ]);
+      final statuses = {
+        for (final b
+            in history.listBookings(token, limit: 50).valueOrNull!.items)
+          b.status,
+      };
+      expect(
+        statuses,
+        BookingStatus.values.toSet()..remove(BookingStatus.paymentPending),
+      );
+      expect(history.listBookings(token, limit: 3).valueOrNull!.total, 11);
+    });
+
+    test('waiting and pending ones never lapse; the deadline comes round', () {
+      expect(byRef('TS-4HBN').expiresAt, now.add(MockBackend.acceptTimeout));
+      // 10.5 minutes: five turns of the 2-minute window, and the token
+      // (15 minutes) still good.
+      now = now.add(const Duration(minutes: 10, seconds: 30));
+      final waiting = byRef('TS-4HBN');
+      expect(waiting.status, BookingStatus.awaitingAcceptance);
+      expect(waiting.expiresAt, now.add(const Duration(seconds: 90)));
+      expect(byRef('TS-Q7RD').status, BookingStatus.pending);
+    });
+
+    test("the drivers' script counts only the app's own bookings", () {
+      final page = history
+          .searchTrips(
+            TripSearchQuery(
+              originStopId: MockBackend.stops['Madina']!.id,
+              destinationStopId: MockBackend.stops['Circle']!.id,
+              travelDate: now,
+              departureAfter: Duration(hours: now.hour, minutes: now.minute),
+            ),
+          )
+          .valueOrNull!;
+      final trip = page.items.firstWhere(
+        (t) => t.vehicleRegistrationNumber == 'GR-4821',
+      );
+      history.simulateRiders = false;
+      final seat = history
+          .tripSeats(trip.tripId)
+          .valueOrNull!
+          .seats
+          .firstWhere((s) => s.isAvailable);
+      final booking = history
+          .createBooking(
+            token,
+            BookingCreateRequest(
+              tripId: trip.tripId,
+              passengers: [
+                PassengerInput(seatId: seat.id, fullName: 'Ama Mensah'),
+              ],
+            ),
+          )
+          .valueOrNull!;
+      now = now.add(const Duration(seconds: 9));
+      // The 1st of the rotation: accepted.
+      expect(
+        history.getBooking(token, booking.id).valueOrNull!.status,
+        BookingStatus.pending,
+      );
+    });
+
+    test('cancel: paid before the trip, a refund to approve', () {
+      final paid = byRef('TS-8KQ2');
+      final cancelled = history
+          .cancelBooking(token, paid.id, reason: 'Change of plans')
+          .valueOrNull!;
+      expect(cancelled.status, BookingStatus.refundPending);
+    });
+
+    test('cancel: waiting or not paid, cancelled at once', () {
+      for (final reference in ['TS-4HBN', 'TS-Q7RD']) {
+        final booking = byRef(reference);
+        expect(
+          history.cancelBooking(token, booking.id).valueOrNull!.status,
+          BookingStatus.cancelled,
+        );
+      }
+    });
+
+    test('cancel: the trip is under way, the booking waits for an admin', () {
+      final riding = byRef('TS-C2MX');
+      final answer = history.cancelBooking(token, riding.id).valueOrNull!;
+      expect(answer.status, BookingStatus.confirmed);
+      expect(byRef('TS-C2MX').status, BookingStatus.confirmed);
+    });
+
+    test('cancel: an ended booking is refused', () {
+      expect(
+        code(history.cancelBooking(token, byRef('TS-W3TE').id)),
+        'INVALID_STATE_TRANSITION',
+      );
+    });
+
+    test('summary: paid trips of the month, fees in, what sharing saved', () {
+      final october = history.bookingSummary(token).valueOrNull!;
+      // TS-8KQ2 17.00, TS-C2MX 5.50, TS-W3TE 19.00, TS-KN45 5.00,
+      // TS-MD60 6.50; saved 12.00 + 4.00 + 0 + 3.50 + 8.00.
+      expect(
+        (
+          october.month,
+          october.tripsCount,
+          october.totalSpent,
+          october.averageFare,
+          october.totalSaved,
+        ),
+        ('2026-10', 5, '53.00', '10.60', '27.50'),
+      );
+      final september = history
+          .bookingSummary(token, month: '2026-09')
+          .valueOrNull!;
+      expect(
+        (september.tripsCount, september.totalSpent, september.averageFare),
+        (0, '0.00', '0.00'),
+      );
+      expect(
+        code(history.bookingSummary(token, month: '2026-13')),
+        'VALIDATION_ERROR',
+      );
+    });
+
+    test('trip details: vehicle, driver, arrival; unknown is 404', () {
+      final paid = byRef('TS-8KQ2');
+      final trip = history.tripDetail(paid.tripId).valueOrNull!;
+      expect(trip.vehicle?.registrationNumber, 'GR 1234-24');
+      expect(trip.vehicle?.makeModel, 'Toyota Hiace');
+      expect(trip.driver?.fullName, isNotNull);
+      expect(trip.driver?.averageRating, inInclusiveRange(4.5, 4.9));
+      expect(
+        trip.scheduledArrivalAt,
+        trip.scheduledDepartureAt.add(const Duration(minutes: 40)),
+      );
+      expect(trip.status, TripStatus.scheduled);
+      expect(code(history.tripDetail('nope')), 'NOT_FOUND');
+    });
+
+    test('without the history flag, nobody has bookings', () {
+      expect(backend.listBookings(signIn('0241234567')).valueOrNull!.total, 0);
+    });
+  });
 }

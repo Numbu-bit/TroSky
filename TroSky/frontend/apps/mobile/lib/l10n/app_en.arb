@@ -1490,5 +1490,293 @@
   "paymentExpiredHome": "Your seat hold has expired.",
   "@paymentExpiredHome": {
     "description": "When a reopened booking's time to pay runs out."
+  },
+  "tripsTitle": "Trip History",
+  "@tripsTitle": {
+    "description": "Trip History header (P-15, Figma P13)."
+  },
+  "tripsSpentThisMonth": "Total Spent This Month",
+  "@tripsSpentThisMonth": {
+    "description": "Trip History summary card title, as designed (P13)."
+  },
+  "tripsStatTrips": "Trips",
+  "@tripsStatTrips": {
+    "description": "Trip History summary card: paid trips this month."
+  },
+  "tripsStatAvgFare": "Avg Fare",
+  "@tripsStatAvgFare": {
+    "description": "Trip History summary card: average fare this month."
+  },
+  "tripsStatSaved": "Saved",
+  "@tripsStatSaved": {
+    "description": "Trip History summary card: what sharing saved this month."
+  },
+  "tripsTabUpcoming": "Upcoming",
+  "@tripsTabUpcoming": {
+    "description": "Trip History tab: bookings still to ride (instead of the design's All / This Month / Last Month)."
+  },
+  "tripsTabPast": "Past",
+  "@tripsTabPast": {
+    "description": "Trip History tab: bookings that ended."
+  },
+  "tripsYesterday": "Yesterday",
+  "@tripsYesterday": {
+    "description": "Day of a past booking on a Trip History row."
+  },
+  "tripsWhen": "{day}, {time}",
+  "@tripsWhen": {
+    "description": "When a Trip History row's trip departs: \"Today, 08:30\", \"Mon, 07:45\".",
+    "placeholders": {
+      "day": {
+        "type": "String",
+        "example": "Today"
+      },
+      "time": {
+        "type": "String",
+        "example": "08:30"
+      }
+    }
+  },
+  "tripsLoading": "Loading your trips",
+  "@tripsLoading": {
+    "description": "Screen reader label for Trip History while it loads."
+  },
+  "tripsEmptyUpcoming": "No upcoming trips. Book a seat and it shows up here.",
+  "@tripsEmptyUpcoming": {
+    "description": "Trip History, Upcoming tab, with no bookings."
+  },
+  "tripsEmptyPast": "No past trips yet.",
+  "@tripsEmptyPast": {
+    "description": "Trip History, Past tab, with no bookings."
+  },
+  "tripsFindRide": "Find a ride",
+  "@tripsFindRide": {
+    "description": "Button under an empty Trip History tab: opens Search."
+  },
+  "tripsLoadMoreError": "Couldn't load more trips.",
+  "@tripsLoadMoreError": {
+    "description": "Under the Trip History list when the next page fails."
+  },
+  "tripsOpenLabel": "Opens the booking details",
+  "@tripsOpenLabel": {
+    "description": "Screen reader hint on a Trip History row."
+  },
+  "bookingStatusWaiting": "Waiting for driver",
+  "@bookingStatusWaiting": {
+    "description": "Booking status: awaiting_acceptance."
+  },
+  "bookingStatusPendingPayment": "Pending payment",
+  "@bookingStatusPendingPayment": {
+    "description": "Booking status: pending or payment_pending."
+  },
+  "bookingStatusPaidUpcoming": "Paid · Upcoming",
+  "@bookingStatusPaidUpcoming": {
+    "description": "Booking status: confirmed, the trip not started."
+  },
+  "bookingStatusPaidUnderWay": "Paid · On the way",
+  "@bookingStatusPaidUnderWay": {
+    "description": "Booking status: confirmed, the trip boarding or under way (not in the design)."
+  },
+  "bookingStatusCompleted": "Completed",
+  "@bookingStatusCompleted": {
+    "description": "Booking status: completed."
+  },
+  "bookingStatusCancelled": "Cancelled",
+  "@bookingStatusCancelled": {
+    "description": "Booking status: cancelled, refund_pending or refunded."
+  },
+  "bookingStatusExpired": "Expired",
+  "@bookingStatusExpired": {
+    "description": "Booking status: expired."
+  },
+  "bookingDetailsTitle": "Booking details",
+  "@bookingDetailsTitle": {
+    "description": "Booking details header (P-16)."
+  },
+  "bookingCopyReference": "Copy booking reference",
+  "@bookingCopyReference": {
+    "description": "Screen reader label for the copy button by the booking reference."
+  },
+  "bookingReferenceCopied": "Booking reference copied",
+  "@bookingReferenceCopied": {
+    "description": "After the booking reference was copied."
+  },
+  "bookingAboutMinutes": "About {minutes} min",
+  "@bookingAboutMinutes": {
+    "description": "How long the ride takes, on the trip card.",
+    "placeholders": {
+      "minutes": {
+        "type": "int",
+        "example": "40"
+      }
+    }
+  },
+  "bookingArrival": "~{time}",
+  "@bookingArrival": {
+    "description": "Estimated arrival time on the trip card.",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "07:55"
+      }
+    }
+  },
+  "bookingVehicleDriver": "Vehicle & driver",
+  "@bookingVehicleDriver": {
+    "description": "Booking details card title."
+  },
+  "bookingSeats": "Seats",
+  "@bookingSeats": {
+    "description": "Booking details: the booked seats."
+  },
+  "bookingPassengers": "{count, plural, =1{1 passenger} other{{count} passengers}}",
+  "@bookingPassengers": {
+    "description": "Booking details: how many seats.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bookingDriverRated": "Rated {rating} out of 5",
+  "@bookingDriverRated": {
+    "description": "Screen reader label for the driver's rating.",
+    "placeholders": {
+      "rating": {
+        "type": "String",
+        "example": "4.8"
+      }
+    }
+  },
+  "bookingFareBreakdown": "Fare breakdown",
+  "@bookingFareBreakdown": {
+    "description": "Booking details card title."
+  },
+  "bookingFareLine": "{count} × {fare}",
+  "@bookingFareLine": {
+    "description": "Fare breakdown: seats times the fare of one.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "fare": {
+        "type": "String",
+        "example": "₵8.00"
+      }
+    }
+  },
+  "bookingServiceFee": "Service fee",
+  "@bookingServiceFee": {
+    "description": "Fare breakdown: the platform fee (not in the design; the backend charges it)."
+  },
+  "bookingPayNow": "Pay now",
+  "@bookingPayNow": {
+    "description": "Booking details action for a booking to pay: opens Payment."
+  },
+  "bookingViewStatus": "View status",
+  "@bookingViewStatus": {
+    "description": "Booking details action while the driver hasn't answered: opens Payment."
+  },
+  "bookingRefunded": "{amount} refunded",
+  "@bookingRefunded": {
+    "description": "Booking details: a refund paid out (back the way it was paid).",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₵16.00"
+      }
+    }
+  },
+  "bookingRefundRequested": "Refund of {amount} requested",
+  "@bookingRefundRequested": {
+    "description": "Booking details: a refund waiting for TroSky's approval.",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₵16.00"
+      }
+    }
+  },
+  "bookingLoadError": "Couldn't load this booking.",
+  "@bookingLoadError": {
+    "description": "Booking details when it fails to load."
+  },
+  "cancelSheetTitle": "Cancel this booking?",
+  "@cancelSheetTitle": {
+    "description": "Cancel sheet title."
+  },
+  "cancelSheetSubtitle": "Please tell us why you're cancelling.",
+  "@cancelSheetSubtitle": {
+    "description": "Cancel sheet subtitle."
+  },
+  "cancelReasonPlans": "Change of plans",
+  "@cancelReasonPlans": {
+    "description": "Cancel reason."
+  },
+  "cancelReasonAnotherRide": "Found another ride",
+  "@cancelReasonAnotherRide": {
+    "description": "Cancel reason."
+  },
+  "cancelReasonTime": "Departure time doesn't suit me",
+  "@cancelReasonTime": {
+    "description": "Cancel reason."
+  },
+  "cancelReasonOther": "Other",
+  "@cancelReasonOther": {
+    "description": "Cancel reason: the passenger writes their own."
+  },
+  "cancelReasonHint": "Tell us more",
+  "@cancelReasonHint": {
+    "description": "Hint in the cancel sheet's text field for \"Other\"."
+  },
+  "cancelRefundTitle": "Refund: {amount}",
+  "@cancelRefundTitle": {
+    "description": "Cancel sheet refund box for a paid booking (the design names the wallet; the backend refunds the way it was paid).",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₵16.00"
+      }
+    }
+  },
+  "cancelRefundBody": "TroSky approves the refund, then it goes back the way you paid.",
+  "@cancelRefundBody": {
+    "description": "Cancel sheet refund box: how refunds work."
+  },
+  "cancelReviewTitle": "Your trip has started",
+  "@cancelReviewTitle": {
+    "description": "Cancel sheet note when the trip is under way."
+  },
+  "cancelReviewBody": "TroSky reviews cancellations once a trip is under way.",
+  "@cancelReviewBody": {
+    "description": "Cancel sheet note when the trip is under way."
+  },
+  "cancelConfirm": "Cancel booking",
+  "@cancelConfirm": {
+    "description": "Cancel sheet: the red button."
+  },
+  "cancelKeep": "Keep booking",
+  "@cancelKeep": {
+    "description": "Cancel sheet: closes it."
+  },
+  "cancelledTitle": "Booking cancelled",
+  "@cancelledTitle": {
+    "description": "Title after cancelling."
+  },
+  "cancelledBody": "Your seats have been released.",
+  "@cancelledBody": {
+    "description": "Line after cancelling."
+  },
+  "cancelledBackToTrips": "Back to trips",
+  "@cancelledBackToTrips": {
+    "description": "Button after cancelling: back to Trip History."
+  },
+  "cancelRequestedTitle": "Cancellation requested",
+  "@cancelRequestedTitle": {
+    "description": "Title when the cancel waits for TroSky (the trip had started; not in the design)."
+  },
+  "cancelRequestedBody": "Your trip has already started, so TroSky reviews it. Your booking stays as it is until then.",
+  "@cancelRequestedBody": {
+    "description": "Line when the cancel waits for TroSky."
   }
 }

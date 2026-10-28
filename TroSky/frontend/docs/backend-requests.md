@@ -34,6 +34,7 @@
 | G32 | Incident types and a photo | **Done** | Types `passenger_issue`, `road_hazard`; optional `severity`; `POST /incidents/{id}/photo` |
 | G33 | Drop-off on the manifest | **Done** | `dropoff_stop_name` on manifest entries |
 | G34 | Booking acceptance details | **New** (21 Oct) | See G34 below |
+| G35 | Cancels and refunds a passenger can see | **New** (28 Oct) | See G35 below |
 | E1 | Boarding | **Decided**: the driver scans the passenger's ticket | As built |
 | E2 | Driver trips | **Decided**: scheduled by admins and fleet owners; Go Online/Offline is availability only, no ride requests | As built |
 | E3 | Subscriptions (G14) | **Decided**: out of the MVP | — |
@@ -287,3 +288,28 @@ Suggested, on `BookingResponse` while `awaiting_acceptance` (all optional, so no
 `last_move_reason`: `unanswered`, `declined` or `admin` (from the status history reason the service
 already writes: "Moved to another vehicle: …").
 
+### G35 — Cancels and refunds a passenger can see
+
+**Needed by:** Trip History (P-15) and Booking details (P-16), built 28 Oct 2026 (frontend
+decision 30).
+
+1. **A cancel waiting for review is invisible.** Once a trip has started,
+   `POST /bookings/{id}/cancel` files a `CancellationRequest` (pending) and returns the booking
+   unchanged. No passenger endpoint returns the request, so after the first answer the app can't
+   tell the passenger it is waiting, and a second tap files a second request (nothing stops
+   duplicates). Suggested on `BookingResponse`: `cancellation: {status, created_at,
+   refund_eligible} | null`, and a 409 for a second pending request.
+2. **Where a refund goes.** The design says "₵16.00 refunded to wallet", but `RefundService` pays
+   back the way the booking was paid (wallet, or MoMo through the provider), and the booking
+   doesn't say which. `GET /payments` has no `booking_id` filter. Suggested: `payment_channel` on
+   `BookingResponse` (null until paid). Until then the app says "₵16.00 refunded" and "Refund of
+   ₵16.00 requested", and leaves out the design's "PAID WITH".
+3. **"Past" takes two queries.** `upcoming` looks only at the trip, so a booking cancelled for
+   tomorrow counts as upcoming. The app filters by status instead: Upcoming is
+   `status=awaiting_acceptance,pending,payment_pending,confirmed&upcoming=true`, Past is
+   `status=completed,cancelled,expired,refund_pending,refunded`. An open booking whose trip ended
+   without its passenger getting off is in neither. Suggested: `?history=true` (ended, or trip
+   behind), most recent trip first.
+4. **A `refund_pending` booking can be cancelled again**, and then becomes `cancelled`
+   (`_TERMINAL_BOOKING_STATUSES` doesn't include it). The app never offers it; the refund request
+   itself stays. Suggested: refuse it with 409 like the other ended statuses.

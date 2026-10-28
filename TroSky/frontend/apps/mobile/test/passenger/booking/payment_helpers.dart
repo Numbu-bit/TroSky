@@ -112,6 +112,10 @@ class PolledBookings implements BookingRepository {
   );
 
   @override
+  Future<Result<BookingSummaryResponse>> summary({String? month}) =>
+      _inner.summary(month: month);
+
+  @override
   Future<Result<BookingResponse>> get(String bookingId) async {
     gets++;
     if (failures.isNotEmpty) return Err(failures.removeAt(0));

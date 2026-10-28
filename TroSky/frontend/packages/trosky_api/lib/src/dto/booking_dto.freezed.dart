@@ -1676,6 +1676,292 @@ as String?,
 
 
 /// @nodoc
+mixin _$BookingSummaryResponse {
+
+/// "2026-10".
+ String get month; String get currency;/// Paid trips departing that month.
+ int get tripsCount;/// What they cost, fees included.
+@JsonKey(fromJson: decimalString) String get totalSpent;@JsonKey(fromJson: decimalString) String get averageFare;/// What sharing saved: the unshared price less the fare paid.
+@JsonKey(fromJson: decimalString) String get totalSaved;
+/// Create a copy of BookingSummaryResponse
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$BookingSummaryResponseCopyWith<BookingSummaryResponse> get copyWith => _$BookingSummaryResponseCopyWithImpl<BookingSummaryResponse>(this as BookingSummaryResponse, _$identity);
+
+  /// Serializes this BookingSummaryResponse to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BookingSummaryResponse&&(identical(other.month, month) || other.month == month)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.tripsCount, tripsCount) || other.tripsCount == tripsCount)&&(identical(other.totalSpent, totalSpent) || other.totalSpent == totalSpent)&&(identical(other.averageFare, averageFare) || other.averageFare == averageFare)&&(identical(other.totalSaved, totalSaved) || other.totalSaved == totalSaved));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,month,currency,tripsCount,totalSpent,averageFare,totalSaved);
+
+@override
+String toString() {
+  return 'BookingSummaryResponse(month: $month, currency: $currency, tripsCount: $tripsCount, totalSpent: $totalSpent, averageFare: $averageFare, totalSaved: $totalSaved)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $BookingSummaryResponseCopyWith<$Res>  {
+  factory $BookingSummaryResponseCopyWith(BookingSummaryResponse value, $Res Function(BookingSummaryResponse) _then) = _$BookingSummaryResponseCopyWithImpl;
+@useResult
+$Res call({
+ String month, String currency, int tripsCount,@JsonKey(fromJson: decimalString) String totalSpent,@JsonKey(fromJson: decimalString) String averageFare,@JsonKey(fromJson: decimalString) String totalSaved
+});
+
+
+
+
+}
+/// @nodoc
+class _$BookingSummaryResponseCopyWithImpl<$Res>
+    implements $BookingSummaryResponseCopyWith<$Res> {
+  _$BookingSummaryResponseCopyWithImpl(this._self, this._then);
+
+  final BookingSummaryResponse _self;
+  final $Res Function(BookingSummaryResponse) _then;
+
+/// Create a copy of BookingSummaryResponse
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? month = null,Object? currency = null,Object? tripsCount = null,Object? totalSpent = null,Object? averageFare = null,Object? totalSaved = null,}) {
+  return _then(BookingSummaryResponse(
+month: null == month ? _self.month : month // ignore: cast_nullable_to_non_nullable
+as String,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String,tripsCount: null == tripsCount ? _self.tripsCount : tripsCount // ignore: cast_nullable_to_non_nullable
+as int,totalSpent: null == totalSpent ? _self.totalSpent : totalSpent // ignore: cast_nullable_to_non_nullable
+as String,averageFare: null == averageFare ? _self.averageFare : averageFare // ignore: cast_nullable_to_non_nullable
+as String,totalSaved: null == totalSaved ? _self.totalSaved : totalSaved // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [BookingSummaryResponse].
+extension BookingSummaryResponsePatterns on BookingSummaryResponse {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _BookingSummaryResponse value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _BookingSummaryResponse() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _BookingSummaryResponse value)  $default,){
+final _that = this;
+switch (_that) {
+case _BookingSummaryResponse():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _BookingSummaryResponse value)?  $default,){
+final _that = this;
+switch (_that) {
+case _BookingSummaryResponse() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String month,  String currency,  int tripsCount, @JsonKey(fromJson: decimalString)  String totalSpent, @JsonKey(fromJson: decimalString)  String averageFare, @JsonKey(fromJson: decimalString)  String totalSaved)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _BookingSummaryResponse() when $default != null:
+return $default(_that.month,_that.currency,_that.tripsCount,_that.totalSpent,_that.averageFare,_that.totalSaved);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String month,  String currency,  int tripsCount, @JsonKey(fromJson: decimalString)  String totalSpent, @JsonKey(fromJson: decimalString)  String averageFare, @JsonKey(fromJson: decimalString)  String totalSaved)  $default,) {final _that = this;
+switch (_that) {
+case _BookingSummaryResponse():
+return $default(_that.month,_that.currency,_that.tripsCount,_that.totalSpent,_that.averageFare,_that.totalSaved);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String month,  String currency,  int tripsCount, @JsonKey(fromJson: decimalString)  String totalSpent, @JsonKey(fromJson: decimalString)  String averageFare, @JsonKey(fromJson: decimalString)  String totalSaved)?  $default,) {final _that = this;
+switch (_that) {
+case _BookingSummaryResponse() when $default != null:
+return $default(_that.month,_that.currency,_that.tripsCount,_that.totalSpent,_that.averageFare,_that.totalSaved);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _BookingSummaryResponse implements BookingSummaryResponse {
+  const _BookingSummaryResponse({required this.month, required this.currency, required this.tripsCount, @JsonKey(fromJson: decimalString) required this.totalSpent, @JsonKey(fromJson: decimalString) required this.averageFare, @JsonKey(fromJson: decimalString) required this.totalSaved});
+  factory _BookingSummaryResponse.fromJson(Map<String, dynamic> json) => _$BookingSummaryResponseFromJson(json);
+
+/// "2026-10".
+@override final  String month;
+@override final  String currency;
+/// Paid trips departing that month.
+@override final  int tripsCount;
+/// What they cost, fees included.
+@override@JsonKey(fromJson: decimalString) final  String totalSpent;
+@override@JsonKey(fromJson: decimalString) final  String averageFare;
+/// What sharing saved: the unshared price less the fare paid.
+@override@JsonKey(fromJson: decimalString) final  String totalSaved;
+
+/// Create a copy of BookingSummaryResponse
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$BookingSummaryResponseCopyWith<_BookingSummaryResponse> get copyWith => __$BookingSummaryResponseCopyWithImpl<_BookingSummaryResponse>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$BookingSummaryResponseToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BookingSummaryResponse&&(identical(other.month, month) || other.month == month)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.tripsCount, tripsCount) || other.tripsCount == tripsCount)&&(identical(other.totalSpent, totalSpent) || other.totalSpent == totalSpent)&&(identical(other.averageFare, averageFare) || other.averageFare == averageFare)&&(identical(other.totalSaved, totalSaved) || other.totalSaved == totalSaved));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,month,currency,tripsCount,totalSpent,averageFare,totalSaved);
+
+@override
+String toString() {
+  return 'BookingSummaryResponse(month: $month, currency: $currency, tripsCount: $tripsCount, totalSpent: $totalSpent, averageFare: $averageFare, totalSaved: $totalSaved)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$BookingSummaryResponseCopyWith<$Res> implements $BookingSummaryResponseCopyWith<$Res> {
+  factory _$BookingSummaryResponseCopyWith(_BookingSummaryResponse value, $Res Function(_BookingSummaryResponse) _then) = __$BookingSummaryResponseCopyWithImpl;
+@override @useResult
+$Res call({
+ String month, String currency, int tripsCount,@JsonKey(fromJson: decimalString) String totalSpent,@JsonKey(fromJson: decimalString) String averageFare,@JsonKey(fromJson: decimalString) String totalSaved
+});
+
+
+
+
+}
+/// @nodoc
+class __$BookingSummaryResponseCopyWithImpl<$Res>
+    implements _$BookingSummaryResponseCopyWith<$Res> {
+  __$BookingSummaryResponseCopyWithImpl(this._self, this._then);
+
+  final _BookingSummaryResponse _self;
+  final $Res Function(_BookingSummaryResponse) _then;
+
+/// Create a copy of BookingSummaryResponse
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? month = null,Object? currency = null,Object? tripsCount = null,Object? totalSpent = null,Object? averageFare = null,Object? totalSaved = null,}) {
+  return _then(_BookingSummaryResponse(
+month: null == month ? _self.month : month // ignore: cast_nullable_to_non_nullable
+as String,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
+as String,tripsCount: null == tripsCount ? _self.tripsCount : tripsCount // ignore: cast_nullable_to_non_nullable
+as int,totalSpent: null == totalSpent ? _self.totalSpent : totalSpent // ignore: cast_nullable_to_non_nullable
+as String,averageFare: null == averageFare ? _self.averageFare : averageFare // ignore: cast_nullable_to_non_nullable
+as String,totalSaved: null == totalSaved ? _self.totalSaved : totalSaved // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
 mixin _$BookingResponse {
 
  String get id; String get bookingReference; String get tripId;@JsonKey(unknownEnumValue: BookingStatus.pending) BookingStatus get status; int get passengerCount; String? get originStopId; String? get destinationStopId;@JsonKey(fromJson: decimalString) String get fareAmount;@JsonKey(fromJson: decimalString) String get platformFee;@JsonKey(fromJson: decimalString) String get totalAmount;/// The deadline: for the driver's answer ([BookingStatus.

@@ -860,6 +860,141 @@ void main() {
       width: 390,
     );
   });
+
+  testWidgets('Trips parts (P-15, P-16): summary, tabs, rows, details, '
+      'cancel sheet, cancelled', (tester) async {
+    await _golden(
+      tester,
+      'trips_components',
+      Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const TroskySpendingSummaryCard(
+              title: 'Total Spent This Month',
+              amount: '₵128.50',
+              stats: [
+                ('24', 'Trips'),
+                ('₵5.35', 'Avg Fare'),
+                ('₵18.20', 'Saved'),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TroskySegmentedTabs(
+              labels: const ['Upcoming', 'Past'],
+              selected: 0,
+              onSelected: (_) {},
+            ),
+            const SizedBox(height: 12),
+            TroskyBookingRow(
+              route: 'Madina → Circle',
+              when: 'Today, 08:30',
+              price: '₵6.00',
+              status: 'Completed',
+              tone: TroskyTagTone.green,
+              onPressed: () {},
+            ),
+            const SizedBox(height: 10),
+            const TroskyBookingRow(
+              route: 'Tema → Circle',
+              when: 'Sat, 18:00',
+              price: '₵9.00',
+              status: 'Cancelled',
+              tone: TroskyTagTone.red,
+              struck: true,
+            ),
+            const SizedBox(height: 10),
+            const TroskyBookingRow(
+              route: 'Legon → Osu',
+              when: 'Tomorrow, 08:30',
+              price: '₵18.50',
+              status: 'Waiting for driver',
+              tone: TroskyTagTone.amber,
+            ),
+            const SizedBox(height: 10),
+            const TroskyBookingRowSkeleton(),
+            const SizedBox(height: 16),
+            const TroskyJourneyCard(
+              day: 'Thu 22 Oct',
+              duration: 'About 40 min',
+              from: 'Madina Zongo Junction',
+              fromTime: '07:15',
+              to: 'Circle',
+              toTime: '~07:55',
+            ),
+            const SizedBox(height: 14),
+            const TroskyDetailsCard(
+              label: 'Fare breakdown',
+              child: TroskyRefundNote(text: '₵16.00 refunded'),
+            ),
+            const SizedBox(height: 16),
+            TroskyRadioOption(
+              label: 'Change of plans',
+              selected: true,
+              onPressed: () {},
+            ),
+            TroskyRadioOption(
+              label: 'Found another ride',
+              selected: false,
+              onPressed: () {},
+            ),
+            const SizedBox(height: 8),
+            const TroskyRefundBox(
+              title: 'Refund: ₵16.00',
+              body:
+                  'TroSky approves the refund, then it goes back the way '
+                  'you paid.',
+            ),
+            const SizedBox(height: 16),
+            TroskyButton(
+              label: 'Cancel booking',
+              variant: TroskyButtonVariant.danger,
+              onPressed: () {},
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                TroskyStatusTile(
+                  color: TroskyColors.greenA10,
+                  icon: TroskyIcons.checkCircle(color: TroskyColors.green),
+                ),
+                const TroskyRefundNote(
+                  text: '₵16.00 refunded',
+                  prominent: true,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      width: 390,
+    );
+  });
+
+  testWidgets('Page header (P-16) with the copy button and a status chip', (
+    tester,
+  ) async {
+    await _golden(
+      tester,
+      'page_header_details',
+      TroskyPageHeader(
+        title: 'Booking details',
+        subtitle: 'TS-8KQ2',
+        onBack: () {},
+        subtitleTrailing: Padding(
+          padding: const EdgeInsets.all(8),
+          child: TroskyIcons.copy(color: TroskyColors.whiteA55),
+        ),
+        trailing: const TroskyChip(
+          label: 'Paid · Upcoming',
+          color: TroskyChipColor.green,
+        ),
+      ),
+      width: 390,
+    );
+  });
 }
 
 class _NotAccepted extends StatelessWidget {
