@@ -10,18 +10,23 @@
 # restarts it.
 #
 # Before that it turns Render's connection strings into the URLs the app
-# expects, waits for Postgres and Key Value, migrates the database and adds
-# the reference data (roles and permissions). The API starts first, Celery
-# once the API answers. An administrator account is
-# created only from DEV_ADMIN_PASSWORD, and demo data only with
-# SEED_DEMO_DATA=true. No secret is ever printed.
+# expects, waits for Postgres and Key Value, then one Python process migrates
+# the database and adds the reference data (roles and permissions). The API
+# starts next; once it answers, the demo trips are topped up if needed, then
+# Celery starts. An administrator account is created only from
+# DEV_ADMIN_PASSWORD, and demo data only with SEED_DEMO_DATA=true. No secret
+# is ever printed.
+#
+# Every wake-up from sleep runs all of this, on 0.1 CPU, while the first
+# request waits: anything that can wait goes after the API answers.
 set -euo pipefail
 
 # Run from the image's /app (this script's parent folder), whatever the
 # working directory: alembic.ini and the `scripts` package live there.
 cd "$(dirname "$0")/.."
 
-log() { echo "[render-start] $*"; }
+# UTC time on each line: the phases of a start can be timed from the logs.
+log() { echo "[render-start] $(date -u +%H:%M:%S) $*"; }
 
 # Fewer malloc arenas: less memory per Python process, to fit 512 MB.
 export MALLOC_ARENA_MAX="${MALLOC_ARENA_MAX:-2}"
@@ -95,16 +100,18 @@ log "waiting for Postgres and Key Value"
 wait_for Postgres "$db_host" "$db_port"
 wait_for "Key Value" $(endpoint "$redis_url" 6379)
 
-log "migrating the database"
-alembic upgrade head
-
-# --- Reference data, and the administrator only from DEV_ADMIN_PASSWORD -----
-# Roles and permissions always (idempotent; creates no users). The
-# administrator: scripts/seed_dev_data.py would fall back to a password
-# written in the code, and also adds example routes, so it is not run here.
-# Only its ensure_dev_admin() is, once the password has been checked here;
-# it does nothing when the administrator already exists. One Python process
-# for both, to keep starts short.
+# --- Migrations, reference data, administrator, demo trips left -------------
+# One Python process for all four: each process that imports the app costs
+# tens of seconds on 0.1 CPU.
+# * Migrations: Alembic's API, as `alembic upgrade head` would.
+# * Roles and permissions always (idempotent; creates no users).
+# * The administrator: scripts/seed_dev_data.py would fall back to a password
+#   written in the code, and also adds example routes, so it is not run here.
+#   Only its ensure_dev_admin() is, once the password has been checked here;
+#   it does nothing when the administrator already exists.
+# * With SEED_DEMO_DATA=true: are fewer than $demo_days_left days of demo
+#   trips left? Then $demo_flag is written and the demo seed runs once the
+#   API answers (below). Otherwise the seed would only find nothing to add.
 create_admin=0
 admin_password="${DEV_ADMIN_PASSWORD:-}"
 if [ -z "$admin_password" ]; then
@@ -118,16 +125,61 @@ else
 fi
 unset admin_password
 
-log "adding missing roles and permissions"
-CREATE_ADMIN="$create_admin" python - <<'PY'
+demo_flag=/tmp/trosky-demo-seed-needed
+demo_days_left=2
+rm -f "$demo_flag"
+log "migrating the database, adding missing roles and permissions"
+CREATE_ADMIN="$create_admin" DEMO_FLAG="$demo_flag" DEMO_DAYS_LEFT="$demo_days_left" python - <<'PY'
+import ast
 import asyncio
 import os
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+
+from alembic import command
+from alembic.config import Config
+from sqlalchemy import func, select
 
 from app.core.database import dispose_engine, transactional_session
-from app.core.logging import configure_logging
+from app.core.logging import configure_logging, get_logger
 from app.core.permissions import SystemRole
+from app.models.routes import Route
+from app.models.trips import Trip
 from scripts.seed_dev_data import ensure_dev_admin
 from scripts.seed_reference_data import ensure_roles, seed_reference_data
+
+logger = get_logger("render-start")
+
+
+def demo_route_names() -> list[str]:
+    """The names in scripts/seed_demo_data.py's ROUTES, read from its source:
+    importing it loads the booking services, seconds more on 0.1 CPU."""
+    tree = ast.parse(Path("scripts/seed_demo_data.py").read_text(encoding="utf-8"))
+    return [
+        node.args[0].value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and getattr(node.func, "id", None) == "RouteSpec"
+        and node.args
+        and isinstance(node.args[0], ast.Constant)
+    ]
+
+
+async def demo_seed_needed() -> bool:
+    days = int(os.environ["DEMO_DAYS_LEFT"])
+    async with transactional_session() as session:
+        last = await session.scalar(
+            select(func.max(Trip.scheduled_departure_at))
+            .join(Route, Route.id == Trip.route_id)
+            .where(Route.name.in_(demo_route_names()))
+        )
+    needed = last is None or last < datetime.now(UTC) + timedelta(days=days)
+    logger.info(
+        "demo_trips_checked",
+        last_departure=last.isoformat() if last else None,
+        seed_needed=needed,
+    )
+    return needed
 
 
 async def main() -> None:
@@ -138,21 +190,16 @@ async def main() -> None:
             async with transactional_session() as session:
                 roles = await ensure_roles(session)
                 await ensure_dev_admin(session, roles[SystemRole.ADMIN.value])
+        if os.environ.get("SEED_DEMO_DATA") == "true" and await demo_seed_needed():
+            Path(os.environ["DEMO_FLAG"]).touch()
     finally:
         await dispose_engine()
 
 
+# Synchronous (psycopg), so before the event loop starts.
+command.upgrade(Config("alembic.ini"), "head")
 asyncio.run(main())
 PY
-
-# --- Demo data: only on request --------------------------------------------
-if [ "${SEED_DEMO_DATA:-false}" = "true" ]; then
-    log "SEED_DEMO_DATA=true: loading demo stops, routes, trips and accounts"
-    # Demo data is optional: if loading it fails, the server starts anyway.
-    if ! python -m scripts.seed_demo_data; then
-        log "loading the demo data failed (see above): starting without it"
-    fi
-fi
 
 # --- The API ----------------------------------------------------------------
 # Started first: Render's health check waits for it, and on 0.1 CPU it boots
@@ -171,6 +218,7 @@ gunicorn app.main:app \
     --access-logfile - \
     --error-logfile - &
 api_pid=$!
+seed_pid=""
 celery_pid=""
 
 # Gunicorn isn't exec'd: it exits 0 when stopped, so a Celery crash could
@@ -180,8 +228,8 @@ celery_pid=""
 # either process ends by itself, the other is stopped and the container
 # exits 1, which Render treats as a crash and restarts.
 stop_all() {
-    local pids="$api_pid $celery_pid"
-    # shellcheck disable=SC2086 # word splitting wanted: one or two PIDs
+    local pids="$api_pid $seed_pid $celery_pid"
+    # shellcheck disable=SC2086 # word splitting wanted: one to three PIDs
     kill -TERM $pids 2>/dev/null || true
     # shellcheck disable=SC2086
     wait $pids 2>/dev/null || true
@@ -196,10 +244,31 @@ for i in $(seq 1 300); do
         exit 1
     fi
     if curl -fsS -m 5 -o /dev/null "http://127.0.0.1:$port/health/live" 2>/dev/null; then
+        log "the API answers"
         break
     fi
     sleep 2
 done
+
+# --- Demo trips: topped up while the API already answers --------------------
+# Only when fewer than $demo_days_left days are left (checked above), so about
+# once in five days. Before Celery, not alongside it: the two booting at once
+# would come close to the 512 MB limit. In the background with `wait`, so a
+# stop signal isn't held up until the seed ends. Demo data is optional: if
+# loading it fails, Celery starts anyway.
+if [ -f "$demo_flag" ]; then
+    log "fewer than $demo_days_left days of demo trips left: loading demo stops, routes, trips and accounts"
+    timeout 900 python -m scripts.seed_demo_data &
+    seed_pid=$!
+    if wait "$seed_pid"; then
+        log "demo trips loaded"
+    else
+        log "loading the demo data failed (see above): carrying on without it"
+    fi
+    seed_pid=""
+elif [ "${SEED_DEMO_DATA:-false}" = "true" ]; then
+    log "$demo_days_left days or more of demo trips left: nothing to load"
+fi
 
 # --- Celery worker with embedded beat ---------------------------------------
 # One task at a time, in one child process kept for good: its tasks share
