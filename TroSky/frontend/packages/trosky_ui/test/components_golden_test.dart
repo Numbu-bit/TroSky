@@ -973,28 +973,30 @@ void main() {
     );
   });
 
-  testWidgets('Page header (P-16) with the copy button and a status chip', (
-    tester,
-  ) async {
-    await _golden(
-      tester,
-      'page_header_details',
-      TroskyPageHeader(
-        title: 'Booking details',
-        subtitle: 'TS-8KQ2',
-        onBack: () {},
-        subtitleTrailing: Padding(
-          padding: const EdgeInsets.all(8),
-          child: TroskyIcons.copy(color: TroskyColors.whiteA55),
+  testWidgets(
+    'Page header (P-16): a long reference with its copy button and a status chip',
+    (tester) async {
+      await _golden(
+        tester,
+        'page_header_details',
+        // Staging's references are longer than the design's "TS-8KQ2".
+        TroskyPageHeader(
+          title: 'Booking details',
+          subtitle: 'TRK-6VJF55ME',
+          onBack: () {},
+          subtitleTrailing: Padding(
+            padding: const EdgeInsets.all(8),
+            child: TroskyIcons.copy(color: TroskyColors.whiteA55),
+          ),
+          trailing: const TroskyChip(
+            label: 'Pending payment',
+            color: TroskyChipColor.amber,
+          ),
         ),
-        trailing: const TroskyChip(
-          label: 'Paid · Upcoming',
-          color: TroskyChipColor.green,
-        ),
-      ),
-      width: 390,
-    );
-  });
+        width: 360,
+      );
+    },
+  );
 }
 
 class _NotAccepted extends StatelessWidget {

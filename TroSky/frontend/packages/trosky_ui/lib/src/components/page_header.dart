@@ -40,6 +40,9 @@ class TroskyPageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final subtitleStyle = TroskyTypography.body13Regular.copyWith(
+      color: TroskyColors.whiteA55,
+    );
     final top = math.max(
       TroskyAuthHeader.statusBarHeight,
       MediaQuery.viewPaddingOf(context).top,
@@ -86,12 +89,19 @@ class TroskyPageHeader extends StatelessWidget {
                   Row(
                     children: [
                       Flexible(
-                        child: Text(
-                          subtitle,
-                          style: TroskyTypography.body13Regular.copyWith(
-                            color: TroskyColors.whiteA55,
-                          ),
-                        ),
+                        child: subtitleTrailing == null
+                            ? Text(subtitle, style: subtitleStyle)
+                            // A reference: one line, a little smaller
+                            // when it must, never broken in two.
+                            : FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  subtitle,
+                                  maxLines: 1,
+                                  style: subtitleStyle,
+                                ),
+                              ),
                       ),
                       ?subtitleTrailing,
                     ],
