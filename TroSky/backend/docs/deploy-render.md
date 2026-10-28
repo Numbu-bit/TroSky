@@ -30,20 +30,30 @@ Render docs: [Blueprint spec](https://render.com/docs/blueprint-spec) ·
 3. Adds `$RENDER_EXTERNAL_HOSTNAME` (`trosky-api.onrender.com`) to `TRUSTED_HOSTS`. Render's
    health checks send that hostname, and any other `Host` gets 400.
 4. Waits for Postgres and Key Value with a TCP check in bash (no Python: on 0.1 CPU every
-   Python process that imports the app costs most of a minute), then runs `alembic upgrade head`.
-5. In one Python process, adds the roles and permissions (`scripts.seed_reference_data`;
-   idempotent, creates no users) and the **administrator**, only from `DEV_ADMIN_PASSWORD`
-   (see below).
-6. Loads the **demo data** only when `SEED_DEMO_DATA=true`.
-7. Starts Gunicorn with one Uvicorn worker on `0.0.0.0:$PORT` (10000) first, because Render's
-   health check waits for it. Once `/health/live` answers, it starts the Celery worker with
-   embedded beat, then watches both:
+   Python process that imports the app costs tens of seconds).
+5. In **one Python process**: migrates the database (Alembic's API, as `alembic upgrade head`),
+   adds the roles and permissions (`scripts.seed_reference_data`; idempotent, creates no users)
+   and the **administrator**, only from `DEV_ADMIN_PASSWORD` (see below). With
+   `SEED_DEMO_DATA=true` it also checks the demo timetable: are fewer than 2 days of demo trips
+   left? (See "Keeping trips available".)
+6. Starts Gunicorn with one Uvicorn worker on `0.0.0.0:$PORT` (10000), because Render's health
+   check and the first request wait for it.
+7. Once `/health/live` answers, and only if step 5 found fewer than 2 days of demo trips, loads
+   the **demo data** (`scripts.seed_demo_data`) while the API already answers. A failure is
+   logged and the start carries on.
+8. Then starts the Celery worker with embedded beat (after the seed, not alongside it, to stay
+   well inside 512 MB), and watches both:
    - Render's stop signal is passed on to both, and the script exits 0.
    - If either process ends by itself, the script stops the other and exits 1, so Render restarts
      the instance.
 
    Gunicorn isn't `exec`'d, because it exits 0 when stopped and Render doesn't document
    restarting a web service that exits 0.
+
+Each `[render-start]` log line carries the UTC time, so the phases of a start can be read from
+the Logs tab. The image compiles the app's modules when it is built (`compileall` in the
+Dockerfile): `PYTHONDONTWRITEBYTECODE` keeps Python from caching them, so before 28 Oct 2026
+every process compiled them again on every start.
 
 `scripts/seed_dev_data.py` is **not** run on Render: it would fall back to a password written in
 the code when `DEV_ADMIN_PASSWORD` is unset, and it adds example intercity routes. The start
@@ -158,7 +168,7 @@ trosky-db was only read during this, and stays as a fallback until it expires on
    alone, so change them under **trosky-api → Environment**.
 4. **Apply.** Render creates Key Value (and the unused trosky-db), builds the image and deploys.
    The first start migrates the empty database. Watch the **Logs** tab for
-   `[render-start] starting the API on port 10000`.
+   `[render-start] <time> starting the API on port 10000`.
 5. Check: `https://<your-service>.onrender.com/health/live` answers `{"status":"alive"}`, and
    `/health/ready` answers `"database":true`.
 
@@ -176,7 +186,7 @@ automatically (`autoDeployTrigger: commit` with a build filter).
 | `APP_ENV=staging`, `DEBUG=false`, `EXPOSE_HEALTH_DETAILS=false`, `LOG_JSON=true` | `render.yaml` |
 | `OTP_DELIVERY_CHANNEL=email`, `EMAIL_PROVIDER=console`, `SMS_PROVIDER=console`, `PAYMENTS_ACTIVE_PROVIDER=sandbox`, `FIREBASE_ENABLED=false`, `MAPS_PROVIDER=local` | `render.yaml` |
 | `TRUSTED_PROXY_CIDRS` | `render.yaml` (see "Rate limits behind Render's proxy") |
-| `DATABASE_POOL_SIZE=3`, `DATABASE_MAX_OVERFLOW=2`, `SEED_DEMO_DATA=false` | `render.yaml` |
+| `DATABASE_POOL_SIZE=3`, `DATABASE_MAX_OVERFLOW=2`, `SEED_DEMO_DATA=true` | `render.yaml` |
 | `PASSENGER_SIGNUP_COUNTRIES=GH` | `render.yaml`: passengers sign up only from Ghana. See "Passenger sign-up" |
 | `BOOKING_ACCEPTANCE_REQUIRED=false` | `render.yaml`: bookings skip the driver's acceptance on this test server. See "Booking acceptance" |
 | `CORS_ALLOWED_ORIGINS=http://localhost:3000` | `render.yaml`, the backend default for now. Add the admin dashboard's URL once it is deployed. See "The admin dashboard" |
@@ -188,7 +198,7 @@ automatically (`autoDeployTrigger: commit` with a build filter).
 
 | Limit | What it means for TroSky |
 |---|---|
-| **The web service sleeps after 15 minutes** without inbound requests. Render's own wake-up takes about a minute. | On top of that comes TroSky's start: the migration check, the seeds and booting the API. With a whole CPU that took 20 s. **Under a hard 0.1-CPU limit (`docker run --cpus=0.1`) it took 302 s.** Render's real figure may be better if its 0.1 CPU can burst, which I couldn't check. So the first request after a quiet spell can take minutes, and the app's request times out once before it works. While asleep **Celery doesn't run either**: seat holds aren't released, unanswered bookings aren't moved and trips don't change status until a request wakes it. |
+| **The web service sleeps after 15 minutes** without inbound requests. | The first request waits for Render's wake-up plus TroSky's start (migration check, reference data, booting the API). Measured on Render: 88–90 s (26–27 Oct), and 106 s on 27 Oct with the demo seed in the start. Under a hard 0.1-CPU limit locally (`docker run --cpus=0.1`), `/health/live` answered after 153 s before 28 Oct 2026 and after 70 s since (one Python process instead of two, compiled modules, the demo seed after the API); see "Start time" below. The app waits up to 2 minutes and shows "Waking up the server…" meanwhile. While asleep **Celery doesn't run either**: seat holds aren't released, unanswered bookings aren't moved and trips don't change status until a request wakes it. |
 | 750 free instance hours per workspace per month | One service awake all month uses about 744. A second free service would run out. |
 | **The free Render database expires 30 days after it is created**, then has a 14-day grace period before Render deletes it. | That's why the data moved to Supabase. trosky-db is no longer used and expires on **10 Nov 2026**; then remove its block from `render.yaml`. Supabase's own limits are under "Database: Supabase". |
 | Free Key Value keeps nothing on restart. 25 MB. | A restart forgets rate-limit counters, live positions and queued tasks. Nothing permanent lives there. |
@@ -321,7 +331,7 @@ server to start, and the dashboard shows errors until it is up.
 
 ## Demo data
 
-Set `SEED_DEMO_DATA=true` (Environment tab) and save. The next start loads:
+`SEED_DEMO_DATA=true` (`render.yaml`, since 28 Oct 2026) loads:
 - 10 Accra stops and 6 routes;
 - 12 vehicles with drivers;
 - a trip every 30 minutes from 05:30 to 21:00 (Ghana time) on every route, from now **until 7 days
@@ -332,15 +342,22 @@ Set `SEED_DEMO_DATA=true` (Environment tab) and save. The next start loads:
 ### Keeping trips available
 
 The timetable stops 7 days after the last run of the seed: a run on 12 Oct leaves trips up to
-19 Oct, 21:00. Every run fills the timetable up to 7 days ahead of *that* day. There are two ways
-to keep trips coming:
+19 Oct, 21:00. Every run fills the timetable up to 7 days ahead of *that* day.
 
-- **Leave `SEED_DEMO_DATA=true`.** Every start, including every wake-up from sleep, tops the
-  timetable up, so it never runs out while people use the server. The cost is a slower start: a
-  run with nothing to add took 5 s with a whole CPU, so roughly a minute on 0.1 CPU.
-- **Top up by hand when needed.** Set `SEED_DEMO_DATA=true` and save; Render restarts the
-  service, and the start adds the missing days. Then set it back to `false`, which restarts once
-  more. Free services have no shell, so this is the manual way. Do it at least once a week.
+With `SEED_DEMO_DATA=true`, every start (including every wake-up from sleep) asks the database
+for the last departure on the demo routes, in the Python process that runs anyway. When it is
+less than 2 days away, the seed runs **after the API answers**, so the wake-up doesn't wait for
+it; about once in five days. The log says which:
+
+- `2 days or more of demo trips left: nothing to load`, or
+- `fewer than 2 days of demo trips left: loading …`, then `demo trips loaded`.
+
+If nobody wakes the server for 5 days or more, the timetable can run out meanwhile; the first
+start afterwards tops it up again. `SEED_DEMO_DATA=false` turns all of this off.
+
+Before 28 Oct 2026 the seed ran before the API on every start: 36 s with nothing to add under
+0.1 CPU, which delayed every wake-up. A value set in the dashboard is overwritten by `render.yaml`
+on the next Blueprint sync, so change it there.
 
 Re-running **duplicates nothing** (checked locally: a second run added 0 trips, users, vehicles,
 routes, stops, bookings or wallet entries).
@@ -560,6 +577,25 @@ TLS by default, for Supabase).
 
 Memory: about 385 MiB while running, at most 454 MiB, including bursts of 200 requests and 6
 logins at once (each Argon2 hash takes 64 MiB, one at a time).
+
+### Start time
+
+Measured on 28 Oct 2026 with `--cpus=0.1 --memory=512m`, `SEED_DEMO_DATA=true`, against a local
+Postgres already migrated and seeded (seconds from the start of `render-start.sh`):
+
+| Phase | Before | Since |
+|---|---|---|
+| Migrations | 22.6 (own process) | 32.4 (one process for migrations, roles and the demo check) |
+| Roles and permissions | 34.4 (own process) | |
+| Demo seed, nothing to add | 36.4 (before the API) | 0 (skipped: 6 days left) |
+| Gunicorn and the app | 54.9 | 37.7 |
+| **`/health/live` answers** | **153.2** | **70.3** |
+| Celery ready | 201.4 | 102.0 |
+| Peak memory | 386 MiB | 324 MiB |
+
+With fewer than 2 days of trips left, `/health/live` answered after 72.7 s, the seed then added
+1074 trips in 29 s, and Celery was ready at 134.7 s (peak 386 MiB). A stop signal during the seed
+ended the container within a second (exit 0).
 
 ```sh
 docker build --target runtime -t trosky-api:render-test TroSky/backend
