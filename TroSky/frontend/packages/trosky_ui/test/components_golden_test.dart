@@ -913,6 +913,28 @@ void main() {
               tone: TroskyTagTone.amber,
             ),
             const SizedBox(height: 10),
+            // The header's chips, on its navy.
+            Container(
+              padding: const EdgeInsets.all(12),
+              color: TroskyColors.navy,
+              child: const Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  TroskyStatusChip(
+                    label: 'Paid · Upcoming',
+                    tone: TroskyTagTone.green,
+                  ),
+                  TroskyStatusChip(
+                    label: 'Waiting for driver',
+                    tone: TroskyTagTone.amber,
+                  ),
+                  TroskyStatusChip(label: 'Cancelled', tone: TroskyTagTone.red),
+                  TroskyStatusChip(label: 'Expired', tone: TroskyTagTone.gray),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
             const TroskyBookingRowSkeleton(),
             const SizedBox(height: 16),
             const TroskyJourneyCard(
@@ -988,9 +1010,9 @@ void main() {
             padding: const EdgeInsets.all(8),
             child: TroskyIcons.copy(color: TroskyColors.whiteA55),
           ),
-          trailing: const TroskyChip(
+          trailing: const TroskyStatusChip(
             label: 'Pending payment',
-            color: TroskyChipColor.amber,
+            tone: TroskyTagTone.amber,
           ),
         ),
         width: 360,

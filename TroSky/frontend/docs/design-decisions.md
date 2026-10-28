@@ -427,7 +427,23 @@ Mock-mode builds to show the app without a server install next to the live one a
 Measured from the screenshots in design/P-16/ (no Figma code; every value an existing token):
 cards as P-07's (radius 20, 20 px padding), section labels 11/700 caps, stop names 15/700,
 the departure 16/800, the total 26/800 green, the cancel sheet's red pill (a new `danger`
-button: the primary pill in red, no shadow). P-15 follows `P13_TripHistory` exactly. The copy,
-wallet, ticked-circle and vehicle icons are drawn from the screenshots in the style of the
-existing icons; the ticket is P13's own. Goldens:
+button: the primary pill in red, no shadow). P-15 follows `P13_TripHistory` exactly, except the
+colours of point 8.
+
+8. **Status colours read at WCAG AA (4.5:1)** wherever they appear (project owner, 28 Oct). The
+   design's chips failed on the navy header (green 2.6, amber 3.5, red 2.5), and so did P13's
+   red tag (3.8) and an amber tag (3.1) on the white rows. Existing tokens only:
+   - the header chip is a white pill with the status colour as a dot and dark words:
+     `greenDark` 5.1, `redDark` 5.8, `textSecondary` 6.0, and `ink` for the amber statuses,
+     since no amber or gold token reaches 4.5 on white (`goldText` 3.3);
+   - the row tags keep P13's tints; red words are `redDark` (5.2), amber ones `ink` with an
+     amber dot (15.3); green (4.6) and grey (4.9) were already fine.
+   `TroskyTagTone` holds the pairs; a trosky_ui test checks each one. Before and after:
+   `design/P-16/derived/chips-before-after.png`.
+9. **Icons: lucide.dev.** The Figma Make code uses no icon set (inline SVGs on 14–18 px grids,
+   and emoji), so an icon it doesn't draw comes from lucide (`lucide_icons_flutter` 3.1.25,
+   pinned in trosky_ui), never hand-drawn: copy, wallet, circle-check and bus-front here. The
+   row's ticket is P13's own SVG.
+
+Goldens:
 `apps/mobile/test/passenger/trips/goldens/`, `packages/trosky_ui/test/goldens/trips_components.png`.
