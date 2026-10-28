@@ -167,18 +167,96 @@ class TroskySegmentedTabs extends StatelessWidget {
   }
 }
 
-/// The tag under a [TroskyBookingRow]'s price. P13 draws "Completed" in
-/// green and "Cancelled" in red; the others take the matching chip colours.
+/// A booking status's colours on Trip History's tags and Booking details'
+/// chip. Every [text] colour reads at WCAG AA (4.5:1 or more) on [background]
+/// over white and on a white chip: P13's red and the amber of the status
+/// variants don't, so red text is [TroskyColors.redDark] and the amber
+/// statuses are ink with an amber [dot] (decision 30).
 enum TroskyTagTone {
-  green(TroskyColors.greenA08, TroskyColors.greenDark),
-  red(TroskyColors.redA08, TroskyColors.red),
-  amber(TroskyColors.amberA10, TroskyColors.goldText),
-  gray(TroskyColors.border, TroskyColors.textSecondary);
+  green(TroskyColors.greenA08, TroskyColors.greenDark, TroskyColors.green),
+  red(TroskyColors.redA08, TroskyColors.redDark, TroskyColors.red),
+  amber(
+    TroskyColors.amberA10,
+    TroskyColors.ink,
+    TroskyColors.amber,
+    dotOnTag: true,
+  ),
+  gray(
+    TroskyColors.border,
+    TroskyColors.textSecondary,
+    TroskyColors.textSecondary,
+  );
 
-  const TroskyTagTone(this.background, this.text);
+  const TroskyTagTone(
+    this.background,
+    this.text,
+    this.dot, {
+    this.dotOnTag = false,
+  });
 
+  /// Behind a row's tag (P13).
   final Color background;
   final Color text;
+
+  /// The status colour, as a dot before the words on the white chip.
+  final Color dot;
+
+  /// The text alone doesn't carry the colour, so the row's tag has the dot
+  /// too.
+  final bool dotOnTag;
+}
+
+/// The status chip in Booking details' header (P-16): a white pill, so its
+/// words stay readable on the navy, with the status colour as a dot.
+class TroskyStatusChip extends StatelessWidget {
+  const TroskyStatusChip({super.key, required this.label, required this.tone});
+
+  final String label;
+  final TroskyTagTone tone;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: TroskyColors.surface,
+        borderRadius: BorderRadius.circular(TroskyRadii.full),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: TroskySpacing.s10,
+          vertical: TroskySpacing.s3,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _Dot(color: tone.dot),
+            const SizedBox(width: TroskySpacing.s6),
+            Flexible(
+              child: Text(
+                label,
+                style: TroskyTypography.body12SemiBoldH133.copyWith(
+                  color: tone.text,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Dot extends StatelessWidget {
+  const _Dot({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 6,
+    height: 6,
+    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+  );
 }
 
 /// One booking on Trip History (P13): a ticket in a tinted square, the
@@ -285,11 +363,20 @@ class TroskyBookingRow extends StatelessWidget {
                           horizontal: TroskySpacing.s6,
                           vertical: TroskySpacing.s1,
                         ),
-                        child: Text(
-                          status,
-                          style: TroskyTypography.body10Bold.copyWith(
-                            color: tone.text,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (tone.dotOnTag) ...[
+                              _Dot(color: tone.dot),
+                              const SizedBox(width: TroskySpacing.s4),
+                            ],
+                            Text(
+                              status,
+                              style: TroskyTypography.body10Bold.copyWith(
+                                color: tone.text,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),

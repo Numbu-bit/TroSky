@@ -122,7 +122,7 @@ class _BookingDetailsScreenState extends ConsumerState<BookingDetailsScreen> {
                     ),
               trailing: chip == null
                   ? null
-                  : TroskyChip(label: chip.label(l10n), color: chip.chip),
+                  : TroskyStatusChip(label: chip.label(l10n), tone: chip.chip),
             ),
             Expanded(child: _body(l10n, details, shown, chip)),
             if (shown != null && chip != null) _actions(l10n, shown, chip),

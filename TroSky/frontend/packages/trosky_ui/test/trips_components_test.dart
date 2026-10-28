@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -23,9 +25,9 @@ void main() {
               subtitle: 'TRK-6VJF55ME',
               onBack: () {},
               subtitleTrailing: TroskyIcons.copy(color: TroskyColors.whiteA55),
-              trailing: const TroskyChip(
+              trailing: const TroskyStatusChip(
                 label: 'Pending payment',
-                color: TroskyChipColor.amber,
+                tone: TroskyTagTone.amber,
               ),
             ),
           ),
@@ -46,5 +48,35 @@ void main() {
       hasLength(1),
     );
     expect(tester.takeException(), isNull);
+  });
+
+  group('status colours read at WCAG AA (4.5:1)', () {
+    double luminance(Color c) {
+      double channel(double v) => v <= 0.03928
+          ? v / 12.92
+          : math.pow((v + 0.055) / 1.055, 2.4).toDouble();
+      return 0.2126 * channel(c.r) +
+          0.7152 * channel(c.g) +
+          0.0722 * channel(c.b);
+    }
+
+    double contrast(Color a, Color b) {
+      final (la, lb) = (luminance(a), luminance(b));
+      return (math.max(la, lb) + 0.05) / (math.min(la, lb) + 0.05);
+    }
+
+    for (final tone in TroskyTagTone.values) {
+      test(
+        '${tone.name}: on its tag over a white card, and on the white chip',
+        () {
+          final tag = Color.alphaBlend(tone.background, TroskyColors.surface);
+          expect(contrast(tone.text, tag), greaterThanOrEqualTo(4.5));
+          expect(
+            contrast(tone.text, TroskyColors.surface),
+            greaterThanOrEqualTo(4.5),
+          );
+        },
+      );
+    }
   });
 }

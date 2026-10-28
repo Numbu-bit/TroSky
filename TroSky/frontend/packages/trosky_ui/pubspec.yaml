@@ -13,6 +13,9 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_svg: ^2.3.0
+  # lucide.dev icons, for icons the Figma Make code doesn't draw (decision
+  # 30). Pinned: one version for every app.
+  lucide_icons_flutter: 3.1.25
 
 dev_dependencies:
   flutter_test:

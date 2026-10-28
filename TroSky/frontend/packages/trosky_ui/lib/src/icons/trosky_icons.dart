@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Inline SVG icons copied from the Figma Make code. Strokes use
 /// `currentColor`, so the icon takes the colour it is given.
@@ -71,22 +72,30 @@ abstract final class TroskyIcons {
   /// Ticket on a Trip History row (P13), 20 px.
   static Widget ticket({required Color color}) => _icon(_ticket, color, 20, 20);
 
-  /// Two sheets, copying the booking reference (P-16; not in the Figma
-  /// code, drawn from the screenshot), 14 px.
-  static Widget copy({required Color color}) => _icon(_copy, color, 14, 14);
+  // P-16's icons that the Figma Make code doesn't draw come from lucide.dev
+  // (lucide_icons_flutter): the Figma icons are inline SVGs from no set, in
+  // lucide's thin round-stroke style (decision 30).
 
-  /// Wallet on a refund note (P-16; drawn from the screenshot), 16 px.
-  static Widget wallet({required Color color}) => _icon(_wallet, color, 16, 16);
+  /// Copying the booking reference (P-16): lucide "copy", 14 px.
+  static Widget copy({required Color color}) =>
+      _lucide(LucideIcons.copy, color, 14);
 
-  /// Ticked circle: "Booking cancelled" (P-16; drawn from the screenshot),
-  /// 36 px.
+  /// A refund note (P-16): lucide "wallet", 16 px.
+  static Widget wallet({required Color color}) =>
+      _lucide(LucideIcons.wallet, color, 16);
+
+  /// "Booking cancelled" (P-16): lucide "circle-check", 36 px.
   static Widget checkCircle({required Color color, double size = 36}) =>
-      _icon(_checkCircle, color, size, size);
+      _lucide(LucideIcons.circleCheck, color, size);
 
-  /// A vehicle seen from the front, on Booking details (P-16; drawn from
-  /// the screenshot), 22 px.
+  /// The vehicle on Booking details (P-16): lucide "bus-front", 22 px.
   static Widget vehicle({required Color color}) =>
-      _icon(_vehicle, color, 22, 22);
+      _lucide(LucideIcons.busFront, color, 22);
+
+  static Widget _lucide(IconData icon, Color color, double size) =>
+      ExcludeSemantics(
+        child: Icon(icon, color: color, size: size),
+      );
 
   static Widget _icon(String svg, Color color, double width, double height) {
     return SvgPicture.string(
@@ -224,37 +233,5 @@ abstract final class TroskyIcons {
       'stroke-width="1.5"/>'
       '<path d="M6 6V4a2 2 0 014 0v2M6 10h2m4 0h2M6 13h2" '
       'stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>'
-      '</svg>';
-
-  static const String _copy =
-      '<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">'
-      '<rect x="5.5" y="5.5" width="8.5" height="8.5" rx="1.75" '
-      'stroke="currentColor" stroke-width="1.5"/>'
-      '<path d="M10.5 5.5V3.75A1.75 1.75 0 008.75 2h-5A1.75 1.75 0 002 3.75v5'
-      'A1.75 1.75 0 003.75 10.5H5.5" stroke="currentColor" '
-      'stroke-width="1.5"/>'
-      '</svg>';
-
-  static const String _wallet =
-      '<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">'
-      '<rect x="1.75" y="3.25" width="12.5" height="9.5" rx="2" '
-      'stroke="currentColor" stroke-width="1.5"/>'
-      '<path d="M1.75 6.25h12.5" stroke="currentColor" stroke-width="1.5"/>'
-      '</svg>';
-
-  static const String _checkCircle =
-      '<svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">'
-      '<circle cx="18" cy="18" r="14.5" stroke="currentColor" '
-      'stroke-width="2.5"/>'
-      '<path d="M12 18.5l4 4 8-9" stroke="currentColor" stroke-width="2.5" '
-      'stroke-linecap="round" stroke-linejoin="round"/>'
-      '</svg>';
-
-  static const String _vehicle =
-      '<svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">'
-      '<rect x="4" y="4" width="14" height="12" rx="3" stroke="currentColor" '
-      'stroke-width="1.8"/>'
-      '<path d="M7.5 10h2M12.5 10h2M7 16v2M15 16v2" stroke="currentColor" '
-      'stroke-width="1.8" stroke-linecap="round"/>'
       '</svg>';
 }

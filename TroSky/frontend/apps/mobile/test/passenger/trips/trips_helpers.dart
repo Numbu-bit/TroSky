@@ -81,10 +81,10 @@ Future<void> back(WidgetTester tester) async {
 
 /// The status chip in Booking details' header.
 String headerChip(WidgetTester tester) => tester
-    .widget<TroskyChip>(
+    .widget<TroskyStatusChip>(
       find.descendant(
         of: find.byType(TroskyPageHeader),
-        matching: find.byType(TroskyChip),
+        matching: find.byType(TroskyStatusChip),
       ),
     )
     .label;

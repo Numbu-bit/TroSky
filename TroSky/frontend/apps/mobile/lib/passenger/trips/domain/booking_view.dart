@@ -7,20 +7,21 @@ import '../../booking/presentation/booking_format.dart';
 /// What a booking's status shows on Trip History (P-15) and Booking
 /// details (P-16): the chip, and what the passenger can do.
 enum BookingChip {
-  waiting(TroskyChipColor.amber, TroskyTagTone.amber),
-  pendingPayment(TroskyChipColor.amber, TroskyTagTone.amber),
-  paidUpcoming(TroskyChipColor.green, TroskyTagTone.green),
+  waiting(TroskyTagTone.amber, TroskyTagTone.amber),
+  pendingPayment(TroskyTagTone.amber, TroskyTagTone.amber),
+  paidUpcoming(TroskyTagTone.green, TroskyTagTone.green),
 
   /// Not in the design: paid, and the trip is boarding or under way.
-  paidUnderWay(TroskyChipColor.green, TroskyTagTone.green),
-  completed(TroskyChipColor.gray, TroskyTagTone.green),
-  cancelled(TroskyChipColor.red, TroskyTagTone.red),
-  expired(TroskyChipColor.gray, TroskyTagTone.gray);
+  paidUnderWay(TroskyTagTone.green, TroskyTagTone.green),
+  completed(TroskyTagTone.gray, TroskyTagTone.green),
+  cancelled(TroskyTagTone.red, TroskyTagTone.red),
+  expired(TroskyTagTone.gray, TroskyTagTone.gray);
 
   const BookingChip(this.chip, this.tag);
 
-  /// On Booking details (the design's status variants).
-  final TroskyChipColor chip;
+  /// The chip on Booking details (the design's status variants: Completed
+  /// is grey there).
+  final TroskyTagTone chip;
 
   /// On a Trip History row (P13 draws "Completed" green there).
   final TroskyTagTone tag;

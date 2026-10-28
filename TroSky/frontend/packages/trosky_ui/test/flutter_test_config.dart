@@ -13,6 +13,12 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
     'assets/fonts/plus_jakarta_sans',
   );
   await _loadFamily('packages/trosky_ui/Inter', 'assets/fonts/inter');
+  // lucide.dev icons (lucide_icons_flutter's font), as the app loads them.
+  final lucide = FontLoader('packages/lucide_icons_flutter/Lucide')
+    ..addFont(
+      rootBundle.load('packages/lucide_icons_flutter/assets/lucide.ttf'),
+    );
+  await lucide.load();
   await testMain();
 }
 
