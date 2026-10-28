@@ -4,8 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
-import 'package:trosky_api/trosky_api.dart';
 import 'package:trosky_core/trosky_core.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
@@ -16,9 +14,9 @@ import '../../../l10n/app_localizations.dart';
 import '../../search/presentation/trip_view.dart';
 import '../../search/search_prefill.dart';
 import '../../seats/application/seat_providers.dart';
-import '../../seats/domain/seat_map_layout.dart';
 import '../application/booking_watch.dart';
 import '../domain/payment_args.dart';
+import 'booking_format.dart';
 
 export '../domain/payment_args.dart';
 
@@ -319,11 +317,14 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         : null;
     final seats =
         numbers ??
-        _seatNumbersFrom(booking, ref.watch(tripSeatsProvider(booking.tripId)));
+        seatNumbersFrom(
+          booking,
+          ref.watch(tripSeatsProvider(booking.tripId)).value,
+        );
     return TroskyTripSummaryCard(
       from: booking.boardingStopName ?? trip?.originStopName ?? '',
       to: booking.alightingStopName ?? trip?.destinationStopName ?? '',
-      day: departs == null ? '' : _day(l10n, departs),
+      day: departs == null ? '' : bookingDay(l10n, departs, _now),
       time: departs == null ? '' : clockTime(departs),
       previousTime: moved && before != null && before != departs
           ? clockTime(before)
@@ -337,11 +338,11 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         ),
         TroskyTripFact(
           l10n.paymentSeats,
-          seats == null ? '…' : _seatList(l10n, seats),
+          seats == null ? '…' : seatList(l10n, seats),
         ),
         TroskyTripFact(
           l10n.paymentTotal,
-          _cedis(l10n, booking.totalAmount),
+          cedis(l10n, booking.totalAmount),
           valueColor: TroskyColors.greenDark,
         ),
       ],
@@ -514,45 +515,11 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         return const SizedBox.shrink();
     }
   }
-
-  List<String>? _seatNumbersFrom(
-    BookingResponse booking,
-    AsyncValue<TripSeatsResponse> map,
-  ) {
-    final seats = map.value;
-    if (seats == null) return null;
-    final numbers = {for (final s in seats.seats) s.id: s.seatNumber};
-    return [for (final p in booking.passengers) numbers[p.seatId] ?? '?']
-      ..sort(compareSeatNumbers);
-  }
-
-  /// "Today", "Tomorrow" or "Mon 27 Oct", on the phone's calendar.
-  String _day(AppLocalizations l10n, DateTime departs) {
-    final local = departs.toLocal();
-    final today = DateUtils.dateOnly(_now.toLocal());
-    final day = DateUtils.dateOnly(local);
-    final days = day.difference(today).inDays;
-    if (days == 0) return l10n.paymentToday;
-    if (days == 1) return l10n.paymentTomorrow;
-    return DateFormat('EEE d MMM', l10n.localeName).format(local);
-  }
 }
-
-/// "B3", "B3 & B4", "B3, B4 & B5".
-String _seatList(AppLocalizations l10n, List<String> seats) => seats.length < 2
-    ? seats.join()
-    : l10n.paymentSeatsAnd(
-        seats.sublist(0, seats.length - 1).join(', '),
-        seats.last,
-      );
 
 /// "1:42": minutes and seconds left.
 String _clock(Duration left) =>
     '${left.inMinutes}:${(left.inSeconds % 60).toString().padLeft(2, '0')}';
-
-/// "₵16.00": booking amounts keep their pesewas.
-String _cedis(AppLocalizations l10n, String amount) =>
-    l10n.priceCedis(double.parse(amount).toStringAsFixed(2));
 
 /// A centred status title and the sentence under it. [large] is the
 /// not-accepted title.

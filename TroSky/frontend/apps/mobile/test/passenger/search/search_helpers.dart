@@ -271,6 +271,10 @@ class ScriptedTrips implements RouteRepository {
   }
 
   @override
+  Future<Result<TripDetailResponse>> trip(String tripId) async =>
+      _backend.tripDetail(tripId);
+
+  @override
   Future<Result<TripSeatsResponse>> tripSeats(String tripId) async {
     seatRequests++;
     return switch (seatMaps[tripId]) {

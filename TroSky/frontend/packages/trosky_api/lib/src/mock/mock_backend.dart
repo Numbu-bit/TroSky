@@ -51,8 +51,10 @@ class MockBackend {
     this.bookingAcceptanceRequired = true,
     this.driverScript,
     this.driverAnswersAfter = const Duration(seconds: 8),
+    this.bookingHistory = false,
   }) : _now = clock ?? DateTime.now {
     _seed();
+    if (bookingHistory) _seedHistory();
   }
 
   /// The code every OTP has.
@@ -127,6 +129,10 @@ class MockBackend {
 
   /// How long a scripted driver takes to answer.
   final Duration driverAnswersAfter;
+
+  /// The seeded passenger starts with a week of bookings in every status
+  /// (Trips tab, P-15/P-16). Off in tests that count bookings.
+  final bool bookingHistory;
 
   final Map<String, _MockTrip> _tripIndex = {};
   final Map<String, _MockBooking> _bookings = {};
@@ -990,6 +996,70 @@ class MockBackend {
     );
   }
 
+  /// `GET /trips/{id}` (public): the trip with its route, vehicle, driver
+  /// and how full it is.
+  Result<TripDetailResponse> tripDetail(String tripId) {
+    _expireHolds();
+    final trip = _tripIndex[tripId];
+    if (trip == null) return _error(404, 'NOT_FOUND', 'Trip not found.');
+    final result = trip.result;
+    final (name, rating, ratings) =
+        _drivers[tripId.codeUnits.fold(0, (a, b) => a + b) % _drivers.length];
+    final booked = _booked(trip);
+    final type = result.vehicleType ?? VehicleType.other;
+    return Ok(
+      TripDetailResponse(
+        id: tripId,
+        routeId: result.routeId,
+        scheduledDepartureAt: result.scheduledDepartureAt,
+        scheduledArrivalAt:
+            result.scheduledArrivalAt ??
+            result.scheduledDepartureAt.add(
+              Duration(minutes: result.estimatedDurationMinutes ?? 45),
+            ),
+        status: trip.status,
+        fareAmount: result.fareAmount,
+        routeName: result.routeName,
+        originStopId: trip.board.id,
+        originStopName: trip.board.name,
+        destinationStopId: trip.alight.id,
+        destinationStopName: trip.alight.name,
+        vehicle: result.vehicleRegistrationNumber == null
+            ? null
+            : TripVehicleResponse(
+                registrationNumber: result.vehicleRegistrationNumber!,
+                type: type,
+                makeModel: switch (type) {
+                  VehicleType.minibus => 'Toyota Hiace',
+                  VehicleType.bus => 'Yutong ZK6107',
+                  VehicleType.sedan => 'Toyota Corolla',
+                  VehicleType.shuttle => 'Ford Transit',
+                  VehicleType.other => null,
+                },
+                capacity: trip.seats.length,
+              ),
+        driver: TripDriverResponse(
+          id: 'd${tripId.substring(1)}',
+          fullName: name,
+          averageRating: rating,
+          ratingCount: ratings,
+        ),
+        ridersCount: booked,
+        seatsTotal: trip.seats.length,
+        availableSeats: trip.seats.length - booked,
+      ),
+    );
+  }
+
+  /// Who drives the mock's trips: name, rating and how many ratings.
+  static const List<(String, double, int)> _drivers = [
+    ('Kwame Mensah', 4.8, 126),
+    ('Kofi Boateng', 4.9, 212),
+    ('Yaw Asante', 4.6, 58),
+    ('Abena Owusu', 4.7, 94),
+    ('Kojo Antwi', 4.5, 37),
+  ];
+
   /// `GET /trips/{id}/fare-quote` (public): [seats] seats between the
   /// trip's stops as it stands now, with the P7 fares on a minibus. The
   /// mock prices each seat the same, however many are asked for.
@@ -1134,12 +1204,13 @@ class MockBackend {
         );
       }
     }
-    final perSeat = double.parse(trip.fares(_booked(trip)).shared);
+    final fares = trip.fares(_booked(trip));
+    final perSeat = double.parse(fares.shared);
     final fare = perSeat * seatIds.length;
     final fee = double.parse(platformFeePerSeat) * seatIds.length;
     final now = _now().toUtc();
     final booking = _MockBooking(
-      number: _bookings.length,
+      number: _bookings.values.where((b) => !b.seeded).length,
       id: _uuid(),
       reference: 'TS-${_reference()}',
       userId: user.id,
@@ -1150,6 +1221,7 @@ class MockBackend {
       fare: fare.toStringAsFixed(2),
       fee: fee.toStringAsFixed(2),
       total: (fare + fee).toStringAsFixed(2),
+      solo: (double.parse(fares.solo) * seatIds.length).toStringAsFixed(2),
       status: bookingAcceptanceRequired
           ? BookingStatus.awaitingAcceptance
           : BookingStatus.pending,
@@ -1166,7 +1238,7 @@ class MockBackend {
       ],
     );
     _bookings[booking.id] = booking;
-    return Ok(booking.toResponse());
+    return Ok(booking.toResponse(_now().toUtc()));
   }
 
   /// `GET /bookings`: the passenger's bookings, newest first, or by trip
@@ -1182,30 +1254,97 @@ class MockBackend {
     if (auth case Err(:final failure)) return Err(failure);
     _expireHolds();
     final now = _now().toUtc();
+    // Ahead: departing now or later, or under way.
+    bool ahead(_MockBooking b) =>
+        !b.trip.result.scheduledDepartureAt.isBefore(now) ||
+        const {
+          TripStatus.boarding,
+          TripStatus.inProgress,
+          TripStatus.paused,
+        }.contains(b.trip.status);
     final mine = _bookings.values
         .where((b) => b.userId == auth.valueOrNull!.userId)
         .where((b) => statuses == null || statuses.contains(b.status))
-        .where(
-          (b) => switch (upcoming) {
-            null => true,
-            true => !b.trip.result.scheduledDepartureAt.isBefore(now),
-            false => b.trip.result.scheduledDepartureAt.isBefore(now),
-          },
-        )
+        .where((b) => upcoming == null || ahead(b) == upcoming)
         .toList();
-    mine.sort(
-      (a, b) => upcoming == null
-          ? b.createdAt.compareTo(a.createdAt)
-          : a.trip.result.scheduledDepartureAt.compareTo(
-              b.trip.result.scheduledDepartureAt,
-            ),
-    );
+    // Upcoming soonest first, past most recent first, else newest booking
+    // first.
+    mine.sort((a, b) {
+      final departs = a.trip.result.scheduledDepartureAt.compareTo(
+        b.trip.result.scheduledDepartureAt,
+      );
+      return switch (upcoming) {
+        true when departs != 0 => departs,
+        false when departs != 0 => -departs,
+        _ => b.createdAt.compareTo(a.createdAt),
+      };
+    });
     return Ok(
       Paginated(
-        items: [for (final b in mine.skip(offset).take(limit)) b.toResponse()],
+        items: [
+          for (final b in mine.skip(offset).take(limit))
+            b.toResponse(_now().toUtc()),
+        ],
         total: mine.length,
         limit: limit,
         offset: offset,
+      ),
+    );
+  }
+
+  /// `GET /bookings/summary` (G25): the passenger's paid trips departing
+  /// in [month] ("2026-10"; default this month), what they cost with fees,
+  /// and what sharing saved.
+  Result<BookingSummaryResponse> bookingSummary(
+    String? accessToken, {
+    String? month,
+  }) {
+    final auth = _authenticate(accessToken);
+    if (auth case Err(:final failure)) return Err(failure);
+    _expireHolds();
+    final now = _now().toUtc();
+    var start = DateTime.utc(now.year, now.month);
+    if (month != null) {
+      final match = RegExp(r'^(\d{4})-(0[1-9]|1[0-2])$').firstMatch(month);
+      if (match == null) {
+        return _validationError([
+          _fieldError(
+            'month',
+            r"String should match pattern '^\d{4}-(0[1-9]|1[0-2])$'",
+          ),
+        ]);
+      }
+      start = DateTime.utc(int.parse(match[1]!), int.parse(match[2]!));
+    }
+    final end = DateTime.utc(start.year, start.month + 1);
+    final paid = [
+      for (final b in _bookings.values)
+        if (b.userId == auth.valueOrNull!.userId &&
+            const {
+              BookingStatus.confirmed,
+              BookingStatus.completed,
+            }.contains(b.status) &&
+            !b.trip.result.scheduledDepartureAt.isBefore(start) &&
+            b.trip.result.scheduledDepartureAt.isBefore(end))
+          b,
+    ];
+    final spent = paid.fold<double>(0, (sum, b) => sum + double.parse(b.total));
+    final saved = paid.fold<double>(
+      0,
+      (sum, b) =>
+          sum +
+          math.max(0, double.parse(b.solo ?? b.fare) - double.parse(b.fare)),
+    );
+    return Ok(
+      BookingSummaryResponse(
+        month: '${start.year}-${start.month.toString().padLeft(2, '0')}',
+        currency: 'GHS',
+        tripsCount: paid.length,
+        totalSpent: spent.toStringAsFixed(2),
+        averageFare: (paid.isEmpty ? 0 : spent / paid.length).toStringAsFixed(
+          2,
+        ),
+        totalSaved: saved.toStringAsFixed(2),
       ),
     );
   }
@@ -1219,12 +1358,19 @@ class MockBackend {
     if (booking == null || booking.userId != auth.valueOrNull!.userId) {
       return _error(404, 'NOT_FOUND', 'Booking not found.');
     }
-    return Ok(booking.toResponse());
+    return Ok(booking.toResponse(_now().toUtc()));
   }
 
-  /// `POST /bookings/{id}/cancel`: before the trip, at once; the seats go
-  /// back.
-  Result<BookingResponse> cancelBooking(String? accessToken, String bookingId) {
+  /// `POST /bookings/{id}/cancel`. Before the trip starts, or while no
+  /// driver has accepted it, at once: the seats go back and the booking is
+  /// `cancelled`, or `refund_pending` when it was paid. Once the trip has
+  /// started, the request waits for an admin and the booking stays as it
+  /// is.
+  Result<BookingResponse> cancelBooking(
+    String? accessToken,
+    String bookingId, {
+    String? reason,
+  }) {
     final auth = _authenticate(accessToken);
     if (auth case Err(:final failure)) return Err(failure);
     _expireHolds();
@@ -1237,7 +1383,6 @@ class MockBackend {
       BookingStatus.expired,
       BookingStatus.completed,
       BookingStatus.refunded,
-      BookingStatus.refundPending,
     }.contains(booking.status)) {
       return _error(
         409,
@@ -1246,8 +1391,15 @@ class MockBackend {
             'be cancelled.',
       );
     }
-    booking.status = BookingStatus.cancelled;
-    return Ok(booking.toResponse());
+    final started = booking.trip.status != TripStatus.scheduled;
+    if (started && booking.status != BookingStatus.awaitingAcceptance) {
+      booking.cancellationRequested = true;
+    } else {
+      booking.status = booking.status == BookingStatus.confirmed
+          ? BookingStatus.refundPending
+          : BookingStatus.cancelled;
+    }
+    return Ok(booking.toResponse(_now().toUtc()));
   }
 
   int _booked(_MockTrip trip) =>
@@ -1272,6 +1424,7 @@ class MockBackend {
   void _expireHolds() {
     final now = _now().toUtc();
     for (final b in _bookings.values) {
+      if (b.rolling != null) continue;
       // A move opens a new request, which may be answered or lapse too.
       for (var step = 0; step <= bookingMaxMoves + 1; step++) {
         if (b.status != BookingStatus.awaitingAcceptance) break;
@@ -1287,7 +1440,7 @@ class MockBackend {
 
   /// The [driverScript]'s answer to [b]'s request, if it is due by [now].
   bool _scriptedAnswer(_MockBooking b, DateTime now) {
-    final script = driverScript?.forBooking(b.number);
+    final script = b.seeded ? null : driverScript?.forBooking(b.number);
     if (script == null) return false;
     final answerAt = b.requestedAt.add(driverAnswersAfter);
     if (answerAt.isAfter(now) || !answerAt.isBefore(b.expiresAt)) {
@@ -1391,6 +1544,254 @@ class MockBackend {
         return;
       }
     }
+  }
+
+  /// Ama Mensah's bookings around now: three ahead (paid, waiting for the
+  /// driver, accepted and not paid), one on a trip under way, and the
+  /// past week (completed, cancelled, refunded, a refund waiting for
+  /// approval, expired). Fixed ids and references, so the counter-made
+  /// ones of the tests don't move.
+  void _seedHistory() {
+    final now = _now().toUtc();
+    final today = DateTime.utc(now.year, now.month, now.day);
+    const userId = '2f6b1c0e-7d3a-4b8e-9c1a-5e2f7a9b3c41';
+    var n = 0;
+    void book({
+      required String from,
+      required String to,
+      required DateTime departs,
+      required int minutes,
+      required VehicleType vehicle,
+      required String plate,
+      required String perSeat,
+      required String solo,
+      required List<String> seats,
+      required BookingStatus status,
+      required String reference,
+      TripStatus trip = TripStatus.scheduled,
+      Duration? rolling,
+    }) {
+      n++;
+      final id = n.toString().padLeft(2, '0');
+      final board = stops[from]!;
+      final alight = stops[to]!;
+      final result = TripSearchResultResponse(
+        tripId: 'c00000$id-4a1e-4000-8000-0000000000$id',
+        routeId: 'e00000$id-4a1e-4000-8000-0000000000$id',
+        routeName: '$from → $to',
+        originStopId: board.id,
+        destinationStopId: alight.id,
+        scheduledDepartureAt: departs,
+        scheduledArrivalAt: departs.add(Duration(minutes: minutes)),
+        estimatedDurationMinutes: minutes,
+        fareAmount: perSeat,
+        status: TripStatus.scheduled,
+        availableSeats: 0,
+        vehicleRegistrationNumber: plate,
+        vehicleType: vehicle,
+      );
+      final mockTrip = _MockTrip(result, board, alight, now)
+        ..status = trip
+        ..closed = trip != TripStatus.scheduled || departs.isBefore(now);
+      _tripIndex[result.tripId] = mockTrip;
+      final seatIds = [
+        for (final number in seats)
+          mockTrip.seats.firstWhere((seat) => seat.number == number).id,
+      ];
+      final fare = double.parse(perSeat) * seats.length;
+      final fee = double.parse(platformFeePerSeat) * seats.length;
+      // Booked the evening before, or an hour ago when that is still ahead.
+      final evening = departs.subtract(const Duration(hours: 20));
+      final booked = evening.isBefore(now)
+          ? evening
+          : now.subtract(const Duration(hours: 1));
+      final booking = _MockBooking(
+        number: -1,
+        id: 'b00000$id-7c2d-4000-8000-0000000000$id',
+        reference: reference,
+        userId: userId,
+        trip: mockTrip,
+        seatIds: seatIds,
+        originStopId: board.id,
+        destinationStopId: alight.id,
+        fare: fare.toStringAsFixed(2),
+        fee: fee.toStringAsFixed(2),
+        total: (fare + fee).toStringAsFixed(2),
+        solo: (double.parse(solo) * seats.length).toStringAsFixed(2),
+        status: status,
+        expiresAt: booked.add(seatHold),
+        createdAt: rolling == null ? booked : now,
+        passengers: [
+          for (final (i, seatId) in seatIds.indexed)
+            BookingPassengerResponse(
+              id: 'a00000$id-7c2d-4000-8000-00000000000$i',
+              seatId: seatId,
+              fullName: i == 0 ? 'Ama Mensah' : 'Kwabena Mensah',
+            ),
+        ],
+        seeded: true,
+        rolling: rolling,
+      );
+      _bookings[booking.id] = booking;
+    }
+
+    DateTime at(int days, int hour, int minute) =>
+        today.add(Duration(days: days, hours: hour, minutes: minute));
+
+    // Ahead.
+    book(
+      from: 'Madina',
+      to: 'Circle',
+      departs: at(1, 7, 15),
+      minutes: 40,
+      vehicle: VehicleType.minibus,
+      plate: 'GR 1234-24',
+      perSeat: '8.00',
+      solo: '14.00',
+      seats: ['3', '4'],
+      status: BookingStatus.confirmed,
+      reference: 'TS-8KQ2',
+    );
+    book(
+      from: 'Legon',
+      to: 'Osu',
+      departs: at(1, 8, 30),
+      minutes: 35,
+      vehicle: VehicleType.sedan,
+      plate: 'GT 5521-23',
+      perSeat: '18.00',
+      solo: '45.00',
+      seats: ['2'],
+      status: BookingStatus.awaitingAcceptance,
+      reference: 'TS-4HBN',
+      rolling: acceptTimeout,
+    );
+    book(
+      from: 'Circle',
+      to: 'Tema',
+      departs: at(1, 17, 45),
+      minutes: 55,
+      vehicle: VehicleType.bus,
+      plate: 'GN 7781-22',
+      perSeat: '9.00',
+      solo: '9.00',
+      seats: ['6'],
+      status: BookingStatus.pending,
+      reference: 'TS-Q7RD',
+      rolling: seatHold,
+    );
+    book(
+      from: 'Achimota',
+      to: 'Lapaz',
+      departs: now.subtract(const Duration(minutes: 20)),
+      minutes: 25,
+      vehicle: VehicleType.minibus,
+      plate: 'GW 3390-21',
+      perSeat: '5.00',
+      solo: '9.00',
+      seats: ['7'],
+      status: BookingStatus.confirmed,
+      reference: 'TS-C2MX',
+      trip: TripStatus.inProgress,
+    );
+    // Behind, or ended.
+    book(
+      from: 'Osu',
+      to: 'Circle',
+      departs: at(2, 12, 0),
+      minutes: 30,
+      vehicle: VehicleType.minibus,
+      plate: 'GR 6610-24',
+      perSeat: '7.00',
+      solo: '12.00',
+      seats: ['9'],
+      status: BookingStatus.refundPending,
+      reference: 'TS-RF9P',
+    );
+    book(
+      from: 'Circle',
+      to: 'Tema',
+      departs: at(-1, 17, 15),
+      minutes: 55,
+      vehicle: VehicleType.bus,
+      plate: 'GN 7781-22',
+      perSeat: '9.00',
+      solo: '9.00',
+      seats: ['5', '6'],
+      status: BookingStatus.completed,
+      reference: 'TS-W3TE',
+      trip: TripStatus.completed,
+    );
+    book(
+      from: 'Accra Central',
+      to: 'Kaneshie',
+      departs: at(-2, 7, 45),
+      minutes: 20,
+      vehicle: VehicleType.minibus,
+      plate: 'GE 2207-23',
+      perSeat: '4.50',
+      solo: '8.00',
+      seats: ['1'],
+      status: BookingStatus.completed,
+      reference: 'TS-KN45',
+      trip: TripStatus.completed,
+    );
+    book(
+      from: 'Madina',
+      to: 'Circle',
+      departs: at(-3, 8, 30),
+      minutes: 40,
+      vehicle: VehicleType.minibus,
+      plate: 'GR 1234-24',
+      perSeat: '6.00',
+      solo: '14.00',
+      seats: ['8'],
+      status: BookingStatus.completed,
+      reference: 'TS-MD60',
+      trip: TripStatus.completed,
+    );
+    book(
+      from: 'Tema',
+      to: 'Circle',
+      departs: at(-4, 18, 0),
+      minutes: 55,
+      vehicle: VehicleType.bus,
+      plate: 'GN 4402-22',
+      perSeat: '9.00',
+      solo: '9.00',
+      seats: ['10'],
+      status: BookingStatus.cancelled,
+      reference: 'TS-TC90',
+      trip: TripStatus.completed,
+    );
+    book(
+      from: 'Kaneshie',
+      to: 'Lapaz',
+      departs: at(-5, 9, 10),
+      minutes: 25,
+      vehicle: VehicleType.minibus,
+      plate: 'GE 8815-24',
+      perSeat: '5.00',
+      solo: '9.00',
+      seats: ['2'],
+      status: BookingStatus.refunded,
+      reference: 'TS-RD50',
+      trip: TripStatus.cancelled,
+    );
+    book(
+      from: 'Lapaz',
+      to: 'Madina',
+      departs: at(-6, 16, 40),
+      minutes: 50,
+      vehicle: VehicleType.minibus,
+      plate: 'GW 1029-22',
+      perSeat: '6.50',
+      solo: '12.00',
+      seats: ['11'],
+      status: BookingStatus.expired,
+      reference: 'TS-EX65',
+      trip: TripStatus.completed,
+    );
   }
 
   String _reference() {
@@ -1848,7 +2249,8 @@ class _MockSeat {
 /// A trip a search found, with its vehicle's seat map.
 class _MockTrip {
   _MockTrip(this.result, this.board, this.alight, this.lastRider)
-    : seats = _layout(result) {
+    : seats = _layout(result),
+      status = result.status {
     final available = result.availableSeats;
     final taken = available <= 0
         ? seats.map((s) => s.number)
@@ -1868,6 +2270,10 @@ class _MockTrip {
   final Set<String> takenByOthers = {};
   DateTime lastRider;
   bool closed = false;
+
+  /// Search only finds scheduled and boarding trips; the booking history
+  /// also has trips under way and finished.
+  TripStatus status;
 
   bool get minibus => result.vehicleType == VehicleType.minibus;
 
@@ -1961,6 +2367,9 @@ class _MockBooking {
     required this.expiresAt,
     required this.createdAt,
     required this.passengers,
+    this.solo,
+    this.seeded = false,
+    this.rolling,
   }) : requestedAt = createdAt,
        tried = {trip.result.tripId};
 
@@ -1991,7 +2400,33 @@ class _MockBooking {
   final Set<String> tried;
   int moves = 0;
 
-  BookingResponse toResponse() => BookingResponse(
+  /// What the seats would have cost unshared (the saving on the Trip
+  /// History card); null: [fare].
+  final String? solo;
+
+  /// Part of the passenger's history ([MockBackend.bookingHistory]): the
+  /// drivers' script leaves it alone.
+  final bool seeded;
+
+  /// For a seeded booking still waiting or pending: it never lapses, and
+  /// its deadline starts again every [rolling], so the demo always has one.
+  final Duration? rolling;
+
+  /// Cancelled once its trip had started: waits for an admin, and the
+  /// booking stays as it was (no passenger endpoint shows the request).
+  bool cancellationRequested = false;
+
+  /// The deadline shown at [now]: [expiresAt], or the current turn of a
+  /// [rolling] one.
+  DateTime deadlineAt(DateTime now) {
+    final window = rolling;
+    if (window == null) return expiresAt;
+    final turns =
+        now.difference(createdAt).inMicroseconds ~/ window.inMicroseconds;
+    return createdAt.add(window * (turns + 1));
+  }
+
+  BookingResponse toResponse(DateTime now) => BookingResponse(
     id: id,
     bookingReference: reference,
     tripId: trip.result.tripId,
@@ -2005,7 +2440,7 @@ class _MockBooking {
     expiresAt:
         status == BookingStatus.awaitingAcceptance ||
             status == BookingStatus.pending
-        ? expiresAt
+        ? deadlineAt(now)
         : null,
     createdAt: createdAt,
     passengers: passengers,
@@ -2014,7 +2449,7 @@ class _MockBooking {
       routeName: trip.result.routeName,
       originStopName: trip.board.name,
       destinationStopName: trip.alight.name,
-      status: TripStatus.scheduled,
+      status: trip.status,
       vehicleRegistrationNumber: trip.result.vehicleRegistrationNumber,
     ),
     boardingStopName: MockBackend.stops.values

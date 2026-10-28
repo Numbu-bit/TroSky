@@ -18,6 +18,7 @@ export 'src/components/skip_text.dart';
 export 'src/components/trosky_button.dart';
 export 'src/components/trosky_chip.dart';
 export 'src/components/trosky_float.dart';
+export 'src/components/trips_components.dart';
 export 'src/components/trosky_tab_bar.dart';
 export 'src/css/css_conversions.dart';
 export 'src/icons/trosky_icons.dart';

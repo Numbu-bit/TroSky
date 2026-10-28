@@ -125,6 +125,30 @@ abstract class BookingTripSummaryResponse with _$BookingTripSummaryResponse {
       _$BookingTripSummaryResponseFromJson(json);
 }
 
+/// `BookingSummaryResponse` from `GET /bookings/summary` (G25): the Trip
+/// History card for one month.
+@freezed
+abstract class BookingSummaryResponse with _$BookingSummaryResponse {
+  const factory BookingSummaryResponse({
+    /// "2026-10".
+    required String month,
+    required String currency,
+
+    /// Paid trips departing that month.
+    required int tripsCount,
+
+    /// What they cost, fees included.
+    @JsonKey(fromJson: decimalString) required String totalSpent,
+    @JsonKey(fromJson: decimalString) required String averageFare,
+
+    /// What sharing saved: the unshared price less the fare paid.
+    @JsonKey(fromJson: decimalString) required String totalSaved,
+  }) = _BookingSummaryResponse;
+
+  factory BookingSummaryResponse.fromJson(Map<String, dynamic> json) =>
+      _$BookingSummaryResponseFromJson(json);
+}
+
 /// `BookingResponse`. Money stays exactly as sent ("16.50").
 @freezed
 abstract class BookingResponse with _$BookingResponse {

@@ -620,11 +620,17 @@ class TroskyCountdown extends StatelessWidget {
 }
 
 /// The grey rounded square around an outcome icon, as "No driver accepted
-/// your booking" (P-07): 84 px, radius 24.
+/// your booking" (P-07): 84 px, radius 24. "Booking cancelled" (P-16) has
+/// it in pale green ([color]).
 class TroskyStatusTile extends StatelessWidget {
-  const TroskyStatusTile({super.key, required this.icon});
+  const TroskyStatusTile({
+    super.key,
+    required this.icon,
+    this.color = TroskyColors.qrFrame,
+  });
 
   final Widget icon;
+  final Color color;
 
   @override
   Widget build(BuildContext context) => ExcludeSemantics(
@@ -632,7 +638,7 @@ class TroskyStatusTile extends StatelessWidget {
       width: 84,
       height: 84,
       decoration: BoxDecoration(
-        color: TroskyColors.qrFrame,
+        color: color,
         borderRadius: BorderRadius.circular(TroskyRadii.r24),
       ),
       alignment: Alignment.center,

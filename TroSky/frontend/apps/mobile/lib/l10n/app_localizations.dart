@@ -1891,6 +1891,348 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your seat hold has expired.'**
   String get paymentExpiredHome;
+
+  /// Trip History header (P-15, Figma P13).
+  ///
+  /// In en, this message translates to:
+  /// **'Trip History'**
+  String get tripsTitle;
+
+  /// Trip History summary card title, as designed (P13).
+  ///
+  /// In en, this message translates to:
+  /// **'Total Spent This Month'**
+  String get tripsSpentThisMonth;
+
+  /// Trip History summary card: paid trips this month.
+  ///
+  /// In en, this message translates to:
+  /// **'Trips'**
+  String get tripsStatTrips;
+
+  /// Trip History summary card: average fare this month.
+  ///
+  /// In en, this message translates to:
+  /// **'Avg Fare'**
+  String get tripsStatAvgFare;
+
+  /// Trip History summary card: what sharing saved this month.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get tripsStatSaved;
+
+  /// Trip History tab: bookings still to ride (instead of the design's All / This Month / Last Month).
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming'**
+  String get tripsTabUpcoming;
+
+  /// Trip History tab: bookings that ended.
+  ///
+  /// In en, this message translates to:
+  /// **'Past'**
+  String get tripsTabPast;
+
+  /// Day of a past booking on a Trip History row.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get tripsYesterday;
+
+  /// When a Trip History row's trip departs: "Today, 08:30", "Mon, 07:45".
+  ///
+  /// In en, this message translates to:
+  /// **'{day}, {time}'**
+  String tripsWhen(String day, String time);
+
+  /// Screen reader label for Trip History while it loads.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading your trips'**
+  String get tripsLoading;
+
+  /// Trip History, Upcoming tab, with no bookings.
+  ///
+  /// In en, this message translates to:
+  /// **'No upcoming trips. Book a seat and it shows up here.'**
+  String get tripsEmptyUpcoming;
+
+  /// Trip History, Past tab, with no bookings.
+  ///
+  /// In en, this message translates to:
+  /// **'No past trips yet.'**
+  String get tripsEmptyPast;
+
+  /// Button under an empty Trip History tab: opens Search.
+  ///
+  /// In en, this message translates to:
+  /// **'Find a ride'**
+  String get tripsFindRide;
+
+  /// Under the Trip History list when the next page fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load more trips.'**
+  String get tripsLoadMoreError;
+
+  /// Screen reader hint on a Trip History row.
+  ///
+  /// In en, this message translates to:
+  /// **'Opens the booking details'**
+  String get tripsOpenLabel;
+
+  /// Booking status: awaiting_acceptance.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for driver'**
+  String get bookingStatusWaiting;
+
+  /// Booking status: pending or payment_pending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending payment'**
+  String get bookingStatusPendingPayment;
+
+  /// Booking status: confirmed, the trip not started.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid · Upcoming'**
+  String get bookingStatusPaidUpcoming;
+
+  /// Booking status: confirmed, the trip boarding or under way (not in the design).
+  ///
+  /// In en, this message translates to:
+  /// **'Paid · On the way'**
+  String get bookingStatusPaidUnderWay;
+
+  /// Booking status: completed.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get bookingStatusCompleted;
+
+  /// Booking status: cancelled, refund_pending or refunded.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get bookingStatusCancelled;
+
+  /// Booking status: expired.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get bookingStatusExpired;
+
+  /// Booking details header (P-16).
+  ///
+  /// In en, this message translates to:
+  /// **'Booking details'**
+  String get bookingDetailsTitle;
+
+  /// Screen reader label for the copy button by the booking reference.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy booking reference'**
+  String get bookingCopyReference;
+
+  /// After the booking reference was copied.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking reference copied'**
+  String get bookingReferenceCopied;
+
+  /// How long the ride takes, on the trip card.
+  ///
+  /// In en, this message translates to:
+  /// **'About {minutes} min'**
+  String bookingAboutMinutes(int minutes);
+
+  /// Estimated arrival time on the trip card.
+  ///
+  /// In en, this message translates to:
+  /// **'~{time}'**
+  String bookingArrival(String time);
+
+  /// Booking details card title.
+  ///
+  /// In en, this message translates to:
+  /// **'Vehicle & driver'**
+  String get bookingVehicleDriver;
+
+  /// Booking details: the booked seats.
+  ///
+  /// In en, this message translates to:
+  /// **'Seats'**
+  String get bookingSeats;
+
+  /// Booking details: how many seats.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 passenger} other{{count} passengers}}'**
+  String bookingPassengers(int count);
+
+  /// Screen reader label for the driver's rating.
+  ///
+  /// In en, this message translates to:
+  /// **'Rated {rating} out of 5'**
+  String bookingDriverRated(String rating);
+
+  /// Booking details card title.
+  ///
+  /// In en, this message translates to:
+  /// **'Fare breakdown'**
+  String get bookingFareBreakdown;
+
+  /// Fare breakdown: seats times the fare of one.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} × {fare}'**
+  String bookingFareLine(int count, String fare);
+
+  /// Fare breakdown: the platform fee (not in the design; the backend charges it).
+  ///
+  /// In en, this message translates to:
+  /// **'Service fee'**
+  String get bookingServiceFee;
+
+  /// Booking details action for a booking to pay: opens Payment.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay now'**
+  String get bookingPayNow;
+
+  /// Booking details action while the driver hasn't answered: opens Payment.
+  ///
+  /// In en, this message translates to:
+  /// **'View status'**
+  String get bookingViewStatus;
+
+  /// Booking details: a refund paid out (back the way it was paid).
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} refunded'**
+  String bookingRefunded(String amount);
+
+  /// Booking details: a refund waiting for TroSky's approval.
+  ///
+  /// In en, this message translates to:
+  /// **'Refund of {amount} requested'**
+  String bookingRefundRequested(String amount);
+
+  /// Booking details when it fails to load.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this booking.'**
+  String get bookingLoadError;
+
+  /// Cancel sheet title.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel this booking?'**
+  String get cancelSheetTitle;
+
+  /// Cancel sheet subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Please tell us why you\'re cancelling.'**
+  String get cancelSheetSubtitle;
+
+  /// Cancel reason.
+  ///
+  /// In en, this message translates to:
+  /// **'Change of plans'**
+  String get cancelReasonPlans;
+
+  /// Cancel reason.
+  ///
+  /// In en, this message translates to:
+  /// **'Found another ride'**
+  String get cancelReasonAnotherRide;
+
+  /// Cancel reason.
+  ///
+  /// In en, this message translates to:
+  /// **'Departure time doesn\'t suit me'**
+  String get cancelReasonTime;
+
+  /// Cancel reason: the passenger writes their own.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get cancelReasonOther;
+
+  /// Hint in the cancel sheet's text field for "Other".
+  ///
+  /// In en, this message translates to:
+  /// **'Tell us more'**
+  String get cancelReasonHint;
+
+  /// Cancel sheet refund box for a paid booking (the design names the wallet; the backend refunds the way it was paid).
+  ///
+  /// In en, this message translates to:
+  /// **'Refund: {amount}'**
+  String cancelRefundTitle(String amount);
+
+  /// Cancel sheet refund box: how refunds work.
+  ///
+  /// In en, this message translates to:
+  /// **'TroSky approves the refund, then it goes back the way you paid.'**
+  String get cancelRefundBody;
+
+  /// Cancel sheet note when the trip is under way.
+  ///
+  /// In en, this message translates to:
+  /// **'Your trip has started'**
+  String get cancelReviewTitle;
+
+  /// Cancel sheet note when the trip is under way.
+  ///
+  /// In en, this message translates to:
+  /// **'TroSky reviews cancellations once a trip is under way.'**
+  String get cancelReviewBody;
+
+  /// Cancel sheet: the red button.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel booking'**
+  String get cancelConfirm;
+
+  /// Cancel sheet: closes it.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep booking'**
+  String get cancelKeep;
+
+  /// Title after cancelling.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking cancelled'**
+  String get cancelledTitle;
+
+  /// Line after cancelling.
+  ///
+  /// In en, this message translates to:
+  /// **'Your seats have been released.'**
+  String get cancelledBody;
+
+  /// Button after cancelling: back to Trip History.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to trips'**
+  String get cancelledBackToTrips;
+
+  /// Title when the cancel waits for TroSky (the trip had started; not in the design).
+  ///
+  /// In en, this message translates to:
+  /// **'Cancellation requested'**
+  String get cancelRequestedTitle;
+
+  /// Line when the cancel waits for TroSky.
+  ///
+  /// In en, this message translates to:
+  /// **'Your trip has already started, so TroSky reviews it. Your booking stays as it is until then.'**
+  String get cancelRequestedBody;
 }
 
 class _AppLocalizationsDelegate

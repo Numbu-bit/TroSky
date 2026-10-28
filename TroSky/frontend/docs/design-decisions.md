@@ -381,3 +381,53 @@ Design: derived (no Figma). Goldens of the bar over the splash and Sign in:
 
 Mock-mode builds to show the app without a server install next to the live one as "TroSky Demo"
 (`com.trosky.app.demo`), with `flutter build apk -P demo=true` (env/README.md). Same icon.
+
+## 30. The Trips tab: Trip History (P-15) and Booking details (P-16)
+
+1. **Tabs: Upcoming and Past**, in place of the design's All / This Month / Last Month (the
+   project owner's call). The monthly card stays: `GET /bookings/summary`, this month.
+   - Upcoming: open bookings (waiting for the driver, pending payment, paid) whose trip is ahead
+     or under way, soonest first.
+   - Past: ended bookings (completed, cancelled, expired, refund pending, refunded), newest
+     booking first. `upcoming=` alone looks only at the trip, so a booking cancelled for tomorrow
+     would stay under Upcoming (backend gap G35).
+   - 20 a page, the next page near the end of the list; pull to refresh. The tab reads its list
+     again each time it is opened, keeping the rows on screen meanwhile.
+2. **Status words**, the same on a row's tag and the details chip: "Waiting for driver",
+   "Pending payment", "Paid · Upcoming", **"Paid · On the way"** (not designed: paid, the trip
+   boarding or under way), "Completed", "Cancelled" (also for refund pending and refunded),
+   "Expired". Row tags follow P13 (Completed green, Cancelled red, the price struck through);
+   the chips follow the status variants (Completed and Expired grey). Expired prices are struck
+   through too: nothing was paid.
+3. **Actions per status.** Pay now (pending payment) and View status (waiting for the driver)
+   open Payment (P-07); Back returns to the details, read again. Cancel booking for pending
+   payment and paid bookings; while the driver decides, Payment's "Cancel request" does it, as
+   designed. **Hidden until built:** View ticket, Track trip, Rate driver, Book again, and Trip
+   History's Export.
+4. **Cancel sheet**: the four reasons, "Other" with a note (writing in it chooses Other); the
+   reason goes to `POST /bookings/{id}/cancel`. The refund box only for a paid booking, and its
+   words follow the backend, not the design: "Refund: ₵16.00 / TroSky approves the refund, then it
+   goes back the way you paid." (no wallet, no rule about the departure time). Once the trip has
+   started, the box says "Your trip has started / TroSky reviews cancellations once a trip is under
+   way." A failure stays in the sheet, in red, with both buttons.
+5. **After the cancel**: "Booking cancelled" with "Refund of ₵16.00 requested" for a paid
+   booking. When the trip had started, the backend leaves the booking as it was and files a
+   request for an admin: the app then shows **"Cancellation requested"** (not designed: the
+   clock in an amber tile), and the booking stays "Paid · On the way" (G35).
+6. **Booking details** reads `GET /bookings/{id}` and `GET /trips/{id}` (vehicle make, driver and
+   rating, arrival at the route's end, shown as "~07:55"; "About 40 min" between the two), and
+   the seat labels from `GET /trips/{id}/seats`. The fare breakdown adds the backend's service
+   fee under the design's "2 × ₵8.00", so the lines add up to the total. "PAID WITH" is left out
+   (G35). The reference copies to the clipboard.
+7. **Mock mode** (the demo APK) gives Ama Mensah a week of bookings in every status around the
+   time the app starts. The waiting and pending ones never lapse (their deadline starts again
+   each turn), so Home reopens the waiting one on Payment once after sign-in, as it does for a
+   held booking.
+
+Measured from the screenshots in design/P-16/ (no Figma code; every value an existing token):
+cards as P-07's (radius 20, 20 px padding), section labels 11/700 caps, stop names 15/700,
+the departure 16/800, the total 26/800 green, the cancel sheet's red pill (a new `danger`
+button: the primary pill in red, no shadow). P-15 follows `P13_TripHistory` exactly. The copy,
+wallet, ticked-circle and vehicle icons are drawn from the screenshots in the style of the
+existing icons; the ticket is P13's own. Goldens:
+`apps/mobile/test/passenger/trips/goldens/`, `packages/trosky_ui/test/goldens/trips_components.png`.

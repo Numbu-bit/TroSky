@@ -475,7 +475,7 @@ void main() {
     ) async {
       final world = await openHome(tester);
       for (final (tab, screen) in [
-        ('Trips', 'trips'),
+        ('Trips', 'Trip History'),
         ('Wallet', 'wallet'),
         ('Profile', 'profile'),
       ]) {

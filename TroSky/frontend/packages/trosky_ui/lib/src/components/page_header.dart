@@ -19,6 +19,8 @@ class TroskyPageHeader extends StatelessWidget {
     required this.subtitle,
     required this.onBack,
     this.backLabel = 'Back',
+    this.subtitleTrailing,
+    this.trailing,
   });
 
   final String title;
@@ -30,8 +32,17 @@ class TroskyPageHeader extends StatelessWidget {
   /// What a screen reader says for the back button.
   final String backLabel;
 
+  /// After the subtitle: the copy button by a booking reference (P-16).
+  final Widget? subtitleTrailing;
+
+  /// On the right: a status chip (P-16).
+  final Widget? trailing;
+
   @override
   Widget build(BuildContext context) {
+    final subtitleStyle = TroskyTypography.body13Regular.copyWith(
+      color: TroskyColors.whiteA55,
+    );
     final top = math.max(
       TroskyAuthHeader.statusBarHeight,
       MediaQuery.viewPaddingOf(context).top,
@@ -75,15 +86,33 @@ class TroskyPageHeader extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: TroskySpacing.s2),
-                  Text(
-                    subtitle,
-                    style: TroskyTypography.body13Regular.copyWith(
-                      color: TroskyColors.whiteA55,
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: subtitleTrailing == null
+                            ? Text(subtitle, style: subtitleStyle)
+                            // A reference: one line, a little smaller
+                            // when it must, never broken in two.
+                            : FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  subtitle,
+                                  maxLines: 1,
+                                  style: subtitleStyle,
+                                ),
+                              ),
+                      ),
+                      ?subtitleTrailing,
+                    ],
                   ),
                 ],
               ),
             ),
+            if (trailing case final trailing?) ...[
+              const SizedBox(width: TroskySpacing.s10),
+              trailing,
+            ],
           ],
         ),
       ),

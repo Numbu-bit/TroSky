@@ -150,6 +150,28 @@ const _$TripStatusEnumMap = {
   TripStatus.cancelled: 'cancelled',
 };
 
+_BookingSummaryResponse _$BookingSummaryResponseFromJson(
+  Map<String, dynamic> json,
+) => _BookingSummaryResponse(
+  month: json['month'] as String,
+  currency: json['currency'] as String,
+  tripsCount: (json['trips_count'] as num).toInt(),
+  totalSpent: decimalString(json['total_spent']),
+  averageFare: decimalString(json['average_fare']),
+  totalSaved: decimalString(json['total_saved']),
+);
+
+Map<String, dynamic> _$BookingSummaryResponseToJson(
+  _BookingSummaryResponse instance,
+) => <String, dynamic>{
+  'month': instance.month,
+  'currency': instance.currency,
+  'trips_count': instance.tripsCount,
+  'total_spent': instance.totalSpent,
+  'average_fare': instance.averageFare,
+  'total_saved': instance.totalSaved,
+};
+
 _BookingResponse _$BookingResponseFromJson(Map<String, dynamic> json) =>
     _BookingResponse(
       id: json['id'] as String,

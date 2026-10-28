@@ -242,6 +242,10 @@ class RecordingBookings implements BookingRepository {
   );
 
   @override
+  Future<Result<BookingSummaryResponse>> summary({String? month}) =>
+      _inner.summary(month: month);
+
+  @override
   Future<Result<BookingResponse>> get(String bookingId) =>
       _inner.get(bookingId);
 

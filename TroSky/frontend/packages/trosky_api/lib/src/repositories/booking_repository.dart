@@ -32,11 +32,19 @@ abstract interface class BookingRepository {
     int offset = 0,
   });
 
+  /// The Trip History card (G25): paid trips departing in [month]
+  /// ("2026-10"; the backend's default is this month), what they cost and
+  /// what sharing saved.
+  Future<Result<BookingSummaryResponse>> summary({String? month});
+
   Future<Result<BookingResponse>> get(String bookingId);
 
   /// Before the trip starts, or while the driver hasn't answered, this is
   /// decided at once: the seats are released and the booking is
-  /// `cancelled`. 409 `INVALID_STATE_TRANSITION` when it already ended.
+  /// `cancelled`, or `refund_pending` when it was paid (an admin then
+  /// approves the refund, back the way it was paid). Once the trip has
+  /// started, the request waits for an admin and the booking comes back
+  /// unchanged. 409 `INVALID_STATE_TRANSITION` when it already ended.
   Future<Result<BookingResponse>> cancel(String bookingId, {String? reason});
 }
 
@@ -77,6 +85,15 @@ class LiveBookingRepository implements BookingRepository {
       },
     ),
     (data) => Paginated.fromJson(jsonObject(data), BookingResponse.fromJson),
+  );
+
+  @override
+  Future<Result<BookingSummaryResponse>> summary({String? month}) => apiCall(
+    () => _dio.get<Object?>(
+      '/bookings/summary',
+      queryParameters: {'month': ?month},
+    ),
+    (data) => BookingSummaryResponse.fromJson(jsonObject(data)),
   );
 
   @override

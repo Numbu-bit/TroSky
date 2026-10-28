@@ -1069,4 +1069,203 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get paymentExpiredHome => 'Your seat hold has expired.';
+
+  @override
+  String get tripsTitle => 'Trip History';
+
+  @override
+  String get tripsSpentThisMonth => 'Total Spent This Month';
+
+  @override
+  String get tripsStatTrips => 'Trips';
+
+  @override
+  String get tripsStatAvgFare => 'Avg Fare';
+
+  @override
+  String get tripsStatSaved => 'Saved';
+
+  @override
+  String get tripsTabUpcoming => 'Upcoming';
+
+  @override
+  String get tripsTabPast => 'Past';
+
+  @override
+  String get tripsYesterday => 'Yesterday';
+
+  @override
+  String tripsWhen(String day, String time) {
+    return '$day, $time';
+  }
+
+  @override
+  String get tripsLoading => 'Loading your trips';
+
+  @override
+  String get tripsEmptyUpcoming =>
+      'No upcoming trips. Book a seat and it shows up here.';
+
+  @override
+  String get tripsEmptyPast => 'No past trips yet.';
+
+  @override
+  String get tripsFindRide => 'Find a ride';
+
+  @override
+  String get tripsLoadMoreError => 'Couldn\'t load more trips.';
+
+  @override
+  String get tripsOpenLabel => 'Opens the booking details';
+
+  @override
+  String get bookingStatusWaiting => 'Waiting for driver';
+
+  @override
+  String get bookingStatusPendingPayment => 'Pending payment';
+
+  @override
+  String get bookingStatusPaidUpcoming => 'Paid · Upcoming';
+
+  @override
+  String get bookingStatusPaidUnderWay => 'Paid · On the way';
+
+  @override
+  String get bookingStatusCompleted => 'Completed';
+
+  @override
+  String get bookingStatusCancelled => 'Cancelled';
+
+  @override
+  String get bookingStatusExpired => 'Expired';
+
+  @override
+  String get bookingDetailsTitle => 'Booking details';
+
+  @override
+  String get bookingCopyReference => 'Copy booking reference';
+
+  @override
+  String get bookingReferenceCopied => 'Booking reference copied';
+
+  @override
+  String bookingAboutMinutes(int minutes) {
+    return 'About $minutes min';
+  }
+
+  @override
+  String bookingArrival(String time) {
+    return '~$time';
+  }
+
+  @override
+  String get bookingVehicleDriver => 'Vehicle & driver';
+
+  @override
+  String get bookingSeats => 'Seats';
+
+  @override
+  String bookingPassengers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count passengers',
+      one: '1 passenger',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String bookingDriverRated(String rating) {
+    return 'Rated $rating out of 5';
+  }
+
+  @override
+  String get bookingFareBreakdown => 'Fare breakdown';
+
+  @override
+  String bookingFareLine(int count, String fare) {
+    return '$count × $fare';
+  }
+
+  @override
+  String get bookingServiceFee => 'Service fee';
+
+  @override
+  String get bookingPayNow => 'Pay now';
+
+  @override
+  String get bookingViewStatus => 'View status';
+
+  @override
+  String bookingRefunded(String amount) {
+    return '$amount refunded';
+  }
+
+  @override
+  String bookingRefundRequested(String amount) {
+    return 'Refund of $amount requested';
+  }
+
+  @override
+  String get bookingLoadError => 'Couldn\'t load this booking.';
+
+  @override
+  String get cancelSheetTitle => 'Cancel this booking?';
+
+  @override
+  String get cancelSheetSubtitle => 'Please tell us why you\'re cancelling.';
+
+  @override
+  String get cancelReasonPlans => 'Change of plans';
+
+  @override
+  String get cancelReasonAnotherRide => 'Found another ride';
+
+  @override
+  String get cancelReasonTime => 'Departure time doesn\'t suit me';
+
+  @override
+  String get cancelReasonOther => 'Other';
+
+  @override
+  String get cancelReasonHint => 'Tell us more';
+
+  @override
+  String cancelRefundTitle(String amount) {
+    return 'Refund: $amount';
+  }
+
+  @override
+  String get cancelRefundBody =>
+      'TroSky approves the refund, then it goes back the way you paid.';
+
+  @override
+  String get cancelReviewTitle => 'Your trip has started';
+
+  @override
+  String get cancelReviewBody =>
+      'TroSky reviews cancellations once a trip is under way.';
+
+  @override
+  String get cancelConfirm => 'Cancel booking';
+
+  @override
+  String get cancelKeep => 'Keep booking';
+
+  @override
+  String get cancelledTitle => 'Booking cancelled';
+
+  @override
+  String get cancelledBody => 'Your seats have been released.';
+
+  @override
+  String get cancelledBackToTrips => 'Back to trips';
+
+  @override
+  String get cancelRequestedTitle => 'Cancellation requested';
+
+  @override
+  String get cancelRequestedBody =>
+      'Your trip has already started, so TroSky reviews it. Your booking stays as it is until then.';
 }

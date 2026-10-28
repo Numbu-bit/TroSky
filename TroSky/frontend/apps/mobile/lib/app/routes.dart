@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:trosky_api/trosky_api.dart';
 
 import '../debug/design_gallery.dart';
 import '../entry/auth/domain/auth_inputs.dart';
@@ -20,6 +21,8 @@ import '../passenger/search/search_prefill.dart';
 import '../passenger/seats/domain/seat_selection_args.dart';
 import '../passenger/seats/presentation/seat_selection_screen.dart';
 import '../passenger/shell/passenger_shell.dart';
+import '../passenger/trips/presentation/booking_details_screen.dart';
+import '../passenger/trips/presentation/trips_screen.dart';
 import 'placeholder_screen.dart';
 
 part 'routes.g.dart';
@@ -41,7 +44,8 @@ enum AppRoute {
   /// S-05; `extra` may be a [SignInArgs].
   signIn('/sign-in'),
 
-  /// The passenger tabs (decision 12): Home (P-01), then placeholders.
+  /// The passenger tabs (decision 12): Home (P-01), Trips (P-15), then
+  /// placeholders.
   home('/home'),
   trips('/trips'),
   wallet('/wallet'),
@@ -60,6 +64,10 @@ enum AppRoute {
   /// Payment (P-07, placeholder): a held booking; `extra` is a
   /// [PaymentArgs].
   payment('/payment'),
+
+  /// Booking details (P-16), from Trips; `extra` may be the
+  /// [BookingResponse] as listed.
+  bookingDetails('/bookings/:bookingId'),
   notifications('/notifications'),
   favouriteRoutes('/favourite-routes'),
   subscribe('/subscribe'),
@@ -124,11 +132,7 @@ GoRouter router(Ref ref) {
           ),
           StatefulShellBranch(
             routes: [
-              route(
-                AppRoute.trips,
-                (context, state) =>
-                    PlaceholderScreen(routeName: AppRoute.trips.name),
-              ),
+              route(AppRoute.trips, (context, state) => const TripsScreen()),
             ],
           ),
           StatefulShellBranch(
@@ -184,6 +188,16 @@ GoRouter router(Ref ref) {
             state.extra is PaymentArgs ? null : AppRoute.home.path,
         builder: (context, state) =>
             PaymentScreen(args: state.extra! as PaymentArgs),
+      ),
+      GoRoute(
+        path: AppRoute.bookingDetails.path,
+        name: AppRoute.bookingDetails.name,
+        builder: (context, state) => BookingDetailsScreen(
+          bookingId: state.pathParameters['bookingId']!,
+          initial: state.extra is BookingResponse
+              ? state.extra! as BookingResponse
+              : null,
+        ),
       ),
       for (final (pushed, title)
           in <(AppRoute, String Function(AppLocalizations))>[
