@@ -76,14 +76,26 @@ class TroskyPageHeader extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Semantics(
-                    header: true,
-                    child: Text(
-                      title,
-                      style: TroskyTypography.heading22ExtraBold.copyWith(
-                        color: TroskyColors.white,
+                  // A chip sits beside the title only, so the subtitle (a
+                  // booking reference) keeps the whole width below.
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Semantics(
+                          header: true,
+                          child: Text(
+                            title,
+                            style: TroskyTypography.heading22ExtraBold.copyWith(
+                              color: TroskyColors.white,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                      if (trailing case final trailing?) ...[
+                        const SizedBox(width: TroskySpacing.s10),
+                        trailing,
+                      ],
+                    ],
                   ),
                   const SizedBox(height: TroskySpacing.s2),
                   Row(
@@ -109,10 +121,6 @@ class TroskyPageHeader extends StatelessWidget {
                 ],
               ),
             ),
-            if (trailing case final trailing?) ...[
-              const SizedBox(width: TroskySpacing.s10),
-              trailing,
-            ],
           ],
         ),
       ),
