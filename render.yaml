@@ -132,9 +132,11 @@ services:
         value: "2"
 
       # "true" loads the demo stops, routes, a week of trips and the demo
-      # accounts (public password TroSkyDemo!2026) on the next start.
+      # accounts (public password TroSkyDemo!2026). Each start checks the
+      # timetable; when fewer than 2 days of demo trips are left it tops it
+      # up to a week, after the API already answers, so wake-ups don't wait.
       - key: SEED_DEMO_DATA
-        value: "false"
+        value: "true"
 
   # Rate limits, seat-hold hints, live positions and the Celery queue.
   # ipAllowList [] blocks the external URL; trosky-api connects internally.

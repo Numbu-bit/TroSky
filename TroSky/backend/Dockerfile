@@ -54,6 +54,12 @@ COPY --chown=trosky:trosky alembic ./alembic
 COPY --chown=trosky:trosky alembic.ini ./alembic.ini
 COPY --chown=trosky:trosky scripts ./scripts
 
+# Compile the app's modules once, here. PYTHONDONTWRITEBYTECODE keeps Python
+# from caching them at run time, so otherwise every process compiled all of
+# them again on every start (on Render, every wake-up from sleep). The
+# dependencies in /opt/venv were already compiled by pip.
+RUN python -m compileall -q app alembic scripts
+
 USER trosky
 
 EXPOSE 8000
