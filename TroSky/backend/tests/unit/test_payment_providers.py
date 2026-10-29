@@ -4,11 +4,12 @@ all pure logic, no network call and no database required."""
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
 
-from app.core.config import PaymentProviderName, Settings
+from app.core.config import AppEnv, PaymentProviderName, Settings
 from app.core.exceptions import ProviderError
 from app.providers.payments.base import PaymentChannel, PaymentProviderStatus
 from app.providers.payments.factory import get_payment_provider
@@ -45,7 +46,10 @@ class TestSandboxPaymentProvider:
             payer_phone="0244000000",
             narration="test",
         )
-        assert result.status == PaymentProviderStatus.FAILED
+        # Accepted, then declined at the first status check.
+        assert result.status == PaymentProviderStatus.PENDING
+        status = await provider.query_payment(result.provider_reference)
+        assert status.status == PaymentProviderStatus.FAILED
 
     async def test_query_payment_reflects_resolved_state(self) -> None:
         provider = SandboxPaymentProvider()
@@ -187,3 +191,78 @@ class TestPaymentProviderFactory:
         settings = self._settings(PaymentProviderName.TELECEL_CASH)
         provider = get_payment_provider(PaymentChannel.TELECEL_CASH, settings)
         assert isinstance(provider, UnavailablePaymentProvider)
+
+
+class TestSandboxAutoApprove:
+    """The state travels in the provider reference, so another process (the
+    Celery worker, a server woken from sleep) answers the same."""
+
+    t0 = datetime(2026, 10, 29, 9, 0, tzinfo=UTC)
+
+    def _provider(self, at: datetime, *, seconds: int | None = 5) -> SandboxPaymentProvider:
+        return SandboxPaymentProvider(auto_approve_seconds=seconds, clock=lambda: at)
+
+    async def _start(self, phone: str, reference: str = "PAY-AA") -> str:
+        result = await self._provider(self.t0).initialize_payment(
+            reference=reference,
+            amount=Decimal("8.50"),
+            currency="GHS",
+            payer_phone=phone,
+            narration="",
+        )
+        return result.provider_reference
+
+    async def test_approved_after_the_delay_in_any_process(self) -> None:
+        reference = await self._start("0241234567")
+        assert reference.endswith(":PAY-AA")
+        early = await self._provider(self.t0 + timedelta(seconds=4)).query_payment(reference)
+        assert early.status == PaymentProviderStatus.PENDING
+        # Another process: this one's ledger is gone, the reference is enough.
+        SandboxPaymentProvider.clear()
+        late = await self._provider(self.t0 + timedelta(seconds=5)).query_payment(reference)
+        assert late.status == PaymentProviderStatus.SUCCESSFUL
+
+    async def test_a_number_ending_0000_is_declined(self) -> None:
+        reference = await self._start("0240000000")
+        SandboxPaymentProvider.clear()
+        status = await self._provider(self.t0 + timedelta(minutes=1)).query_payment(reference)
+        assert status.status == PaymentProviderStatus.FAILED
+        assert status.failure_reason == "Customer declined the payment prompt."
+
+    async def test_a_number_ending_9999_never_answers(self) -> None:
+        reference = await self._start("0249999999")
+        status = await self._provider(self.t0 + timedelta(hours=1)).query_payment(reference)
+        assert status.status == PaymentProviderStatus.PENDING
+
+    async def test_without_auto_approve_it_stays_pending(self) -> None:
+        reference = await self._start("0241234567")
+        status = await self._provider(self.t0 + timedelta(hours=1), seconds=None).query_payment(
+            reference
+        )
+        assert status.status == PaymentProviderStatus.PENDING
+
+    async def test_resolve_still_overrides_an_encoded_reference(self) -> None:
+        reference = await self._start("0249999999", reference="PAY-RS")
+        SandboxPaymentProvider.resolve("PAY-RS", PaymentProviderStatus.SUCCESSFUL)
+        status = await self._provider(self.t0).query_payment(reference)
+        assert status.status == PaymentProviderStatus.SUCCESSFUL
+
+    async def test_refund_of_an_encoded_reference_needs_no_ledger(self) -> None:
+        reference = await self._start("0241234567")
+        SandboxPaymentProvider.clear()
+        result = await self._provider(self.t0).refund(
+            provider_reference=reference, amount=Decimal("8.50"), reason="test"
+        )
+        assert result.success is True
+
+    def test_factory_passes_the_delay_but_never_in_production(self) -> None:
+        settings = TestPaymentProviderFactory()._settings(
+            PaymentProviderName.SANDBOX, PAYMENTS_SANDBOX_AUTO_APPROVE_SECONDS=7
+        )
+        provider = get_payment_provider(PaymentChannel.MTN_MOMO, settings)
+        assert isinstance(provider, SandboxPaymentProvider)
+        assert provider._auto_approve_seconds == 7
+        production = settings.model_copy(update={"APP_ENV": AppEnv.PRODUCTION})
+        provider = get_payment_provider(PaymentChannel.MTN_MOMO, production)
+        assert isinstance(provider, SandboxPaymentProvider)
+        assert provider._auto_approve_seconds is None

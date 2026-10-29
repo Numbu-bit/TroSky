@@ -2308,3 +2308,18 @@ pause, resume and end trips by hand, and admins cancel as before.
   more often into spam. The guide now says so, how to send from a domain of
   your own (DNS records in Brevo), where the API key is made, and how to
   use Brevo from a developer's machine in place of MailHog.
+
+## [Unreleased, version for Maahir to pick] - 2026-10-29 - Sandbox payments complete on their own
+
+- The built-in sandbox payment provider (`PAYMENTS_ACTIVE_PROVIDER=sandbox`,
+  as on staging) now approves a mobile money payment or wallet top-up
+  `PAYMENTS_SANDBOX_AUTO_APPROVE_SECONDS` after it starts (default 5; never
+  in production). Payer numbers ending in `0000` are declined at the first
+  status check, so the booking can be paid again; numbers ending in `9999`
+  never answer.
+- Its state no longer lives in one process's memory: the outcome and start
+  time travel in the payment's `provider_reference`. Before, the Celery
+  worker didn't know the API's sandbox payments and marked them failed
+  after 5 minutes, and a server woken from sleep had forgotten them.
+- `docs/deploy-render.md` said the sandbox approves everything; it now says
+  what it does.

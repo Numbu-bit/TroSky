@@ -156,6 +156,11 @@ class Settings(BaseSettings):
 
     # --- Payments ----------------------------------------------------------
     PAYMENTS_ACTIVE_PROVIDER: PaymentProviderName = PaymentProviderName.SANDBOX
+    # The built-in sandbox approves a mobile money payment this many seconds
+    # after it starts, unless the payer number ends in 0000 (declined at
+    # once) or 9999 (never answers). Never applied with APP_ENV=production:
+    # there a sandbox payment stays pending, as no money moves.
+    PAYMENTS_SANDBOX_AUTO_APPROVE_SECONDS: int = Field(default=5, ge=0)
     PAYMENTS_DEFAULT_CURRENCY: str = "GHS"
     # Platform booking fee -- TroSky's per-booking revenue (business plan
     # section 4A: "Bus fare: GHS 8, Platform fee: GHS 0.50"). Charged on top
