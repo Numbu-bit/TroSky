@@ -1048,16 +1048,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Booking cancelled. Your seats are free again.';
 
   @override
-  String get paymentReleaseTitle => 'Change your seats?';
-
-  @override
-  String get paymentReleaseBody =>
-      'Going back releases the seats held for you, so you can choose again.';
-
-  @override
-  String get paymentReleaseKeep => 'Keep these seats';
-
-  @override
   String get paymentReleaseConfirm => 'Release seats';
 
   @override
@@ -1268,4 +1258,20 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get cancelRequestedBody =>
       'Your trip has already started, so TroSky reviews it. Your booking stays as it is until then.';
+
+  @override
+  String get paymentLeaveTitle => 'Leave payment?';
+
+  @override
+  String paymentLeaveBody(String time) {
+    return 'Your seats stay held for $time. You can pay from Trips.';
+  }
+
+  @override
+  String get paymentLeaveKeep => 'Keep seats & leave';
+
+  @override
+  String homeHeldSeats(String time) {
+    return 'Seats held · $time left';
+  }
 }

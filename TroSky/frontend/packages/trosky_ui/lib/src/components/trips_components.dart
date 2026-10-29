@@ -353,34 +353,145 @@ class TroskyBookingRow extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: TroskySpacing.s2),
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: tone.background,
-                        borderRadius: BorderRadius.circular(TroskyRadii.r6),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: TroskySpacing.s6,
-                          vertical: TroskySpacing.s1,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (tone.dotOnTag) ...[
-                              _Dot(color: tone.dot),
-                              const SizedBox(width: TroskySpacing.s4),
-                            ],
-                            Text(
-                              status,
-                              style: TroskyTypography.body10Bold.copyWith(
-                                color: tone.text,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                    TroskyStatusTag(label: status, tone: tone),
                   ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A booking's status as P13's small tag: the tone's tint, its words, and
+/// its dot when the words alone don't carry the colour.
+class TroskyStatusTag extends StatelessWidget {
+  const TroskyStatusTag({super.key, required this.label, required this.tone});
+
+  final String label;
+  final TroskyTagTone tone;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: tone.background,
+        borderRadius: BorderRadius.circular(TroskyRadii.r6),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: TroskySpacing.s6,
+          vertical: TroskySpacing.s1,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (tone.dotOnTag) ...[
+              _Dot(color: tone.dot),
+              const SizedBox(width: TroskySpacing.s4),
+            ],
+            Flexible(
+              child: Text(
+                label,
+                style: TroskyTypography.body10Bold.copyWith(color: tone.text),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A booking whose seats are held, on Home's sheet (derived from P13's row,
+/// decision 31): the ticket, the route and when, a status tag ("Seats held ·
+/// 9:12 left"), and one action ("Pay now"). The whole card opens it too.
+class TroskyHeldBookingCard extends StatelessWidget {
+  const TroskyHeldBookingCard({
+    super.key,
+    required this.route,
+    required this.when,
+    required this.status,
+    required this.tone,
+    required this.action,
+    required this.onPressed,
+  });
+
+  /// "Madina → Circle".
+  final String route;
+
+  /// "Today, 08:30".
+  final String when;
+  final String status;
+  final TroskyTagTone tone;
+
+  /// "Pay now", "View status".
+  final String action;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: '$route, $when, $status, $action',
+      excludeSemantics: true,
+      child: Material(
+        color: TroskyColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(TroskyRadii.r16),
+          side: const BorderSide(color: TroskyColors.border),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onPressed,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: TroskySpacing.s16,
+              vertical: TroskySpacing.s14,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: TroskyColors.greenA08,
+                    borderRadius: BorderRadius.circular(TroskyRadii.r12),
+                  ),
+                  alignment: Alignment.center,
+                  child: TroskyIcons.ticket(color: TroskyColors.green),
+                ),
+                const SizedBox(width: TroskySpacing.s12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        route,
+                        style: TroskyTypography.body13SemiBold.copyWith(
+                          color: TroskyColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: TroskySpacing.s2),
+                      Text(
+                        when,
+                        style: TroskyTypography.body11Regular.copyWith(
+                          color: TroskyColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: TroskySpacing.s6),
+                      TroskyStatusTag(label: status, tone: tone),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: TroskySpacing.s12),
+                Text(
+                  action,
+                  style: TroskyTypography.heading14Bold.copyWith(
+                    color: TroskyColors.greenDark,
+                  ),
                 ),
               ],
             ),

@@ -236,8 +236,6 @@ class _SeatSelectionScreenState extends ConsumerState<SeatSelectionScreen> {
     List<TripSeatResponse> seats,
   ) async {
     _paying = true;
-    // Home mustn't open it a second time.
-    ref.read(shownBookingsProvider.notifier).add(booking.id);
     final outcome = await context.pushNamed<PaymentOutcome>(
       AppRoute.payment.name,
       extra: PaymentArgs(

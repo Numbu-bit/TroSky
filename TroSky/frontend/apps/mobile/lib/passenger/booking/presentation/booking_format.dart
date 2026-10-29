@@ -44,6 +44,10 @@ String seatList(AppLocalizations l10n, List<String> seats) => seats.length < 2
         seats.last,
       );
 
+/// "1:42": minutes and seconds left.
+String timeLeft(Duration left) =>
+    '${left.inMinutes}:${(left.inSeconds % 60).toString().padLeft(2, '0')}';
+
 /// "₵16.00": booking amounts keep their pesewas.
 String cedis(AppLocalizations l10n, String amount) =>
     l10n.priceCedis(double.parse(amount).toStringAsFixed(2));

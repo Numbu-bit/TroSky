@@ -195,15 +195,17 @@ final class FareQuoteFamily extends $Family
 }
 
 /// A held, unpaid booking of the signed-in passenger whose deadline hasn't
-/// passed (waiting for the driver, or to be paid for): the app reopens it
-/// instead of losing it (Part 2). Null offline or when there is none.
+/// passed (waiting for the driver, or to be paid for): Home shows it as a
+/// card that leads back to Payment (decision 31). Null offline or when
+/// there is none.
 
 @ProviderFor(heldBooking)
 final heldBookingProvider = HeldBookingProvider._();
 
 /// A held, unpaid booking of the signed-in passenger whose deadline hasn't
-/// passed (waiting for the driver, or to be paid for): the app reopens it
-/// instead of losing it (Part 2). Null offline or when there is none.
+/// passed (waiting for the driver, or to be paid for): Home shows it as a
+/// card that leads back to Payment (decision 31). Null offline or when
+/// there is none.
 
 final class HeldBookingProvider
     extends
@@ -214,8 +216,9 @@ final class HeldBookingProvider
         >
     with $FutureModifier<BookingResponse?>, $FutureProvider<BookingResponse?> {
   /// A held, unpaid booking of the signed-in passenger whose deadline hasn't
-  /// passed (waiting for the driver, or to be paid for): the app reopens it
-  /// instead of losing it (Part 2). Null offline or when there is none.
+  /// passed (waiting for the driver, or to be paid for): Home shows it as a
+  /// card that leads back to Payment (decision 31). Null offline or when
+  /// there is none.
   HeldBookingProvider._()
     : super(
         from: null,
@@ -243,65 +246,3 @@ final class HeldBookingProvider
 }
 
 String _$heldBookingHash() => r'855cf5b7bba80cbcb679e0c9820c02085ce9f8a5';
-
-/// Held bookings already shown on Payment in this run, so Home reopens
-/// each at most once. Added to just before Payment opens.
-
-@ProviderFor(ShownBookings)
-final shownBookingsProvider = ShownBookingsProvider._();
-
-/// Held bookings already shown on Payment in this run, so Home reopens
-/// each at most once. Added to just before Payment opens.
-final class ShownBookingsProvider
-    extends $NotifierProvider<ShownBookings, Set<String>> {
-  /// Held bookings already shown on Payment in this run, so Home reopens
-  /// each at most once. Added to just before Payment opens.
-  ShownBookingsProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'shownBookingsProvider',
-        isAutoDispose: false,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$shownBookingsHash();
-
-  @$internal
-  @override
-  ShownBookings create() => ShownBookings();
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(Set<String> value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<Set<String>>(value),
-    );
-  }
-}
-
-String _$shownBookingsHash() => r'0118729c604e95e79e881db44e50f40a38ad387b';
-
-/// Held bookings already shown on Payment in this run, so Home reopens
-/// each at most once. Added to just before Payment opens.
-
-abstract class _$ShownBookings extends $Notifier<Set<String>> {
-  Set<String> build();
-  @$mustCallSuper
-  @override
-  WhenComplete runBuild() {
-    final ref = this.ref as $Ref<Set<String>, Set<String>>;
-    final element =
-        ref.element
-            as $ClassProviderElement<
-              AnyNotifier<Set<String>, Set<String>>,
-              Set<String>,
-              Object?,
-              Object?
-            >;
-    return element.handleCreate(ref, build);
-  }
-}

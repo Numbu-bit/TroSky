@@ -106,8 +106,10 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     _ => false,
   };
 
-  /// Back from a booking just made on Seat Selection: going back to change
-  /// seats would leave these held, so ask to release them first.
+  /// Back from a booking just made on Seat Selection asks first (decision
+  /// 31): keep the seats held and leave for Home, where a card leads back
+  /// here, or release them and choose again. Reopened from Home or Trips,
+  /// Back just goes back: the seats stay held either way.
   Future<void> _back() async {
     if (widget.args.restored) {
       context.pop();
@@ -117,8 +119,19 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       _close(PaymentOutcome.expired);
       return;
     }
-    final release = await showReleaseSeatsPrompt(context);
-    if ((release ?? false) && mounted) await _cancel(released: true);
+    final choice = await showLeavePaymentSheet(
+      context,
+      timeLeft: timeLeft(_left(ref.read(_watch))),
+    );
+    if (!mounted) return;
+    switch (choice) {
+      case LeaveChoice.keep:
+        _home();
+      case LeaveChoice.release:
+        await _cancel(released: true);
+      case null:
+        break;
+    }
   }
 
   Future<void> _cancel({bool released = false}) async {
@@ -352,7 +365,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   List<Widget> _waiting(AppLocalizations l10n, BookingWatch watch) {
     final moved = watch.stage == PaymentStage.moved;
     final left = _left(watch);
-    final time = _clock(left);
+    final time = timeLeft(left);
     return [
       const SizedBox(height: TroskySpacing.s32),
       const Center(child: TroskyPulseDot()),
@@ -428,7 +441,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       case PaymentStage.waiting || PaymentStage.moved:
         if (!_countdownBelow) return Padding(padding: padding, child: cancel);
         final left = _left(watch);
-        final time = _clock(left);
+        final time = timeLeft(left);
         final caption = _windowCaption(l10n, watch);
         return panel(
           Semantics(
@@ -460,7 +473,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           ),
         );
       case PaymentStage.accepted:
-        final time = _clock(_left(watch));
+        final time = timeLeft(_left(watch));
         return panel(
           Semantics(
             liveRegion: _left(watch).inSeconds % 60 == 0,
@@ -516,10 +529,6 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     }
   }
 }
-
-/// "1:42": minutes and seconds left.
-String _clock(Duration left) =>
-    '${left.inMinutes}:${(left.inSeconds % 60).toString().padLeft(2, '0')}';
 
 /// A centred status title and the sentence under it. [large] is the
 /// not-accepted title.
@@ -591,11 +600,23 @@ class _Offline extends StatelessWidget {
   );
 }
 
-/// Going back from Payment to change seats: true to release the held seats
-/// (cancel the booking), false or null (dismissed) to stay.
-Future<bool?> showReleaseSeatsPrompt(BuildContext context) {
+/// What the passenger chose on the leave-payment sheet.
+enum LeaveChoice {
+  /// Keep the seats held and go to Home (they can pay from Home or Trips).
+  keep,
+
+  /// Release the seats and choose again.
+  release,
+}
+
+/// "Leave payment?" (decision 31, derived from the cancel sheet of P-16):
+/// the seats stay held for [timeLeft] ("9:12"). Null: stay on Payment.
+Future<LeaveChoice?> showLeavePaymentSheet(
+  BuildContext context, {
+  required String timeLeft,
+}) {
   final l10n = AppLocalizations.of(context);
-  return showModalBottomSheet<bool>(
+  return showModalBottomSheet<LeaveChoice>(
     context: context,
     useRootNavigator: true,
     backgroundColor: TroskyColors.surface,
@@ -619,7 +640,7 @@ Future<bool?> showReleaseSeatsPrompt(BuildContext context) {
             Semantics(
               header: true,
               child: Text(
-                l10n.paymentReleaseTitle,
+                l10n.paymentLeaveTitle,
                 style: TroskyTypography.heading20Bold.copyWith(
                   color: TroskyColors.textPrimary,
                 ),
@@ -627,22 +648,22 @@ Future<bool?> showReleaseSeatsPrompt(BuildContext context) {
             ),
             const SizedBox(height: TroskySpacing.s8),
             Text(
-              l10n.paymentReleaseBody,
+              l10n.paymentLeaveBody(timeLeft),
               style: TroskyTypography.body14Regular.copyWith(
                 color: TroskyColors.textSecondary,
               ),
             ),
             const SizedBox(height: TroskySpacing.s24),
             TroskyButton(
-              label: l10n.paymentReleaseKeep,
+              label: l10n.paymentLeaveKeep,
               variant: TroskyButtonVariant.primary,
-              onPressed: () => Navigator.of(context).pop(false),
+              onPressed: () => Navigator.of(context).pop(LeaveChoice.keep),
             ),
             const SizedBox(height: TroskySpacing.s12),
             TroskyButton(
               label: l10n.paymentReleaseConfirm,
               variant: TroskyButtonVariant.outline,
-              onPressed: () => Navigator.of(context).pop(true),
+              onPressed: () => Navigator.of(context).pop(LeaveChoice.release),
             ),
           ],
         ),

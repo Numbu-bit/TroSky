@@ -67,8 +67,9 @@ Future<FareQuoteResponse> fareQuote(Ref ref, FareQuoteRequest request) async =>
     };
 
 /// A held, unpaid booking of the signed-in passenger whose deadline hasn't
-/// passed (waiting for the driver, or to be paid for): the app reopens it
-/// instead of losing it (Part 2). Null offline or when there is none.
+/// passed (waiting for the driver, or to be paid for): Home shows it as a
+/// card that leads back to Payment (decision 31). Null offline or when
+/// there is none.
 @Riverpod(retry: noRetry)
 Future<BookingResponse?> heldBooking(Ref ref) async {
   final online = ref.watch(
@@ -97,14 +98,4 @@ Future<BookingResponse?> heldBooking(Ref ref) async {
       value.items.where((b) => b.expiresAt?.isAfter(now) ?? false).firstOrNull,
     Err() => null,
   };
-}
-
-/// Held bookings already shown on Payment in this run, so Home reopens
-/// each at most once. Added to just before Payment opens.
-@Riverpod(keepAlive: true)
-class ShownBookings extends _$ShownBookings {
-  @override
-  Set<String> build() => const {};
-
-  void add(String bookingId) => state = {...state, bookingId};
 }

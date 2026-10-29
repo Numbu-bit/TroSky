@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mobile/passenger/booking/presentation/payment_screen.dart';
 import 'package:mobile/passenger/trips/presentation/booking_details_screen.dart';
 import 'package:mobile/passenger/trips/application/trips_providers.dart';
 import 'package:mobile/passenger/trips/presentation/trips_screen.dart';
@@ -34,12 +33,6 @@ Future<TestWorld> openTrips(
     size: size,
     overrides: overrides,
   );
-  // Home reopens a held booking on Payment, once (TS-4HBN, waiting for
-  // its driver); back from it is Home.
-  if (find.byType(PaymentScreen).evaluate().isNotEmpty) {
-    await tester.tap(find.bySemanticsLabel('Back').last);
-    await tester.pumpAndSettle();
-  }
   // The tab bar's label; the Trips screen isn't built yet.
   await tester.tap(find.text('Trips'));
   await tester.pumpAndSettle();
