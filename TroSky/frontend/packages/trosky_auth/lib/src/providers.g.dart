@@ -295,21 +295,24 @@ String _$apiClientHash() => r'8b6de51fca3241397615d55e96e075b2cf128b31';
 
 /// The in-memory backend behind `API_MODE=mock`. Its drivers accept booking
 /// requests, or answer as `--dart-define=MOCK_DRIVER=moveThenAccept` (or
-/// `decline`, `rotate` to take turns, or `none` for nobody) says.
+/// `decline`, `rotate` to take turns, or `none` for nobody) says. The
+/// seeded passenger has a week of bookings in every status (Trips tab).
 
 @ProviderFor(mockBackend)
 final mockBackendProvider = MockBackendProvider._();
 
 /// The in-memory backend behind `API_MODE=mock`. Its drivers accept booking
 /// requests, or answer as `--dart-define=MOCK_DRIVER=moveThenAccept` (or
-/// `decline`, `rotate` to take turns, or `none` for nobody) says.
+/// `decline`, `rotate` to take turns, or `none` for nobody) says. The
+/// seeded passenger has a week of bookings in every status (Trips tab).
 
 final class MockBackendProvider
     extends $FunctionalProvider<MockBackend, MockBackend, MockBackend>
     with $Provider<MockBackend> {
   /// The in-memory backend behind `API_MODE=mock`. Its drivers accept booking
   /// requests, or answer as `--dart-define=MOCK_DRIVER=moveThenAccept` (or
-  /// `decline`, `rotate` to take turns, or `none` for nobody) says.
+  /// `decline`, `rotate` to take turns, or `none` for nobody) says. The
+  /// seeded passenger has a week of bookings in every status (Trips tab).
   MockBackendProvider._()
     : super(
         from: null,
@@ -343,7 +346,7 @@ final class MockBackendProvider
   }
 }
 
-String _$mockBackendHash() => r'3caca54993268fdbd541e8c01426d9201e449cd8';
+String _$mockBackendHash() => r'fe6bfea9dedda239d771116ff5defe6bd9883a04';
 
 /// How long each mock call takes, so loading states can be seen.
 
@@ -670,6 +673,58 @@ final class BookingRepositoryProvider
 }
 
 String _$bookingRepositoryHash() => r'2fdcac728430e45f48814f8cbae9a5c8c06874e1';
+
+/// Paying for bookings, the wallet and saved mobile money numbers.
+
+@ProviderFor(paymentRepository)
+final paymentRepositoryProvider = PaymentRepositoryProvider._();
+
+/// Paying for bookings, the wallet and saved mobile money numbers.
+
+final class PaymentRepositoryProvider
+    extends
+        $FunctionalProvider<
+          PaymentRepository,
+          PaymentRepository,
+          PaymentRepository
+        >
+    with $Provider<PaymentRepository> {
+  /// Paying for bookings, the wallet and saved mobile money numbers.
+  PaymentRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'paymentRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$paymentRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<PaymentRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  PaymentRepository create(Ref ref) {
+    return paymentRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(PaymentRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<PaymentRepository>(value),
+    );
+  }
+}
+
+String _$paymentRepositoryHash() => r'da0e0ce027041cf68f2252ddfeb69efd6ea875f4';
 
 @ProviderFor(userCache)
 final userCacheProvider = UserCacheProvider._();

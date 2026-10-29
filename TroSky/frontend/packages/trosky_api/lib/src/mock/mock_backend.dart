@@ -6,6 +6,7 @@ import '../dto/auth_dto.dart';
 import '../dto/booking_dto.dart';
 import '../dto/driver_dto.dart';
 import '../dto/paginated.dart';
+import '../dto/payment_dto.dart';
 import '../dto/route_dto.dart';
 import '../dto/tracking_dto.dart';
 import '../dto/user_dto.dart';
@@ -137,6 +138,19 @@ class MockBackend {
   final Map<String, _MockTrip> _tripIndex = {};
   final Map<String, _MockBooking> _bookings = {};
 
+  /// How long a mobile money payer takes to "approve" (the backend
+  /// sandbox's PAYMENTS_SANDBOX_AUTO_APPROVE_SECONDS). Numbers ending in
+  /// 0000 decline, numbers ending in 9999 never answer.
+  Duration momoApproveAfter = const Duration(seconds: 5);
+
+  final Map<String, _MockPayment> _payments = {};
+
+  /// Wallet balances in cedis, by user id.
+  final Map<String, double> _wallets = {};
+
+  /// Saved mobile money numbers, by user id.
+  final Map<String, List<_MockMethod>> _methods = {};
+
   /// The stops, by name.
   static final Map<String, MockStop> stops = {
     for (final stop in const [
@@ -191,6 +205,17 @@ class MockBackend {
       status: ApprovalStatus.approved,
       createdAt: created,
     );
+    _wallets['2f6b1c0e-7d3a-4b8e-9c1a-5e2f7a9b3c41'] = 128.50;
+    _methods['2f6b1c0e-7d3a-4b8e-9c1a-5e2f7a9b3c41'] = [
+      _MockMethod(
+        id: '6d2e8b14-3c5a-4f70-9a1e-2b7c4d9f0a31',
+        channel: PaymentChannel.mtnMomo,
+        number: passengerPhone,
+        label: 'My MTN',
+        isDefault: true,
+        createdAt: created,
+      ),
+    ];
     _favourites['2f6b1c0e-7d3a-4b8e-9c1a-5e2f7a9b3c41'] = [
       for (final (i, (from, to)) in const [
         ('Madina', 'Circle'),
@@ -1349,6 +1374,270 @@ class MockBackend {
     );
   }
 
+  /// `POST /bookings/{id}/pay`: from the wallet at once, or by mobile
+  /// money, `processing` until the payer answers ([momoApproveAfter]). The
+  /// same [idempotencyKey] gives back the same payment.
+  Result<PaymentResponse> payBooking(
+    String? accessToken,
+    String bookingId,
+    PayBookingRequest request, {
+    String? idempotencyKey,
+  }) {
+    final auth = _authenticate(accessToken);
+    if (auth case Err(:final failure)) return Err(failure);
+    _expireHolds();
+    final userId = auth.valueOrNull!.userId;
+    final booking = _bookings[bookingId];
+    if (booking == null || booking.userId != userId) {
+      return _error(404, 'NOT_FOUND', 'Booking not found.');
+    }
+    if (idempotencyKey != null) {
+      final replay = _payments.values
+          .where(
+            (p) => p.userId == userId && p.idempotencyKey == idempotencyKey,
+          )
+          .firstOrNull;
+      if (replay != null && replay.bookingId == bookingId) {
+        return Ok(replay.toResponse());
+      }
+    }
+    if ((request.paymentMethodId == null) == (request.channel == null)) {
+      return _validationError([
+        _fieldError(
+          'channel',
+          'Send either payment_method_id or channel, not both.',
+        ),
+      ]);
+    }
+    if (booking.status != BookingStatus.pending) {
+      return _error(
+        409,
+        'BOOKING_NOT_PAYABLE',
+        'Booking is not awaiting payment (status: '
+            '${bookingStatusName(booking.status)}).',
+      );
+    }
+    var channel = request.channel;
+    var phone = request.payerPhoneNumber;
+    if (request.paymentMethodId case final methodId?) {
+      final method = (_methods[userId] ?? const <_MockMethod>[])
+          .where((m) => m.id == methodId)
+          .firstOrNull;
+      if (method == null) {
+        return _error(404, 'NOT_FOUND', 'Payment method not found.');
+      }
+      channel = method.channel;
+      phone = method.number;
+    }
+    final amount = double.parse(booking.total);
+    final now = _now().toUtc();
+    final payment = _MockPayment(
+      id: _uuid(),
+      userId: userId,
+      bookingId: booking.id,
+      channel: channel!,
+      amount: booking.total,
+      payerPhone: phone,
+      startedAt: now,
+      idempotencyKey: idempotencyKey,
+    );
+    switch (channel) {
+      case PaymentChannel.wallet:
+        final balance = _wallets[userId] ?? 0;
+        if (balance + 1e-9 < amount) {
+          return _error(
+            402,
+            'INSUFFICIENT_WALLET_BALANCE',
+            'The wallet balance is insufficient for this transaction.',
+          );
+        }
+        _wallets[userId] = balance - amount;
+        payment
+          ..status = PaymentStatus.successful
+          ..completedAt = now;
+        booking.status = BookingStatus.confirmed;
+      case PaymentChannel.mtnMomo:
+        if (phone == null) {
+          return _validationError([
+            _fieldError(
+              'payer_phone_number',
+              'A mobile money number is needed.',
+            ),
+          ]);
+        }
+        payment.status = PaymentStatus.processing;
+        booking.status = BookingStatus.paymentPending;
+      case PaymentChannel.telecelCash ||
+          PaymentChannel.airteltigoMoney ||
+          PaymentChannel.card:
+        return _error(
+          502,
+          'PROVIDER_ERROR',
+          'This payment channel is not available yet.',
+        );
+    }
+    _payments[payment.id] = payment;
+    return Ok(payment.toResponse());
+  }
+
+  /// `POST /payments/{id}/sync`: the mobile money payer's answer, once due.
+  /// A decline puts the booking back to be paid again; an approval after
+  /// the hold ran out queues a refund (payment_service.py
+  /// `_settle_booking_payment`).
+  Result<PaymentResponse> syncPayment(String? accessToken, String paymentId) {
+    final auth = _authenticate(accessToken);
+    if (auth case Err(:final failure)) return Err(failure);
+    _expireHolds();
+    final payment = _payments[paymentId];
+    if (payment == null || payment.userId != auth.valueOrNull!.userId) {
+      return _error(404, 'NOT_FOUND', 'Payment not found.');
+    }
+    if (payment.status != PaymentStatus.processing) {
+      return Ok(payment.toResponse());
+    }
+    final now = _now().toUtc();
+    final phone = payment.payerPhone ?? '';
+    final booking = _bookings[payment.bookingId];
+    if (phone.endsWith('0000')) {
+      payment
+        ..status = PaymentStatus.failed
+        ..failureReason = 'Customer declined the payment prompt.';
+      if (booking != null && booking.status == BookingStatus.paymentPending) {
+        booking.status = BookingStatus.pending;
+      }
+    } else if (!phone.endsWith('9999') &&
+        !now.isBefore(payment.startedAt.add(momoApproveAfter))) {
+      payment
+        ..status = PaymentStatus.successful
+        ..completedAt = now;
+      if (booking != null) {
+        booking.status =
+            booking.status == BookingStatus.expired ||
+                booking.status == BookingStatus.cancelled
+            ? BookingStatus.refundPending
+            : BookingStatus.confirmed;
+      }
+    }
+    return Ok(payment.toResponse());
+  }
+
+  /// `GET /payments`: the user's payments, newest first.
+  Result<Paginated<PaymentResponse>> listPayments(
+    String? accessToken, {
+    int limit = 20,
+    int offset = 0,
+  }) {
+    final auth = _authenticate(accessToken);
+    if (auth case Err(:final failure)) return Err(failure);
+    final mine =
+        _payments.values
+            .where((p) => p.userId == auth.valueOrNull!.userId)
+            .toList()
+          ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
+    return Ok(
+      Paginated(
+        items: [for (final p in mine.skip(offset).take(limit)) p.toResponse()],
+        total: mine.length,
+        limit: limit,
+        offset: offset,
+      ),
+    );
+  }
+
+  /// `GET /wallet`.
+  Result<WalletResponse> getWallet(String? accessToken) {
+    final auth = _authenticate(accessToken);
+    if (auth case Err(:final failure)) return Err(failure);
+    final balance = _wallets[auth.valueOrNull!.userId] ?? 0;
+    return Ok(
+      WalletResponse(balance: balance.toStringAsFixed(2), currency: 'GHS'),
+    );
+  }
+
+  /// `GET /users/me/payment-methods`, the default first.
+  Result<List<PaymentMethodResponse>> listPaymentMethods(String? accessToken) {
+    final auth = _authenticate(accessToken);
+    if (auth case Err(:final failure)) return Err(failure);
+    final methods = [...?_methods[auth.valueOrNull!.userId]]
+      ..sort((a, b) => a.isDefault == b.isDefault ? 0 : (a.isDefault ? -1 : 1));
+    return Ok([for (final m in methods) m.toResponse()]);
+  }
+
+  /// `POST /users/me/payment-methods` (payment_method_service.py): a valid
+  /// mobile money number, not saved already; the first is the default.
+  Result<PaymentMethodResponse> addPaymentMethod(
+    String? accessToken,
+    PaymentMethodCreateRequest request,
+  ) {
+    final auth = _authenticate(accessToken);
+    if (auth case Err(:final failure)) return Err(failure);
+    final userId = auth.valueOrNull!.userId;
+    if (request.channel == PaymentChannel.wallet ||
+        request.channel == PaymentChannel.card) {
+      return _error(
+        422,
+        'VALIDATION_ERROR',
+        'Only mobile money numbers can be saved.',
+        {
+          'allowed_channels': ['airteltigo_money', 'mtn_momo', 'telecel_cash'],
+        },
+      );
+    }
+    final String number;
+    try {
+      number = normalizePhoneNumber(request.phoneNumber);
+    } on InvalidPhoneNumberException {
+      return _error(
+        422,
+        'VALIDATION_ERROR',
+        'Enter a valid mobile money number.',
+        {'field': 'phone_number'},
+      );
+    }
+    final methods = _methods.putIfAbsent(userId, () => []);
+    if (methods.any(
+      (m) => m.channel == request.channel && m.number == number,
+    )) {
+      return _error(409, 'CONFLICT', 'This number is saved already.');
+    }
+    final isDefault = methods.isEmpty || request.isDefault;
+    if (isDefault) {
+      for (final m in methods) {
+        m.isDefault = false;
+      }
+    }
+    final method = _MockMethod(
+      id: _uuid(),
+      channel: request.channel,
+      number: number,
+      label: request.label,
+      isDefault: isDefault,
+      createdAt: _now().toUtc(),
+    );
+    methods.add(method);
+    return Ok(method.toResponse());
+  }
+
+  /// The wallet balance of [phone]'s account (tests).
+  double walletBalance(String phone) {
+    final user = _users.firstWhere(
+      (u) => u.phone == normalizePhoneNumber(phone),
+    );
+    return _wallets[user.id] ?? 0;
+  }
+
+  /// Sets the wallet balance of [phone]'s account (tests, demos).
+  void setWalletBalance(String phone, double balance) {
+    final user = _users.firstWhere(
+      (u) => u.phone == normalizePhoneNumber(phone),
+    );
+    _wallets[user.id] = balance;
+  }
+
+  /// The status of payment [paymentId] (tests).
+  PaymentStatus? paymentStatus(String paymentId) =>
+      _payments[paymentId]?.status;
+
   /// `GET /bookings/{id}`.
   Result<BookingResponse> getBooking(String? accessToken, String bookingId) {
     final auth = _authenticate(accessToken);
@@ -1432,7 +1721,11 @@ class MockBackend {
         if (b.expiresAt.isAfter(now)) break;
         _moveOrEnd(b, BookingStatus.expired, from: b.expiresAt);
       }
-      if (b.status == BookingStatus.pending && !b.expiresAt.isAfter(now)) {
+      // A mobile money payment in flight doesn't stop the hold
+      // (booking_service.py `_expire_hold`).
+      if ((b.status == BookingStatus.pending ||
+              b.status == BookingStatus.paymentPending) &&
+          !b.expiresAt.isAfter(now)) {
         b.status = BookingStatus.expired;
       }
     }
@@ -1570,6 +1863,7 @@ class MockBackend {
       required String reference,
       TripStatus trip = TripStatus.scheduled,
       Duration? rolling,
+      PaymentChannel? paidBy,
     }) {
       n++;
       final id = n.toString().padLeft(2, '0');
@@ -1633,6 +1927,24 @@ class MockBackend {
         rolling: rolling,
       );
       _bookings[booking.id] = booking;
+      if (paidBy != null) {
+        _payments['f00000$id-9a3b-4000-8000-0000000000$id'] =
+            _MockPayment(
+                id: 'f00000$id-9a3b-4000-8000-0000000000$id',
+                userId: userId,
+                bookingId: booking.id,
+                channel: paidBy,
+                amount: booking.total,
+                payerPhone: paidBy == PaymentChannel.mtnMomo
+                    ? passengerPhone
+                    : null,
+                startedAt: booked,
+              )
+              ..status = status == BookingStatus.refunded
+                  ? PaymentStatus.refunded
+                  : PaymentStatus.successful
+              ..completedAt = booked;
+      }
     }
 
     DateTime at(int days, int hour, int minute) =>
@@ -1651,6 +1963,7 @@ class MockBackend {
       seats: ['3', '4'],
       status: BookingStatus.confirmed,
       reference: 'TS-8KQ2',
+      paidBy: PaymentChannel.wallet,
     );
     book(
       from: 'Legon',
@@ -1692,6 +2005,7 @@ class MockBackend {
       seats: ['7'],
       status: BookingStatus.confirmed,
       reference: 'TS-C2MX',
+      paidBy: PaymentChannel.mtnMomo,
       trip: TripStatus.inProgress,
     );
     // Behind, or ended.
@@ -1707,6 +2021,7 @@ class MockBackend {
       seats: ['9'],
       status: BookingStatus.refundPending,
       reference: 'TS-RF9P',
+      paidBy: PaymentChannel.mtnMomo,
     );
     book(
       from: 'Circle',
@@ -1720,6 +2035,7 @@ class MockBackend {
       seats: ['5', '6'],
       status: BookingStatus.completed,
       reference: 'TS-W3TE',
+      paidBy: PaymentChannel.wallet,
       trip: TripStatus.completed,
     );
     book(
@@ -1734,6 +2050,7 @@ class MockBackend {
       seats: ['1'],
       status: BookingStatus.completed,
       reference: 'TS-KN45',
+      paidBy: PaymentChannel.mtnMomo,
       trip: TripStatus.completed,
     );
     book(
@@ -1748,6 +2065,7 @@ class MockBackend {
       seats: ['8'],
       status: BookingStatus.completed,
       reference: 'TS-MD60',
+      paidBy: PaymentChannel.wallet,
       trip: TripStatus.completed,
     );
     book(
@@ -1776,6 +2094,7 @@ class MockBackend {
       seats: ['2'],
       status: BookingStatus.refunded,
       reference: 'TS-RD50',
+      paidBy: PaymentChannel.wallet,
       trip: TripStatus.cancelled,
     );
     book(
@@ -2439,7 +2758,8 @@ class _MockBooking {
     totalAmount: total,
     expiresAt:
         status == BookingStatus.awaitingAcceptance ||
-            status == BookingStatus.pending
+            status == BookingStatus.pending ||
+            status == BookingStatus.paymentPending
         ? deadlineAt(now)
         : null,
     createdAt: createdAt,
@@ -2458,6 +2778,81 @@ class _MockBooking {
     alightingStopName: MockBackend.stops.values
         .firstWhere((s) => s.id == destinationStopId, orElse: () => trip.alight)
         .name,
+  );
+}
+
+/// A payment the mock took.
+class _MockPayment {
+  _MockPayment({
+    required this.id,
+    required this.userId,
+    required this.bookingId,
+    required this.channel,
+    required this.amount,
+    required this.payerPhone,
+    required this.startedAt,
+    this.idempotencyKey,
+  });
+
+  final String id;
+  final String userId;
+  final String bookingId;
+  final PaymentChannel channel;
+
+  /// "8.50", as the booking's total.
+  final String amount;
+  final String? payerPhone;
+  final DateTime startedAt;
+  final String? idempotencyKey;
+  PaymentStatus status = PaymentStatus.pending;
+  String? failureReason;
+  DateTime? completedAt;
+
+  PaymentResponse toResponse() => PaymentResponse(
+    id: id,
+    bookingId: bookingId,
+    purpose: PaymentPurpose.bookingPayment,
+    channel: channel,
+    status: status,
+    amount: amount,
+    currency: 'GHS',
+    refundedAmount: status == PaymentStatus.refunded ? amount : '0.00',
+    providerReference: channel == PaymentChannel.wallet ? null : 'mock-$id',
+    failureReason: failureReason,
+    initiatedAt: startedAt,
+    completedAt: completedAt,
+    createdAt: startedAt,
+  );
+}
+
+/// A saved mobile money number.
+class _MockMethod {
+  _MockMethod({
+    required this.id,
+    required this.channel,
+    required this.number,
+    required this.label,
+    required this.isDefault,
+    required this.createdAt,
+  });
+
+  final String id;
+  final PaymentChannel channel;
+
+  /// E.164, "+233241234567".
+  final String number;
+  final String? label;
+  bool isDefault;
+  final DateTime createdAt;
+
+  PaymentMethodResponse toResponse() => PaymentMethodResponse(
+    id: id,
+    channel: channel,
+    maskedNumber:
+        '${number.substring(0, 6)}•••${number.substring(number.length - 4)}',
+    label: label,
+    isDefault: isDefault,
+    createdAt: createdAt,
   );
 }
 

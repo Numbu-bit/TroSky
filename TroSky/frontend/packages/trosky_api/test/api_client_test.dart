@@ -464,6 +464,136 @@ void main() {
     });
   });
 
+  group('Paying (Step 15): what is sent and parsed', () {
+    Dio dio(FakeAdapter adapter) =>
+        createApiClient(env: _env, tokens: _FakeTokens.new, adapter: adapter);
+
+    const payment = {
+      'id': 'p1',
+      'booking_id': 'b1',
+      'purpose': 'booking_payment',
+      'channel': 'mtn_momo',
+      'status': 'processing',
+      'amount': '16.00',
+      'currency': 'GHS',
+      'refunded_amount': '0.00',
+      'provider_reference': 'SANDBOX:approve:1761900000:PAY-1',
+      'failure_reason': null,
+      'initiated_at': '2026-10-29T09:00:00Z',
+      'completed_at': null,
+      'created_at': '2026-10-29T09:00:00Z',
+    };
+
+    test(
+      'POST /bookings/{id}/pay: a saved number, the Idempotency-Key',
+      () async {
+        final adapter = FakeAdapter((_) async => const FakeReply(201, payment));
+        final p = (await LivePaymentRepository(dio(adapter)).pay(
+          'b1',
+          const PayBookingRequest(paymentMethodId: 'm1'),
+          idempotencyKey: 'k1',
+        )).valueOrNull!;
+        final request = adapter.requests.single;
+        expect(request.method, 'POST');
+        expect(request.path, '/bookings/b1/pay');
+        expect(request.headers['Idempotency-Key'], 'k1');
+        // Nulls are left out (build.yaml): one of the two, as the backend
+        // checks.
+        expect(request.data, {'payment_method_id': 'm1'});
+        expect(
+          (p.status, p.channel, p.amount, p.bookingId),
+          (PaymentStatus.processing, PaymentChannel.mtnMomo, '16.00', 'b1'),
+        );
+      },
+    );
+
+    test('the wallet: channel "wallet"; 402 comes back as its code', () async {
+      final adapter = FakeAdapter(
+        (_) async => const FakeReply(402, {
+          'error': {
+            'code': 'INSUFFICIENT_WALLET_BALANCE',
+            'message':
+                'The wallet balance is insufficient for this transaction.',
+            'details': <String, Object>{},
+            'request_id': 'r1',
+          },
+        }),
+      );
+      final result = await LivePaymentRepository(dio(adapter)).pay(
+        'b1',
+        const PayBookingRequest(channel: PaymentChannel.wallet),
+        idempotencyKey: 'k2',
+      );
+      expect(adapter.requests.single.data, {'channel': 'wallet'});
+      expect(result.failureOrNull!.code, 'INSUFFICIENT_WALLET_BALANCE');
+    });
+
+    test('POST /payments/{id}/sync, GET /payments, GET /wallet', () async {
+      final adapter = FakeAdapter(
+        (request) async => switch (request.path) {
+          '/payments/p1/sync' => FakeReply(200, {
+            ...payment,
+            'status': 'failed',
+            'failure_reason': 'Customer declined the payment prompt.',
+          }),
+          '/payments' => const FakeReply(200, {
+            'items': [payment],
+            'total': 1,
+            'limit': 20,
+            'offset': 0,
+          }),
+          _ => const FakeReply(200, {'balance': '128.50', 'currency': 'GHS'}),
+        },
+      );
+      final repository = LivePaymentRepository(dio(adapter));
+      final synced = (await repository.sync('p1')).valueOrNull!;
+      expect(synced.status, PaymentStatus.failed);
+      expect(synced.failureReason, 'Customer declined the payment prompt.');
+      final page = (await repository.list()).valueOrNull!;
+      expect(page.items.single.id, 'p1');
+      expect(adapter.requests[1].queryParameters, {'limit': 20, 'offset': 0});
+      final wallet = (await repository.wallet()).valueOrNull!;
+      expect(wallet.balance, '128.50');
+      expect(adapter.requests.map((r) => r.path), [
+        '/payments/p1/sync',
+        '/payments',
+        '/wallet',
+      ]);
+    });
+
+    test('saved numbers: GET and POST /users/me/payment-methods', () async {
+      const method = {
+        'id': 'm1',
+        'channel': 'mtn_momo',
+        'masked_number': '+23324•••4567',
+        'label': null,
+        'is_default': true,
+        'created_at': '2026-10-29T09:00:00Z',
+      };
+      final adapter = FakeAdapter(
+        (request) async => request.method == 'GET'
+            ? const FakeReply(200, [method])
+            : const FakeReply(201, method),
+      );
+      final repository = LivePaymentRepository(dio(adapter));
+      final methods = (await repository.methods()).valueOrNull!;
+      expect(methods.single.maskedNumber, '+23324•••4567');
+      await repository.addMethod(
+        const PaymentMethodCreateRequest(
+          channel: PaymentChannel.mtnMomo,
+          phoneNumber: '+233241234567',
+        ),
+      );
+      final post = adapter.requests.last;
+      expect(post.path, '/users/me/payment-methods');
+      expect(post.data, {
+        'channel': 'mtn_momo',
+        'phone_number': '+233241234567',
+        'is_default': false,
+      });
+    });
+  });
+
   group('Home endpoints parse what the backend sends', () {
     Dio dio(FakeAdapter adapter) =>
         createApiClient(env: _env, tokens: _FakeTokens.new, adapter: adapter);
