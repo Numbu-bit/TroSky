@@ -391,8 +391,27 @@ Ghana: `render.yaml` sets `PASSENGER_SIGNUP_COUNTRIES=GH`.
 ## Payments: MTN MoMo sandbox
 
 `render.yaml` pays through the built-in sandbox provider (`PAYMENTS_ACTIVE_PROVIDER=sandbox`), which
-approves everything without calling anyone. To take test payments through MTN's own sandbox
-(backend 0.22.5), where the payer approves a prompt, with play money:
+calls nobody. Wallet payments are real wallet debits either way. A mobile money payment (or a
+wallet top-up) through the sandbox:
+
+| Payer number | What happens |
+|---|---|
+| ends in `0000` | declined: the first status check says `failed` ("Customer declined the payment prompt."), and the booking can be paid again |
+| ends in `9999` | never answered: stays `processing` until the booking's hold runs out (for testing that) |
+| any other | approved `PAYMENTS_SANDBOX_AUTO_APPROVE_SECONDS` after it started (default 5) |
+
+The outcome is settled when the passenger's app asks (`POST /payments/{id}/sync`), or by the
+reconciliation task for payments older than 5 minutes. The sandbox keeps nothing in memory: the
+outcome and start time travel in the payment's `provider_reference` (`SANDBOX:approve:<epoch>:PAY-…`),
+so the Celery worker and a server woken from sleep give the same answer. Before 29 Oct 2026 it kept
+payments in the API process's memory: the worker didn't know them and marked them failed after
+5 minutes, and nothing approved them on its own.
+
+With `APP_ENV=production` the sandbox never approves anything (no money would move), whatever the
+setting says.
+
+To take test payments through MTN's own sandbox (backend 0.22.5), where the payer approves a
+prompt, with play money:
 
 1. Sign up at https://momodeveloper.mtn.com, subscribe to the **Collections** product, and copy
    its **Primary key** (Profile → Subscriptions).

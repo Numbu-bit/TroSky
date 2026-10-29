@@ -14,6 +14,7 @@ from decimal import Decimal
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.exceptions import ConflictError, InsufficientWalletBalanceError
 from app.models.bookings import BookingStatus
 from app.models.payments import Payment, PaymentStatus, WalletReferenceType
@@ -306,3 +307,128 @@ class TestReconciliation:
 
         refreshed = await service.get_payment(payment.id, requesting_user_id=passenger_id)
         assert refreshed.status == PaymentStatus.SUCCESSFUL
+
+
+class TestSandboxAutoApprove:
+    """PAYMENTS_SANDBOX_AUTO_APPROVE_SECONDS on staging: a MoMo payment
+    completes on its own, in whichever process asks next."""
+
+    @staticmethod
+    def _service(session: AsyncSession, seconds: int = 0) -> PaymentService:
+        settings = get_settings().model_copy(
+            update={"PAYMENTS_SANDBOX_AUTO_APPROVE_SECONDS": seconds}
+        )
+        return PaymentService(session, settings=settings)
+
+    async def test_the_passengers_sync_confirms_the_booking(
+        self, db_session: AsyncSession, make_user
+    ) -> None:
+        passenger_id = (await make_user()).id
+        booking_id = await _make_pending_booking(
+            db_session, passenger_id=passenger_id, make_user=make_user
+        )
+        service = self._service(db_session)
+        payment = await service.pay_for_booking(
+            passenger_id,
+            booking_id,
+            channel=PaymentChannel.MTN_MOMO,
+            payer_phone="0244000001",
+            idempotency_key=None,
+        )
+        assert payment.status == PaymentStatus.PROCESSING
+        # The API process that started it is gone (a sleeping server).
+        SandboxPaymentProvider.clear()
+
+        synced = await service.sync_payment_status(payment.id)
+        assert synced.status == PaymentStatus.SUCCESSFUL
+        booking = await BookingService(db_session)._bookings.get_by_id(booking_id)
+        assert booking is not None
+        assert booking.status == BookingStatus.CONFIRMED
+
+    async def test_the_celery_sweep_approves_it_too(
+        self, db_session: AsyncSession, make_user
+    ) -> None:
+        passenger_id = (await make_user()).id
+        booking_id = await _make_pending_booking(
+            db_session, passenger_id=passenger_id, make_user=make_user
+        )
+        service = self._service(db_session)
+        payment = await service.pay_for_booking(
+            passenger_id,
+            booking_id,
+            channel=PaymentChannel.MTN_MOMO,
+            payer_phone="0244000001",
+            idempotency_key=None,
+        )
+        stored = await service.get_payment(payment.id, requesting_user_id=passenger_id)
+        stored.created_at = datetime.now(UTC) - timedelta(seconds=600)
+        await db_session.flush()
+        # The worker is another process: it never saw this payment start.
+        SandboxPaymentProvider.clear()
+
+        assert await service.reconcile_pending_payments(older_than_seconds=300) >= 1
+        refreshed = await service.get_payment(payment.id, requesting_user_id=passenger_id)
+        assert refreshed.status == PaymentStatus.SUCCESSFUL
+
+    async def test_a_number_that_never_answers_stays_processing(
+        self, db_session: AsyncSession, make_user
+    ) -> None:
+        passenger_id = (await make_user()).id
+        booking_id = await _make_pending_booking(
+            db_session, passenger_id=passenger_id, make_user=make_user
+        )
+        service = self._service(db_session)
+        payment = await service.pay_for_booking(
+            passenger_id,
+            booking_id,
+            channel=PaymentChannel.MTN_MOMO,
+            payer_phone="0249999999",
+            idempotency_key=None,
+        )
+        SandboxPaymentProvider.clear()
+        synced = await service.sync_payment_status(payment.id)
+        assert synced.status == PaymentStatus.PROCESSING
+        booking = await BookingService(db_session)._bookings.get_by_id(booking_id)
+        assert booking is not None
+        assert booking.status == BookingStatus.PAYMENT_PENDING
+
+    async def test_a_declined_number_lets_the_passenger_try_again(
+        self, db_session: AsyncSession, make_user
+    ) -> None:
+        passenger_id = (await make_user()).id
+        booking_id = await _make_pending_booking(
+            db_session, passenger_id=passenger_id, make_user=make_user
+        )
+        service = self._service(db_session)
+        payment = await service.pay_for_booking(
+            passenger_id,
+            booking_id,
+            channel=PaymentChannel.MTN_MOMO,
+            payer_phone="0240000000",
+            idempotency_key=None,
+        )
+        synced = await service.sync_payment_status(payment.id)
+        assert synced.status == PaymentStatus.FAILED
+        assert synced.failure_reason == "Customer declined the payment prompt."
+        booking = await BookingService(db_session)._bookings.get_by_id(booking_id)
+        assert booking is not None
+        assert booking.status == BookingStatus.PENDING
+
+    async def test_a_wallet_top_up_is_credited_the_same_way(
+        self, db_session: AsyncSession, make_user
+    ) -> None:
+        passenger_id = (await make_user()).id
+        service = self._service(db_session)
+        payment = await service.initiate_wallet_topup(
+            passenger_id,
+            amount=Decimal("50.00"),
+            channel=PaymentChannel.MTN_MOMO,
+            payer_phone="0244000001",
+            idempotency_key=None,
+        )
+        assert payment.status == PaymentStatus.PROCESSING
+        SandboxPaymentProvider.clear()
+
+        synced = await service.sync_payment_status(payment.id)
+        assert synced.status == PaymentStatus.SUCCESSFUL
+        assert await WalletService(db_session).get_balance(passenger_id) == Decimal("50.00")

@@ -34,7 +34,11 @@ def get_payment_provider(
     settings = settings or get_settings()
 
     if settings.PAYMENTS_ACTIVE_PROVIDER == PaymentProviderName.SANDBOX:
-        return SandboxPaymentProvider()
+        return SandboxPaymentProvider(
+            auto_approve_seconds=None
+            if settings.is_production
+            else settings.PAYMENTS_SANDBOX_AUTO_APPROVE_SECONDS
+        )
 
     if channel == PaymentChannel.MTN_MOMO:
         return MtnMomoPaymentProvider(settings)
