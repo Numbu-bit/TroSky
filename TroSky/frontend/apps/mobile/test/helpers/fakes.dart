@@ -9,6 +9,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:mobile/app/app_providers.dart';
 import 'package:mobile/app/trosky_mobile_app.dart';
 import 'package:mobile/entry/onboarding/data/onboarding_store.dart';
+import 'package:mobile/passenger/booking/application/pay_controller.dart';
+import 'package:mobile/passenger/booking/data/pay_method_store.dart';
 import 'package:mobile/entry/splash/presentation/launch_destination_provider.dart';
 import 'package:mobile/passenger/home/application/home_providers.dart';
 import 'package:mobile/passenger/home/data/home_store.dart';
@@ -173,6 +175,9 @@ class TestWorld {
   final InMemoryHomeStore home = InMemoryHomeStore(asked: true);
   final InMemorySearchHistoryStore searches = InMemorySearchHistoryStore();
 
+  /// The payment method each passenger used last.
+  final InMemoryPayMethodStore payMethods = InMemoryPayMethodStore();
+
   /// Signs in as the seeded passenger (Ama Mensah) on the mock backend and
   /// keeps the refresh token, as a previous run of the app would.
   void savePassengerSession({String phone = '0241234567'}) {
@@ -219,6 +224,7 @@ Widget testApp({
       homeStoreProvider.overrideWithValue(w.home),
       mapTileProviderFactoryProvider.overrideWithValue(FlatTileProvider.new),
       searchHistoryStoreProvider.overrideWithValue(w.searches),
+      payMethodStoreProvider.overrideWithValue(w.payMethods),
       ...overrides.cast(),
     ],
     child: const TroskyMobileApp(),

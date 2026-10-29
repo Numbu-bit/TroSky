@@ -8,6 +8,7 @@ import 'package:trosky_ui/trosky_ui.dart';
 import '../../../entry/auth/presentation/failure_messages.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../booking/presentation/booking_format.dart';
+import '../application/trips_providers.dart';
 
 /// How a cancel from the sheet went.
 @immutable
@@ -112,6 +113,12 @@ class _CancelBookingSheetState extends ConsumerState<_CancelBookingSheet> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final paid = widget.booking.status == BookingStatus.confirmed;
+    // Where the refund goes, as the backend does it
+    // (backend/app/services/refund_service.py `approve`): the wallet is
+    // credited; MTN MoMo has no refund API, so the team pays it out.
+    final channel = paid
+        ? ref.watch(bookingPaymentProvider(widget.booking.id)).value?.channel
+        : null;
     final bottom = MediaQuery.viewInsetsOf(context).bottom;
     return Padding(
       padding: EdgeInsets.only(bottom: bottom),
@@ -207,7 +214,11 @@ class _CancelBookingSheetState extends ConsumerState<_CancelBookingSheet> {
                 title: l10n.cancelRefundTitle(
                   cedis(l10n, widget.booking.totalAmount),
                 ),
-                body: l10n.cancelRefundBody,
+                body: switch (channel) {
+                  PaymentChannel.wallet => l10n.cancelRefundBodyWallet,
+                  PaymentChannel.mtnMomo => l10n.cancelRefundBodyMomo,
+                  _ => l10n.cancelRefundBody,
+                },
               ),
             if (_error case final error?) ...[
               const SizedBox(height: TroskySpacing.s12),

@@ -310,7 +310,6 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
       onPressed: _saving ? null : () => _saveRoute(origin, saved),
       child: TroskyIcons.star(
         color: saved ? TroskyColors.amber : TroskyColors.white,
-        filled: saved,
       ),
     );
   }

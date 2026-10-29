@@ -236,3 +236,97 @@ final class BookingDetailsFamily extends $Family
   @override
   String toString() => r'bookingDetailsProvider';
 }
+
+/// How [bookingId] was paid: its successful (or refunded) payment from
+/// `GET /payments`, newest first. Null when it isn't among the latest 50 or
+/// can't be read; the cancel sheet then says it generally.
+
+@ProviderFor(bookingPayment)
+final bookingPaymentProvider = BookingPaymentFamily._();
+
+/// How [bookingId] was paid: its successful (or refunded) payment from
+/// `GET /payments`, newest first. Null when it isn't among the latest 50 or
+/// can't be read; the cancel sheet then says it generally.
+
+final class BookingPaymentProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<PaymentResponse?>,
+          PaymentResponse?,
+          FutureOr<PaymentResponse?>
+        >
+    with $FutureModifier<PaymentResponse?>, $FutureProvider<PaymentResponse?> {
+  /// How [bookingId] was paid: its successful (or refunded) payment from
+  /// `GET /payments`, newest first. Null when it isn't among the latest 50 or
+  /// can't be read; the cancel sheet then says it generally.
+  BookingPaymentProvider._({
+    required BookingPaymentFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: noRetry,
+         name: r'bookingPaymentProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$bookingPaymentHash();
+
+  @override
+  String toString() {
+    return r'bookingPaymentProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<PaymentResponse?> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<PaymentResponse?> create(Ref ref) {
+    final argument = this.argument as String;
+    return bookingPayment(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is BookingPaymentProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$bookingPaymentHash() => r'87b485705c2a900a5bcd90584edd19a938689128';
+
+/// How [bookingId] was paid: its successful (or refunded) payment from
+/// `GET /payments`, newest first. Null when it isn't among the latest 50 or
+/// can't be read; the cancel sheet then says it generally.
+
+final class BookingPaymentFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<PaymentResponse?>, String> {
+  BookingPaymentFamily._()
+    : super(
+        retry: noRetry,
+        name: r'bookingPaymentProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// How [bookingId] was paid: its successful (or refunded) payment from
+  /// `GET /payments`, newest first. Null when it isn't among the latest 50 or
+  /// can't be read; the cancel sheet then says it generally.
+
+  BookingPaymentProvider call(String bookingId) =>
+      BookingPaymentProvider._(argument: bookingId, from: this);
+
+  @override
+  String toString() => r'bookingPaymentProvider';
+}

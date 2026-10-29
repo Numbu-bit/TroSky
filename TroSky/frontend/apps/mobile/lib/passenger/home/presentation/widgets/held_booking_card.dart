@@ -72,6 +72,8 @@ class _HeldBookingCardState extends ConsumerState<HeldBookingCard> {
     final left = _left(booking);
     if (left == Duration.zero) return const SizedBox.shrink();
     final waiting = booking.status == BookingStatus.awaitingAcceptance;
+    // A MoMo payment is waiting for its approval: Payment shows it.
+    final paying = booking.status == BookingStatus.paymentPending;
     final trip = booking.trip;
     final from = booking.boardingStopName ?? trip?.originStopName ?? '';
     final to = booking.alightingStopName ?? trip?.destinationStopName ?? '';
@@ -90,7 +92,7 @@ class _HeldBookingCardState extends ConsumerState<HeldBookingCard> {
             ? l10n.bookingStatusWaiting
             : l10n.homeHeldSeats(timeLeft(left)),
         tone: TroskyTagTone.amber,
-        action: waiting ? l10n.bookingViewStatus : l10n.bookingPayNow,
+        action: waiting || paying ? l10n.bookingViewStatus : l10n.bookingPayNow,
         onPressed: () => _open(booking),
       ),
     );

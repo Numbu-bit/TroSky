@@ -28,7 +28,7 @@ The admin web app is not part of this workspace: it is the React app in `TroSky/
   - code input: S-07;
   - driver screens: Figma D1–D9.
 - For each derived screen: save golden PNGs of every state to `design/<ID>/derived/`, attach them to the PR, record the screen in `docs/design-decisions.md`, and mark it **Design: derived** in `docs/frontend-inventory.md`. The project owner approves them from the screenshots before the PR merges.
-- Screens to derive later: S-09, P-08, P-09, P-13, P-18, P-19, P-20, P-22–P-25, D-01–D-03, D-06, D-12.
+- Screens to derive later: S-09, P-13, P-18, P-19, P-20, P-22–P-25, D-01–D-03, D-06, D-12.
 
 ## Backend is the source of truth for data
 - `../backend` is complete. Read `app/api/v1/`, `app/schemas/` and `app/core/exceptions.py` before building any data layer. Never invent endpoints or fields.
