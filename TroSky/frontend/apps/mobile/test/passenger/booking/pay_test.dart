@@ -137,7 +137,7 @@ void main() {
       world.backend.setWalletBalance(_phone, 5);
       await acceptedPayment(tester, world: world);
       expect(_card(tester).title, 'MTN MoMo');
-      expect(_card(tester).detail, '024 *** 4567 · My MTN');
+      expect(_card(tester).detail, '024\u00A0***\u00A04567 · My MTN');
 
       await _tap(tester, 'Change');
       expect(find.text('Choose how to pay ₵29.00.'), findsOneWidget);
@@ -168,7 +168,7 @@ void main() {
 
       await _tap(tester, 'Change method');
       expect(find.text('Balance ₵5.00'), findsOneWidget);
-      await tester.tap(find.text('024 *** 4567 · My MTN'));
+      await tester.tap(find.text('024\u00A0***\u00A04567 · My MTN'));
       await tester.pumpAndSettle();
       expect(_pay(tester).stage, PayStage.idle);
       expect(_card(tester).title, 'MTN MoMo');
@@ -192,14 +192,14 @@ void main() {
     ) async {
       final (world, booking) = await acceptedPayment(tester);
       await _choose(tester, 'MTN MoMo');
-      expect(_card(tester).detail, '024 *** 4567 · My MTN');
+      expect(_card(tester).detail, '024\u00A0***\u00A04567 · My MTN');
       await _tap(tester, 'Pay ₵29.00');
 
       expect(_pay(tester).stage, PayStage.approving);
       expect(find.text('Approve on your phone'), findsOneWidget);
       expect(
         find.text(
-          'We sent a request for ₵29.00 to 024 *** 4567. Enter your MoMo PIN '
+          'We sent a request for ₵29.00 to 024\u00A0***\u00A04567. Enter your MoMo PIN '
           'in the prompt to pay.',
         ),
         findsOneWidget,
@@ -247,10 +247,10 @@ void main() {
       );
       await tester.enterText(find.byType(TextField), '+233 24 000 0000');
       await _tap(tester, 'Use this number');
-      expect(_card(tester).detail, '024 *** 0000');
+      expect(_card(tester).detail, '024\u00A0***\u00A00000');
 
       await _tap(tester, 'Pay ₵29.00');
-      expect(find.textContaining('to 024 *** 0000.'), findsOneWidget);
+      expect(find.textContaining('to 024\u00A0***\u00A00000.'), findsOneWidget);
       await waitFor(tester, world, paymentSyncEvery);
       expect(_pay(tester).stage, PayStage.failed);
       expect(find.text('Payment failed'), findsOneWidget);
@@ -282,7 +282,7 @@ void main() {
     ) async {
       await acceptedPayment(tester);
       await _addNumber(tester, '024 123 4567');
-      expect(_card(tester).detail, '024 *** 4567 · My MTN');
+      expect(_card(tester).detail, '024\u00A0***\u00A04567 · My MTN');
       await _tap(tester, 'Change');
       expect(find.byType(TroskyPayMethodOption), findsNWidgets(2));
     });

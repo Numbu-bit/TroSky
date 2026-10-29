@@ -56,10 +56,11 @@ final class MomoPay extends PayMethod {
 
 /// A masked number as Ghanaians write it, the Wallet's "055 *** 8821" (P9):
 /// "+23324•••4567" gives "024 *** 4567". Other forms come back unchanged.
+/// The spaces don't break, so a sentence never splits the number.
 String localMasked(String masked) {
   final match = RegExp(r'^\+233(\d{2})\D+(\d{4})$').firstMatch(masked);
   if (match == null) return masked;
-  return '0${match[1]} *** ${match[2]}';
+  return '0${match[1]}\u00A0***\u00A0${match[2]}';
 }
 
 /// [amount] ("16.50") in pesewas, so money is compared without doubles.
