@@ -11,6 +11,7 @@ export 'src/components/loading_dots.dart';
 export 'src/components/map_markers.dart';
 export 'src/components/page_dots.dart';
 export 'src/components/page_header.dart';
+export 'src/components/payment_components.dart';
 export 'src/components/search_components.dart';
 export 'src/components/seat_components.dart';
 export 'src/components/section_label.dart';

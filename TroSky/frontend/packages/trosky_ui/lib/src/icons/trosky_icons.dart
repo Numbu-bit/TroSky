@@ -39,19 +39,6 @@ abstract final class TroskyIcons {
   static Widget clock({required Color color, double size = 14}) =>
       _icon(_clock, color, size, size);
 
-  /// "i" in a ring, white on the blue disc of an info banner (P-07), 16 px.
-  static Widget info({required Color color, double size = 16}) =>
-      _icon(_info, color, size, size);
-
-  /// Up arrow on the "New vehicle assigned" tag (P-07), 12 px.
-  static Widget arrowUp({required Color color, double size = 12}) =>
-      _icon(_arrowUp, color, size, size);
-
-  /// A booking card with a minus badge: "No driver accepted your booking"
-  /// (P-07), 42 px.
-  static Widget bookingNotAccepted({required Color color, double size = 42}) =>
-      _icon(_bookingNotAccepted, color, size, size);
-
   /// Small clock on a trip card's badge (P6), 10 px.
   static Widget clockSmall({required Color color}) =>
       _icon(_clockSmall, color, 10, 10);
@@ -59,15 +46,6 @@ abstract final class TroskyIcons {
   /// Arrow on the "Already passed your stop" strip (P6), 10 px.
   static Widget arrowRight({required Color color}) =>
       _icon(_arrowRight, color, 10, 10);
-
-  /// Map pin for "Board at …" on a trip card (not in Figma; drawn in the
-  /// small clock's style), 10 px.
-  static Widget pinSmall({required Color color}) =>
-      _icon(_pinSmall, color, 10, 10);
-
-  /// Star for saving a route (not in Figma), 18 px, outlined or [filled].
-  static Widget star({required Color color, bool filled = false}) =>
-      _icon(filled ? _starFilled : _star, color, 18, 18);
 
   /// Ticket on a Trip History row (P13), 20 px.
   static Widget ticket({required Color color}) => _icon(_ticket, color, 20, 20);
@@ -80,9 +58,39 @@ abstract final class TroskyIcons {
   static Widget copy({required Color color}) =>
       _lucide(LucideIcons.copy, color, 14);
 
-  /// A refund note (P-16): lucide "wallet", 16 px.
-  static Widget wallet({required Color color}) =>
-      _lucide(LucideIcons.wallet, color, 16);
+  /// A refund note (P-16): lucide "wallet", 16 px; the TroSky Wallet's
+  /// tile on Payment (P-07) draws it 20 px.
+  static Widget wallet({required Color color, double size = 16}) =>
+      _lucide(LucideIcons.wallet, color, size);
+
+  /// "Payment failed" (P-09): lucide "circle-x", 36 px.
+  static Widget circleX({required Color color, double size = 36}) =>
+      _lucide(LucideIcons.circleX, color, size);
+
+  // The P-07 icons below have no Figma Make code, and the Search Results
+  // ones aren't in Figma: lucide too (Step 15).
+
+  /// "i" on the blue disc of an info banner (P-07): lucide "info", 16 px.
+  static Widget info({required Color color, double size = 16}) =>
+      _lucide(LucideIcons.info, color, size);
+
+  /// On the "New vehicle assigned" tag (P-07): lucide "arrow-up", 12 px.
+  static Widget arrowUp({required Color color, double size = 12}) =>
+      _lucide(LucideIcons.arrowUp, color, size);
+
+  /// "No driver accepted your booking" (P-07): lucide "calendar-minus",
+  /// 42 px.
+  static Widget bookingNotAccepted({required Color color, double size = 42}) =>
+      _lucide(LucideIcons.calendarMinus, color, size);
+
+  /// "Board at …" on a trip card: lucide "map-pin", 10 px.
+  static Widget pinSmall({required Color color}) =>
+      _lucide(LucideIcons.mapPin, color, 10);
+
+  /// Saving a route on Search Results: lucide "star", 18 px. Lucide has no
+  /// filled star; a saved route shows it in amber.
+  static Widget star({required Color color}) =>
+      _lucide(LucideIcons.star, color, 18);
 
   /// "Booking cancelled" (P-16): lucide "circle-check", 36 px.
   static Widget checkCircle({required Color color, double size = 36}) =>
@@ -164,33 +172,6 @@ abstract final class TroskyIcons {
       'stroke-linecap="round"/>'
       '</svg>';
 
-  // The three P-07 icons below are drawn from the Figma screenshots (no
-  // Figma Make code), in the stroke style of the icons above.
-  static const String _info =
-      '<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">'
-      '<circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.5"/>'
-      '<path d="M8 7.5v3.5" stroke="currentColor" stroke-width="1.5" '
-      'stroke-linecap="round"/>'
-      '<circle cx="8" cy="5" r="0.9" fill="currentColor"/>'
-      '</svg>';
-
-  static const String _arrowUp =
-      '<svg viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">'
-      '<path d="M5 9V1M2 4l3-3 3 3" stroke="currentColor" stroke-width="1.5" '
-      'stroke-linecap="round" stroke-linejoin="round"/>'
-      '</svg>';
-
-  static const String _bookingNotAccepted =
-      '<svg viewBox="5 4 33 33" fill="none" xmlns="http://www.w3.org/2000/svg">'
-      '<path d="M26 31H11a4 4 0 0 1-4-4V13a4 4 0 0 1 4-4h18a4 4 0 0 1 4 4v8" '
-      'stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
-      '<path d="M13 6v5M27 6v5M12 17h14M12 22h8" stroke="currentColor" '
-      'stroke-width="2" stroke-linecap="round"/>'
-      '<circle cx="31" cy="29" r="6" stroke="currentColor" stroke-width="2"/>'
-      '<path d="M28 29h6" stroke="currentColor" stroke-width="2" '
-      'stroke-linecap="round"/>'
-      '</svg>';
-
   static const String _clockSmall =
       '<svg viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">'
       '<circle cx="5" cy="5" r="4" stroke="currentColor" stroke-width="1.2"/>'
@@ -202,29 +183,6 @@ abstract final class TroskyIcons {
       '<svg viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">'
       '<path d="M1 5h8M6 2l3 3-3 3" stroke="currentColor" stroke-width="1.5" '
       'stroke-linecap="round" stroke-linejoin="round"/>'
-      '</svg>';
-
-  static const String _pinSmall =
-      '<svg viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">'
-      '<path d="M5 9.2C5 9.2 8.2 6.3 8.2 4.1A3.2 3.2 0 0 0 1.8 4.1C1.8 6.3 5 '
-      '9.2 5 9.2Z" stroke="currentColor" stroke-width="1.2" '
-      'stroke-linejoin="round"/>'
-      '<circle cx="5" cy="4.1" r="1.1" fill="currentColor"/>'
-      '</svg>';
-
-  static const String _starPath =
-      'M9 1.8l2.2 4.6 5 .7-3.6 3.5.9 5L9 13.2l-4.5 2.4.9-5L1.8 7.1l5-.7z';
-
-  static const String _star =
-      '<svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">'
-      '<path d="$_starPath" stroke="currentColor" stroke-width="1.5" '
-      'stroke-linejoin="round"/>'
-      '</svg>';
-
-  static const String _starFilled =
-      '<svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">'
-      '<path d="$_starPath" fill="currentColor" stroke="currentColor" '
-      'stroke-width="1.5" stroke-linejoin="round"/>'
       '</svg>';
 
   static const String _ticket =

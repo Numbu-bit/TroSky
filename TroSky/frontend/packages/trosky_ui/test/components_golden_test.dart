@@ -579,10 +579,7 @@ void main() {
                   semanticsLabel: 'Saved',
                   selected: true,
                   onPressed: () {},
-                  child: TroskyIcons.star(
-                    color: TroskyColors.amber,
-                    filled: true,
-                  ),
+                  child: TroskyIcons.star(color: TroskyColors.amber),
                 ),
               ],
             ),
@@ -856,6 +853,73 @@ void main() {
             ),
           ),
         ],
+      ),
+      width: 390,
+    );
+  });
+
+  testWidgets('Paying (P-07, P9): pay with card, MoMo logo, method options', (
+    tester,
+  ) async {
+    await _golden(
+      tester,
+      'payment_components',
+      Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TroskyPayWithCard(
+              label: 'Pay with',
+              kind: TroskyPayMethodKind.wallet,
+              title: 'TroSky Wallet',
+              detail: 'Balance ₵128.50',
+              action: 'Change',
+              onPressed: () {},
+            ),
+            const SizedBox(height: 16),
+            TroskyPayWithCard(
+              label: 'Pay with',
+              kind: TroskyPayMethodKind.momo,
+              title: 'MTN MoMo',
+              detail: '024 *** 4567',
+              action: 'Change',
+              onPressed: () {},
+            ),
+            const SizedBox(height: 16),
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                TroskyMomoLogo(),
+                TroskyMomoLogo(size: 80),
+                TroskyPayMethodIcon(kind: TroskyPayMethodKind.wallet),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TroskyPayMethodOption(
+              kind: TroskyPayMethodKind.wallet,
+              title: 'TroSky Wallet',
+              detail: 'Balance ₵128.50',
+              selected: true,
+              onPressed: () {},
+            ),
+            TroskyPayMethodOption(
+              kind: TroskyPayMethodKind.wallet,
+              title: 'TroSky Wallet',
+              detail: 'Balance ₵5.00',
+              note: 'Not enough for ₵16.00',
+              selected: false,
+              onPressed: () {},
+            ),
+            TroskyPayMethodOption(
+              kind: TroskyPayMethodKind.momo,
+              title: 'MTN MoMo',
+              detail: '024 *** 4567 · My MTN',
+              selected: false,
+              onPressed: () {},
+            ),
+          ],
+        ),
       ),
       width: 390,
     );
