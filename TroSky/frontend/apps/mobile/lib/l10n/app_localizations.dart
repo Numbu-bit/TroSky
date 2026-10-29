@@ -1832,12 +1832,6 @@ abstract class AppLocalizations {
   /// **'Total'**
   String get paymentTotal;
 
-  /// Note on Payment once the driver accepted, until paying in the app is built.
-  ///
-  /// In en, this message translates to:
-  /// **'Paying in the app is coming soon. Your seats stay held until the timer ends.'**
-  String get paymentComingSoon;
-
   /// Cancels the booking and frees the seats (P-07: moved, and accepted).
   ///
   /// In en, this message translates to:
@@ -2239,6 +2233,264 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Seats held · {time} left'**
   String homeHeldSeats(String time);
+
+  /// Payment (P-07): label over the chosen payment method; shown in capitals.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay with'**
+  String get payWithLabel;
+
+  /// The TroSky Wallet as a way to pay.
+  ///
+  /// In en, this message translates to:
+  /// **'TroSky Wallet'**
+  String get payWallet;
+
+  /// The wallet's balance under its name.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance {amount}'**
+  String payWalletBalance(String amount);
+
+  /// The wallet's balance couldn't be read (the server still checks it when paying).
+  ///
+  /// In en, this message translates to:
+  /// **'Balance unavailable'**
+  String get payWalletBalanceUnknown;
+
+  /// Payment card: the chosen wallet holds less than the booking's total.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance {amount} · not enough'**
+  String payWalletNotEnough(String amount);
+
+  /// MTN Mobile Money as a way to pay.
+  ///
+  /// In en, this message translates to:
+  /// **'MTN MoMo'**
+  String get payMomo;
+
+  /// Payment card: opens the list of ways to pay.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get payChange;
+
+  /// Payment's main button.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay {amount}'**
+  String payButton(String amount);
+
+  /// Title of the sheet for choosing how to pay.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay with'**
+  String get payMethodSheetTitle;
+
+  /// Under the title of the payment method sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose how to pay {amount}.'**
+  String payMethodSheetSubtitle(String amount);
+
+  /// Payment method sheet: why the wallet can't be chosen.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough for {amount}'**
+  String payMethodNotEnough(String amount);
+
+  /// Payment method sheet: shows the field for a new mobile money number.
+  ///
+  /// In en, this message translates to:
+  /// **'+ Add an MTN MoMo number'**
+  String get payAddNumber;
+
+  /// Payment method sheet: saves the number typed and pays with it.
+  ///
+  /// In en, this message translates to:
+  /// **'Use this number'**
+  String get payAddNumberSave;
+
+  /// Payment method sheet: the number typed isn't a valid Ghana mobile number.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid MTN MoMo number, like 024 123 4567.'**
+  String get payNumberInvalid;
+
+  /// Approve on your phone (P-08): title while MTN MoMo waits for the payer.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve on your phone'**
+  String get payApproveTitle;
+
+  /// Approve on your phone (P-08).
+  ///
+  /// In en, this message translates to:
+  /// **'We sent a request for {amount} to {number}. Enter your MoMo PIN in the prompt to pay.'**
+  String payApproveBody(String amount, String number);
+
+  /// Approve on your phone (P-08), reopened later: the number isn't known.
+  ///
+  /// In en, this message translates to:
+  /// **'We sent a request for {amount} to your MTN MoMo number. Enter your MoMo PIN in the prompt to pay.'**
+  String payApproveBodyNoNumber(String amount);
+
+  /// Approve on your phone (P-08): under the countdown to the end of the seat hold.
+  ///
+  /// In en, this message translates to:
+  /// **'left to approve'**
+  String get payApproveCaption;
+
+  /// Approve on your phone (P-08): the countdown for screen readers.
+  ///
+  /// In en, this message translates to:
+  /// **'{time} left to approve the payment'**
+  String payApproveTimeLeft(String time);
+
+  /// Approve on your phone (P-08): opens help when no MoMo prompt came.
+  ///
+  /// In en, this message translates to:
+  /// **'I didn\'t get a prompt'**
+  String get payNoPrompt;
+
+  /// Sheet from "I didn't get a prompt".
+  ///
+  /// In en, this message translates to:
+  /// **'No prompt yet?'**
+  String get payNoPromptTitle;
+
+  /// Sheet from "I didn't get a prompt". The payment can't be stopped while MTN waits (backend gap G36).
+  ///
+  /// In en, this message translates to:
+  /// **'MTN can take a minute to send it. Check that your phone is on and has signal. You can also dial *170#, then My Wallet, then My Approvals. If no prompt comes, the payment fails on its own, and then you can try again or pay another way.'**
+  String get payNoPromptBody;
+
+  /// Asks now whether the MoMo payment went through.
+  ///
+  /// In en, this message translates to:
+  /// **'Check again'**
+  String get payCheckAgain;
+
+  /// Closes the no-prompt sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep waiting'**
+  String get payKeepWaiting;
+
+  /// Payment result (P-09): paid.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment successful'**
+  String get paySuccessTitle;
+
+  /// Payment result (P-09): paid from the wallet.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} paid from your TroSky Wallet. Your seats are booked.'**
+  String paySuccessWallet(String amount);
+
+  /// Payment result (P-09): paid by mobile money.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} paid with MTN MoMo. Your seats are booked.'**
+  String paySuccessMomo(String amount);
+
+  /// Payment result (P-09): label over the booking reference.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking reference'**
+  String get payReferenceLabel;
+
+  /// Payment result (P-09): opens the Trips tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Trips'**
+  String get payGoToTrips;
+
+  /// Payment result (P-09): not paid.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment failed'**
+  String get payFailedTitle;
+
+  /// Payment result (P-09): MTN reports the payer declined.
+  ///
+  /// In en, this message translates to:
+  /// **'The payment was declined on your phone.'**
+  String get payFailedDeclined;
+
+  /// Payment result (P-09): the wallet balance was too low.
+  ///
+  /// In en, this message translates to:
+  /// **'Your TroSky Wallet doesn\'t hold {amount}.'**
+  String payFailedWallet(String amount);
+
+  /// Payment result (P-09): any other failure.
+  ///
+  /// In en, this message translates to:
+  /// **'The payment didn\'t go through.'**
+  String get payFailedGeneric;
+
+  /// Payment result (P-09): after a failure, while the hold lasts.
+  ///
+  /// In en, this message translates to:
+  /// **'You haven\'t been charged. Your seats are held for {time}.'**
+  String payFailedHeld(String time);
+
+  /// Payment result (P-09): pays again the same way.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get payTryAgain;
+
+  /// Payment result (P-09): back to Payment to choose another way to pay.
+  ///
+  /// In en, this message translates to:
+  /// **'Change method'**
+  String get payChangeMethod;
+
+  /// Payment result (P-09): the seat hold ended before the payment was approved.
+  ///
+  /// In en, this message translates to:
+  /// **'Time ran out'**
+  String get payTimedOutTitle;
+
+  /// Payment result (P-09): hold over, payment unanswered.
+  ///
+  /// In en, this message translates to:
+  /// **'Your seats were released because the payment wasn\'t approved in time. If it still goes through, TroSky refunds it.'**
+  String get payTimedOutBody;
+
+  /// Payment result (P-09): approved after the hold ended.
+  ///
+  /// In en, this message translates to:
+  /// **'The payment came through after your seats were released, so TroSky refunds {amount}.'**
+  String payLateBody(String amount);
+
+  /// Cancel sheet (P-16): refund of a booking paid from the wallet.
+  ///
+  /// In en, this message translates to:
+  /// **'Once TroSky approves the refund, it goes back to your TroSky Wallet.'**
+  String get cancelRefundBodyWallet;
+
+  /// Cancel sheet (P-16): refund of a booking paid by MTN MoMo (MTN has no refund API; the team pays it out).
+  ///
+  /// In en, this message translates to:
+  /// **'Once TroSky approves the refund, our team sends it back to your MTN MoMo number or your TroSky Wallet.'**
+  String get cancelRefundBodyMomo;
+
+  /// Payment result (P-09): MTN reports the prompt expired unanswered.
+  ///
+  /// In en, this message translates to:
+  /// **'The prompt on your phone timed out.'**
+  String get payFailedExpired;
+
+  /// Payment result (P-09): MTN reports not enough funds.
+  ///
+  /// In en, this message translates to:
+  /// **'Your MTN MoMo balance was too low.'**
+  String get payFailedMomoFunds;
 }
 
 class _AppLocalizationsDelegate

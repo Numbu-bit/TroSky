@@ -151,6 +151,18 @@ BookingRepository bookingRepository(Ref ref) =>
       ),
     };
 
+/// Paying for bookings, the wallet and saved mobile money numbers.
+@Riverpod(keepAlive: true)
+PaymentRepository paymentRepository(Ref ref) =>
+    switch (ref.watch(envProvider).apiMode) {
+      ApiMode.live => LivePaymentRepository(ref.watch(apiClientProvider)),
+      ApiMode.mock => MockPaymentRepository(
+        ref.watch(mockBackendProvider),
+        tokens: () => ref.read(tokenManagerProvider),
+        latency: ref.watch(mockLatencyProvider),
+      ),
+    };
+
 @Riverpod(keepAlive: true)
 UserCache userCache(Ref ref) =>
     SharedPreferencesUserCache(SharedPreferencesAsync());

@@ -467,3 +467,54 @@ by itself.
 Design: derived. The sheet is Payment's earlier release sheet with the new words; the card is
 P13's row (ticket, route, when) with the status tag of decision 30 and a green action. Goldens:
 `design/P-07/derived/leave-sheet.png`, `design/P-01/derived/held-card-*.png`.
+
+## 32. Paying in the app (Step 15)
+
+Project owner, 29 Oct 2026.
+
+1. **P-07's pay section as in Figma:** "PAY WITH" (the TroSky Wallet and its balance, or an MTN
+   MoMo number) with **Change**, and at the bottom "Pay within 9:58" over **Pay ₵16.00**. The
+   accepted state no longer has "Cancel booking": a new booking is cancelled with Back → Release
+   seats (decision 31), a reopened one from Booking details.
+2. **The method sheet** (derived from P-16's cancel sheet and P9's payment methods): the wallet
+   (not choosable, "Not enough for ₵16.00", when it doesn't cover the total), the saved MTN MoMo
+   numbers (`GET /users/me/payment-methods`), and **+ Add an MTN MoMo number**: checked on the
+   phone (`024…`, `24…`, `+233…`), saved with `POST /users/me/payment-methods`, then used (one
+   saved already is reused). Offered first: the method this passenger used last on this phone,
+   else the wallet if it covers the total, else the default number. Only MTN MoMo and the wallet
+   are live.
+3. **Pay** sends `POST /bookings/{id}/pay` with an `Idempotency-Key` per attempt. It is kept when
+   the answer is lost, so paying again returns the same payment and charges once; a second tap
+   does nothing while paying. The wallet answers at once → P-09. MoMo → P-08: `POST
+   /payments/{id}/sync` every 5 s (10, 20, then 30 s after errors), paused in the background and
+   asked at once on return, with a countdown to the hold's `expires_at`.
+4. **The hold runs out during a MoMo payment**, as the backend does it: the hold keeps running
+   while the booking is `payment_pending`; the expiry job (every 30 s) expires the booking and
+   frees the seats; an approval arriving later turns the booking `refund_pending` with a refund
+   request. The app asks once more when the countdown ends, then shows P-09 "Time ran out" (or,
+   when the approval came just after, that TroSky refunds it).
+5. **"I didn't get a prompt"** opens a sheet: what to check, *170# → My Wallet → My Approvals, and
+   **Check again**. Trying again or another method has to wait for the payment to fail (backend
+   gap G36): then P-09 offers both.
+6. **P-09** (derived from "No driver accepted"): paid (green check, the amount and how, the
+   booking reference, **Go to Trips**; "View ticket" comes with Step 16); failed (red cross, the
+   reason, "You haven't been charged. Your seats are held for 7:12.", **Try again**, **Change
+   method**); time ran out (grey clock, **Search again**, **Back to Home**).
+7. **Back:** on P-08 it leaves (the payment goes on; Home's card, now "View status", or Trips
+   reopens it, and Payment finds the payment with `GET /payments`); on a payment failure it
+   returns to P-07; on P-09 paid it leaves.
+8. **After paying**, Trips, the booking and Home's card are read again: the card goes and Trips
+   shows "Paid · Upcoming".
+9. **The cancel sheet's refund** says where it goes, from how the booking was paid
+   (`GET /payments`): the wallet → "it goes back to your TroSky Wallet"; MTN MoMo → "our team sends
+   it back to your MTN MoMo number or your TroSky Wallet" (MTN Collections has no refund, so the
+   backend's refund fails and admins pay it out); not known → the earlier wording.
+10. **Icons:** lucide for P-07's info, arrow-up and "no driver accepted" (calendar-minus), Search
+    Results' map pin and star, and P-09's circle-x. Lucide has no filled star, so a saved route
+    shows the outlined star in amber.
+
+Design: derived (P-08, P-09, the method sheet, the MoMo card, the no-prompt sheet). The MTN MoMo
+logo is P9's SVG drawn with the body font (Arial isn't bundled). Goldens:
+`design/P-07/derived/{pay-with-momo,method-sheet,method-sheet-add-number}.png`,
+`design/P-08/derived/{approve,no-prompt-sheet}.png`,
+`design/P-09/derived/{success,failed,timed-out}.png`.

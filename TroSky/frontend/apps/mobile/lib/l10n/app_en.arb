@@ -1451,10 +1451,6 @@
   "@paymentTotal": {
     "description": "Row label on Payment."
   },
-  "paymentComingSoon": "Paying in the app is coming soon. Your seats stay held until the timer ends.",
-  "@paymentComingSoon": {
-    "description": "Note on Payment once the driver accepted, until paying in the app is built."
-  },
   "paymentCancel": "Cancel booking",
   "@paymentCancel": {
     "description": "Cancels the booking and frees the seats (P-07: moved, and accepted)."
@@ -1794,5 +1790,259 @@
         "example": "9:12"
       }
     }
+  },
+  "payWithLabel": "Pay with",
+  "@payWithLabel": {
+    "description": "Payment (P-07): label over the chosen payment method; shown in capitals."
+  },
+  "payWallet": "TroSky Wallet",
+  "@payWallet": {
+    "description": "The TroSky Wallet as a way to pay."
+  },
+  "payWalletBalance": "Balance {amount}",
+  "@payWalletBalance": {
+    "description": "The wallet's balance under its name.",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₵128.50"
+      }
+    }
+  },
+  "payWalletBalanceUnknown": "Balance unavailable",
+  "@payWalletBalanceUnknown": {
+    "description": "The wallet's balance couldn't be read (the server still checks it when paying)."
+  },
+  "payWalletNotEnough": "Balance {amount} · not enough",
+  "@payWalletNotEnough": {
+    "description": "Payment card: the chosen wallet holds less than the booking's total.",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₵5.00"
+      }
+    }
+  },
+  "payMomo": "MTN MoMo",
+  "@payMomo": {
+    "description": "MTN Mobile Money as a way to pay."
+  },
+  "payChange": "Change",
+  "@payChange": {
+    "description": "Payment card: opens the list of ways to pay."
+  },
+  "payButton": "Pay {amount}",
+  "@payButton": {
+    "description": "Payment's main button.",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₵16.00"
+      }
+    }
+  },
+  "payMethodSheetTitle": "Pay with",
+  "@payMethodSheetTitle": {
+    "description": "Title of the sheet for choosing how to pay."
+  },
+  "payMethodSheetSubtitle": "Choose how to pay {amount}.",
+  "@payMethodSheetSubtitle": {
+    "description": "Under the title of the payment method sheet.",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₵16.00"
+      }
+    }
+  },
+  "payMethodNotEnough": "Not enough for {amount}",
+  "@payMethodNotEnough": {
+    "description": "Payment method sheet: why the wallet can't be chosen.",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₵16.00"
+      }
+    }
+  },
+  "payAddNumber": "+ Add an MTN MoMo number",
+  "@payAddNumber": {
+    "description": "Payment method sheet: shows the field for a new mobile money number."
+  },
+  "payAddNumberSave": "Use this number",
+  "@payAddNumberSave": {
+    "description": "Payment method sheet: saves the number typed and pays with it."
+  },
+  "payNumberInvalid": "Enter a valid MTN MoMo number, like 024 123 4567.",
+  "@payNumberInvalid": {
+    "description": "Payment method sheet: the number typed isn't a valid Ghana mobile number."
+  },
+  "payApproveTitle": "Approve on your phone",
+  "@payApproveTitle": {
+    "description": "Approve on your phone (P-08): title while MTN MoMo waits for the payer."
+  },
+  "payApproveBody": "We sent a request for {amount} to {number}. Enter your MoMo PIN in the prompt to pay.",
+  "@payApproveBody": {
+    "description": "Approve on your phone (P-08).",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₵16.00"
+      },
+      "number": {
+        "type": "String",
+        "example": "024 *** 4567"
+      }
+    }
+  },
+  "payApproveBodyNoNumber": "We sent a request for {amount} to your MTN MoMo number. Enter your MoMo PIN in the prompt to pay.",
+  "@payApproveBodyNoNumber": {
+    "description": "Approve on your phone (P-08), reopened later: the number isn't known.",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₵16.00"
+      }
+    }
+  },
+  "payApproveCaption": "left to approve",
+  "@payApproveCaption": {
+    "description": "Approve on your phone (P-08): under the countdown to the end of the seat hold."
+  },
+  "payApproveTimeLeft": "{time} left to approve the payment",
+  "@payApproveTimeLeft": {
+    "description": "Approve on your phone (P-08): the countdown for screen readers.",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "4:12"
+      }
+    }
+  },
+  "payNoPrompt": "I didn't get a prompt",
+  "@payNoPrompt": {
+    "description": "Approve on your phone (P-08): opens help when no MoMo prompt came."
+  },
+  "payNoPromptTitle": "No prompt yet?",
+  "@payNoPromptTitle": {
+    "description": "Sheet from \"I didn't get a prompt\"."
+  },
+  "payNoPromptBody": "MTN can take a minute to send it. Check that your phone is on and has signal. You can also dial *170#, then My Wallet, then My Approvals. If no prompt comes, the payment fails on its own, and then you can try again or pay another way.",
+  "@payNoPromptBody": {
+    "description": "Sheet from \"I didn't get a prompt\". The payment can't be stopped while MTN waits (backend gap G36)."
+  },
+  "payCheckAgain": "Check again",
+  "@payCheckAgain": {
+    "description": "Asks now whether the MoMo payment went through."
+  },
+  "payKeepWaiting": "Keep waiting",
+  "@payKeepWaiting": {
+    "description": "Closes the no-prompt sheet."
+  },
+  "paySuccessTitle": "Payment successful",
+  "@paySuccessTitle": {
+    "description": "Payment result (P-09): paid."
+  },
+  "paySuccessWallet": "{amount} paid from your TroSky Wallet. Your seats are booked.",
+  "@paySuccessWallet": {
+    "description": "Payment result (P-09): paid from the wallet.",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₵16.00"
+      }
+    }
+  },
+  "paySuccessMomo": "{amount} paid with MTN MoMo. Your seats are booked.",
+  "@paySuccessMomo": {
+    "description": "Payment result (P-09): paid by mobile money.",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₵16.00"
+      }
+    }
+  },
+  "payReferenceLabel": "Booking reference",
+  "@payReferenceLabel": {
+    "description": "Payment result (P-09): label over the booking reference."
+  },
+  "payGoToTrips": "Go to Trips",
+  "@payGoToTrips": {
+    "description": "Payment result (P-09): opens the Trips tab."
+  },
+  "payFailedTitle": "Payment failed",
+  "@payFailedTitle": {
+    "description": "Payment result (P-09): not paid."
+  },
+  "payFailedDeclined": "The payment was declined on your phone.",
+  "@payFailedDeclined": {
+    "description": "Payment result (P-09): MTN reports the payer declined."
+  },
+  "payFailedWallet": "Your TroSky Wallet doesn't hold {amount}.",
+  "@payFailedWallet": {
+    "description": "Payment result (P-09): the wallet balance was too low.",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₵16.00"
+      }
+    }
+  },
+  "payFailedGeneric": "The payment didn't go through.",
+  "@payFailedGeneric": {
+    "description": "Payment result (P-09): any other failure."
+  },
+  "payFailedHeld": "You haven't been charged. Your seats are held for {time}.",
+  "@payFailedHeld": {
+    "description": "Payment result (P-09): after a failure, while the hold lasts.",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "7:12"
+      }
+    }
+  },
+  "payTryAgain": "Try again",
+  "@payTryAgain": {
+    "description": "Payment result (P-09): pays again the same way."
+  },
+  "payChangeMethod": "Change method",
+  "@payChangeMethod": {
+    "description": "Payment result (P-09): back to Payment to choose another way to pay."
+  },
+  "payTimedOutTitle": "Time ran out",
+  "@payTimedOutTitle": {
+    "description": "Payment result (P-09): the seat hold ended before the payment was approved."
+  },
+  "payTimedOutBody": "Your seats were released because the payment wasn't approved in time. If it still goes through, TroSky refunds it.",
+  "@payTimedOutBody": {
+    "description": "Payment result (P-09): hold over, payment unanswered."
+  },
+  "payLateBody": "The payment came through after your seats were released, so TroSky refunds {amount}.",
+  "@payLateBody": {
+    "description": "Payment result (P-09): approved after the hold ended.",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "₵16.00"
+      }
+    }
+  },
+  "cancelRefundBodyWallet": "Once TroSky approves the refund, it goes back to your TroSky Wallet.",
+  "@cancelRefundBodyWallet": {
+    "description": "Cancel sheet (P-16): refund of a booking paid from the wallet."
+  },
+  "cancelRefundBodyMomo": "Once TroSky approves the refund, our team sends it back to your MTN MoMo number or your TroSky Wallet.",
+  "@cancelRefundBodyMomo": {
+    "description": "Cancel sheet (P-16): refund of a booking paid by MTN MoMo (MTN has no refund API; the team pays it out)."
+  },
+  "payFailedExpired": "The prompt on your phone timed out.",
+  "@payFailedExpired": {
+    "description": "Payment result (P-09): MTN reports the prompt expired unanswered."
+  },
+  "payFailedMomoFunds": "Your MTN MoMo balance was too low.",
+  "@payFailedMomoFunds": {
+    "description": "Payment result (P-09): MTN reports not enough funds."
   }
 }

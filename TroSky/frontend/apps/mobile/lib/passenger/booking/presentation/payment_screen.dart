@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:trosky_api/trosky_api.dart';
 import 'package:trosky_core/trosky_core.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
@@ -14,9 +15,14 @@ import '../../../l10n/app_localizations.dart';
 import '../../search/presentation/trip_view.dart';
 import '../../search/search_prefill.dart';
 import '../../seats/application/seat_providers.dart';
+import '../../trips/application/trips_providers.dart';
 import '../application/booking_watch.dart';
+import '../application/pay_controller.dart';
+import '../domain/pay_method.dart';
 import '../domain/payment_args.dart';
 import 'booking_format.dart';
+import 'pay_method_sheet.dart';
+import 'pay_views.dart';
 
 export '../domain/payment_args.dart';
 
@@ -24,7 +30,9 @@ export '../domain/payment_args.dart';
 /// (backend 0.20.0): the screen counts down the driver's deadline, shows a
 /// move to another vehicle, the driver's acceptance (then the time left to
 /// pay) or that no driver accepted, as [BookingWatchController] reads them
-/// from the server. Paying itself is not built yet.
+/// from the server. Once accepted the passenger pays ([PayController]):
+/// from the wallet at once, or by MTN MoMo, approved on the phone (P-08);
+/// then the outcome (P-09).
 class PaymentScreen extends ConsumerStatefulWidget {
   const PaymentScreen({super.key, required this.args});
 
@@ -47,8 +55,14 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   bool _countdownBelow = false;
   String? _error;
 
+  /// The method the passenger picked; until then the one [PayOptions]
+  /// offers first.
+  PayMethod? _method;
+
   BookingWatchControllerProvider get _watch =>
       bookingWatchControllerProvider(widget.args);
+
+  PayControllerProvider get _pay => payControllerProvider(widget.args);
 
   @override
   void initState() {
@@ -56,8 +70,14 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     _now = ref.read(clockProvider)().toUtc();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
     _lifecycle = AppLifecycleListener(
-      onPause: () => ref.read(_watch.notifier).pause(),
-      onResume: () => ref.read(_watch.notifier).resume(),
+      onPause: () {
+        ref.read(_watch.notifier).pause();
+        ref.read(_pay.notifier).pause();
+      },
+      onResume: () {
+        ref.read(_watch.notifier).resume();
+        ref.read(_pay.notifier).resume();
+      },
     );
   }
 
@@ -72,8 +92,24 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     if (!mounted) return;
     setState(() => _now = ref.read(clockProvider)().toUtc());
     final watch = ref.read(_watch);
-    if (watch.stage == PaymentStage.accepted && _left(watch) == Duration.zero) {
-      _expired();
+    if (watch.stage != PaymentStage.accepted || _left(watch) > Duration.zero) {
+      return;
+    }
+    // The hold ran out: unpaid, the seats are gone; while MoMo waits for
+    // the payer, the payment is asked once more first.
+    final pay = ref.read(_pay);
+    switch (pay.stage) {
+      case PayStage.idle:
+        _expired();
+      case PayStage.failed when !pay.holdOver:
+        _expired();
+      case PayStage.approving:
+        ref.read(_pay.notifier).timeUp();
+      case PayStage.paying ||
+          PayStage.paid ||
+          PayStage.failed ||
+          PayStage.timedOut:
+        break;
     }
   }
 
@@ -109,8 +145,26 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   /// Back from a booking just made on Seat Selection asks first (decision
   /// 31): keep the seats held and leave for Home, where a card leads back
   /// here, or release them and choose again. Reopened from Home or Trips,
-  /// Back just goes back: the seats stay held either way.
+  /// Back just goes back: the seats stay held either way. Once paying
+  /// started, Back leaves (a MoMo payment goes on; Home's card leads back
+  /// to it), and from a failure it returns to choosing how to pay.
   Future<void> _back() async {
+    final pay = ref.read(_pay);
+    switch (pay.stage) {
+      case PayStage.paying:
+        return;
+      case PayStage.failed when !pay.holdOver:
+        ref.read(_pay.notifier).reset();
+        return;
+      case PayStage.approving ||
+          PayStage.paid ||
+          PayStage.failed ||
+          PayStage.timedOut:
+        _leave();
+        return;
+      case PayStage.idle:
+        break;
+    }
     if (widget.args.restored) {
       context.pop();
       return;
@@ -191,17 +245,104 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     context.goNamed(AppRoute.home.name);
   }
 
+  /// Back where Payment came from: Trips or Home for a reopened booking,
+  /// Home for a new one (Seat Selection is behind it).
+  void _leave() {
+    if (!widget.args.restored) return _home();
+    _closed = true;
+    ref.invalidate(heldBookingProvider);
+    context.pop();
+  }
+
+  void _trips() {
+    _closed = true;
+    context.goNamed(AppRoute.trips.name);
+  }
+
+  /// The method shown: the one picked, else the one used last or the best
+  /// fit for [amount].
+  PayMethod _chosen(PayOptions? options, String amount) =>
+      _method ?? options?.initial(amount) ?? const WalletPay();
+
+  /// Pays with the method shown. The controller ignores a second tap.
+  void _payNow() {
+    final booking = ref.read(_watch).booking;
+    final method = _chosen(
+      ref.read(payOptionsProvider).value,
+      booking.totalAmount,
+    );
+    ref.read(_pay.notifier).pay(method);
+  }
+
+  /// "Change" (or "Change method" after a failure): the method sheet.
+  Future<void> _changeMethod() async {
+    final booking = ref.read(_watch).booking;
+    PayOptions options;
+    try {
+      options = await ref.read(payOptionsProvider.future);
+    } on Object {
+      // Neither could be read: the wallet, and a new number.
+      options = const PayOptions(wallet: null, numbers: []);
+    }
+    if (!mounted) return;
+    final picked = await showPayMethodSheet(
+      context,
+      options: options,
+      chosen: _chosen(options, booking.totalAmount),
+      amount: booking.totalAmount,
+    );
+    if (!mounted) return;
+    ref.read(_pay.notifier).reset();
+    if (picked != null) setState(() => _method = picked);
+  }
+
+  Future<void> _noPrompt() async {
+    final check = await showNoPromptSheet(context);
+    if (check == true && mounted) await ref.read(_pay.notifier).checkNow();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final watch = ref.watch(_watch);
-    ref.listen(_watch.select((w) => w.stage), (_, stage) {
-      if (stage == PaymentStage.holdExpired) _expired();
-    });
+    final pay = ref.watch(_pay);
+    ref
+      ..listen(_watch.select((w) => w.stage), (_, stage) {
+        final pay = ref.read(_pay);
+        final unpaid =
+            pay.stage == PayStage.idle ||
+            (pay.stage == PayStage.failed && !pay.holdOver);
+        if (stage == PaymentStage.holdExpired && unpaid) _expired();
+      })
+      ..listen(_pay.select((p) => p.stage), (_, stage) {
+        // Trips, its card, the booking and Home's card read it again.
+        if (stage == PayStage.idle || stage == PayStage.paying) return;
+        refreshBookings(ref, widget.args.booking.id);
+        if (stage == PayStage.paid) ref.invalidate(payOptionsProvider);
+      });
     final stage = watch.stage;
-    final busy = _cancelling;
+    // Kept while the booking is to be paid, so "Change method" after a
+    // failure still has the wallet and the numbers.
+    if (stage == PaymentStage.accepted) ref.watch(payOptionsProvider);
+    final paying = switch (pay.stage) {
+      PayStage.idle || PayStage.paying => false,
+      _ => true,
+    };
+    final busy = _cancelling || pay.stage == PayStage.paying;
+    final error =
+        _error ??
+        switch (pay) {
+          PayFlow(stage: PayStage.idle, :final error?) => failureMessage(
+            context,
+            error,
+          ),
+          _ => null,
+        };
     return PopScope(
-      canPop: widget.args.restored,
+      canPop:
+          widget.args.restored &&
+          !busy &&
+          !(pay.stage == PayStage.failed && !pay.holdOver),
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop && !_closed && !busy) _back();
       },
@@ -228,12 +369,14 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                       _listBottomPadding,
                     ),
                     children: [
-                      if (stage == PaymentStage.accepted && watch.acceptedHere)
+                      if (stage == PaymentStage.accepted &&
+                          watch.acceptedHere &&
+                          !paying)
                         ..._banner(
                           l10n.paymentAccepted,
                           TroskyStatusTone.success,
                         ),
-                      if (stage == PaymentStage.moved)
+                      if (stage == PaymentStage.moved && !paying)
                         ..._banner(
                           watch.moveReason == MoveReason.declined
                               ? l10n.paymentMovedDeclined
@@ -241,29 +384,27 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                           TroskyStatusTone.info,
                         ),
                       _card(l10n, watch),
-                      ...switch (stage) {
-                        PaymentStage.waiting ||
-                        PaymentStage.moved => _waiting(l10n, watch),
-                        PaymentStage.accepted => [
-                          const SizedBox(height: TroskySpacing.s16),
-                          Text(
-                            l10n.paymentComingSoon,
-                            style: TroskyTypography.body13Regular.copyWith(
-                              color: TroskyColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                        PaymentStage.notAccepted => _notAccepted(l10n),
-                        PaymentStage.holdExpired ||
-                        PaymentStage.cancelled => const [],
-                      },
+                      if (paying)
+                        _payStage(l10n, watch, pay)
+                      else
+                        ...switch (stage) {
+                          PaymentStage.waiting ||
+                          PaymentStage.moved => _waiting(l10n, watch),
+                          PaymentStage.accepted => [
+                            const SizedBox(height: TroskySpacing.s16),
+                            _payWith(l10n, watch, pay),
+                          ],
+                          PaymentStage.notAccepted => _notAccepted(l10n),
+                          PaymentStage.holdExpired ||
+                          PaymentStage.cancelled => const [],
+                        },
                       if (watch.offline &&
                           (stage == PaymentStage.waiting ||
                               stage == PaymentStage.moved)) ...[
                         const SizedBox(height: TroskySpacing.s16),
-                        _Offline(l10n.paymentOffline),
+                        PaymentOfflineNote(l10n.paymentOffline),
                       ],
-                      if (_error case final error?) ...[
+                      if (error != null) ...[
                         const SizedBox(height: TroskySpacing.s12),
                         Semantics(
                           liveRegion: true,
@@ -280,7 +421,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                   ),
                 ),
               ),
-              _bottom(l10n, watch),
+              _bottom(l10n, watch, pay),
             ],
           ),
         ),
@@ -370,7 +511,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       const SizedBox(height: TroskySpacing.s32),
       const Center(child: TroskyPulseDot()),
       const SizedBox(height: TroskySpacing.s24),
-      _Message(
+      PaymentMessage(
         title: moved ? l10n.paymentNewDriverTitle : l10n.paymentWaitingTitle,
         body: moved ? l10n.paymentNewDriverBody : l10n.paymentWaitingBody,
       ),
@@ -386,6 +527,115 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     ];
   }
 
+  /// "PAY WITH" (P-07): the method shown, its balance or number, "Change".
+  Widget _payWith(AppLocalizations l10n, BookingWatch watch, PayFlow pay) {
+    final options = ref.watch(payOptionsProvider);
+    final amount = watch.booking.totalAmount;
+    final value = options.value;
+    final method = _chosen(value, amount);
+    final wallet = value?.wallet;
+    final covers = value?.walletCovers(amount) ?? true;
+    final (kind, title, detail) = switch (method) {
+      WalletPay() => (
+        TroskyPayMethodKind.wallet,
+        l10n.payWallet,
+        switch (wallet) {
+          null when options.isLoading => '…',
+          null => l10n.payWalletBalanceUnknown,
+          _ when !covers => l10n.payWalletNotEnough(
+            cedis(l10n, wallet.balance),
+          ),
+          _ => l10n.payWalletBalance(cedis(l10n, wallet.balance)),
+        },
+      ),
+      MomoPay(:final method) => (
+        TroskyPayMethodKind.momo,
+        l10n.payMomo,
+        momoDetail(method),
+      ),
+    };
+    return TroskyPayWithCard(
+      label: l10n.payWithLabel,
+      kind: kind,
+      title: title,
+      detail: detail,
+      detailColor: method is WalletPay && !covers
+          ? TroskyColors.redDark
+          : TroskyColors.textSecondary,
+      action: l10n.payChange,
+      onPressed: pay.stage == PayStage.paying ? null : _changeMethod,
+    );
+  }
+
+  /// Pay can be tapped: the options are in (or failed: the server
+  /// decides), and the method can pay.
+  bool _canPay(BookingWatch watch, PayFlow pay) {
+    if (pay.stage != PayStage.idle) return false;
+    final options = ref.read(payOptionsProvider);
+    if (options.isLoading && !options.hasValue) return false;
+    final amount = watch.booking.totalAmount;
+    final method = _chosen(options.value, amount);
+    return method is! WalletPay ||
+        (options.value?.walletCovers(amount) ?? true);
+  }
+
+  /// After Pay: approving on the phone (P-08) or the outcome (P-09).
+  Widget _payStage(AppLocalizations l10n, BookingWatch watch, PayFlow pay) {
+    final total = cedis(l10n, watch.booking.totalAmount);
+    final booking = pay.booking ?? watch.booking;
+    switch (pay.stage) {
+      case PayStage.approving:
+        final method = pay.method;
+        return PayApproving(
+          amount: total,
+          number: method is MomoPay
+              ? localMasked(method.method.maskedNumber)
+              : null,
+          left: _left(watch),
+          offline: pay.offline,
+        );
+      case PayStage.paid:
+        final wallet = pay.payment?.channel == PaymentChannel.wallet;
+        return PayOutcome(
+          tile: PayOutcome.paid,
+          title: l10n.paySuccessTitle,
+          body: wallet
+              ? l10n.paySuccessWallet(total)
+              : l10n.paySuccessMomo(total),
+          reference: booking.bookingReference,
+        );
+      case PayStage.failed when !pay.holdOver:
+        final reason = (pay.payment?.failureReason ?? '').toUpperCase();
+        final why = switch (reason) {
+          _ when pay.error?.code == 'INSUFFICIENT_WALLET_BALANCE' =>
+            l10n.payFailedWallet(total),
+          _ when reason.contains('DECLIN') || reason.contains('REJECT') =>
+            l10n.payFailedDeclined,
+          _ when reason.contains('EXPIRED') || reason.contains('TIMEOUT') =>
+            l10n.payFailedExpired,
+          _
+              when reason.contains('NOT_ENOUGH_FUNDS') ||
+                  reason.contains('INSUFFICIENT') =>
+            l10n.payFailedMomoFunds,
+          _ => l10n.payFailedGeneric,
+        };
+        return PayOutcome(
+          tile: PayOutcome.failed,
+          title: l10n.payFailedTitle,
+          body: '$why ${l10n.payFailedHeld(timeLeft(_left(watch)))}',
+        );
+      case PayStage.failed || PayStage.timedOut:
+        final late = pay.payment?.status == PaymentStatus.successful;
+        return PayOutcome(
+          tile: PayOutcome.timedOut,
+          title: l10n.payTimedOutTitle,
+          body: late ? l10n.payLateBody(total) : l10n.payTimedOutBody,
+        );
+      case PayStage.idle || PayStage.paying:
+        return const SizedBox.shrink();
+    }
+  }
+
   List<Widget> _notAccepted(AppLocalizations l10n) => [
     const SizedBox(height: TroskySpacing.s32),
     Center(
@@ -394,14 +644,14 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       ),
     ),
     const SizedBox(height: TroskySpacing.s24),
-    _Message(
+    PaymentMessage(
       title: l10n.paymentNotAcceptedTitle,
       body: l10n.paymentNotAcceptedBody,
       large: true,
     ),
   ];
 
-  Widget _bottom(AppLocalizations l10n, BookingWatch watch) {
+  Widget _bottom(AppLocalizations l10n, BookingWatch watch, PayFlow pay) {
     final bottom = MediaQuery.viewPaddingOf(context).bottom;
     final padding = EdgeInsets.fromLTRB(
       TroskySpacing.s18,
@@ -418,7 +668,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       onPressed: _cancel,
     );
     // The white bar of the accepted design: a timer row above the button.
-    Widget panel(Widget timer) => DecoratedBox(
+    Widget panel(Widget timer, [Widget? button]) => DecoratedBox(
       decoration: const BoxDecoration(
         color: TroskyColors.surface,
         border: Border(
@@ -432,11 +682,80 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           children: [
             timer,
             const SizedBox(height: TroskySpacing.s12),
-            cancel,
+            button ?? cancel,
           ],
         ),
       ),
     );
+    // Search again, or Home: nothing more to do with this booking.
+    Widget over() => Padding(
+      padding: padding,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TroskyButton(
+            label: l10n.paymentSearchAgain,
+            variant: TroskyButtonVariant.primary,
+            onPressed: _searchAgain,
+          ),
+          const SizedBox(height: TroskySpacing.s4),
+          TroskyTextLink(
+            prompt: '',
+            action: l10n.paymentBackHome,
+            actionColor: TroskyColors.blue,
+            actionStyle: TroskyTypography.heading14Bold,
+            onPressed: _home,
+          ),
+        ],
+      ),
+    );
+    switch (pay.stage) {
+      case PayStage.approving:
+        return Padding(
+          padding: padding,
+          child: TroskyButton(
+            label: l10n.payNoPrompt,
+            variant: TroskyButtonVariant.outlinePill,
+            onPressed: _noPrompt,
+          ),
+        );
+      case PayStage.paid:
+        // "View ticket" joins it with tickets (Step 16).
+        return Padding(
+          padding: padding,
+          child: TroskyButton(
+            label: l10n.payGoToTrips,
+            variant: TroskyButtonVariant.primary,
+            onPressed: _trips,
+          ),
+        );
+      case PayStage.failed when !pay.holdOver:
+        return Padding(
+          padding: padding,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TroskyButton(
+                label: l10n.payTryAgain,
+                variant: TroskyButtonVariant.primary,
+                onPressed: _payNow,
+              ),
+              const SizedBox(height: TroskySpacing.s4),
+              TroskyTextLink(
+                prompt: '',
+                action: l10n.payChangeMethod,
+                actionColor: TroskyColors.blue,
+                actionStyle: TroskyTypography.heading14Bold,
+                onPressed: _changeMethod,
+              ),
+            ],
+          ),
+        );
+      case PayStage.failed || PayStage.timedOut:
+        return over();
+      case PayStage.idle || PayStage.paying:
+        break;
+    }
     switch (watch.stage) {
       case PaymentStage.waiting || PaymentStage.moved:
         if (!_countdownBelow) return Padding(padding: padding, child: cancel);
@@ -501,103 +820,19 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
               ],
             ),
           ),
-        );
-      case PaymentStage.notAccepted:
-        return Padding(
-          padding: padding,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TroskyButton(
-                label: l10n.paymentSearchAgain,
-                variant: TroskyButtonVariant.primary,
-                onPressed: _searchAgain,
-              ),
-              const SizedBox(height: TroskySpacing.s4),
-              TroskyTextLink(
-                prompt: '',
-                action: l10n.paymentBackHome,
-                actionColor: TroskyColors.blue,
-                actionStyle: TroskyTypography.heading14Bold,
-                onPressed: _home,
-              ),
-            ],
+          TroskyButton(
+            label: l10n.payButton(cedis(l10n, watch.booking.totalAmount)),
+            variant: TroskyButtonVariant.primary,
+            loading: pay.stage == PayStage.paying,
+            onPressed: _canPay(watch, pay) ? _payNow : null,
           ),
         );
+      case PaymentStage.notAccepted:
+        return over();
       case PaymentStage.holdExpired || PaymentStage.cancelled:
         return const SizedBox.shrink();
     }
   }
-}
-
-/// A centred status title and the sentence under it. [large] is the
-/// not-accepted title.
-class _Message extends StatelessWidget {
-  const _Message({required this.title, required this.body, this.large = false});
-
-  final String title;
-  final String body;
-  final bool large;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: TroskySpacing.s18),
-    child: Column(
-      children: [
-        Semantics(
-          header: true,
-          liveRegion: true,
-          child: Text(
-            title,
-            textAlign: TextAlign.center,
-            // Two-line titles sit 1.25 apart in the screenshots.
-            style:
-                (large
-                        ? TroskyTypography.heading22ExtraBold
-                        : TroskyTypography.heading20ExtraBold)
-                    .copyWith(color: TroskyColors.ink, height: 1.25),
-          ),
-        ),
-        const SizedBox(height: TroskySpacing.s8),
-        Text(
-          body,
-          textAlign: TextAlign.center,
-          style: TroskyTypography.body14Regular.copyWith(
-            color: TroskyColors.textSecondary,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-/// No connection while waiting: the offline banner's amber, as a note.
-class _Offline extends StatelessWidget {
-  const _Offline(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-    liveRegion: true,
-    child: Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: TroskySpacing.s16,
-        vertical: TroskySpacing.s10,
-      ),
-      decoration: BoxDecoration(
-        color: TroskyColors.amberA15,
-        borderRadius: BorderRadius.circular(TroskyRadii.r12),
-      ),
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: TroskyTypography.body13Regular.copyWith(
-          color: TroskyColors.textPrimary,
-        ),
-      ),
-    ),
-  );
 }
 
 /// What the passenger chose on the leave-payment sheet.

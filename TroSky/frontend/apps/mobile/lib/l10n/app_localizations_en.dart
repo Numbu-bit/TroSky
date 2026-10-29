@@ -1037,10 +1037,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paymentTotal => 'Total';
 
   @override
-  String get paymentComingSoon =>
-      'Paying in the app is coming soon. Your seats stay held until the timer ends.';
-
-  @override
   String get paymentCancel => 'Cancel booking';
 
   @override
@@ -1274,4 +1270,164 @@ class AppLocalizationsEn extends AppLocalizations {
   String homeHeldSeats(String time) {
     return 'Seats held · $time left';
   }
+
+  @override
+  String get payWithLabel => 'Pay with';
+
+  @override
+  String get payWallet => 'TroSky Wallet';
+
+  @override
+  String payWalletBalance(String amount) {
+    return 'Balance $amount';
+  }
+
+  @override
+  String get payWalletBalanceUnknown => 'Balance unavailable';
+
+  @override
+  String payWalletNotEnough(String amount) {
+    return 'Balance $amount · not enough';
+  }
+
+  @override
+  String get payMomo => 'MTN MoMo';
+
+  @override
+  String get payChange => 'Change';
+
+  @override
+  String payButton(String amount) {
+    return 'Pay $amount';
+  }
+
+  @override
+  String get payMethodSheetTitle => 'Pay with';
+
+  @override
+  String payMethodSheetSubtitle(String amount) {
+    return 'Choose how to pay $amount.';
+  }
+
+  @override
+  String payMethodNotEnough(String amount) {
+    return 'Not enough for $amount';
+  }
+
+  @override
+  String get payAddNumber => '+ Add an MTN MoMo number';
+
+  @override
+  String get payAddNumberSave => 'Use this number';
+
+  @override
+  String get payNumberInvalid =>
+      'Enter a valid MTN MoMo number, like 024 123 4567.';
+
+  @override
+  String get payApproveTitle => 'Approve on your phone';
+
+  @override
+  String payApproveBody(String amount, String number) {
+    return 'We sent a request for $amount to $number. Enter your MoMo PIN in the prompt to pay.';
+  }
+
+  @override
+  String payApproveBodyNoNumber(String amount) {
+    return 'We sent a request for $amount to your MTN MoMo number. Enter your MoMo PIN in the prompt to pay.';
+  }
+
+  @override
+  String get payApproveCaption => 'left to approve';
+
+  @override
+  String payApproveTimeLeft(String time) {
+    return '$time left to approve the payment';
+  }
+
+  @override
+  String get payNoPrompt => 'I didn\'t get a prompt';
+
+  @override
+  String get payNoPromptTitle => 'No prompt yet?';
+
+  @override
+  String get payNoPromptBody =>
+      'MTN can take a minute to send it. Check that your phone is on and has signal. You can also dial *170#, then My Wallet, then My Approvals. If no prompt comes, the payment fails on its own, and then you can try again or pay another way.';
+
+  @override
+  String get payCheckAgain => 'Check again';
+
+  @override
+  String get payKeepWaiting => 'Keep waiting';
+
+  @override
+  String get paySuccessTitle => 'Payment successful';
+
+  @override
+  String paySuccessWallet(String amount) {
+    return '$amount paid from your TroSky Wallet. Your seats are booked.';
+  }
+
+  @override
+  String paySuccessMomo(String amount) {
+    return '$amount paid with MTN MoMo. Your seats are booked.';
+  }
+
+  @override
+  String get payReferenceLabel => 'Booking reference';
+
+  @override
+  String get payGoToTrips => 'Go to Trips';
+
+  @override
+  String get payFailedTitle => 'Payment failed';
+
+  @override
+  String get payFailedDeclined => 'The payment was declined on your phone.';
+
+  @override
+  String payFailedWallet(String amount) {
+    return 'Your TroSky Wallet doesn\'t hold $amount.';
+  }
+
+  @override
+  String get payFailedGeneric => 'The payment didn\'t go through.';
+
+  @override
+  String payFailedHeld(String time) {
+    return 'You haven\'t been charged. Your seats are held for $time.';
+  }
+
+  @override
+  String get payTryAgain => 'Try again';
+
+  @override
+  String get payChangeMethod => 'Change method';
+
+  @override
+  String get payTimedOutTitle => 'Time ran out';
+
+  @override
+  String get payTimedOutBody =>
+      'Your seats were released because the payment wasn\'t approved in time. If it still goes through, TroSky refunds it.';
+
+  @override
+  String payLateBody(String amount) {
+    return 'The payment came through after your seats were released, so TroSky refunds $amount.';
+  }
+
+  @override
+  String get cancelRefundBodyWallet =>
+      'Once TroSky approves the refund, it goes back to your TroSky Wallet.';
+
+  @override
+  String get cancelRefundBodyMomo =>
+      'Once TroSky approves the refund, our team sends it back to your MTN MoMo number or your TroSky Wallet.';
+
+  @override
+  String get payFailedExpired => 'The prompt on your phone timed out.';
+
+  @override
+  String get payFailedMomoFunds => 'Your MTN MoMo balance was too low.';
 }

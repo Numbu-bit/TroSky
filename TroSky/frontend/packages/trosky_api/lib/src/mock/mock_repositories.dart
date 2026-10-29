@@ -5,12 +5,14 @@ import '../dto/auth_dto.dart';
 import '../dto/booking_dto.dart';
 import '../dto/driver_dto.dart';
 import '../dto/paginated.dart';
+import '../dto/payment_dto.dart';
 import '../dto/route_dto.dart';
 import '../dto/tracking_dto.dart';
 import '../dto/user_dto.dart';
 import '../repositories/auth_repository.dart';
 import '../repositories/booking_repository.dart';
 import '../repositories/driver_repository.dart';
+import '../repositories/payment_repository.dart';
 import '../repositories/route_repository.dart';
 import '../repositories/tracking_repository.dart';
 import '../repositories/user_repository.dart';
@@ -268,6 +270,71 @@ class MockBookingRepository implements BookingRepository {
         latency,
         (token) => _backend.cancelBooking(token, bookingId, reason: reason),
       );
+}
+
+/// [PaymentRepository] against the in-memory [MockBackend]: the wallet pays
+/// at once; mobile money is approved after [MockBackend.momoApproveAfter],
+/// declined for numbers ending 0000, unanswered for numbers ending 9999.
+class MockPaymentRepository implements PaymentRepository {
+  MockPaymentRepository(
+    this._backend, {
+    required this._tokens,
+    this.latency = Duration.zero,
+  });
+
+  final MockBackend _backend;
+  final SessionTokens Function() _tokens;
+  final Duration latency;
+
+  @override
+  Future<Result<PaymentResponse>> pay(
+    String bookingId,
+    PayBookingRequest request, {
+    required String idempotencyKey,
+  }) => _authenticated(
+    _tokens(),
+    latency,
+    (token) => _backend.payBooking(
+      token,
+      bookingId,
+      request,
+      idempotencyKey: idempotencyKey,
+    ),
+  );
+
+  @override
+  Future<Result<PaymentResponse>> sync(String paymentId) => _authenticated(
+    _tokens(),
+    latency,
+    (token) => _backend.syncPayment(token, paymentId),
+  );
+
+  @override
+  Future<Result<Paginated<PaymentResponse>>> list({
+    int limit = 20,
+    int offset = 0,
+  }) => _authenticated(
+    _tokens(),
+    latency,
+    (token) => _backend.listPayments(token, limit: limit, offset: offset),
+  );
+
+  @override
+  Future<Result<WalletResponse>> wallet() =>
+      _authenticated(_tokens(), latency, _backend.getWallet);
+
+  @override
+  Future<Result<List<PaymentMethodResponse>>> methods() =>
+      _authenticated(_tokens(), latency, _backend.listPaymentMethods);
+
+  @override
+  Future<Result<PaymentMethodResponse>> addMethod(
+    PaymentMethodCreateRequest request,
+  ) => _authenticated(
+    _tokens(),
+    latency,
+    (token) => _backend.addPaymentMethod(token, request),
+  );
 }
 
 /// [TrackingRepository] on a [MockBackend] (`API_MODE=mock`): invented

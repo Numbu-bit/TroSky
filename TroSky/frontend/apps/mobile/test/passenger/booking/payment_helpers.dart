@@ -140,3 +140,93 @@ BookingWatch watchShown(WidgetTester tester) {
 
 /// The [PaymentStage] Payment shows now.
 PaymentStage stageShown(WidgetTester tester) => watchShown(tester).stage;
+
+/// [reserve], then the driver accepts: Payment shows how to pay.
+Future<(TestWorld, BookingResponse)> acceptedPayment(
+  WidgetTester tester, {
+  TestWorld? world,
+  List<String> seats = const ['3', '4'],
+  Size size = const Size(360, 806),
+  List<Object> overrides = const [],
+}) async {
+  final (w, booking) = await reserve(
+    tester,
+    world: world,
+    seats: seats,
+    size: size,
+    overrides: overrides,
+  );
+  w.backend.acceptBooking(booking.id);
+  await nextPoll(tester, w);
+  await tester.pumpAndSettle();
+  return (w, watchShown(tester).booking);
+}
+
+/// Payments on [TestWorld.backend] that keep each idempotency key sent,
+/// count the status checks, and can lose the next answer to pay or fail
+/// the next checks.
+class RecordedPayments implements PaymentRepository {
+  RecordedPayments(this.world);
+
+  final TestWorld world;
+  late final PaymentRepository _inner;
+
+  /// The next `POST /bookings/{id}/pay` reaches the server, but its answer
+  /// is lost (no connection).
+  bool loseNextAnswer = false;
+  final List<String> keys = [];
+  final List<AppFailure> syncFailures = [];
+  int syncs = 0;
+
+  /// Puts this in place of the app's payment repository.
+  Object get provider => paymentRepositoryProvider.overrideWith((ref) {
+    _inner = MockPaymentRepository(
+      world.backend,
+      tokens: () => ref.read(tokenManagerProvider),
+    );
+    return this;
+  });
+
+  @override
+  Future<Result<PaymentResponse>> pay(
+    String bookingId,
+    PayBookingRequest request, {
+    required String idempotencyKey,
+  }) async {
+    keys.add(idempotencyKey);
+    final result = await _inner.pay(
+      bookingId,
+      request,
+      idempotencyKey: idempotencyKey,
+    );
+    if (loseNextAnswer) {
+      loseNextAnswer = false;
+      return const Err(offline);
+    }
+    return result;
+  }
+
+  @override
+  Future<Result<PaymentResponse>> sync(String paymentId) async {
+    syncs++;
+    if (syncFailures.isNotEmpty) return Err(syncFailures.removeAt(0));
+    return _inner.sync(paymentId);
+  }
+
+  @override
+  Future<Result<Paginated<PaymentResponse>>> list({
+    int limit = 20,
+    int offset = 0,
+  }) => _inner.list(limit: limit, offset: offset);
+
+  @override
+  Future<Result<WalletResponse>> wallet() => _inner.wallet();
+
+  @override
+  Future<Result<List<PaymentMethodResponse>>> methods() => _inner.methods();
+
+  @override
+  Future<Result<PaymentMethodResponse>> addMethod(
+    PaymentMethodCreateRequest request,
+  ) => _inner.addMethod(request);
+}

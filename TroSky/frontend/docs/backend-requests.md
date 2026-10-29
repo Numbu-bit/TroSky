@@ -35,6 +35,7 @@
 | G33 | Drop-off on the manifest | **Done** | `dropoff_stop_name` on manifest entries |
 | G34 | Booking acceptance details | **New** (21 Oct) | See G34 below |
 | G35 | Cancels and refunds a passenger can see | **New** (28 Oct) | See G35 below |
+| G36 | Payments that can't be retried | **New** (29 Oct) | See G36 below |
 | E1 | Boarding | **Decided**: the driver scans the passenger's ticket | As built |
 | E2 | Driver trips | **Decided**: scheduled by admins and fleet owners; Go Online/Offline is availability only, no ride requests | As built |
 | E3 | Subscriptions (G14) | **Decided**: out of the MVP | — |
@@ -313,3 +314,27 @@ decision 30).
 4. **A `refund_pending` booking can be cancelled again**, and then becomes `cancelled`
    (`_TERMINAL_BOOKING_STATUSES` doesn't include it). The app never offers it; the refund request
    itself stays. Suggested: refuse it with 409 like the other ended statuses.
+
+### G36 — Payments that can't be retried
+
+**Needed by:** Approve on your phone (P-08) and the payment result (P-09), built 29 Oct 2026
+(frontend decision 32).
+
+1. **A mobile money payment can't be given up.** While it is `processing` the booking is
+   `payment_pending`, and `POST /bookings/{id}/pay` answers 409 `BOOKING_NOT_PAYABLE`. When no
+   prompt reaches the phone (a wrong number, the phone off), the passenger can only wait until MTN
+   fails the request and the backend hears of it (a sync, the webhook, or the reconciliation after
+   5 minutes), or until the hold runs out. So "I didn't get a prompt" offers Check again, not
+   "try again" or "pay another way". Suggested: `POST /payments/{id}/cancel` for the payer: the
+   payment `cancelled`, the booking back to `pending`; a success arriving later refunded as after
+   an expired hold.
+2. **A failure when starting leaves the booking stuck.** In `PaymentService.pay_for_booking`, when
+   `initialize_payment` answers `FAILED` or raises `ProviderError` (502), the payment fails but the
+   booking stays `payment_pending` (not put back to `pending` as `_apply_provider_status` does).
+   The passenger can't pay again until the hold runs out. (Noted on PR #53, which changes only the
+   sandbox.)
+3. **`GET /payments` has no booking filter.** To find a booking's payment (the cancel sheet's
+   refund wording, reopening P-08) the app reads the latest 50 and matches `booking_id`.
+   Suggested: `?booking_id=`, or `payment_channel` on `BookingResponse` (G35, 2).
+4. **The payer's number isn't on `PaymentResponse`.** Reopened, P-08 says "your MTN MoMo number"
+   instead of the number. Suggested: `payer_number_masked`.

@@ -153,12 +153,30 @@ Future<BookingDetails> bookingDetails(Ref ref, String bookingId) async {
   return BookingDetails(booking: value, trip: trip.valueOrNull);
 }
 
+/// How [bookingId] was paid: its successful (or refunded) payment from
+/// `GET /payments`, newest first. Null when it isn't among the latest 50 or
+/// can't be read; the cancel sheet then says it generally.
+@Riverpod(retry: noRetry)
+Future<PaymentResponse?> bookingPayment(Ref ref, String bookingId) async {
+  final result = await ref.read(paymentRepositoryProvider).list(limit: 50);
+  return result.valueOrNull?.items
+      .where(
+        (p) =>
+            p.bookingId == bookingId &&
+            (p.status == PaymentStatus.successful ||
+                p.status == PaymentStatus.refunded ||
+                p.status == PaymentStatus.partiallyRefunded),
+      )
+      .firstOrNull;
+}
+
 /// After a booking changed (cancelled, paid, moved): read Trip History,
-/// its card, the booking and Home's held booking again.
+/// its card, the booking, how it was paid and Home's held booking again.
 void refreshBookings(WidgetRef ref, String bookingId) {
   ref
     ..invalidate(tripsControllerProvider)
     ..invalidate(bookingSummaryProvider)
     ..invalidate(bookingDetailsProvider(bookingId))
+    ..invalidate(bookingPaymentProvider(bookingId))
     ..invalidate(heldBookingProvider);
 }

@@ -191,14 +191,17 @@ void main() {
       expect(find.text('Pay within'), findsOneWidget);
       // Accepted at 20 s, read at 25 s: 10 minutes from the acceptance.
       expect(find.text('9:55'), findsOneWidget);
-      expect(
-        find.text(
-          'Paying in the app is coming soon. Your seats stay held until the '
-          'timer ends.',
-        ),
-        findsOneWidget,
-      );
-      expect(find.text('Cancel booking'), findsOneWidget);
+      // Pay with the wallet, as P-07 shows it.
+      for (final text in [
+        'PAY WITH',
+        'TroSky Wallet',
+        'Balance ₵128.50',
+        'Change',
+        'Pay ₵29.00',
+      ]) {
+        expect(find.text(text), findsOneWidget, reason: text);
+      }
+      expect(find.text('Cancel booking'), findsNothing);
       expect(find.text('Waiting for the driver to accept'), findsNothing);
       _expectFacts('GR-4821', '3 & 4', '₵29.00');
     });
@@ -376,13 +379,17 @@ void main() {
       expect(find.byType(SearchResultsScreen), findsOneWidget);
     });
 
-    testWidgets('Cancel booking once accepted', (tester) async {
+    testWidgets('once accepted, Back and Release seats cancels it', (
+      tester,
+    ) async {
       final (world, booking) = await reserve(tester);
       world.backend.acceptBooking(booking.id);
       await nextPoll(tester, world);
-      await _tap(tester, 'Cancel booking');
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await _tap(tester, 'Release seats');
       expect(world.backend.bookingStatus(booking.id), BookingStatus.cancelled);
-      expect(find.byType(SearchResultsScreen), findsOneWidget);
+      expect(find.byType(SeatSelectionScreen), findsOneWidget);
     });
 
     testWidgets('the server ended it first: Payment shows how', (tester) async {
