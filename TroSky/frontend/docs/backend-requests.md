@@ -13,6 +13,7 @@
 | B1 | Lockout, code attempt limit, sign-out on token reuse | **Done**, re-tested live 10 Oct (all three pass) | Safeguard writes kept on failure (`keep_writes_on_failure`) |
 | B2 | Register on a fresh database | **Done** (not re-tested on an empty database) | `scripts.seed_reference_data` after `alembic upgrade head` (compose, image entrypoint, k8s job) |
 | B3 | An expired seat hold keeps its seats until the sweeper runs | **Done** (0.22.1, 11 Oct; merged 20 Oct) | `app/repositories/seat_holds.py`: a hold past `expires_at` is free at once |
+| B4 | A search with an unknown stop answers 500 | **New** (29 Oct) | See B4 below |
 | CI | Backend workflow never ran (the backend changelog calls this "B3") | **Done** | `.github/workflows/backend.yml` at the repository root |
 | D1 | Demo data | **Done** (in use; replaces the frontend's `tool/seed_local_trips.dart`) | `make seed-demo` / `python -m scripts.seed_demo_data` |
 | D2 | GPS simulator | **Done** (in use) | `make simulate-gps` / `python -m scripts.simulate_gps` |
@@ -93,6 +94,21 @@ When you finish one, please:
 **Fixed in 0.13.0:** `scripts.seed_reference_data` runs after the migrations.
 
 On a fresh database, `POST /auth/register` fails with `500 INTERNAL_SERVER_ERROR` (`RuntimeError: Role 'passenger' is not seeded`). `make seed` fixes it. Consider running the seed from the docker-compose `api` command after `alembic upgrade head`, so a fresh stack works on its own.
+
+### B4: a search with an unknown stop answers 500
+
+**Seen on 29 Oct 2026** on the local stack (backend 0.22.8 plus #53): the app's recent searches still
+held stop IDs from staging, and `GET /trips/search` with one of them answered
+`500 INTERNAL_SERVER_ERROR`. The log shows `ForeignKeyViolationError` on `search_events`
+(`fk_search_events_origin_stop_id_stops`): the search is recorded for the demand funnel before anyone
+checks that the stops exist.
+
+**Suggested fix:** answer 404 `NOT_FOUND` (or 422) for an `origin_stop_id` or `destination_stop_id`
+that isn't a stop, before recording the search; or record it without the stop IDs.
+
+**Frontend impact:** small. The app shows "Something went wrong. Try again." and choosing the stops
+again works. It can happen to anyone whose saved searches or favourites point at a stop that was
+removed.
 
 ## P0: blocks the driver app and password reset
 

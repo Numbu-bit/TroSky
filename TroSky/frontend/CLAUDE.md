@@ -81,3 +81,12 @@ The backend is built by a different developer and changes over time. Before any 
 3. Run analyze and test.
 4. Update the inventory status and `backend-gaps.md`.
 5. Report the files changed, any deviations from the design, gaps found, and questions.
+
+## Working rules (project owner, 29 Oct 2026)
+- **Don't wait for reviewers.** Every change goes: PR (Maher-007 as reviewer, for information only) → CI
+  green → tested on the owner's phone → merged by Claude (merge commit, branch deleted). Never push
+  directly to main, and never disable branch protection.
+- **Tester APKs** in `Desktop\TroSky staging APK\` are always built from main. A PR's test build gets a
+  `-prNN` suffix and is deleted after the test, and the owner's phone always gets the main build back.
+- **Record every phone test** with `adb shell screenrecord` into
+  `Desktop\TroSky test videos\<date>-<what>.mp4`.
