@@ -119,8 +119,10 @@ class ServerWake {
   /// The last wake ended offline or unreachable; [_recheck] goes on.
   bool _failed = false;
   Timer? _recheck;
+
   /// The current wake's [showAfter] timer, cancelled on [dispose].
   Timer? _slow;
+
   /// The current wait between failed asks, cancelled on [dispose].
   Timer? _retryWait;
   bool _disposed = false;
