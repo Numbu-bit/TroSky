@@ -1,0 +1,515 @@
+<title>Ghana Fare Engine</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Public+Sans:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a specification with a sticky contents rail on wide screens; one column on phones. */
+:root {
+  --bg: #F2F5F1; --surface: #FFFFFF; --ink: #16211B; --muted: #55625A; --line: #D3DBD2;
+  --accent: #0E6B57; --accent-soft: #DCEFE7; --code-bg: #EAEFE9;
+  --amber: #875800; --amber-soft: #F6E6C4; --violet: #5A4BA6; --violet-soft: #E6E2F7;
+  --red: #A8352B; --red-soft: #F7DDD9; --green: #1D6B3A; --green-soft: #DDF0E2;
+  --display: "Archivo", "Arial Narrow", Arial, sans-serif;
+  --body: "Public Sans", "Segoe UI", Arial, sans-serif;
+  --mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1411; --surface: #151D19; --ink: #E3EAE5; --muted: #9AA89F; --line: #2A3530;
+    --accent: #5CC4A6; --accent-soft: #15302A; --code-bg: #1A231F;
+    --amber: #E9BA62; --amber-soft: #3A2D14; --violet: #B6ABF2; --violet-soft: #29244A;
+    --red: #F29C91; --red-soft: #402320; --green: #7BD39A; --green-soft: #183323;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1411; --surface: #151D19; --ink: #E3EAE5; --muted: #9AA89F; --line: #2A3530;
+  --accent: #5CC4A6; --accent-soft: #15302A; --code-bg: #1A231F;
+  --amber: #E9BA62; --amber-soft: #3A2D14; --violet: #B6ABF2; --violet-soft: #29244A;
+  --red: #F29C91; --red-soft: #402320; --green: #7BD39A; --green-soft: #183323;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.6 var(--body); margin: 0; }
+.page {
+  display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 48px;
+  max-width: 1240px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 96px;
+}
+nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; font-size: 14px; }
+nav.toc p { font: 600 12px/1 var(--display); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 12px; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; counter-reset: s; }
+nav.toc a { display: block; padding: 4px 8px; border-radius: 6px; color: var(--ink); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { background: var(--accent-soft); outline: none; }
+main { min-width: 0; max-width: 900px; }
+header.top { border-bottom: 2px solid var(--ink); padding-bottom: 28px; margin-bottom: 8px; }
+.eyebrow { font: 600 13px/1 var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin: 0 0 14px; }
+h1 { font: 800 clamp(34px, 5vw, 52px)/1.05 var(--display); font-stretch: 85%; margin: 0 0 16px; text-wrap: balance; }
+h2 { font: 700 28px/1.15 var(--display); font-stretch: 90%; margin: 0 0 12px; text-wrap: balance; }
+h3 { font: 700 19px/1.3 var(--display); margin: 28px 0 8px; }
+.lede { font-size: 18px; max-width: 68ch; margin: 0 0 18px; }
+section { padding-top: 40px; scroll-margin-top: 16px; }
+section > p, section > ul, section > ol { max-width: 70ch; }
+p { margin: 0 0 14px; }
+ul, ol { margin: 0 0 14px; padding-left: 22px; }
+li { margin-bottom: 4px; }
+a { color: var(--accent); }
+code { font: 14px/1.5 var(--mono); background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+.small { font-size: 14px; color: var(--muted); }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 14px; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.tag { display: inline-block; font: 600 11px/1.6 var(--display); letter-spacing: .06em; text-transform: uppercase; padding: 0 7px; border-radius: 4px; white-space: nowrap; vertical-align: 1px; }
+.tag.a { background: var(--amber-soft); color: var(--amber); }
+.tag.p { background: var(--violet-soft); color: var(--violet); }
+.tag.v { background: var(--red-soft); color: var(--red); }
+.tag.g { background: var(--accent-soft); color: var(--accent); }
+.ok { color: var(--green); font-weight: 700; }
+.tw { overflow-x: auto; margin: 0 0 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 12.5px/1.3 var(--display); letter-spacing: .03em; color: var(--muted); background: var(--bg); white-space: nowrap; }
+tbody tr:last-child td { border-bottom: none; }
+td.n, th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 13.5px; white-space: nowrap; }
+td code { font-size: 12.5px; }
+.formula { font-family: var(--mono); font-size: 13.5px; }
+.callout { border-left: 4px solid var(--accent); background: var(--surface); padding: 14px 18px; border-radius: 0 10px 10px 0; margin: 0 0 18px; max-width: 76ch; }
+.callout.warn { border-left-color: var(--red); }
+.callout p:last-child { margin: 0; }
+.receipts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin: 0 0 18px; }
+.receipt { background: var(--surface); border: 1px dashed var(--muted); border-radius: 10px; padding: 16px 18px; font-size: 14.5px; }
+.rh { font: 600 12px/1 var(--display); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 12px; }
+.rl { display: flex; justify-content: space-between; gap: 16px; padding: 5px 0; border-bottom: 1px dotted var(--line); }
+.rl:last-child { border-bottom: none; font-weight: 700; padding-top: 9px; }
+.rl .n { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+pre.code { background: var(--code-bg); border-radius: 10px; padding: 14px 16px; overflow-x: auto; font: 13px/1.55 var(--mono); margin: 0 0 18px; }
+pre.code code { background: none; padding: 0; font-size: inherit; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.cols > div { min-width: 0; }
+details.src { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); margin-bottom: 10px; position: relative; }
+details.src summary { cursor: pointer; padding: 10px 14px; display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+details.src summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 10px; }
+details.src pre.code { margin: 0; border-radius: 0 0 10px 10px; max-height: 560px; }
+button.copy { position: absolute; right: 12px; top: 48px; font: 600 12px/1 var(--display); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; z-index: 1; }
+button.copy:focus-visible { outline: 2px solid var(--accent); }
+.steps { counter-reset: st; list-style: none; padding: 0; }
+.steps li { counter-increment: st; padding-left: 36px; position: relative; margin-bottom: 10px; }
+.steps li::before { content: counter(st); position: absolute; left: 0; top: 1px; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: var(--surface); font: 700 13px/24px var(--display); text-align: center; }
+@media (max-width: 900px) {
+  .page { grid-template-columns: minmax(0, 1fr); gap: 8px; padding-block: 24px 64px; }
+  nav.toc { position: static; border: 1px solid var(--line); border-radius: 10px; padding: 14px; background: var(--surface); }
+  nav.toc ol { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<div class="page">
+<nav class="toc" aria-label="Contents">
+  <p>Contents</p>
+  <ol>
+    <li><a href="#summary">Summary</a></li>
+    <li><a href="#formulas">Formulas</a></li>
+    <li><a href="#config">Configuration</a></li>
+    <li><a href="#modes">Mode A vs Mode B</a></li>
+    <li><a href="#vectors">Test vectors</a></li>
+    <li><a href="#surge">Surge</a></li>
+    <li><a href="#payout">Fees and payouts</a></li>
+    <li><a href="#examples">Cash and MoMo</a></li>
+    <li><a href="#edges">Edge cases</a></li>
+    <li><a href="#data">Data model</a></li>
+    <li><a href="#api">API contract</a></li>
+    <li><a href="#recon">Reconciliation</a></li>
+    <li><a href="#plan">Delivery plan</a></li>
+    <li><a href="#quality">Testing, KPIs, risks</a></li>
+    <li><a href="#questions">Open questions</a></li>
+    <li><a href="#code">Reference code</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="top">
+  <p class="eyebrow">Technical specification · reference implementation</p>
+  <h1>Fare, driver payout and platform commission engine for Ghana</h1>
+  <p class="lede">The engine does three things for every trip: it prices the rider, pays the driver, and works out what the platform keeps. It follows the structure ride-hailing platforms publicly describe: a metered fare multiplied by a demand multiplier, then a percentage service fee. It is not any company’s internal code.</p>
+  <div class="meta">
+    <span>Config version {{config_version}}</span>
+    <span>All money in Ghana cedis (GH¢), Decimal arithmetic only</span>
+    <span>Reference tests: {{tests}}</span>
+  </div>
+  <div class="legend" aria-label="Labels used in this document">
+    <span class="tag g">Given</span><span class="small">the stated requirement</span>
+    <span class="tag a">Assumption</span><span class="small">our working choice</span>
+    <span class="tag p">Placeholder</span><span class="small">replace with a real value</span>
+    <span class="tag v">Verify before launch</span><span class="small">Ghana fees, taxes, rules or MoMo behaviour</span>
+  </div>
+</header>
+
+<section id="summary">
+  <h2>Summary</h2>
+  <p>The required rate is <strong>GH¢7.10 per 8 km</strong> <span class="tag g">Given</span>. The engine stores those two numbers and derives the per-km rate on every use: 7.10 ÷ 8 = GH¢0.8875 per km, exact in Decimal. Every other number lives in one configuration file and can change without a code release.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Decision</th><th>Choice in the reference</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Arithmetic</td><td>Python <code>Decimal</code>; floats refused at every entry point, including the config file</td><td>7.10 has no exact binary float. Float errors break ROUND_HALF_UP at exact halves such as 3.55.</td></tr>
+      <tr><td>Default pricing</td><td>Mode A, linear distance</td><td>Fare grows smoothly with distance. Per-block pricing has price cliffs (8.0 km costs GH¢7.10, 8.1 km costs GH¢14.20).</td></tr>
+      <tr><td>Rounding</td><td>Fare to the nearest GH¢0.10, platform fee to GH¢0.01, both ROUND_HALF_UP <span class="tag v">Verify</span></td><td>Coins and MoMo amounts riders recognise. The driver gets fare minus the rounded fee, so the two always sum to the fare exactly.</td></tr>
+      <tr><td>Surge</td><td>Static factor table now, live demand and supply later, capped at 2.0 with a kill switch</td><td>The table is a prior until there is data. The cap, smoothing and kill switch survive every later model.</td></tr>
+      <tr><td>Quotes</td><td>Upfront and locked for 5 minutes <span class="tag a">Assumption</span></td><td>A surge change after the rider confirms never changes their price.</td></tr>
+      <tr><td>Accounting</td><td>Double-entry ledger, append-only, idempotency key on every posting</td><td>Every pesewa is traceable. Retries cannot double-post, and corrections are visible reversals.</td></tr>
+      <tr><td>Cash trips</td><td>The fee becomes a receivable from the driver, netted against digital earnings or paid by MoMo</td><td>The driver already holds the fare, so the platform must collect its share afterwards.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="formulas">
+  <h2>Formulas</h2>
+  <p>d is distance in km, t is minutes, m is the surge multiplier. Rounding happens once for the fare and once for the fee, never in between.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Quantity</th><th>Formula</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Per-km rate</td><td class="formula">fare_reference ÷ reference_distance_km = 7.10 ÷ 8 = 0.8875</td><td>Derived, never stored rounded. The engine multiplies before it divides, so a rate like 7.10 ÷ 3 is never cut short.</td></tr>
+      <tr><td>Mode A, linear</td><td class="formula">raw = (base_fare + fare_reference × d ÷ reference_distance_km + per_minute_rate × t) × m</td><td>Base and per-minute default to GH¢0.00.</td></tr>
+      <tr><td>Mode A, per block</td><td class="formula">distance term = fare_reference × ⌈d ÷ reference_distance_km⌉</td><td>Every started 8 km block costs GH¢7.10. Zero km is zero blocks, so the minimum fare applies.</td></tr>
+      <tr><td>Mode B, bands</td><td class="formula">raw = band_fare(d) × m</td><td>First band with d ≤ its upper limit; band edges belong to the cheaper band. Beyond 40 km the quote is refused.</td></tr>
+      <tr><td>Fare</td><td class="formula">fare = round(max(minimum_fare, raw), 0.10, HALF_UP)</td><td>The config loader refuses a minimum fare that is not on the rounding grid.</td></tr>
+      <tr><td>Surge, static</td><td class="formula">m = min(cap, max(1.0, 1 + Σ active uplifts)), stepped to 0.01</td><td>Cap 2.0. The multiplier never discounts.</td></tr>
+      <tr><td>Surge, live</td><td class="formula">target = f(demand ÷ supply); m′ = m + α × (target − m), with |m′ − m| ≤ max_step</td><td>f is straight lines between configured points. Snaps to the target within one step. No drivers counts as one.</td></tr>
+      <tr><td>Platform fee</td><td class="formula">fee = round(fare × service_fee_rate, 0.01, HALF_UP)</td><td>On the fare including surge. Tolls and tips are excluded.</td></tr>
+      <tr><td>Driver payout</td><td class="formula">payout = fare − fee + tolls + tips + incentives</td><td>Promotions never reduce it.</td></tr>
+      <tr><td>Rider pays</td><td class="formula">rider_pays = fare − promo + tolls + tips</td><td>Promotions are platform-funded.</td></tr>
+      <tr><td>Platform net</td><td class="formula">net = fee − promo − incentives</td><td>Can be negative on a promoted trip.</td></tr>
+      <tr><td>Invariant</td><td class="formula">rider_pays + promo + incentives = payout + fee</td><td>Checked on every settlement and by the database.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Under linear pricing the raw fare reaches the GH¢1.90 minimum at <strong>{{min_reach}} km</strong>. Because of rounding, the charged fare stays at GH¢1.90 until <strong>{{min_rise}} km</strong>, where the raw fare reaches GH¢1.95.</p>
+</section>
+
+<section id="config">
+  <h2>Configuration</h2>
+  <p>Everything below lives in <code>fare_config.toml</code>. Money and rates are written as strings, such as <code>"7.10"</code>, and a float in the file stops the engine from starting. Each change gets a new <code>config_version</code>, and every quote records the version it was priced with.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Parameter</th><th>Default</th><th>Label</th></tr></thead>
+    <tbody>
+      <tr><td><code>pricing.fare_reference</code>, <code>reference_distance_km</code></td><td class="n">7.10, 8</td><td><span class="tag g">Given</span></td></tr>
+      <tr><td><code>pricing.mode</code></td><td class="n">A</td><td>A formula or B bands</td></tr>
+      <tr><td><code>pricing.distance_pricing</code></td><td class="n">linear</td><td>or per_block <span class="tag a">Assumption</span></td></tr>
+      <tr><td><code>pricing.base_fare</code>, <code>per_minute_rate</code></td><td class="n">0.00, 0.00</td><td><span class="tag p">Placeholder</span></td></tr>
+      <tr><td><code>pricing.minimum_fare</code></td><td class="n">1.90</td><td>trotro “up to 1 km” fare <span class="tag v">Verify</span></td></tr>
+      <tr><td><code>pricing.fare_rounding_step</code>, <code>fare_rounding_mode</code></td><td class="n">0.10, HALF_UP</td><td><span class="tag v">Verify</span></td></tr>
+      <tr><td><code>pricing.mode_b_bands</code></td><td class="n">6 bands to 40 km</td><td>against the official GPRTU/GRTCC schedule <span class="tag v">Verify</span></td></tr>
+      <tr><td><code>pricing.max_trip_km</code></td><td class="n">200</td><td><span class="tag a">Assumption</span></td></tr>
+      <tr><td><code>fees.service_fee_rate</code></td><td class="n">0.20</td><td>25% scenario: 0.25 <span class="tag v">Verify</span></td></tr>
+      <tr><td><code>fees.platform_fee_step</code>, <code>platform_fee_rounding_mode</code></td><td class="n">0.01, HALF_UP</td><td></td></tr>
+      <tr><td><code>surge.cap</code>, <code>surge.kill_switch</code>, <code>surge.source</code></td><td class="n">2.0, false, static</td><td>cap configurable</td></tr>
+      <tr><td><code>surge.factors</code></td><td class="n">8 factors</td><td>each with valid_from and valid_to <span class="tag a">Assumption</span></td></tr>
+      <tr><td><code>surge.live.*</code></td><td class="n">α 0.30, step 0.10, 120 s</td><td><span class="tag a">Assumption</span></td></tr>
+      <tr><td><code>calendar</code></td><td class="n">holidays, festive season, events</td><td>dates <span class="tag v">Verify</span>, event venue <span class="tag p">Placeholder</span></td></tr>
+      <tr><td><code>quotes.ttl_seconds</code></td><td class="n">300</td><td><span class="tag a">Assumption</span></td></tr>
+      <tr><td><code>quotes.reprice_distance_tolerance</code>, <code>reprice_min_km</code></td><td class="n">15%, 0.5 km</td><td><span class="tag a">Assumption</span></td></tr>
+      <tr><td><code>quotes.gps_max_overrun</code>, <code>gps_max_speed_kmh</code></td><td class="n">25%, 150</td><td><span class="tag a">Assumption</span></td></tr>
+      <tr><td><code>quotes.cancellation_fee</code></td><td class="n">0.00</td><td><span class="tag p">Placeholder</span></td></tr>
+      <tr><td><code>payouts.schedule</code>, <code>weekday</code>, <code>minimum_payout</code></td><td class="n">weekly, MON, 10.00</td><td><span class="tag p">Placeholder</span></td></tr>
+      <tr><td><code>taxes.*</code>: VAT on the fee, GRA vehicle income tax, DVLA fees</td><td class="n">all 0</td><td>verify, do not assume <span class="tag v">Verify</span></td></tr>
+      <tr><td>Tolls, tips, incentives</td><td class="n">0 per trip</td><td>pass-through or bonus inputs to settlement</td></tr>
+      <tr><td>Payment type</td><td class="n">cash or digital</td><td>MoMo or card; chosen per trip</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="modes">
+  <h2>Mode A vs Mode B</h2>
+  <p>Mode A charges the same rate for every kilometre. Mode B copies the tapered shared-taxi schedule <span class="tag v">Verify against the official GPRTU/GRTCC schedule</span>. Both at surge 1.0:</p>
+  {{comparison}}
+  <div class="callout warn"><p><strong>Mode A is above the tapered schedule for every distance beyond 1 km.</strong> At 8 km it charges GH¢7.10 against GH¢4.70. Per-block pricing is higher still on short trips: 1 km costs a full GH¢7.10 block.</p></div>
+  <h3>Trade-offs</h3>
+  <ul>
+    <li><strong>Driver economics favour Mode A.</strong> At a 20% fee the driver keeps 0.8875 × 0.80 = GH¢0.71 per km, before fuel and vehicle costs. At 25% it is GH¢0.67. Whether that covers costs depends on fuel prices per km <span class="tag v">Verify</span>.</li>
+    <li><strong>Platform revenue scales with the fare,</strong> so Mode A earns more per trip at the same fee rate.</li>
+    <li><strong>Rider competitiveness favours Mode B.</strong> A rider who compares against trotro sees Mode A between 24% and 91% higher across these distances. Trotro is a shared minibus, so a private car usually costs more to run per passenger.</li>
+    <li><strong>Middle paths</strong> to test in Phase 5: linear up to a distance, then tapered; a shared-ride product at Mode B prices; or a lower per-km rate. Each is a configuration change.</li>
+  </ul>
+</section>
+
+<section id="vectors">
+  <h2>Test vectors</h2>
+  <p>Mode A linear, base fare 0, per-minute 0, minimum GH¢1.90. The table is generated by running the engine, and the same cases are unit tests. Every vector matches the prompt.</p>
+  {{vectors}}
+  <p class="small">One display difference to note: the prompt shows the 0.5 km raw fare as 0.44. The exact raw value is 0.44375. It is below the minimum either way, so the fare is GH¢1.90.</p>
+</section>
+
+<section id="surge">
+  <h2>Surge</h2>
+  <h3>Static factor table, a prior</h3>
+  <p class="formula">multiplier = min(2.0, max(1.0, 1 + sum of active uplifts))</p>
+  <p>Every uplift is an <span class="tag a">Assumption</span> to calibrate with real demand data, and each carries its own start and end date in the config. Time windows include their start and exclude their end. Late night wraps past midnight. Storm counts as heavy rain. An event counts only when the pickup is within its radius.</p>
+  {{surge_factors}}
+  <h3>Surge vectors</h3>
+  <p>The prompt does not name the four stacked factors. The reference uses evening rush, heavy rain, festive season and a major event: 0.30 + 0.40 + 0.25 + 0.30 = 1.25 of uplift, which reproduces the prompt’s uncapped 2.25.</p>
+  {{surge_vectors}}
+  <h3>Live surge in Phase 3, forecasting in Phase 4</h3>
+  <ul>
+    <li><strong>Zones.</strong> The city is divided into H3 hexagons. Each zone counts open requests and free drivers every 120 seconds <span class="tag a">Assumption</span>.</li>
+    <li><strong>Target.</strong> The demand-to-supply ratio maps to a target multiplier along straight lines between configured points: 1.0→1.0, 1.5→1.2, 2.0→1.5, 3.0→2.0 <span class="tag a">Assumption</span>.</li>
+    <li><strong>Smoothing.</strong> Each interval closes 30% of the gap and moves at most 0.10, so prices drift instead of jumping.</li>
+    <li><strong>Cap and kill switch.</strong> The same 2.0 cap applies. The kill switch forces 1.0 everywhere, for emergencies or a regulator’s request.</li>
+    <li><strong>Forecasting.</strong> In Phase 4, time of day, weather and events become inputs to a demand forecast per zone, instead of separate uplift rules. The forecast moves drivers before the rain starts, and the live ratio sets the price.</li>
+  </ul>
+  <h3>What the rider sees</h3>
+  <p>A raised price always carries a plain reason built from the active factors, such as “High demand: evening rush, rain”. The quote is then locked: once the rider confirms, the price cannot change, whatever happens to surge.</p>
+</section>
+
+<section id="payout">
+  <h2>Fees and payouts</h2>
+  <ol class="steps">
+    <li><strong>Upfront quote.</strong> Price the predicted distance and time with the pickup zone’s multiplier, apply the minimum, round, and lock it for 5 minutes.</li>
+    <li><strong>Platform fee.</strong> fare × service_fee_rate, to the pesewa, on the fare including surge. Tolls and tips are excluded.</li>
+    <li><strong>Driver payout.</strong> fare − fee + tolls + tips + incentives.</li>
+    <li><strong>Promotions</strong> come out of the platform’s share and never out of the driver’s.</li>
+    <li><strong>Cash trips.</strong> The driver keeps the cash. The fee becomes a receivable, netted against digital earnings at the next payout or paid by MoMo.</li>
+    <li><strong>Digital trips.</strong> The platform collects through MoMo or card, keeps the fee, and pays the driver weekly <span class="tag a">Assumption</span>. Balances under GH¢10.00 roll over <span class="tag p">Placeholder</span>.</li>
+  </ol>
+  <h3>Promotion example</h3>
+  {{promo}}
+  <h3>Transparency</h3>
+  <p>8 km at evening rush in light rain, with a GH¢2.00 tip. Both receipts are generated by the engine.</p>
+  {{receipts}}
+</section>
+
+<section id="examples">
+  <h2>Cash and MoMo examples</h2>
+  <h3>Cash trip: the fee is owed by the driver</h3>
+  {{cash}}
+  <h3>MoMo trip: the platform collects and pays the net</h3>
+  {{momo}}
+</section>
+
+<section id="edges">
+  <h2>Edge cases</h2>
+  <div class="tw"><table>
+    <thead><tr><th>Case</th><th>Rule in the reference</th></tr></thead>
+    <tbody>
+      <tr><td>Zero distance</td><td>Priced at the minimum fare. A completed trip with 0 km should be flagged for review before charging <span class="tag a">Assumption</span>.</td></tr>
+      <tr><td>Below the minimum</td><td>The minimum applies to the surged amount, so surge cannot lift a short trip above GH¢1.90 until the raw fare passes it.</td></tr>
+      <tr><td>GPS error</td><td>Points implying more than 150 km/h are dropped. GPS distance is capped at the routed distance plus 25%. If GPS is lost, the routed distance is used.</td></tr>
+      <tr><td>Trip changes after the quote</td><td>Within 15% of the predicted distance, or within 0.5 km for short trips, the rider pays the locked quote. Beyond that, or when the rider changes the route, the trip is repriced at the locked multiplier.</td></tr>
+      <tr><td>Surge changes after the quote</td><td>Ignored. The locked multiplier is used even when the trip is repriced.</td></tr>
+      <tr><td>Quote expiry</td><td>A quote confirmed after 5 minutes is refused, and the rider gets a fresh one.</td></tr>
+      <tr><td>Cancelled before pickup</td><td>The configured cancellation fee, GH¢0.00 for now <span class="tag p">Placeholder</span>.</td></tr>
+      <tr><td>Cancelled mid-trip</td><td>Distance travelled at the locked multiplier, with the minimum fare, never more than the quote.</td></tr>
+      <tr><td>Rider dispute</td><td>Support reviews the GPS trace and the receipt. The outcome is a full or partial refund.</td></tr>
+      <tr><td>Refunds</td><td>Absorbed by the platform, or, when a dispute rules against the driver, recovered from the driver’s next payout as a receivable.</td></tr>
+      <tr><td>Fully discounted trip</td><td>No MoMo request is sent; the engine refuses a zero collection.</td></tr>
+      <tr><td>Distance out of range</td><td>Over 200 km in Mode A, or over 40 km in Mode B, is refused and handled by hand.</td></tr>
+      <tr><td>Payout fails</td><td>The money returns to the driver’s balance and goes out in the next run.</td></tr>
+      <tr><td>Late MoMo approval</td><td>A payment that timed out on our side but succeeded at MTN appears in reconciliation. It is honoured if the trip is unpaid, otherwise refunded.</td></tr>
+      <tr><td>Retried callbacks and requests</td><td>Every posting has an idempotency key. A repeat returns the first result, and a repeat with different amounts is refused.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="data">
+  <h2>Data model</h2>
+  <h3>Entities</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Entity</th><th>Key fields</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td>Quote</td><td>quote_id, rider, pickup zone, predicted km and minutes, multiplier, reasons, fare, breakdown, config_version, expires_at</td><td>The locked price</td></tr>
+      <tr><td>Trip</td><td>trip_id, quote_id, rider, driver, payment type, status, actual km and minutes, distance source</td><td>What happened</td></tr>
+      <tr><td>FareBreakdown</td><td>basis, fare, fare before surge, multiplier, fee rate, fee, tolls, tips, incentives, promo, rider pays, driver payout, VAT</td><td>The receipt, frozen at completion</td></tr>
+      <tr><td>PaymentAttempt</td><td>idempotency key (sent to MTN as the reference), kind, amount, MSISDN, status, provider transaction id</td><td>One MoMo or card request</td></tr>
+      <tr><td>LedgerEntry</td><td>a transaction (idempotency key, kind, time) with two or more lines (account, debit or credit)</td><td>The books</td></tr>
+      <tr><td>Payout</td><td>payout_id = payout:run:driver, fees netted, amount, status</td><td>One weekly transfer</td></tr>
+      <tr><td>FeeReceivable</td><td>driver, trip, reason (cash fee or clawback), amount, ledger transaction</td><td>Statement lines for what a driver owes</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Ledger accounts</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Account</th><th>Type</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>asset:momo_clearing</code></td><td>Asset</td><td>Money in the platform’s MoMo merchant wallet</td></tr>
+      <tr><td><code>asset:driver_receivable:&lt;driver&gt;</code></td><td>Asset</td><td>Fees and clawbacks a driver owes</td></tr>
+      <tr><td><code>liability:rider:&lt;rider&gt;</code></td><td>Liability</td><td>Payment held for a rider; negative means the rider owes</td></tr>
+      <tr><td><code>liability:driver_payable:&lt;driver&gt;</code></td><td>Liability</td><td>Earnings owed to a driver</td></tr>
+      <tr><td><code>liability:payouts_in_flight</code></td><td>Liability</td><td>Sent to MoMo, not yet confirmed</td></tr>
+      <tr><td><code>liability:vat_payable</code></td><td>Liability</td><td>VAT carved out of the fee, zero until confirmed <span class="tag v">Verify</span></td></tr>
+      <tr><td><code>income:service_fees</code></td><td>Income</td><td>The platform fee, net of VAT</td></tr>
+      <tr><td><code>expense:rider_promotions</code>, <code>driver_incentives</code>, <code>refunds</code></td><td>Expense</td><td>Platform-funded costs</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Posting rules</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Event</th><th>Debit</th><th>Credit</th></tr></thead>
+    <tbody>
+      <tr><td>MoMo collection succeeds</td><td>momo_clearing</td><td>rider</td></tr>
+      <tr><td>Digital trip completes</td><td>rider (rider pays), promotions, incentives</td><td>service_fees (fee − VAT), vat_payable, driver_payable (payout)</td></tr>
+      <tr><td>Cash trip completes</td><td>driver_receivable (fee), promotions, incentives</td><td>service_fees, vat_payable, driver_payable (promo + incentives)</td></tr>
+      <tr><td>Payout netting</td><td>driver_payable</td><td>driver_receivable</td></tr>
+      <tr><td>Payout sent / confirmed / failed</td><td>driver_payable / payouts_in_flight / payouts_in_flight</td><td>payouts_in_flight / momo_clearing / driver_payable</td></tr>
+      <tr><td>Driver pays fees by MoMo</td><td>momo_clearing</td><td>driver_receivable</td></tr>
+      <tr><td>Refund, platform absorbs / driver at fault</td><td>refunds / driver_receivable</td><td>momo_clearing</td></tr>
+      <tr><td>Correction</td><td colspan="2">A new transaction with the original’s debits and credits swapped. Nothing is edited or deleted.</td></tr>
+    </tbody>
+  </table></div>
+  <p>The PostgreSQL schema in <code>schema.sql</code> enforces these rules in the database. A constraint trigger checks at commit that each transaction balances. Triggers refuse any update or delete of ledger rows, and a unique index on the idempotency key stops double posting. The schema was loaded into a throwaway PostgreSQL 17 database, which was then removed. In that check a balanced entry committed, and an unbalanced entry, an edit, a reused key and a mismatched account type were all refused.</p>
+</section>
+
+<section id="api">
+  <h2>API contract</h2>
+  <p>JSON over HTTPS. Money is a string with two decimals, such as <code>"7.10"</code>, so no client parses it as a float. Every POST requires an <code>Idempotency-Key</code> header.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Endpoint</th><th>Caller</th><th>Does</th></tr></thead>
+    <tbody>
+      <tr><td><code>POST /v1/quotes</code></td><td>Rider app</td><td>Prices pickup to drop-off and returns the fare, breakdown, surge reason and expiry</td></tr>
+      <tr><td><code>POST /v1/quotes/{id}/confirm</code></td><td>Rider app</td><td>Locks the quote and creates the trip; 409 <code>QUOTE_EXPIRED</code> after 5 minutes</td></tr>
+      <tr><td><code>POST /v1/trips/{id}/start</code></td><td>Driver app</td><td>Records pickup time and position</td></tr>
+      <tr><td><code>POST /v1/trips/{id}/complete</code></td><td>Driver app</td><td>Takes GPS and routed distance, minutes, route change, tolls and tips; returns the final fare and both receipts; starts payment</td></tr>
+      <tr><td><code>POST /v1/payouts/runs</code></td><td>Scheduler</td><td>Nets fees and sends each driver’s balance; safe to retry with the same run_id</td></tr>
+      <tr><td><code>POST /v1/drivers/{id}/fee-settlements</code></td><td>Driver app</td><td>Starts a MoMo collection for fees owed; refuses more than is owed</td></tr>
+      <tr><td><code>GET /v1/drivers/{id}/balance</code></td><td>Driver app</td><td>Owed to the driver, owed by the driver, next payout date</td></tr>
+      <tr><td><code>POST /v1/webhooks/momo</code></td><td>MTN</td><td>Payment result; confirmed by a status check before posting <span class="tag v">Verify MTN’s callback format</span></td></tr>
+    </tbody>
+  </table></div>
+  <div class="cols">
+    <div><h3>Quote response</h3>{{quote_json}}</div>
+    <div><h3>Complete-trip response</h3>{{complete_json}}</div>
+  </div>
+  <p><strong>Errors:</strong> 400 for invalid input, 409 for an expired quote or an idempotency key reused with a different body, 422 for a distance out of range. Each error body names the field and how to fix it.</p>
+</section>
+
+<section id="recon">
+  <h2>Daily reconciliation</h2>
+  <ol class="steps">
+    <li><strong>Gather.</strong> At 02:00 Accra time, take yesterday’s payment attempts, payouts and completed digital trips, plus MTN’s transaction records for the same day <span class="tag v">Verify how MTN provides them</span>.</li>
+    <li><strong>Match</strong> on the reference sent with each request.</li>
+    <li><strong>Sort</strong> every exception into one of five buckets: missing at MoMo, unexpected at MoMo (often a late approval), amount mismatch, duplicate charge, or completed trip without payment.</li>
+    <li><strong>Act.</strong> Honour or refund late approvals, refund duplicates, and chase unpaid trips. Nothing posts to the ledger without a person approving it.</li>
+    <li><strong>Measure.</strong> Mismatch rate is exceptions divided by attempts checked. Alert above [0.1]% <span class="tag p">Placeholder</span>.</li>
+  </ol>
+  <p>The reference <code>reconcile()</code> function implements the matching and the five buckets, and a unit test covers each one.</p>
+</section>
+
+<section id="plan">
+  <h2>Delivery plan</h2>
+  <p>Durations and team sizes are <span class="tag p">Placeholders</span> to replace once the team is hired. Each phase starts only when the previous one meets its exit criteria.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Phase</th><th>Objective</th><th>Deliverables</th><th>Roles</th><th>Weeks</th><th>Exit criteria</th></tr></thead>
+    <tbody>
+      <tr><td>0 · Discovery</td><td>Confirm rules, tax and MoMo requirements; validate the GH¢7.10 per 8 km rate; set the fee policy</td><td>Written answers to the open questions; competitor and trotro price survey; MTN developer account and sandbox keys; fee policy memo</td><td>Founder, PM, finance lead, tax adviser, 1 engineer</td><td class="n">[3–4]</td><td>Fee rate, linear or per-block, rounding, minimum fare and tax treatment decided in writing</td></tr>
+      <tr><td>1 · Pricing core</td><td>Correct, configurable prices</td><td>Config service with versions; Mode A and B; rounding; minimum fare; quote locking; unit tests</td><td>2 backend, QA</td><td class="n">[4–6]</td><td>All test vectors pass in CI; a config change ships without a code release</td></tr>
+      <tr><td>2 · Ledger and payouts</td><td>Money that always reconciles</td><td>Double-entry ledger; per-trip breakdowns; weekly payouts; cash receivables and MoMo settlement; MoMo sandbox with approve, decline and timeout outcomes; production behind an environment flag</td><td>2 backend, payments engineer, QA, finance ops</td><td class="n">[8–10]</td><td>10,000-trip simulation balances to zero; sandbox covers every outcome; production refuses the sandbox at startup</td></tr>
+      <tr><td>3 · Surge</td><td>Balance supply at peaks</td><td>Zone multiplier with cap, smoothing, monitoring and kill switch</td><td>Backend, data engineer, ops</td><td class="n">[6–8]</td><td>Kill switch tested live; no multiplier above the cap in logs; price complaints at or below [baseline]</td></tr>
+      <tr><td>4 · ML upfront pricing</td><td>Better predictions</td><td>Distance and time prediction; demand forecast from time, weather and events; shadow-mode comparison with the formula</td><td>1–2 data scientists, data engineer, backend</td><td class="n">[10–14]</td><td>Predicted distance within ±[10]% on [80]% of shadow trips</td></tr>
+      <tr><td>5 · Optimise and expand</td><td>Grow without losing control</td><td>Incentives; A/B tests of fee level and per-km rate; fraud detection; audit tooling; multi-city rollout</td><td>Data scientist, fraud analyst, backend, ops per city</td><td class="n">Ongoing</td><td>Each new city live within [12] weeks; fee-arrears ratio under [x]%</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="quality">
+  <h2>Testing, KPIs, risks and team</h2>
+  <h3>Testing strategy</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Layer</th><th>What it proves</th><th>Status in the reference</th></tr></thead>
+    <tbody>
+      <tr><td>Unit tests</td><td>Every formula, rounding rule, band edge, surge window and posting rule</td><td>Included: {{tests}}</td></tr>
+      <tr><td>Property tests</td><td>Invariants on random inputs: fee plus driver share equals fare, fare on the 0.10 grid and at least the minimum, the ledger balances</td><td>Included as a seeded random test; production should use the Hypothesis library</td></tr>
+      <tr><td>Simulation</td><td>10,000 synthetic trips across modes, surges, fee rates, cash and digital, tips and promotions, then a payout run</td><td>Included: trial balance zero, fee income equal to fees charged</td></tr>
+      <tr><td>Database rules</td><td>Balance at commit, no edits, no double posting</td><td>Checked once in a throwaway PostgreSQL 17</td></tr>
+      <tr><td>Shadow mode</td><td>New pricing runs silently beside the live price</td><td>Phase 4</td></tr>
+      <tr><td>Live pilot</td><td>Real MoMo payments with [20] drivers and a GH¢[__] cap per payment</td><td>Phase 2 exit <span class="tag p">Placeholder</span></td></tr>
+    </tbody>
+  </table></div>
+  <h3>KPIs</h3>
+  <div class="tw"><table>
+    <thead><tr><th>KPI</th><th>Definition</th><th>Target</th></tr></thead>
+    <tbody>
+      <tr><td>Average fare</td><td>Total fares ÷ completed trips, by city and hour</td><td>GH¢[__]</td></tr>
+      <tr><td>Take rate</td><td>Platform fees ÷ fares; net take rate also subtracts promotions and incentives</td><td>[20]%</td></tr>
+      <tr><td>Driver earnings per hour</td><td>Driver payouts ÷ online hours</td><td>GH¢[__]</td></tr>
+      <tr><td>Payout success rate</td><td>Payouts confirmed on the first try ÷ payouts sent</td><td>[99]%</td></tr>
+      <tr><td>Fee-arrears ratio</td><td>Cash fees still owed after 14 days ÷ cash fees charged</td><td>[5]%</td></tr>
+      <tr><td>Reconciliation mismatch rate</td><td>Exceptions ÷ payment attempts checked</td><td>[0.1]%</td></tr>
+      <tr><td>Rider complaints</td><td>Price complaints per 1,000 trips</td><td>[__]</td></tr>
+    </tbody>
+  </table></div>
+  <p class="small">Every target is a <span class="tag p">Placeholder</span> until the pilot gives a baseline.</p>
+  <h3>Risk register</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Risk</th><th>Impact</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr><td>Rate uncompetitive against trotro and rival apps</td><td>High</td><td>Phase 0 price survey; A/B tests of the per-km rate; shared-ride option at Mode B prices</td></tr>
+      <tr><td>Wrong fee rate or tax treatment</td><td>High</td><td>Written tax advice before launch; rates in config, not code; VAT modelled but zero until confirmed</td></tr>
+      <tr><td>Cash fees pile up unpaid</td><td>High</td><td>Netting at every payout; MoMo settlement; pause cash trips above a GH¢[__] arrears limit <span class="tag p">Placeholder</span></td></tr>
+      <tr><td>Duplicate charges</td><td>High</td><td>Idempotency keys on every request and posting; daily duplicate check</td></tr>
+      <tr><td>Sandbox behaves unlike production</td><td>High</td><td>Contract tests against MTN docs; capped live pilot; production refuses the sandbox</td></tr>
+      <tr><td>MoMo outage or stuck payments</td><td>Medium</td><td>Status polling; clear timeouts; cash fallback</td></tr>
+      <tr><td>Surge backlash</td><td>Medium</td><td>2.0 cap, smoothing, plain reasons, kill switch</td></tr>
+      <tr><td>Rounding disputes</td><td>Low</td><td>Published rounding rule; receipts show surge and fee</td></tr>
+      <tr><td>GPS distance fraud</td><td>Medium</td><td>Cap at routed distance plus 25%; jump filter; anomaly reports in Phase 5</td></tr>
+      <tr><td>Bad config deployed</td><td>Medium</td><td>Strict validation at load; versioned configs; one city first</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Team and cost</h3>
+  <p><span class="tag a">Assumption</span> Phases 0 to 2 need about six people: a PM, three backend engineers including a payments specialist, a QA engineer and part-time finance operations. Phases 3 and 4 add a data engineer and one or two data scientists. Monthly cost is team size × GH¢[__] per person, plus cloud, maps and SMS at GH¢[__], plus MTN transaction fees at [__]% <span class="tag v">Verify</span>. No salary or fee figures are assumed here.</p>
+</section>
+
+<section id="questions">
+  <h2>Open questions</h2>
+  <ol>
+    <li><strong>Service fee rate:</strong> 20%, 25% or another figure? Confirm the current rate before launch <span class="tag v">Verify</span>.</li>
+    <li><strong>GH¢7.10 per 8 km:</strong> linear or per-block? The reference defaults to linear.</li>
+    <li><strong>Rounding:</strong> is nearest GH¢0.10 with halves rounding up the rule? Should the fee also round to GH¢0.10?</li>
+    <li><strong>Minimum fare:</strong> is GH¢1.90 right for a private car, given it stays in force up to about 2.2 km?</li>
+    <li><strong>Tax:</strong> does VAT apply to the platform fee, and is it inside the fee or added to it? How do GRA vehicle income tax and DVLA fees apply to drivers? <span class="tag v">Verify, do not assume</span></li>
+    <li><strong>Trotro schedule:</strong> where is the official GPRTU/GRTCC schedule published, and how often does it change?</li>
+    <li><strong>MTN costs:</strong> what are the collection and disbursement fees, and who bears them? <span class="tag v">Verify</span></li>
+    <li><strong>Cash arrears:</strong> above what amount owed should a driver stop taking cash trips?</li>
+    <li><strong>Payouts:</strong> weekly or daily, and what minimum payout?</li>
+    <li><strong>Surge cap:</strong> is 2.0 acceptable to riders and regulators?</li>
+    <li><strong>Cancellation fee:</strong> how much, and after how long?</li>
+  </ol>
+</section>
+
+<section id="code">
+  <h2>Reference code</h2>
+  <p>The code lives in the TroSky repository under <code>TroSky/fare-engine</code>. It is standard library only, needs Python 3.11 or newer for the TOML reader, and was tested on Python 3.14. A CI workflow also runs the tests on Python 3.11 and 3.12. The backend and apps do not use the engine yet.</p>
+  <h3>Run the tests</h3>
+  <pre class="code"><code>python -m unittest discover -s tests -t .
+python examples.py        # prints every worked example
+python build_spec.py      # rebuilds this page from the code</code></pre>
+  <p>Result of the last run: {{tests}}.</p>
+  <h3>Price a trip yourself</h3>
+  <pre class="code"><code>python -m fare_engine quote 8 --surge 1.3             # fare 9.20, platform 1.84, driver 7.36
+python -m fare_engine quote 8 --fee 0.25              # the 25% scenario
+python -m fare_engine quote 9 --per-block             # two started 8 km blocks: 14.20
+python -m fare_engine quote 8 --mode B                # shared-taxi bands: 4.70
+python -m fare_engine quote 8 --at "2026-11-04 17:30" --weather light_rain
+python -m fare_engine quote 8 --tips 2 --promo 2 --payment cash
+python -m fare_engine compare                         # Mode A vs Mode B side by side</code></pre>
+  {{sources}}
+</section>
+</main>
+</div>
+
+<script>
+document.addEventListener("click", function (event) {
+  var button = event.target.closest("[data-copy]");
+  if (!button) return;
+  var code = button.parentElement.querySelector("pre code");
+  var text = code ? code.textContent : "";
+  function selectIt() {
+    var range = document.createRange();
+    range.selectNodeContents(code);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    button.textContent = "Selected: press Ctrl+C";
+  }
+  try {
+    navigator.clipboard.writeText(text).then(function () {
+      button.textContent = "Copied";
+      setTimeout(function () { button.textContent = "Copy"; }, 1600);
+    }, selectIt);
+  } catch (e) { selectIt(); }
+});
+</script>

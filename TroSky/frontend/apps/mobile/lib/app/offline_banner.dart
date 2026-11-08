@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:trosky_api/trosky_api.dart';
@@ -7,8 +9,9 @@ import 'package:trosky_ui/trosky_ui.dart';
 import '../l10n/app_localizations.dart';
 
 /// "You're offline. Showing your last saved details." with Retry, after an
-/// offline start (decision 9). Retry checks the session again; the banner
-/// goes once the backend answers.
+/// offline start (decision 9). The app keeps checking by itself and the
+/// banner goes once the backend answers (decision 33); Retry wakes the
+/// server again at once and checks the session.
 ///
 /// When the phone has internet but the server didn't answer, it says so
 /// instead (decision 29).
@@ -63,8 +66,10 @@ class OfflineBanner extends ConsumerWidget {
               TroskyTextLink(
                 prompt: '',
                 action: l10n.offlineRetry,
-                onPressed: () =>
-                    ref.read(sessionControllerProvider.notifier).restore(),
+                onPressed: () {
+                  unawaited(ref.read(serverWakeProvider)?.retry());
+                  ref.read(sessionControllerProvider.notifier).restore();
+                },
               ),
             ],
           ),

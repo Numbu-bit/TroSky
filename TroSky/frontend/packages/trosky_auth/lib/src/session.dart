@@ -50,8 +50,10 @@ Duration? _noRetry(int retryCount, Object error) => null;
 ///
 /// On start, a saved refresh token is exchanged for a new pair and the user
 /// is loaded. Without a network the app still opens, signed in as the last
-/// user seen ([SessionAuthenticated.offline]); [restore] checks again. Only
-/// the backend rejecting the session signs the user out (decision 9).
+/// user seen ([SessionAuthenticated.offline]); [restore] checks again, and
+/// so does the server answering again after it was offline or unreachable,
+/// without Retry (decision 33). Only the backend rejecting the session signs
+/// the user out (decision 9).
 @Riverpod(keepAlive: true, retry: _noRetry)
 class SessionController extends _$SessionController {
   @override
@@ -63,8 +65,24 @@ class SessionController extends _$SessionController {
         state = AsyncData(SessionExpired(reason));
       }
     });
-    ref.onDispose(ended.cancel);
+    ref
+      ..onDispose(ended.cancel)
+      // The server answered (again): an offline session is checked.
+      ..listen(serverStatusProvider, (previous, next) {
+        if (next == ServerState.awake && previous != ServerState.awake) {
+          unawaited(_recoverQuietly());
+        }
+      });
     return _restore(tokens);
+  }
+
+  /// Back online: checks an offline session again. The screens keep what
+  /// they show unless the check succeeds.
+  Future<void> _recoverQuietly() async {
+    if (state.value case SessionAuthenticated(offline: true)) {
+      final next = await AsyncValue.guard(() => _restore(_tokens));
+      if (next.value case SessionAuthenticated(offline: false)) state = next;
+    }
   }
 
   TokenManager get _tokens => ref.read(tokenManagerProvider);

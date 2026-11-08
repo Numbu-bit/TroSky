@@ -6,7 +6,7 @@ import 'package:trosky_ui/trosky_ui.dart';
 
 import '../l10n/app_localizations.dart';
 
-/// "Waking up the server, this can take up to a minute…" across the top of
+/// "Waking up the server… usually under a minute" across the top of
 /// every screen while the server is waking (decision 29). The screen moves
 /// down below it, so nothing is covered.
 ///

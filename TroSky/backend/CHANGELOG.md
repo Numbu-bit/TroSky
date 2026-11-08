@@ -2323,3 +2323,15 @@ pause, resume and end trips by hand, and admins cancel as before.
   after 5 minutes, and a server woken from sleep had forgotten them.
 - `docs/deploy-render.md` said the sandbox approves everything; it now says
   what it does.
+
+## [Unreleased] - 2026-11-01 - Onward trips past midnight; tests that pass at any hour
+
+- Onward trips (`GET /bookings/{id}/onward-trips` and the "you're at your stop"
+  notification) promise vehicles leaving within `ONWARD_TRIPS_WINDOW_MINUTES`,
+  but searched today's date only: a passenger getting off at 23:50 was never
+  offered a vehicle leaving at 00:10. Late at night the search now also looks
+  at tomorrow, up to the end of the window.
+- Backend CI on `main` failed after #53 merged because three tests depended on
+  the time of day: run after 23:00 UTC, "a trip in an hour" is tomorrow. The
+  admin directory tests now schedule a trip that is still today whenever they
+  run, and a new unit test pins the window crossing midnight.
