@@ -11,7 +11,7 @@ import 'package:trosky_auth/trosky_auth.dart';
 
 import '../helpers/fakes.dart';
 
-const _waking = 'Waking up the server, this can take up to a minute…';
+const _waking = 'Waking up the server… usually under a minute';
 
 /// A screen with a count, to show it keeps its state under the bar.
 class _Counter extends StatefulWidget {
@@ -45,6 +45,21 @@ Widget _app({required List<Object> overrides, required Widget home}) =>
         home: home,
       ),
     );
+
+/// The app goes to the background and comes back.
+Future<void> _awayAndBack(WidgetTester tester) async {
+  for (final state in [
+    AppLifecycleState.inactive,
+    AppLifecycleState.hidden,
+    AppLifecycleState.paused,
+    AppLifecycleState.hidden,
+    AppLifecycleState.inactive,
+    AppLifecycleState.resumed,
+  ]) {
+    tester.binding.handleAppLifecycleStateChanged(state);
+  }
+  await tester.pump();
+}
 
 void main() {
   testWidgets('while the server wakes the bar is on top, and the screen '
@@ -110,6 +125,78 @@ void main() {
       expect(find.text(_waking), findsNothing);
     }
     expect(wake.state, ServerState.awake);
+  });
+
+  testWidgets('the app asks the server as soon as it opens, and again when '
+      'it comes back after a while', (tester) async {
+    var now = DateTime.utc(2026, 10, 30, 9);
+    var asks = 0;
+    final wake = ServerWake(
+      ping: (_) async {
+        asks++;
+        return true;
+      },
+      hasInternet: () async => true,
+      now: () => now,
+    );
+    addTearDown(wake.dispose);
+    await tester.pumpWidget(
+      testApp(
+        signedIn: true,
+        overrides: [serverWakeProvider.overrideWithValue(wake)],
+      ),
+    );
+    await tester.pump();
+    expect(asks, 1);
+
+    // Back within 10 minutes: the server is trusted to be awake.
+    await _awayAndBack(tester);
+    expect(asks, 1);
+
+    // Back after 11 minutes: it may be asleep, so it is woken at once.
+    now = now.add(const Duration(minutes: 11));
+    await _awayAndBack(tester);
+    expect(asks, 2);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Retry on the banner wakes the server again at once', (
+    tester,
+  ) async {
+    var asks = 0;
+    final wake = ServerWake(
+      ping: (_) async {
+        asks++;
+        return false;
+      },
+      hasInternet: () async => true,
+      giveUpAfter: const Duration(seconds: 1),
+      retryEvery: const Duration(milliseconds: 100),
+      now: () => tester.binding.clock.now(),
+    );
+    addTearDown(wake.dispose);
+    await tester.pumpWidget(
+      _app(
+        overrides: [
+          serverWakeProvider.overrideWithValue(wake),
+          serverStatusProvider.overrideWith(
+            () => FixedServerStatus(ServerState.unreachable),
+          ),
+          sessionControllerProvider.overrideWith(
+            () => FakeSessionController(signedIn: true),
+          ),
+        ],
+        home: const Scaffold(body: OfflineBanner()),
+      ),
+    );
+    unawaited(wake.ready());
+    await tester.pump(const Duration(seconds: 2));
+    expect(wake.state, ServerState.unreachable);
+    final before = asks;
+    await tester.tap(find.text('Retry'));
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(asks, before + 1);
+    await tester.pump(const Duration(seconds: 2));
   });
 
   testWidgets('the offline banner says "offline" only when the phone has no '

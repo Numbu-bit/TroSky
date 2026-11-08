@@ -19,7 +19,7 @@ enum ServerState {
   offline,
 
   /// The phone has internet, but the server didn't answer within
-  /// [ServerWake.giveUpAfter].
+  /// [ServerWake.giveUpAfter]. It is still asked quietly in the background.
   unreachable,
 }
 
@@ -33,15 +33,24 @@ enum ServerState {
 /// never reported as [ServerState.waking].
 ///
 /// When an ask fails, [hasInternet] tells a sleeping server from a phone
-/// without internet: only then is the state [ServerState.offline].
+/// without internet; it must fail twice, [confirmOfflineAfter] apart,
+/// before the state is [ServerState.offline].
+///
+/// A wake that ends offline or unreachable goes on quietly: every
+/// [recheckEvery] it checks the internet (offline) or asks the server
+/// (unreachable), and wakes it again once it can. Meanwhile [ready]
+/// returns at once, so screens show what they have instead of waiting;
+/// [retry] starts a full wake again.
 class ServerWake {
   ServerWake({
     required this._ping,
     required this._hasInternet,
     this.idleAfter = const Duration(minutes: 10),
-    this.giveUpAfter = const Duration(minutes: 2),
+    this.giveUpAfter = const Duration(minutes: 3),
     this.showAfter = const Duration(seconds: 2),
     this.retryEvery = const Duration(seconds: 3),
+    this.confirmOfflineAfter = const Duration(seconds: 2),
+    this.recheckEvery = const Duration(seconds: 10),
     this._now = DateTime.now,
     this._onDispose,
   });
@@ -71,7 +80,9 @@ class ServerWake {
           return false;
         }
       },
-      hasInternet: () => canLookUp(health.host),
+      // Either name found is internet: offline means really none.
+      hasInternet: () async =>
+          await canLookUp(health.host) || await canLookUp('google.com'),
       onDispose: dio.close,
     );
   }
@@ -89,6 +100,12 @@ class ServerWake {
   /// The pause between failed asks.
   final Duration retryEvery;
 
+  /// The pause before the internet is checked a second time.
+  final Duration confirmOfflineAfter;
+
+  /// How often a failed wake checks again in the background.
+  final Duration recheckEvery;
+
   /// Asks the server, waiting at most `timeout`; true if it answered.
   final Future<bool> Function(Duration timeout) _ping;
   final Future<bool> Function() _hasInternet;
@@ -98,6 +115,11 @@ class ServerWake {
   ServerState _state = ServerState.awake;
   DateTime? _heard;
   Future<void>? _waking;
+
+  /// The last wake ended offline or unreachable; [_recheck] goes on.
+  bool _failed = false;
+  Timer? _recheck;
+  bool _disposed = false;
 
   ServerState get state => _state;
 
@@ -113,18 +135,71 @@ class ServerWake {
     if (heard != null && _now().difference(heard) < idleAfter) {
       return Future.value();
     }
-    return _waking ??= _wake().whenComplete(() => _waking = null);
+    if (_waking case final waking?) return waking;
+    // Still trying in the background: requests fail now, not in 3 minutes.
+    if (_failed) return Future.value();
+    return _start();
+  }
+
+  /// Retry: a full wake again, [giveUpAfter] from now.
+  Future<void> retry() {
+    _recheck?.cancel();
+    _failed = false;
+    return _waking ?? _start();
   }
 
   /// Notes an answer from the server.
   void heard() {
     _heard = _now();
+    _failed = false;
+    _recheck?.cancel();
     _set(ServerState.awake);
   }
 
   void dispose() {
+    _disposed = true;
+    _recheck?.cancel();
     _onDispose?.call();
     unawaited(_changes.close());
+  }
+
+  Future<void> _start() => _waking = _wake().whenComplete(() {
+    _waking = null;
+    if (_state == ServerState.offline || _state == ServerState.unreachable) {
+      _failed = true;
+      _scheduleRecheck();
+    }
+  });
+
+  void _scheduleRecheck() {
+    _recheck?.cancel();
+    if (_disposed) return;
+    _recheck = Timer(recheckEvery, () => unawaited(_checkAgain()));
+  }
+
+  /// Offline: is the internet back? Then wake again (with the bar).
+  /// Unreachable: one quiet ask.
+  Future<void> _checkAgain() async {
+    if (_disposed || !_failed || _waking != null) return;
+    if (_state == ServerState.offline) {
+      if (await _hasInternet()) {
+        if (_disposed || !_failed || _waking != null) return;
+        _failed = false;
+        unawaited(_start());
+        return;
+      }
+    } else if (await _ping(recheckEvery * 2)) {
+      heard();
+      return;
+    }
+    if (_failed) _scheduleRecheck();
+  }
+
+  /// No internet, checked twice.
+  Future<bool> _offline() async {
+    if (await _hasInternet()) return false;
+    await Future<void>.delayed(confirmOfflineAfter);
+    return !await _hasInternet();
   }
 
   Future<void> _wake() async {
@@ -141,7 +216,7 @@ class ServerWake {
           heard();
           return;
         }
-        if (!await _hasInternet()) {
+        if (await _offline()) {
           _set(ServerState.offline);
           return;
         }

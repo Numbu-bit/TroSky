@@ -35,6 +35,14 @@ class _FlakyAuth implements AuthRepository {
   Future<Result<void>> logout() => _inner.logout();
 }
 
+/// The server's state, set by the test.
+class _Status extends ServerStatus {
+  @override
+  ServerState build() => ServerState.offline;
+
+  void set(ServerState next) => state = next;
+}
+
 void main() {
   late MockBackend backend;
   late InMemoryRefreshTokenStore store;
@@ -125,6 +133,44 @@ void main() {
 
       flaky.offline = false;
       await controller(container).restore();
+      final online = container.read(sessionControllerProvider).value;
+      expect((online! as SessionAuthenticated).offline, isFalse);
+    });
+
+    test('offline, then the server answers: checked again by itself', () async {
+      await signInAsPassenger(start());
+      late _FlakyAuth flaky;
+      late final ProviderContainer container;
+      flaky = _FlakyAuth(
+        MockAuthRepository(
+          backend,
+          tokens: () => container.read(tokenManagerProvider),
+        ),
+      );
+      container = start(
+        extra: [
+          authRepositoryProvider.overrideWithValue(flaky),
+          serverStatusProvider.overrideWith(_Status.new),
+        ],
+      );
+      final offline = await session(container);
+      expect((offline as SessionAuthenticated).offline, isTrue);
+
+      // Still offline: a second "offline" changes nothing.
+      flaky.offline = false;
+      final status = container.read(serverStatusProvider.notifier) as _Status;
+      status.set(ServerState.waking);
+      await pumpEventQueue();
+      expect(
+        (container.read(sessionControllerProvider).value!
+                as SessionAuthenticated)
+            .offline,
+        isTrue,
+      );
+
+      // The server answered: no Retry needed.
+      status.set(ServerState.awake);
+      await pumpEventQueue();
       final online = container.read(sessionControllerProvider).value;
       expect((online! as SessionAuthenticated).offline, isFalse);
     });
