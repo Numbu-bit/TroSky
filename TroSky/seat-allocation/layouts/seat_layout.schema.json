@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trosky.africa/schemas/seat-layout.json",
+  "title": "TroSky vehicle seat layout",
+  "description": "One vehicle model's seats and how each one reaches its door. Loading also checks what a schema cannot: blocked_by has no loops, a blocker has a lower depth_rank, and blockers_count matches blocked_by.",
+  "type": "object",
+  "required": ["schema_version", "model", "verification", "doors", "seats"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "model": { "type": "string", "minLength": 1 },
+    "verification": {
+      "type": "string",
+      "description": "Who checked this against a real vehicle, or the phrase: verify against the actual fleet before launch",
+      "minLength": 1
+    },
+    "doors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "additionalProperties": false,
+        "properties": { "id": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "seats": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/seat" }
+    }
+  },
+  "$defs": {
+    "seat": {
+      "type": "object",
+      "required": ["id", "row", "column", "depth_rank", "exit_door", "blocked_by"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 10 },
+        "row": { "type": "integer", "minimum": 1 },
+        "column": { "type": "integer", "minimum": 1 },
+        "depth_rank": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "1 is nearest the exit, highest is rearmost."
+        },
+        "exit_door": { "type": "string", "minLength": 1 },
+        "blocked_by": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string" },
+          "description": "Seats directly on the way to the door. The ones that block those are worked out."
+        },
+        "blockers_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How many seats in total block this seat's path. Checked against blocked_by."
+        },
+        "near_driver": { "type": "boolean", "default": false },
+        "accessible": { "type": "boolean", "default": false },
+        "bookable": { "type": "boolean", "default": true },
+        "folding": { "type": "boolean", "default": false },
+        "reserved_for": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["priority", "driver", "conductor"] },
+          "default": []
+        },
+        "tags": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string" },
+          "description": "Words a seat preference can match, such as window, front, rear or luggage.",
+          "default": []
+        },
+        "neighbours": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string" },
+          "description": "Seats that count as next to this one. Worked out from row and column when absent."
+        }
+      }
+    }
+  }
+}
