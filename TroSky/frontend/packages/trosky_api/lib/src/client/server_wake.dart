@@ -119,6 +119,10 @@ class ServerWake {
   /// The last wake ended offline or unreachable; [_recheck] goes on.
   bool _failed = false;
   Timer? _recheck;
+  /// The current wake's [showAfter] timer, cancelled on [dispose].
+  Timer? _slow;
+  /// The current wait between failed asks, cancelled on [dispose].
+  Timer? _retryWait;
   bool _disposed = false;
 
   ServerState get state => _state;
@@ -159,12 +163,15 @@ class ServerWake {
   void dispose() {
     _disposed = true;
     _recheck?.cancel();
+    _slow?.cancel();
+    _retryWait?.cancel();
     _onDispose?.call();
     unawaited(_changes.close());
   }
 
   Future<void> _start() => _waking = _wake().whenComplete(() {
     _waking = null;
+    if (_disposed) return;
     if (_state == ServerState.offline || _state == ServerState.unreachable) {
       _failed = true;
       _scheduleRecheck();
@@ -204,27 +211,39 @@ class ServerWake {
 
   Future<void> _wake() async {
     final started = _now();
-    final slow = Timer(showAfter, () => _set(ServerState.waking));
+    _slow?.cancel();
+    _slow = Timer(showAfter, () => _set(ServerState.waking));
     try {
-      while (true) {
+      while (!_disposed) {
         final left = giveUpAfter - _now().difference(started);
         if (left <= Duration.zero) {
           _set(ServerState.unreachable);
           return;
         }
         if (await _ping(left)) {
+          if (_disposed) return;
           heard();
           return;
         }
+        if (_disposed) return;
         if (await _offline()) {
+          if (_disposed) return;
           _set(ServerState.offline);
           return;
         }
+        if (_disposed) return;
         _set(ServerState.waking);
-        await Future<void>.delayed(retryEvery);
+        final gate = Completer<void>();
+        _retryWait?.cancel();
+        _retryWait = Timer(retryEvery, () {
+          if (!gate.isCompleted) gate.complete();
+        });
+        await gate.future;
+        _retryWait = null;
       }
     } finally {
-      slow.cancel();
+      _slow?.cancel();
+      _slow = null;
     }
   }
 

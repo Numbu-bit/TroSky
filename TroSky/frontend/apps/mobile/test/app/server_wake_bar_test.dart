@@ -157,7 +157,9 @@ void main() {
     now = now.add(const Duration(minutes: 11));
     await _awayAndBack(tester);
     expect(asks, 2);
+    // Unmount, then drain the splash's 1500 ms delay before teardown.
     await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 2));
   });
 
   testWidgets('Retry on the banner wakes the server again at once', (
@@ -174,7 +176,6 @@ void main() {
       retryEvery: const Duration(milliseconds: 100),
       now: () => tester.binding.clock.now(),
     );
-    addTearDown(wake.dispose);
     await tester.pumpWidget(
       _app(
         overrides: [
@@ -196,7 +197,10 @@ void main() {
     await tester.tap(find.text('Retry'));
     await tester.pump(const Duration(milliseconds: 50));
     expect(asks, before + 1);
-    await tester.pump(const Duration(seconds: 2));
+    // Dispose inside the test so no timer outlives it (addTearDown runs
+    // after the pending-timers check).
+    wake.dispose();
+    await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets('the offline banner says "offline" only when the phone has no '
