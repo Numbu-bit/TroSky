@@ -39,3 +39,17 @@ Notable changes to the TroSky admin dashboard, newest last. The dashboard as fir
   rounded tile because the pin's navy would disappear against the navy sidebar and sign-in page.
   The wordmark version (name and tagline) isn't used: the name is already written beside the icon,
   and the sidebar folds down to the icon alone.
+
+## 2026-11-08 - Security updates, maps on MapLibre 6, and a lost click in search
+
+- **Every open security alert is fixed** (`npm audit` finds none): MapLibre GL 5 to 6 (a critical
+  cross-site scripting hole through a map's attribution text, which comes from CARTO's style), Zod,
+  Vite and undici. `minimatch` is forced past its advisory for `typescript-estree`, which still asks
+  for the old version; remove that `overrides` entry once it asks for 11.
+- **Maps on MapLibre 6:** it can't find its worker in a bundled app, and without one a map shows its
+  markers on a blank background, with no error until the page runs. `MapView` now tells it where the
+  worker is, and `check:build` fails if the worker isn't in the build. The security policy no longer
+  allows workers from `blob:`, which only MapLibre 5 needed.
+- **A click in the global search could be lost:** each new search swapped the results for a spinner,
+  so a click arriving at that moment did nothing. The results now stay until the next ones arrive.
+  This is what made the "finds a vehicle by its plate" test fail about one run in three.

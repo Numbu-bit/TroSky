@@ -1,6 +1,8 @@
 import 'maplibre-gl/dist/maplibre-gl.css'
 
 import { MapPinOff } from 'lucide-react'
+import type * as MapLibre from 'maplibre-gl'
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { forwardRef, type ReactNode } from 'react'
 import Map, { AttributionControl, NavigationControl, type MapRef } from 'react-map-gl/maplibre'
 
@@ -13,6 +15,21 @@ import { ACCRA, mapSupported } from './map-support'
 const STYLES = {
   light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
   dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+}
+
+let mapLibrary: Promise<typeof MapLibre> | null = null
+
+/**
+ * MapLibre, loaded the first time a map is drawn, and told where the worker
+ * that draws its tiles is: it can't find one a bundler has moved, and without
+ * it a map shows its markers on a blank background.
+ */
+function loadMapLibrary() {
+  mapLibrary ??= import('maplibre-gl').then((maplibre) => {
+    maplibre.setWorkerUrl(workerUrl)
+    return maplibre
+  })
+  return mapLibrary
 }
 
 export function MapUnavailable({ className }: { className?: string }) {
@@ -55,6 +72,7 @@ export const MapView = forwardRef<MapRef, MapViewProps>(function MapView(
     >
       <Map
         ref={ref}
+        mapLib={loadMapLibrary()}
         initialViewState={initialViewState}
         mapStyle={STYLES[resolvedTheme]}
         style={{ width: '100%', height: '100%' }}

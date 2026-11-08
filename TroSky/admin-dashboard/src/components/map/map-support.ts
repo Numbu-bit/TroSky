@@ -8,12 +8,12 @@ export const ACCRA: Pick<ViewState, 'latitude' | 'longitude' | 'zoom'> = {
 
 let webgl: boolean | null = null
 
-/** Whether this browser can draw the map at all (WebGL). */
+/** Whether this browser can draw the map at all (MapLibre needs WebGL 2). */
 export function mapSupported(): boolean {
   if (webgl === null) {
     try {
       const canvas = document.createElement('canvas')
-      webgl = Boolean(canvas.getContext('webgl2') ?? canvas.getContext('webgl'))
+      webgl = Boolean(canvas.getContext('webgl2'))
     } catch {
       webgl = false
     }
