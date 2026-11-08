@@ -81,3 +81,41 @@ The backend is built by a different developer and changes over time. Before any 
 3. Run analyze and test.
 4. Update the inventory status and `backend-gaps.md`.
 5. Report the files changed, any deviations from the design, gaps found, and questions.
+
+## Working rules (project owner, 29 Oct 2026)
+- **Don't wait for reviewers.** Every change goes: PR (Maher-007 as reviewer, for information only) → CI
+  green → tested on the owner's phone → merged by Claude (merge commit, branch deleted). Never push
+  directly to main, and never disable branch protection.
+- **Tester APKs** in `Desktop\TroSky staging APK\` are always built from main. A PR's test build gets a
+  `-prNN` suffix and is deleted after the test, and the owner's phone always gets the main build back.
+- **Record every phone test** with `adb shell screenrecord` into
+  `Desktop\TroSky test videos\<date>-<what>.mp4`.
+
+## Review workflow (required)
+
+Three reviewer agents live in `TroSky/.claude/agents/`:
+`security-reviewer`, `code-reviewer` and `release-reviewer`. They are
+read-only and write no code; they return a JSON verdict and a list of
+findings.
+
+- **For any code change**, after `melos analyze` and `melos test` pass,
+  call `security-reviewer` and `code-reviewer` on the diff
+  (`git diff origin/main...HEAD`). If either returns `fail`, fix the code
+  and call the same reviewer again. Both must return `pass` before the
+  PR is opened.
+- **Before marking a PR ready and merging it**, call `release-reviewer`.
+  Only merge when it returns `pass`. The release reviewer confirms CI is
+  green on the latest commit; never merge before it does.
+- **Every report back to the owner** includes a short **Review** block at
+  the top, in this shape:
+
+  > Review — security: pass (0), code: pass (2 warn), release: pass (0)
+
+  Attach the full reviewer output (the JSON and the paragraphs it wrote)
+  when any reviewer returns `fail`, or when a `warn` was overridden.
+- **Never disable or skip a reviewer.** If a `fail` finding looks like a
+  false positive, quote the finding, explain why, and ask the owner
+  before overriding. Keep the override in the PR body.
+- Docs-only PRs still run `release-reviewer` before merging, but only
+  `code-reviewer` on the diff (no `security-reviewer`) since there is no
+  code to secure.

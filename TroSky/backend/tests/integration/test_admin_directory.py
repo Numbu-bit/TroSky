@@ -4,7 +4,7 @@ driver and fleet with live status, expiries and figures."""
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 
 import pytest
@@ -23,10 +23,22 @@ from tests.integration.scenarios import TripScenario, book, build_trip_scenario,
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
 
 
-async def _scenario(session: AsyncSession, make_user, *, hours: float = 1) -> TripScenario:
-    return await build_trip_scenario(
-        session, make_user, departure=datetime.now(UTC) + timedelta(hours=hours)
-    )
+def _later_today() -> datetime:
+    """A departure that is still today (UTC) whenever the suite runs: an hour
+    ahead, or halfway to midnight late in the evening. "Idle" means a trip
+    still to run today, so an hour ahead stops counting after 23:00."""
+    now = datetime.now(UTC)
+    left = datetime.combine(now.date() + timedelta(days=1), time.min, tzinfo=UTC) - now
+    if left < timedelta(minutes=2):
+        pytest.skip("too close to midnight UTC to schedule a trip later today")
+    return now + min(timedelta(hours=1), left / 2)
+
+
+async def _scenario(
+    session: AsyncSession, make_user, *, hours: float | None = None
+) -> TripScenario:
+    departure = _later_today() if hours is None else datetime.now(UTC) + timedelta(hours=hours)
+    return await build_trip_scenario(session, make_user, departure=departure)
 
 
 async def _vehicles(session: AsyncSession, **filters):
