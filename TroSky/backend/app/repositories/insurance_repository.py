@@ -82,9 +82,10 @@ class InsuranceRepository:
         return list(result.scalars().all())
 
     async def full_name(self, user_id: uuid.UUID) -> str | None:
-        return await self._session.scalar(
+        name: str | None = await self._session.scalar(
             select(UserProfile.full_name).where(UserProfile.user_id == user_id)
         )
+        return name
 
     async def last_suspension_reason(self, driver_id: uuid.UUID) -> str | None:
         return await self._session.scalar(

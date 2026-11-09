@@ -20,7 +20,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from enum import StrEnum
-from typing import Literal
+from typing import Any, Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -218,7 +218,7 @@ class InsuranceService:
         return await self._insurance.full_name(driver.user_id) or "One of your drivers"
 
     async def _tell_fleet_owners(
-        self, driver: Driver, *, title: str, body: str, data: dict[str, object]
+        self, driver: Driver, *, title: str, body: str, data: dict[str, Any]
     ) -> None:
         for owner in await self._insurance.fleet_owners_of_driver(driver.id):
             if owner != driver.user_id:  # an owner-driver has already been told

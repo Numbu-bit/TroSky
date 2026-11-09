@@ -319,12 +319,13 @@ class ApprovalRequestsService:
         if owner_type == "driver":
             driver = await self._session.get(Driver, owner_id)
             return driver.user_id if driver is not None else None
-        return await self._session.scalar(
+        owner: uuid.UUID | None = await self._session.scalar(
             select(FleetOwner.user_id)
             .join(Fleet, Fleet.fleet_owner_id == FleetOwner.id)
             .join(Vehicle, Vehicle.fleet_id == Fleet.id)
             .where(Vehicle.id == owner_id)
         )
+        return owner
 
     async def document_link(
         self, document_id: uuid.UUID, *, principal: Principal, storage: ObjectStorageProvider
