@@ -54,6 +54,20 @@ class DriverDocumentResponse(ApiModel):
     created_at: datetime
 
 
+class InsuranceStandingResponse(ApiModel):
+    status: Literal["unknown", "valid", "expired", "blocked"] = Field(
+        ...,
+        description=(
+            "unknown: no date has been confirmed. expired: still allowed to work, until "
+            "renew_by. blocked: can't take trips until a renewal is confirmed."
+        ),
+    )
+    expiry_date: date | None
+    renew_by: date | None = Field(
+        ..., description="Renew by this day to avoid being blocked. Only when expired."
+    )
+
+
 class DocumentDownloadUrlResponse(ApiModel):
     download_url: str
     expires_in_seconds: int

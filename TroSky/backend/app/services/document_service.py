@@ -11,15 +11,25 @@ for document access is a spec requirement — see callers in
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, date, datetime
 
 from app.core.config import Settings
-from app.core.exceptions import FileValidationError
+from app.core.exceptions import FileValidationError, ValidationAppError
 from app.core.logging import get_logger
 from app.providers.storage.base import ObjectStorageProvider, UploadedObject
 from app.providers.storage.malware_scan import MalwareScanner
 from app.utilities.file_validation import validate_upload
 
 logger = get_logger(__name__)
+
+
+def check_expiry_date(expiry_date: date | None) -> None:
+    """A document can't be uploaded as a renewal if it has already expired."""
+    if expiry_date is not None and expiry_date < datetime.now(UTC).date():
+        raise ValidationAppError(
+            "This document's expiry date has already passed.",
+            details={"param": "expiry_date"},
+        )
 
 
 async def store_uploaded_document(

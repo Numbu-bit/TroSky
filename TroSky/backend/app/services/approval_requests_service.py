@@ -19,7 +19,7 @@ from typing import Literal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ForbiddenError, NotFoundError
+from app.core.exceptions import ForbiddenError, NotFoundError, ValidationAppError
 from app.core.logging import get_logger
 from app.core.permissions import Permission, Principal
 from app.models.drivers import (
@@ -38,6 +38,8 @@ from app.models.vehicles import (
     VehicleStatusHistory,
 )
 from app.providers.storage.base import ObjectStorageProvider
+from app.repositories.insurance_repository import InsuranceRepository
+from app.services.insurance_service import InsuranceOutcome, InsuranceService
 from app.services.notification_service import NotificationService
 
 logger = get_logger(__name__)
@@ -74,6 +76,18 @@ class DocumentLink:
     file_size_bytes: int
     url: str
     expires_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class ReviewedDocument:
+    document_id: uuid.UUID
+    owner_type: Literal["driver", "vehicle"]
+    owner_id: uuid.UUID
+    document_type: DocumentType
+    status: DocumentStatus
+    expiry_date: date | None
+    rejection_reason: str | None
+    drivers_unblocked: list[uuid.UUID]
 
 
 class ApprovalRequestsService:
@@ -209,12 +223,11 @@ class ApprovalRequestsService:
             },
         )
 
-    async def document_link(
-        self, document_id: uuid.UUID, *, principal: Principal, storage: ObjectStorageProvider
-    ) -> DocumentLink:
-        """A link to look at a driver's or vehicle's document, valid for five
-        minutes. A driver's document needs ``drivers:approve``, a vehicle's
-        ``vehicles:approve``."""
+    async def _document_for_review(
+        self, document_id: uuid.UUID, principal: Principal
+    ) -> tuple[DriverDocument | VehicleDocument, Literal["driver", "vehicle"], uuid.UUID]:
+        """The document, if this admin may see it. A driver's document needs
+        ``drivers:approve``, a vehicle's ``vehicles:approve``."""
         owner_type: Literal["driver", "vehicle"]
         driver_document = await self._session.get(DriverDocument, document_id)
         if driver_document is not None:
@@ -229,6 +242,97 @@ class ApprovalRequestsService:
             document, owner_id = vehicle_document, vehicle_document.vehicle_id
         if not principal.has_permission(needed):
             raise ForbiddenError("This document needs a permission your account does not have.")
+        return document, owner_type, owner_id
+
+    async def review_document(
+        self,
+        document_id: uuid.UUID,
+        *,
+        principal: Principal,
+        approve: bool,
+        expiry_date: date | None,
+        rejection_reason: str | None,
+    ) -> ReviewedDocument:
+        """Approve a document, confirming the date it expires, or reject it
+        with a reason, which goes to whoever uploaded it. Then bring the drivers
+        it covers up to date, in case this was their insurance."""
+        document, owner_type, owner_id = await self._document_for_review(document_id, principal)
+        is_insurance = document.document_type == DocumentType.VEHICLE_INSURANCE
+        if approve:
+            expiry = expiry_date or document.expiry_date
+            if is_insurance and expiry is None:
+                raise ValidationAppError(
+                    "Enter the date this insurance expires.", details={"param": "expiry_date"}
+                )
+            document.status = DocumentStatus.APPROVED
+            document.expiry_date = expiry
+            document.rejection_reason = None
+        else:
+            if rejection_reason is None:
+                raise ValidationAppError(
+                    "Give a reason for rejecting this document.",
+                    details={"param": "rejection_reason"},
+                )
+            document.status = DocumentStatus.REJECTED
+            document.rejection_reason = rejection_reason
+        document.reviewed_by, document.reviewed_at = principal.user_id, datetime.now(UTC)
+        await self._session.flush()
+
+        if not approve and rejection_reason is not None:
+            uploader = await self._uploader(owner_type, owner_id)
+            if uploader is not None:
+                await self._notify(
+                    uploader, owner_type, owner_id, [document.document_type], rejection_reason
+                )
+        unblocked: list[uuid.UUID] = []
+        if is_insurance:
+            driver_ids = (
+                [owner_id]
+                if owner_type == "driver"
+                else await InsuranceRepository(self._session).drivers_of_vehicle(owner_id)
+            )
+            insurance = InsuranceService(self._session)
+            for driver_id in driver_ids:
+                outcome = await insurance.check_driver(driver_id)
+                if outcome == InsuranceOutcome.UNBLOCKED:
+                    unblocked.append(driver_id)
+        logger.info(
+            "document_reviewed",
+            document_id=str(document_id),
+            approved=approve,
+            by=str(principal.user_id),
+        )
+        return ReviewedDocument(
+            document_id=document.id,
+            owner_type=owner_type,
+            owner_id=owner_id,
+            document_type=document.document_type,
+            status=document.status,
+            expiry_date=document.expiry_date,
+            rejection_reason=document.rejection_reason,
+            drivers_unblocked=unblocked,
+        )
+
+    async def _uploader(
+        self, owner_type: Literal["driver", "vehicle"], owner_id: uuid.UUID
+    ) -> uuid.UUID | None:
+        if owner_type == "driver":
+            driver = await self._session.get(Driver, owner_id)
+            return driver.user_id if driver is not None else None
+        owner: uuid.UUID | None = await self._session.scalar(
+            select(FleetOwner.user_id)
+            .join(Fleet, Fleet.fleet_owner_id == FleetOwner.id)
+            .join(Vehicle, Vehicle.fleet_id == Fleet.id)
+            .where(Vehicle.id == owner_id)
+        )
+        return owner
+
+    async def document_link(
+        self, document_id: uuid.UUID, *, principal: Principal, storage: ObjectStorageProvider
+    ) -> DocumentLink:
+        """A link to look at a driver's or vehicle's document, valid for five
+        minutes."""
+        document, owner_type, owner_id = await self._document_for_review(document_id, principal)
         url = await storage.generate_download_url(
             document.storage_key, expires_in_seconds=LINK_SECONDS
         )

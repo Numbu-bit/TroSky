@@ -85,6 +85,12 @@ class ForbiddenError(AppError):
     message = "You do not have permission to perform this action."
 
 
+class DriverBlockedError(AppError):
+    code = "DRIVER_BLOCKED"
+    status_code = status.HTTP_403_FORBIDDEN
+    message = "This driver account is blocked, so it can't take trips."
+
+
 class RateLimitExceededError(AppError):
     code = "RATE_LIMIT_EXCEEDED"
     status_code = status.HTTP_429_TOO_MANY_REQUESTS

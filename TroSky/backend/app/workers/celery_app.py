@@ -26,6 +26,7 @@ celery_app = Celery(
         "app.workers.tasks.tracking",
         "app.workers.tasks.fraud",
         "app.workers.tasks.trips",
+        "app.workers.tasks.insurance",
         # Phase 9+: "app.workers.tasks.notifications",
     ],
 )
@@ -71,6 +72,10 @@ celery_app.conf.beat_schedule = {
     "detect-fraud": {
         "task": "app.workers.tasks.fraud.detect_fraud",
         "schedule": crontab(minute="*/15"),
+    },
+    "check-driver-insurance": {
+        "task": "app.workers.tasks.insurance.check_driver_insurance",
+        "schedule": crontab(minute=20),  # hourly: a small server can sleep through a run
     },
     "purge-old-trip-locations": {
         "task": "app.workers.tasks.tracking.purge_old_trip_locations",
