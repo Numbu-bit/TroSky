@@ -1,0 +1,334 @@
+{
+  "schema_version": 1,
+  "model": "minibus-15",
+  "verification": "verify against the actual fleet before launch",
+  "doors": [
+    {
+      "id": "cab"
+    },
+    {
+      "id": "side"
+    }
+  ],
+  "seats": [
+    {
+      "id": "DRV",
+      "row": 1,
+      "column": 1,
+      "depth_rank": 1,
+      "exit_door": "cab",
+      "blocked_by": [],
+      "blockers_count": 0,
+      "near_driver": true,
+      "accessible": false,
+      "bookable": false,
+      "folding": false,
+      "reserved_for": [
+        "driver"
+      ],
+      "tags": [
+        "driver"
+      ]
+    },
+    {
+      "id": "F1",
+      "row": 1,
+      "column": 3,
+      "depth_rank": 1,
+      "exit_door": "cab",
+      "blocked_by": [],
+      "blockers_count": 0,
+      "near_driver": true,
+      "accessible": true,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [
+        "priority"
+      ],
+      "tags": [
+        "front",
+        "door-side"
+      ]
+    },
+    {
+      "id": "F2",
+      "row": 1,
+      "column": 2,
+      "depth_rank": 2,
+      "exit_door": "cab",
+      "blocked_by": [
+        "F1"
+      ],
+      "blockers_count": 1,
+      "near_driver": true,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [
+        "priority"
+      ],
+      "tags": [
+        "front"
+      ]
+    },
+    {
+      "id": "A1",
+      "row": 2,
+      "column": 3,
+      "depth_rank": 1,
+      "exit_door": "side",
+      "blocked_by": [],
+      "blockers_count": 0,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": true,
+      "reserved_for": [],
+      "tags": [
+        "folding",
+        "door-side",
+        "front"
+      ]
+    },
+    {
+      "id": "A2",
+      "row": 2,
+      "column": 2,
+      "depth_rank": 2,
+      "exit_door": "side",
+      "blocked_by": [
+        "A1"
+      ],
+      "blockers_count": 1,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "front"
+      ]
+    },
+    {
+      "id": "A3",
+      "row": 2,
+      "column": 1,
+      "depth_rank": 3,
+      "exit_door": "side",
+      "blocked_by": [
+        "A2"
+      ],
+      "blockers_count": 2,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "front",
+        "window"
+      ]
+    },
+    {
+      "id": "B1",
+      "row": 3,
+      "column": 3,
+      "depth_rank": 2,
+      "exit_door": "side",
+      "blocked_by": [
+        "A1"
+      ],
+      "blockers_count": 1,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": true,
+      "reserved_for": [],
+      "tags": [
+        "folding",
+        "door-side",
+        "middle"
+      ]
+    },
+    {
+      "id": "B2",
+      "row": 3,
+      "column": 2,
+      "depth_rank": 3,
+      "exit_door": "side",
+      "blocked_by": [
+        "B1"
+      ],
+      "blockers_count": 2,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "middle"
+      ]
+    },
+    {
+      "id": "B3",
+      "row": 3,
+      "column": 1,
+      "depth_rank": 4,
+      "exit_door": "side",
+      "blocked_by": [
+        "B2"
+      ],
+      "blockers_count": 3,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "middle",
+        "window"
+      ]
+    },
+    {
+      "id": "C1",
+      "row": 4,
+      "column": 3,
+      "depth_rank": 3,
+      "exit_door": "side",
+      "blocked_by": [
+        "B1"
+      ],
+      "blockers_count": 2,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": true,
+      "reserved_for": [],
+      "tags": [
+        "folding",
+        "door-side",
+        "middle"
+      ]
+    },
+    {
+      "id": "C2",
+      "row": 4,
+      "column": 2,
+      "depth_rank": 4,
+      "exit_door": "side",
+      "blocked_by": [
+        "C1"
+      ],
+      "blockers_count": 3,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "middle"
+      ]
+    },
+    {
+      "id": "C3",
+      "row": 4,
+      "column": 1,
+      "depth_rank": 5,
+      "exit_door": "side",
+      "blocked_by": [
+        "C2"
+      ],
+      "blockers_count": 4,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "middle",
+        "window"
+      ]
+    },
+    {
+      "id": "Z1",
+      "row": 5,
+      "column": 4,
+      "depth_rank": 4,
+      "exit_door": "side",
+      "blocked_by": [
+        "C1"
+      ],
+      "blockers_count": 3,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "rear",
+        "luggage"
+      ]
+    },
+    {
+      "id": "Z2",
+      "row": 5,
+      "column": 3,
+      "depth_rank": 5,
+      "exit_door": "side",
+      "blocked_by": [
+        "Z1"
+      ],
+      "blockers_count": 4,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "rear",
+        "luggage"
+      ]
+    },
+    {
+      "id": "Z3",
+      "row": 5,
+      "column": 2,
+      "depth_rank": 6,
+      "exit_door": "side",
+      "blocked_by": [
+        "Z2"
+      ],
+      "blockers_count": 5,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "rear",
+        "luggage"
+      ]
+    },
+    {
+      "id": "Z4",
+      "row": 5,
+      "column": 1,
+      "depth_rank": 7,
+      "exit_door": "side",
+      "blocked_by": [
+        "Z3"
+      ],
+      "blockers_count": 6,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "rear",
+        "luggage",
+        "window"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+# Smart Seat Allocation: configuration.
+#
+# Every parameter the engine uses lives here; nothing is hard-coded.
+# Weights are strings ("0.2") so they stay exact. A float in this file is an error.
+#
+# Labels used below:
+#   [GIVEN]        the stated requirement
+#   [ASSUMPTION]   a working choice, to be confirmed
+#   [PLACEHOLDER]  a value to replace with a measured one
+#   [VERIFY]       verify against the actual fleet before launch
+
+config_version = "2026-11-08.1"
+
+# One blocking pair costs `blocking`; everything else is measured against it.
+[weights]
+blocking = "1.0"             # [GIVEN]
+boarding_blocking = "0.2"    # [GIVEN]
+preference = "0.1"           # [GIVEN]
+# [ASSUMPTION] Below `blocking`, so a group is split only when that saves a blocking pair.
+group_split = "0.5"
+# [ASSUMPTION] Small: same-stop passengers sit together only when it costs nothing else.
+same_stop_apart = "0.02"
+# [ASSUMPTION] A bulky bag in a seat with no luggage space.
+luggage = "0.1"
+# [ASSUMPTION] Per seat position away from "farthest at the back". On a branching layout
+# many seatings have no blocking, and this picks the one in the order the brief asks for.
+# Applies only before anyone holds a seat: nobody is moved just to tidy the order.
+depth_order = "0.005"
+# [ASSUMPTION] Moving someone already told a provisional seat. Above `same_stop_apart`,
+# so nobody is moved merely to sit next to a stranger getting off at the same stop.
+seat_change = "0.03"
+# [ASSUMPTION] A child away from their adult. High enough to act as a hard rule.
+child_apart = "100"
+
+[assignment]
+mode = "batch"                                     # "batch" or "online" [GIVEN]
+allow_passenger_override = true                    # [GIVEN]
+reassignment_lock_minutes_before_departure = 10    # [PLACEHOLDER]
+tie_break = ["group", "booking_time"]              # [GIVEN] group first, then booking time
+# [ASSUMPTION] Drop-offs this close together count as one stop.
+same_stop_tolerance_km = "0.05"
+# "called": the conductor calls boarders, rearmost seats first.
+# "arrival": passengers board in the order they arrive (booking time stands in for it).
+boarding_discipline = "called"                     # [ASSUMPTION]
+# [ASSUMPTION] A passenger travelling alone gets a seat near the driver, not the rearmost one.
+single_passenger_near_driver = true
+
+[priority]
+# [ASSUMPTION] "child" is not here: a child sits with their adult instead (see [groups]).
+categories = ["elderly", "pregnant", "disabled", "other_priority"]
+# [ASSUMPTION] Used only when a layout marks no seat `reserved_for: priority`:
+# this many of the frontmost seats that do not fold.
+default_reserved_count = 2
+
+[groups]
+togetherness = "soft"            # [GIVEN] split only if blocking would otherwise increase
+child_requires_adult = true      # [ASSUMPTION]
+
+[search]
+exact_max_seats = 20             # [ASSUMPTION] above this, the exact search is not tried
+exact_max_states = 400000        # [ASSUMPTION] work budget per exact search, one pickup
+# [ASSUMPTION] Work budget for the far weaker search on trips with several pickups. On a full
+# vehicle it rarely finishes at any affordable size: in a 60-trip test, 25 times this budget
+# proved no more trips and only made the slowest solve slower. So it is kept small.
+interval_max_nodes = 2000
+max_constrained_mappings = 720   # [ASSUMPTION] seatings of priority passengers tried
+local_search_max_sweeps = 30     # [ASSUMPTION]
+
+[online]
+reoptimise_on_booking = true     # [GIVEN]
+zones = 3                        # [ASSUMPTION] near, middle and far
+
+[route]
+max_off_route_km = "0.3"         # [ASSUMPTION] farther than this from the route is an error
+# [VERIFY] Rough box around Ghana. A coordinate outside it is treated as a GPS error.
+service_area = { min_lat = "4.5", max_lat = "11.5", min_lon = "-3.5", max_lon = "1.5" }

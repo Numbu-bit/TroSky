@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "model": "single-file-5",
+  "verification": "a test model, not a real vehicle; verify against the actual fleet before launch",
+  "doors": [
+    {
+      "id": "exit"
+    }
+  ],
+  "seats": [
+    {
+      "id": "1",
+      "row": 1,
+      "column": 1,
+      "depth_rank": 1,
+      "exit_door": "exit",
+      "blocked_by": [],
+      "blockers_count": 0,
+      "near_driver": false,
+      "accessible": true,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [
+        "priority"
+      ],
+      "tags": []
+    },
+    {
+      "id": "2",
+      "row": 2,
+      "column": 1,
+      "depth_rank": 2,
+      "exit_door": "exit",
+      "blocked_by": [
+        "1"
+      ],
+      "blockers_count": 1,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": []
+    },
+    {
+      "id": "3",
+      "row": 3,
+      "column": 1,
+      "depth_rank": 3,
+      "exit_door": "exit",
+      "blocked_by": [
+        "2"
+      ],
+      "blockers_count": 2,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": []
+    },
+    {
+      "id": "4",
+      "row": 4,
+      "column": 1,
+      "depth_rank": 4,
+      "exit_door": "exit",
+      "blocked_by": [
+        "3"
+      ],
+      "blockers_count": 3,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": []
+    },
+    {
+      "id": "5",
+      "row": 5,
+      "column": 1,
+      "depth_rank": 5,
+      "exit_door": "exit",
+      "blocked_by": [
+        "4"
+      ],
+      "blockers_count": 4,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": []
+    }
+  ]
+}
