@@ -1,0 +1,75 @@
+name: Seat allocation
+
+# The Smart Seat Allocation reference engine in TroSky/seat-allocation.
+on:
+  push:
+    branches: [main]
+    paths: ["TroSky/seat-allocation/**", ".github/workflows/seat-allocation.yml"]
+  pull_request:
+    branches: [main, develop]
+    paths: ["TroSky/seat-allocation/**", ".github/workflows/seat-allocation.yml"]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: TroSky/seat-allocation
+
+jobs:
+  tests:
+    name: Seat allocation tests (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install test tools
+        run: pip install -r requirements-dev.txt
+
+      - name: Lint and format
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Unit, property-based and stateful tests
+        run: python -m unittest discover -s tests -t .
+
+      - name: The worked examples and a small simulation still run
+        run: |
+          python examples.py > /dev/null
+          python -m seat_allocation simulate --trips 50 > /dev/null
+
+  schema:
+    name: Seat allocation schema (PostgreSQL)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres # a throwaway database for this job only
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Load the schema and check what it enforces
+        env:
+          PGHOST: localhost
+          PGUSER: postgres
+          PGPASSWORD: postgres
+        run: |
+          psql -v ON_ERROR_STOP=1 -f tests/schema_stubs.sql
+          psql -v ON_ERROR_STOP=1 -f schema.sql
+          psql -v ON_ERROR_STOP=1 -f tests/schema_checks.sql 2>&1 | tee checks.log
+          grep -q "all schema checks passed" checks.log
