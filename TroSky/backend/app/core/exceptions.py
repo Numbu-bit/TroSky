@@ -209,6 +209,12 @@ class SeatNotAvailableError(AppError):
     message = "The selected seat is no longer available."
 
 
+class SeatNotInZoneError(AppError):
+    code = "SEAT_NOT_IN_ZONE"
+    status_code = status.HTTP_409_CONFLICT
+    message = "This seat is for a different length of ride. Choose one of the seats offered."
+
+
 class PaymentError(AppError):
     code = "PAYMENT_ERROR"
     status_code = status.HTTP_402_PAYMENT_REQUIRED

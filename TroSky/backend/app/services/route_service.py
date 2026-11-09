@@ -22,15 +22,21 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
-from app.core.exceptions import ConflictError, NoPickupNearbyError, NotFoundError
+from app.core.exceptions import (
+    ConflictError,
+    NoPickupNearbyError,
+    NotFoundError,
+    StopNotOnRouteError,
+)
 from app.models.routes import DayOfWeek, Route, RouteSchedule, Stop
 from app.models.trips import Trip, TripStatus
-from app.models.vehicles import Vehicle, VehicleSeat
+from app.models.vehicles import SeatZone, Vehicle, VehicleSeat
 from app.repositories.booking_repository import BookingRepository
 from app.repositories.route_geometry import RouteGeometryRepository, nearest_pickup
 from app.repositories.route_repository import RouteRepository, StopRepository
 from app.repositories.trip_repository import TripRepository
 from app.repositories.vehicle_repository import VehicleRepository
+from app.services.seat_zones import passenger_zone
 from app.services.trip_service import TripService
 from app.utilities.geo import latlng_to_wkt, stop_offsets_km, wkb_to_latlng
 
@@ -500,3 +506,34 @@ class RouteService:
         seats = await self._vehicles.list_seats(layout.id)
         taken_seat_ids = await self._bookings.list_active_seat_ids_for_trip(trip_id)
         return vehicle, seats, taken_seat_ids
+
+    async def passenger_seat_zone(
+        self,
+        trip_id: uuid.UUID,
+        *,
+        origin_stop_id: uuid.UUID | None,
+        destination_stop_id: uuid.UUID | None,
+    ) -> SeatZone | None:
+        """Where this ride chooses a seat from, or None if neither stop is
+        given. A stop left out means that end of the route, as in a booking."""
+        if origin_stop_id is None and destination_stop_id is None:
+            return None
+        trip = await self._trips.get_by_id(trip_id)
+        if trip is None:
+            raise NotFoundError("Trip not found.")
+        geometries = await RouteGeometryRepository(self._session).for_routes([trip.route_id])
+        geometry = geometries[trip.route_id]
+        origin = origin_stop_id or geometry.origin_stop_id
+        destination = destination_stop_id or geometry.destination_stop_id
+        order = geometry.order
+        for stop_id, role in ((origin, "origin"), (destination, "destination")):
+            if stop_id not in order:
+                raise StopNotOnRouteError(details={"stop_id": str(stop_id), "role": role})
+        if order[origin] >= order[destination]:
+            raise StopNotOnRouteError(
+                "The pickup must come before the destination on this route.",
+                details={"origin_stop_id": str(origin), "destination_stop_id": str(destination)},
+            )
+        return passenger_zone(
+            geometry, origin, destination, near_share=self._settings.SEAT_ZONE_NEAR_SHARE
+        )
