@@ -211,10 +211,10 @@ class TestBlocking:
         assert outcome == InsuranceOutcome.BLOCKED
         assert driver.status == ApprovalStatus.SUSPENDED
         history = await db_session.scalar(
-            select(DriverStatusHistory.reason)
-            .where(DriverStatusHistory.driver_id == driver.id)
-            .order_by(DriverStatusHistory.changed_at.desc())
-            .limit(1)
+            select(DriverStatusHistory.reason).where(
+                DriverStatusHistory.driver_id == driver.id,
+                DriverStatusHistory.to_status == ApprovalStatus.SUSPENDED,
+            )
         )
         assert history is not None
         assert history.startswith(BLOCK_REASON)
