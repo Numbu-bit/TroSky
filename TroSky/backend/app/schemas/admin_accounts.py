@@ -158,6 +158,33 @@ class InfoRequestResponse(ApiModel):
     requested_at: datetime
 
 
+class DocumentReviewBody(RequestModel):
+    decision: Literal["approved", "rejected"]
+    expiry_date: date | None = Field(
+        default=None,
+        description=(
+            "The date printed on the document. Replaces any the uploader gave, and is "
+            "needed to approve insurance. It may be in the past."
+        ),
+    )
+    rejection_reason: str | None = Field(
+        default=None, min_length=5, max_length=500, description="Needed to reject; shown to them."
+    )
+
+
+class DocumentReviewResponse(ApiModel):
+    document_id: uuid.UUID
+    owner_type: Literal["driver", "vehicle"]
+    owner_id: uuid.UUID
+    document_type: DocumentType
+    status: DocumentStatus
+    expiry_date: date | None
+    rejection_reason: str | None
+    drivers_unblocked: list[uuid.UUID] = Field(
+        ..., description="Drivers this confirmation unblocked."
+    )
+
+
 class DocumentLinkResponse(ApiModel):
     document_id: uuid.UUID
     owner_type: Literal["driver", "vehicle"]

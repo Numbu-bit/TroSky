@@ -30,6 +30,8 @@ from app.schemas.admin_accounts import (
     AdminUserDetailResponse,
     AdminUserResponse,
     DocumentLinkResponse,
+    DocumentReviewBody,
+    DocumentReviewResponse,
     FavouriteRoute,
     InfoRequestBody,
     InfoRequestResponse,
@@ -355,6 +357,42 @@ async def request_vehicle_documents(
         vehicle_id, document_types=body.document_types, note=body.note, by=principal.user_id
     )
     return _info(request)
+
+
+@router.post(
+    "/documents/{document_id}/review",
+    response_model=DocumentReviewResponse,
+    dependencies=[
+        Depends(require_permissions(Permission.DRIVERS_APPROVE, Permission.VEHICLES_APPROVE))
+    ],
+)
+async def review_document(
+    document_id: uuid.UUID,
+    body: DocumentReviewBody,
+    db: DbSession,
+    principal: CurrentPrincipal,
+) -> DocumentReviewResponse:
+    """Approve a driver's or vehicle's document, confirming the date it
+    expires, or reject it with a reason. Confirming a later insurance date
+    unblocks any driver blocked over their insurance. A driver's document needs
+    ``drivers:approve``, a vehicle's ``vehicles:approve``."""
+    reviewed = await ApprovalRequestsService(db).review_document(
+        document_id,
+        principal=principal,
+        approve=body.decision == "approved",
+        expiry_date=body.expiry_date,
+        rejection_reason=body.rejection_reason,
+    )
+    return DocumentReviewResponse(
+        document_id=reviewed.document_id,
+        owner_type=reviewed.owner_type,
+        owner_id=reviewed.owner_id,
+        document_type=reviewed.document_type,
+        status=reviewed.status,
+        expiry_date=reviewed.expiry_date,
+        rejection_reason=reviewed.rejection_reason,
+        drivers_unblocked=reviewed.drivers_unblocked,
+    )
 
 
 @router.get(

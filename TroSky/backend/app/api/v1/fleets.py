@@ -9,6 +9,7 @@ guarantee.
 from __future__ import annotations
 
 import uuid
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
@@ -218,6 +219,9 @@ async def upload_vehicle_document(
     fleets: FleetServiceDep,
     document_type: DocumentType = Form(...),
     file: UploadFile = File(...),
+    expiry_date: date | None = Form(
+        default=None, description="When it expires, if it does. An admin confirms this date."
+    ),
 ) -> VehicleDocumentResponse:
     data = await file.read()
     document = await fleets.upload_vehicle_document(
@@ -227,6 +231,7 @@ async def upload_vehicle_document(
         filename=file.filename or "upload",
         content_type=file.content_type or "application/octet-stream",
         data=data,
+        expiry_date=expiry_date,
     )
     return VehicleDocumentResponse.model_validate(document)
 

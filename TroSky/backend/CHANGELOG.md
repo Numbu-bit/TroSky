@@ -16,6 +16,20 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
   is on, which stays off until the app offers these seats. In a simulation of 1,500 synthetic trips
   per scenario, this left about half the blocking of a free choice of seats.
 
+- **Drivers must renew their insurance within 30 days of it expiring, or they are blocked.** Once
+  it has expired, the driver and the fleet owners whose vehicles they drive are warned (days 1, 7,
+  14, 21, 25, 28, 29 and 30, `INSURANCE_WARNING_DAYS`). After `INSURANCE_GRACE_DAYS` the driver is
+  blocked: `drivers.status` becomes `suspended`, they can't accept or start trips (`DRIVER_BLOCKED`),
+  and they come off trips they haven't begun, for the operations team to reassign. A trip already
+  boarding or under way carries on. A blocked driver can still sign in, to upload the renewal.
+  Confirming a later date unblocks them at once. It goes by the later of the driver's own insurance
+  and that of the vehicles they're assigned to; a driver with no confirmed date is left alone.
+- **Documents can now hold real expiry dates and be approved.** Nothing ever wrote a document's
+  `expiry_date` or set it to `approved`, so the dashboard's insurance dates were always empty. `POST
+  /admin/documents/{id}/review` approves a document with its date, or rejects it with a reason. The
+  two upload endpoints take an optional `expiry_date`, and `GET /drivers/me/insurance` tells a
+  driver where they stand.
+
 ### Fixed
 
 - **Celery worker was crashing at every startup** (`kombu.exceptions.VersionMismatch: Redis transport requires redis-py versions 6.1.0 or later. You have 5.3.1`), which took the API with it through `render-start.sh`'s supervisor and put staging into a restart loop of about 80 s cycles (~22 s healthy, ~60 s 503). `celery[redis]` left `kombu` unpinned, so a new build pulled kombu 5.6+ next to the `redis<6.0.0` pin and the two didn't talk at runtime. `kombu>=5.4.0,<5.6.0` is now a direct dependency to hold the compatible pair together until redis-py moves to 6.x.

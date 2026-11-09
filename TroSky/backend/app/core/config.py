@@ -251,6 +251,11 @@ class Settings(BaseSettings):
     # refused seats the app shows them as free.
     SEAT_ZONES_ENFORCED: bool = False
     SEAT_ZONE_NEAR_SHARE: float = Field(default=0.5, gt=0, lt=1)
+    # Once a driver's insurance has expired they have this many days to renew
+    # it before they are blocked from trips (app/services/insurance_service.py).
+    # They are warned on these days after it expired, as a comma-separated list.
+    INSURANCE_GRACE_DAYS: int = Field(default=30, ge=0, le=365)
+    INSURANCE_WARNING_DAYS: str = "1,7,14,21,25,28,29,30"
     # A new booking waits for the trip's driver (or an admin) to accept it
     # before the passenger pays. Unanswered after the timeout, it is moved to
     # another trip going the same way, up to BOOKING_MAX_MOVES times, among
@@ -373,6 +378,10 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.APP_ENV == AppEnv.PRODUCTION
+
+    @property
+    def insurance_warning_days(self) -> list[int]:
+        return [int(day) for day in self.INSURANCE_WARNING_DAYS.split(",") if day.strip()]
 
     @property
     def cors_origins(self) -> list[str]:
