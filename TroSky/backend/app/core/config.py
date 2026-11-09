@@ -243,6 +243,14 @@ class Settings(BaseSettings):
 
     # --- Reservations / OTP / rate limits ---------------------------------
     SEAT_RESERVATION_HOLD_SECONDS: int = Field(default=600, gt=0)
+    # A short ride chooses from the front seats and a long one from the back
+    # (app/services/seat_zones.py). A ride covering less than this share of
+    # the route is short. GET /trips/{id}/seats always says which seats to
+    # offer; only with SEAT_ZONES_ENFORCED does a booking outside them fail.
+    # Leave it off until the app offers those seats, or passengers will be
+    # refused seats the app shows them as free.
+    SEAT_ZONES_ENFORCED: bool = False
+    SEAT_ZONE_NEAR_SHARE: float = Field(default=0.5, gt=0, lt=1)
     # A new booking waits for the trip's driver (or an admin) to accept it
     # before the passenger pays. Unanswered after the timeout, it is moved to
     # another trip going the same way, up to BOOKING_MAX_MOVES times, among
