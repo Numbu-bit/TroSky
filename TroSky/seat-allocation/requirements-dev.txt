@@ -1,0 +1,4 @@
+# The engine itself needs only the standard library. These run its tests and lint.
+hypothesis==6.170.15
+jsonschema==4.26.0
+ruff==0.7.4

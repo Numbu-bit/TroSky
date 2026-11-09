@@ -39,7 +39,7 @@ from app.repositories.trip_view_repository import (
 from app.repositories.user_repository import UserRepository
 from app.repositories.vehicle_repository import VehicleRepository
 from app.schemas.driver import DriverRegisterRequest, DriverUpdateRequest
-from app.services.document_service import store_uploaded_document
+from app.services.document_service import check_expiry_date, store_uploaded_document
 from app.services.role_service import grant_role
 
 logger = get_logger(__name__)
@@ -143,7 +143,9 @@ class DriverService:
         filename: str,
         content_type: str,
         data: bytes,
+        expiry_date: date | None = None,
     ) -> DriverDocument:
+        check_expiry_date(expiry_date)
         driver = await self.get_own_profile(user_id)
         uploaded = await store_uploaded_document(
             storage=self._storage,
@@ -161,6 +163,7 @@ class DriverService:
             original_filename=filename,
             mime_type=content_type,
             file_size_bytes=uploaded.size_bytes,
+            expiry_date=expiry_date,
         )
         logger.info(
             "driver_document_uploaded", driver_id=str(driver.id), document_id=str(document.id)

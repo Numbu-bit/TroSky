@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -48,7 +48,7 @@ from app.schemas.fleet import (
     VehicleCreateRequest,
     VehicleUpdateRequest,
 )
-from app.services.document_service import store_uploaded_document
+from app.services.document_service import check_expiry_date, store_uploaded_document
 from app.services.role_service import grant_role
 from app.utilities.phone import (
     InvalidPhoneNumberError,
@@ -224,7 +224,9 @@ class FleetService:
         filename: str,
         content_type: str,
         data: bytes,
+        expiry_date: date | None = None,
     ) -> VehicleDocument:
+        check_expiry_date(expiry_date)
         vehicle = await self.get_own_vehicle(user_id, vehicle_id)
         uploaded = await store_uploaded_document(
             storage=self._storage,
@@ -242,6 +244,7 @@ class FleetService:
             original_filename=filename,
             mime_type=content_type,
             file_size_bytes=uploaded.size_bytes,
+            expiry_date=expiry_date,
         )
         logger.info(
             "vehicle_document_uploaded", vehicle_id=str(vehicle.id), document_id=str(document.id)

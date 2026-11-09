@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 
 from app.api.dependencies import (
     CurrentPrincipal,
+    DbSession,
     DriverServiceDep,
     Pagination,
     RatingServiceDep,
@@ -38,9 +39,11 @@ from app.schemas.driver import (
     DriverResponse,
     DriverUpdateRequest,
     EarningsSummaryResponse,
+    InsuranceStandingResponse,
 )
 from app.schemas.feedback import DriverRatingSummaryResponse
 from app.schemas.trip import TripSummaryResponse
+from app.services.insurance_service import InsuranceService
 from app.services.wallet_service import period_start
 from app.utilities.query_params import parse_enum_list
 
@@ -90,6 +93,9 @@ async def upload_my_document(
     drivers: DriverServiceDep,
     document_type: DocumentType = Form(...),
     file: UploadFile = File(...),
+    expiry_date: date | None = Form(
+        default=None, description="When it expires, if it does. An admin confirms this date."
+    ),
 ) -> DriverDocumentResponse:
     data = await file.read()
     document = await drivers.upload_document(
@@ -98,8 +104,22 @@ async def upload_my_document(
         filename=file.filename or "upload",
         content_type=file.content_type or "application/octet-stream",
         data=data,
+        expiry_date=expiry_date,
     )
     return DriverDocumentResponse.model_validate(document)
+
+
+@router.get("/me/insurance", response_model=InsuranceStandingResponse)
+async def get_my_insurance(
+    principal: CurrentPrincipal, drivers: DriverServiceDep, db: DbSession
+) -> InsuranceStandingResponse:
+    """Whether this driver's insurance is in date, by the dates an admin has
+    confirmed, and by when to renew it to avoid being blocked."""
+    driver = await drivers.get_own_profile(principal.user_id)
+    standing = await InsuranceService(db).standing(driver)
+    return InsuranceStandingResponse(
+        status=standing.status, expiry_date=standing.expiry_date, renew_by=standing.renew_by
+    )
 
 
 @router.get("/me/documents", response_model=list[DriverDocumentResponse])

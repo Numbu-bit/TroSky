@@ -1,0 +1,11 @@
+{
+  "verification": "verify against the actual fleet before launch",
+  "description": "Row plans for a side-door minibus. Sizes count passenger seats; the driver's seat is extra.",
+  "variants": {
+    "14": { "cab_seats": 1, "rows_of_three": 3, "back_row": 4 },
+    "15": { "cab_seats": 2, "rows_of_three": 3, "back_row": 4 },
+    "16": { "cab_seats": 1, "rows_of_three": 4, "back_row": 3 },
+    "17": { "cab_seats": 2, "rows_of_three": 4, "back_row": 3 },
+    "18": { "cab_seats": 2, "rows_of_three": 4, "back_row": 4 }
+  }
+}

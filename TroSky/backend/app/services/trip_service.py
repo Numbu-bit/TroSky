@@ -23,6 +23,7 @@ from app.core.admin_events import announce
 from app.core.config import Settings, get_settings
 from app.core.exceptions import (
     ConflictError,
+    DriverBlockedError,
     ForbiddenError,
     InvalidStateTransitionError,
     NotFoundError,
@@ -246,6 +247,8 @@ class TripService:
         wanted = AssignmentResponse.ACCEPTED if accept else AssignmentResponse.DECLINED
         if assignment.response == wanted:
             return assignment  # a second tap
+        if accept:
+            await self._assert_driver_not_blocked(assignment.driver_id)
         if not accept and trip.status not in (TripStatus.SCHEDULED, TripStatus.BOARDING):
             raise InvalidStateTransitionError(
                 "A trip already on the road cannot be declined.", code="TRIP_ALREADY_STARTED"
@@ -286,6 +289,45 @@ class TripService:
                 )
         logger.info("trip_answered", trip_id=str(trip_id), accepted=accept, as_admin=as_admin)
         return assignment
+
+    async def _assert_driver_not_blocked(self, driver_id: uuid.UUID) -> None:
+        driver = await self._drivers.get_by_id(driver_id)
+        if driver is not None and driver.status == ApprovalStatus.SUSPENDED:
+            raise DriverBlockedError()
+
+    async def withdraw_driver_from_upcoming_trips(
+        self, driver_id: uuid.UUID, *, reason: str
+    ) -> list[uuid.UUID]:
+        """The system declines, for this driver, every trip they haven't
+        begun, leaving each for the operations team to reassign. A trip already
+        boarding or under way stays with them: its passengers are on board."""
+        assignments = await self._trips.driver_assignments_on_trips_in(
+            driver_id, (TripStatus.SCHEDULED,)
+        )
+        for assignment in assignments:
+            await self._trips.record_response(
+                assignment,
+                response=AssignmentResponse.DECLINED,
+                responded_by=None,
+                reason=reason,
+            )
+            await self._actions.record(
+                kind=DriverActionKind.TRIP_DECLINED,
+                trip_id=assignment.trip_id,
+                driver_id=driver_id,
+                acted_as=ActedAs.SYSTEM,
+                actor_id=None,
+                reason=reason,
+            )
+            announce(
+                self._session,
+                "trip.declined",
+                trip_id=assignment.trip_id,
+                driver_id=driver_id,
+                by="system",
+                reason=reason,
+            )
+        return [assignment.trip_id for assignment in assignments]
 
     async def record_ticket_scan(
         self,
@@ -510,6 +552,8 @@ class TripService:
         if trip.status == TripStatus.IN_PROGRESS:
             return trip  # idempotent: already started by this same driver
         self._assert_transition_allowed(trip.status, TripStatus.IN_PROGRESS)
+        if trip.status == TripStatus.SCHEDULED:  # boarding has already got passengers on
+            await self._assert_driver_not_blocked(driver_id)
         await self._start(trip, _Driving(driver_id, user_id, automatic=False), reason=None)
         return trip
 
