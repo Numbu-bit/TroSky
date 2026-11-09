@@ -25,8 +25,8 @@ server {
     #   style-src          inline styles: Radix positioning, map markers, toasts
     #   img-src https:     map sprites and document images from storage
     #   connect-src        this site, the API, and CARTO's free basemaps
-    #   worker-src blob:   the map draws its tiles in a worker
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' ${API_ORIGIN} https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com; worker-src 'self' blob:; child-src blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+    #   worker-src 'self'  the map draws its tiles in a worker from this site
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' ${API_ORIGIN} https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     add_header X-Frame-Options "DENY" always;
     add_header X-Content-Type-Options "nosniff" always;

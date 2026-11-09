@@ -3,9 +3,11 @@ import './AlertsPage'
 import '@/app/layout/SearchDialog'
 
 import { screen, waitFor, within } from '@testing-library/react'
+import { http } from 'msw'
 
 import { getDb } from '@/api/demo/db'
 import { ADMIN, renderApp, staffWith } from '@/test/render'
+import { server } from '@/test/server'
 
 const RANK = { Critical: 0, High: 1, Medium: 2, Low: 3 } as const
 
@@ -81,6 +83,35 @@ describe('Global search', () => {
     expect(
       await screen.findByRole('heading', { name: vehicle.registration_number }),
     ).toBeInTheDocument()
+  })
+
+  it('keeps the results, and a click on one, while a longer search is loading', async () => {
+    const vehicle = getDb().vehicles[0]!
+    const { user, router } = renderApp('/overview', { as: ADMIN })
+    await user.click(await screen.findByRole('button', { name: 'Search' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Search' })
+    const input = within(dialog).getByRole('combobox', { name: 'Search' })
+    await user.type(input, vehicle.registration_number)
+    await within(dialog).findByRole('group', { name: 'Vehicles' })
+
+    // The next search never answers, so it can't replace the results in time.
+    const started = vi.fn()
+    server.use(
+      http.get('*/api/v1/admin/search', () => {
+        started()
+        return new Promise<never>(() => {})
+      }),
+    )
+    await user.type(input, '{Backspace}')
+    await waitFor(() => expect(started).toHaveBeenCalled())
+
+    expect(within(dialog).queryByText('Searching')).not.toBeInTheDocument()
+    await user.click(
+      within(dialog).getByRole('option', { name: new RegExp(vehicle.registration_number) }),
+    )
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe(`/fleet/vehicles/${vehicle.id}`),
+    )
   })
 
   it('searches only what the admin may see', async () => {

@@ -1,5 +1,6 @@
 // Checks a production build in dist/ before it ships:
 //   - no demo data: demo accounts, seed builders or the demo's service worker
+//   - the map's worker is there
 //   - the JavaScript loaded up front (the entry and what it preloads) stays
 //     within the spec's 250 KB gzipped budget; the rest loads per screen.
 // Usage: node scripts/check-build.mjs [dist]
@@ -36,6 +37,11 @@ for (const file of files(dist).filter((path) => /\.(js|html|css|json)$/.test(pat
   for (const marker of DEMO_MARKERS) {
     if (text.includes(marker)) problems.push(`${file} contains demo data ("${marker}").`)
   }
+}
+
+// ---- the map's worker: without it, maps show markers on a blank background
+if (!readdirSync(join(dist, 'assets')).some((name) => /^maplibre-gl-worker.*\.js$/.test(name))) {
+  problems.push("MapLibre's worker is not in the build, so maps would be blank (see MapView.tsx).")
 }
 
 // ---- initial JavaScript

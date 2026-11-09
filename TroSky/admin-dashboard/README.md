@@ -291,7 +291,7 @@ keep the default `/api/v1` and leave `API_ORIGIN` empty.
     - inline styles (Radix positioning, map markers, toasts)
     - images also from `data:`/`https:`
     - connections to the site, `API_ORIGIN` and CARTO's basemaps
-    - map workers from `blob:`
+    - map workers from the site only
     - no framing
   - `Strict-Transport-Security`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
     `Referrer-Policy`, `Permissions-Policy` and `Cross-Origin-Opener-Policy`
