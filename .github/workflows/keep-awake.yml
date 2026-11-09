@@ -1,9 +1,13 @@
 name: Keep staging awake
 
 # Supabase pauses a free project after 7 days without activity, and Render's
-# free web service sleeps after 15 minutes. This wakes the API every 10
-# minutes between 06:00 and 23:00 Africa/Accra (= UTC; Ghana is UTC+0) and
-# asks /health/ready, which runs "SELECT 1" on the database through it, so
+# free web service sleeps after 15 minutes. This workflow fires every 30
+# minutes on the hour (:00 and :30) between 06:00 and 22:59 Africa/Accra
+# (= UTC; Ghana is UTC+0); its sibling `keep-awake-b.yml` fires 15 minutes
+# offset (:15 and :45), so the combined ping lands every 15 minutes while
+# GitHub honours both schedules (the free tier skips many slots of a single
+# `*/10` cron, which saw 3 runs in 23 h on 8 Nov). Each ping asks
+# /health/ready, which runs "SELECT 1" on the database through the API, so
 # the database sees a real query. No secrets needed.
 # GitHub turns scheduled workflows off after 60 days without commits; then
 # re-enable it under Actions, or run it by hand (workflow_dispatch).
@@ -11,7 +15,7 @@ name: Keep staging awake
 
 on:
   schedule:
-    - cron: "*/10 6-22 * * *" # every 10 min 06:00-22:59 UTC (Africa/Accra)
+    - cron: "0,30 6-22 * * *" # every 30 min at :00 and :30, 06:00-22:30 UTC
   workflow_dispatch:
 
 permissions: {}
