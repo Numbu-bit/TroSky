@@ -53,3 +53,11 @@ Notable changes to the TroSky admin dashboard, newest last. The dashboard as fir
 - **A click in the global search could be lost:** each new search swapped the results for a spinner,
   so a click arriving at that moment did nothing. The results now stay until the next ones arrive.
   This is what made the "finds a vehicle by its plate" test fail about one run in three.
+
+## 2026-11-09 - Confirming document dates
+
+- **Admins can accept a document with the date printed on it, or send it back with a reason,** on
+  the approvals screen and on a driver's or vehicle's page. Nothing recorded these dates before, so
+  the insurance dates on the fleet pages were always empty. Insurance can't be accepted without a
+  date. Drivers are warned and blocked by the dates accepted here, and accepting a later one
+  unblocks a driver at once (backend PR #69).
