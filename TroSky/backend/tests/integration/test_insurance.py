@@ -75,6 +75,14 @@ async def _warnings(session: AsyncSession, user_id) -> list[int]:
     ]
 
 
+async def _reminders(session: AsyncSession, user_id) -> list[int]:
+    return [
+        note.data["day"]
+        for note in await _notifications(session, user_id)
+        if note.data.get("action") == "insurance_reminder"
+    ]
+
+
 async def _trip(session: AsyncSession, make_user) -> TripScenario:
     return await build_trip_scenario(
         session, make_user, departure=datetime.now(UTC) + timedelta(hours=2)
@@ -103,10 +111,13 @@ class TestWhoIsChecked:
     async def test_insurance_is_valid_on_the_day_it_expires(
         self, db_session: AsyncSession, make_user
     ) -> None:
-        _, driver = await approved_driver(db_session, make_user)
+        """A last reminder that day, but no warning yet."""
+        user, driver = await approved_driver(db_session, make_user)
         await _give_insurance(db_session, driver)
         outcome = await InsuranceService(db_session).check_driver(driver.id, today=_day(0))
-        assert outcome == InsuranceOutcome.NOTHING
+        assert outcome == InsuranceOutcome.REMINDED
+        assert await _warnings(db_session, user.id) == []
+        assert driver.status == ApprovalStatus.APPROVED
 
     async def test_the_latest_date_counts(self, db_session: AsyncSession, make_user) -> None:
         _, driver = await approved_driver(db_session, make_user)
@@ -138,6 +149,98 @@ class TestWhoIsChecked:
         outcome = await InsuranceService(db_session).check_driver(scenario.driver_id, today=_day(1))
         assert outcome == InsuranceOutcome.WARNED
         assert await _warnings(db_session, scenario.owner_user_id) == [1]
+
+
+class TestReminders:
+    async def test_none_comes_more_than_30_days_ahead(
+        self, db_session: AsyncSession, make_user
+    ) -> None:
+        user, driver = await approved_driver(db_session, make_user)
+        await _give_insurance(db_session, driver)
+        outcome = await InsuranceService(db_session).check_driver(driver.id, today=_day(-31))
+        assert outcome == InsuranceOutcome.NOTHING
+        assert await _reminders(db_session, user.id) == []
+
+    async def test_reminders_come_on_the_days_set(
+        self, db_session: AsyncSession, make_user
+    ) -> None:
+        user, driver = await approved_driver(db_session, make_user)
+        await _give_insurance(db_session, driver)
+        service = InsuranceService(db_session)
+        for days_left in range(31, -1, -1):
+            await service.check_driver(driver.id, today=_day(-days_left))
+        assert await _reminders(db_session, user.id) == [30, 14, 7, 3, 1]
+
+    async def test_a_reminder_says_when(self, db_session: AsyncSession, make_user) -> None:
+        user, driver = await approved_driver(db_session, make_user)
+        await _give_insurance(db_session, driver)
+        outcome = await InsuranceService(db_session).check_driver(driver.id, today=_day(-3))
+        assert outcome == InsuranceOutcome.REMINDED
+        note = (await _notifications(db_session, user.id))[-1]
+        assert note.title == "Your insurance expires soon"
+        assert "in 3 days, on 01 Oct 2026" in note.body
+
+    async def test_running_again_the_same_day_reminds_nobody_twice(
+        self, db_session: AsyncSession, make_user
+    ) -> None:
+        user, driver = await approved_driver(db_session, make_user)
+        await _give_insurance(db_session, driver)
+        service = InsuranceService(db_session)
+        await service.check_driver(driver.id, today=_day(-14))
+        assert await service.check_driver(driver.id, today=_day(-14)) == InsuranceOutcome.NOTHING
+        assert await _reminders(db_session, user.id) == [14]
+
+    async def test_a_worker_that_slept_sends_only_the_latest_reminder(
+        self, db_session: AsyncSession, make_user
+    ) -> None:
+        user, driver = await approved_driver(db_session, make_user)
+        await _give_insurance(db_session, driver)
+        await InsuranceService(db_session).check_driver(driver.id, today=_day(-5))
+        assert await _reminders(db_session, user.id) == [7]
+
+    async def test_reminders_and_warnings_are_counted_apart(
+        self, db_session: AsyncSession, make_user
+    ) -> None:
+        user, driver = await approved_driver(db_session, make_user)
+        await _give_insurance(db_session, driver)
+        service = InsuranceService(db_session)
+        await service.check_driver(driver.id, today=_day(-1))
+        await service.check_driver(driver.id, today=_day(1))
+        assert await _reminders(db_session, user.id) == [1]
+        assert await _warnings(db_session, user.id) == [1]
+
+    async def test_the_fleet_owner_is_reminded_too(
+        self, db_session: AsyncSession, make_user
+    ) -> None:
+        scenario = await _trip(db_session, make_user)
+        await make_fleet_service(db_session).assign_driver(
+            scenario.owner_user_id, scenario.vehicle_id, scenario.driver_id
+        )
+        db_session.add(
+            VehicleDocument(
+                vehicle_id=scenario.vehicle_id,
+                document_type=DocumentType.VEHICLE_INSURANCE,
+                storage_key="vehicles/insurance.pdf",
+                original_filename="insurance.pdf",
+                mime_type="application/pdf",
+                file_size_bytes=100,
+                status=DocumentStatus.APPROVED,
+                expiry_date=EXPIRED_ON,
+            )
+        )
+        await db_session.flush()
+        await InsuranceService(db_session).check_driver(scenario.driver_id, today=_day(-7))
+        assert await _reminders(db_session, scenario.owner_user_id) == [7]
+
+    async def test_a_suspended_driver_gets_none(self, db_session: AsyncSession, make_user) -> None:
+        user, driver = await approved_driver(db_session, make_user)
+        await _give_insurance(db_session, driver)
+        await DriverRepository(db_session).set_status(
+            driver, new_status=ApprovalStatus.SUSPENDED, changed_by=None, reason="Complaints"
+        )
+        outcome = await InsuranceService(db_session).check_driver(driver.id, today=_day(-3))
+        assert outcome == InsuranceOutcome.NOTHING
+        assert await _reminders(db_session, user.id) == []
 
 
 class TestWarnings:
