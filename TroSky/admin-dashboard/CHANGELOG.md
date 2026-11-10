@@ -61,3 +61,9 @@ Notable changes to the TroSky admin dashboard, newest last. The dashboard as fir
   the insurance dates on the fleet pages were always empty. Insurance can't be accepted without a
   date. Drivers are warned and blocked by the dates accepted here, and accepting a later one
   unblocks a driver at once (backend PR #69).
+
+## 2026-11-10 - Availability instead of Now
+
+- **The fleet lists say "Availability" where they said "Now",** in the vehicles and drivers columns,
+  their filters and the record pages, and a vehicle or driver not on a trip is **Available** rather
+  than **Free**. The filter's empty choice is now "Any availability".

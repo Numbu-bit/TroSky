@@ -21,7 +21,7 @@ describe('Fleet', () => {
     )
     expect(plates).toEqual([...plates].sort((a, b) => a.localeCompare(b)))
 
-    await user.click(screen.getByRole('combobox', { name: 'Now' }))
+    await user.click(screen.getByRole('combobox', { name: 'Availability' }))
     await user.click(await screen.findByRole('option', { name: 'On a trip' }))
     await waitFor(() => expect(router.state.location.search).toContain('live=on_trip'))
     await waitFor(() => {
