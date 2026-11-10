@@ -123,6 +123,18 @@ export function useDecide() {
   )
 }
 
+/** Accept a document with its date, or send it back with a reason. */
+export function useReviewDocument() {
+  return useApprovalMutation(({ id, ...body }: { id: string } & Schemas['DocumentReviewBody']) =>
+    unwrap(
+      api.POST('/api/v1/admin/documents/{document_id}/review', {
+        params: { path: { document_id: id } },
+        body,
+      }),
+    ),
+  )
+}
+
 /** Ask for documents again, with a note, instead of rejecting. */
 export function useRequestInfo() {
   return useApprovalMutation(

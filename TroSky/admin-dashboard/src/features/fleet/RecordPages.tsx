@@ -407,7 +407,7 @@ export function FleetPage() {
                   </Link>
                 ),
               },
-              { header: 'Now', cell: ({ row }) => live(row.original) },
+              { header: 'Availability', cell: ({ row }) => live(row.original) },
               {
                 header: 'Insurance',
                 cell: ({ row }) => <Expiry date={row.original.insurance_expiry} now={now} />,
@@ -444,7 +444,7 @@ export function FleetPage() {
                   </Link>
                 ),
               },
-              { header: 'Now', cell: ({ row }) => live(row.original) },
+              { header: 'Availability', cell: ({ row }) => live(row.original) },
               {
                 header: 'Licence',
                 cell: ({ row }) => <Expiry date={row.original.license_expiry} now={now} />,

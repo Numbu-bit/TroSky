@@ -14452,6 +14452,65 @@
      }
     }
    }
+  },
+  "/api/v1/admin/documents/{document_id}/review": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "summary": "Review Document",
+    "description": "Approve a driver's or vehicle's document, confirming the date it\nexpires, or reject it with a reason. Confirming a later insurance date\nunblocks any driver blocked over their insurance.",
+    "operationId": "review_document_api_v1_admin_documents__document_id__review_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "document_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Document Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DocumentReviewBody"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DocumentReviewResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
   }
  },
  "components": {
@@ -17494,8 +17553,8 @@
       "anyOf": [
        {
         "type": "number",
-        "maximum": 90.0,
-        "minimum": -90.0
+        "maximum": 90,
+        "minimum": -90
        },
        {
         "type": "null"
@@ -17508,8 +17567,8 @@
       "anyOf": [
        {
         "type": "number",
-        "maximum": 180.0,
-        "minimum": -180.0
+        "maximum": 180,
+        "minimum": -180
        },
        {
         "type": "null"
@@ -20219,7 +20278,7 @@
       "anyOf": [
        {
         "type": "integer",
-        "minimum": 0.0
+        "minimum": 0
        },
        {
         "type": "null"
@@ -20353,7 +20412,7 @@
       "anyOf": [
        {
         "type": "integer",
-        "minimum": 0.0
+        "minimum": 0
        },
        {
         "type": "null"
@@ -20586,8 +20645,8 @@
       "anyOf": [
        {
         "type": "number",
-        "maximum": 90.0,
-        "minimum": -90.0
+        "maximum": 90,
+        "minimum": -90
        },
        {
         "type": "string",
@@ -20603,8 +20662,8 @@
       "anyOf": [
        {
         "type": "number",
-        "maximum": 180.0,
-        "minimum": -180.0
+        "maximum": 180,
+        "minimum": -180
        },
        {
         "type": "string",
@@ -21023,8 +21082,8 @@
       "anyOf": [
        {
         "type": "integer",
-        "maximum": 100.0,
-        "minimum": 0.0
+        "maximum": 100,
+        "minimum": 0
        },
        {
         "type": "null"
@@ -21556,8 +21615,8 @@
      },
      "risk_score": {
       "type": "integer",
-      "maximum": 100.0,
-      "minimum": 0.0,
+      "maximum": 100,
+      "minimum": 0,
       "title": "Risk Score"
      },
      "entity_type": {
@@ -21860,8 +21919,8 @@
      },
      "risk_score": {
       "type": "integer",
-      "maximum": 100.0,
-      "minimum": 0.0,
+      "maximum": 100,
+      "minimum": 0,
       "title": "Risk Score"
      },
      "entity_type": {
@@ -22128,8 +22187,8 @@
       "anyOf": [
        {
         "type": "number",
-        "maximum": 1000000.0,
-        "minimum": 0.0
+        "maximum": 1000000,
+        "minimum": 0
        },
        {
         "type": "string",
@@ -22145,8 +22204,8 @@
       "anyOf": [
        {
         "type": "integer",
-        "maximum": 129600.0,
-        "minimum": 5.0
+        "maximum": 129600,
+        "minimum": 5
        },
        {
         "type": "null"
@@ -23083,21 +23142,21 @@
     "properties": {
      "latitude": {
       "type": "number",
-      "maximum": 90.0,
-      "minimum": -90.0,
+      "maximum": 90,
+      "minimum": -90,
       "title": "Latitude"
      },
      "longitude": {
       "type": "number",
-      "maximum": 180.0,
-      "minimum": -180.0,
+      "maximum": 180,
+      "minimum": -180,
       "title": "Longitude"
      },
      "speed_kmh": {
       "anyOf": [
        {
         "type": "number",
-        "minimum": 0.0
+        "minimum": 0
        },
        {
         "type": "string",
@@ -23113,8 +23172,8 @@
       "anyOf": [
        {
         "type": "number",
-        "maximum": 360.0,
-        "minimum": 0.0
+        "maximum": 360,
+        "minimum": 0
        },
        {
         "type": "string",
@@ -23130,7 +23189,7 @@
       "anyOf": [
        {
         "type": "number",
-        "minimum": 0.0
+        "minimum": 0
        },
        {
         "type": "string",
@@ -25465,8 +25524,8 @@
     "properties": {
      "score": {
       "type": "integer",
-      "maximum": 5.0,
-      "minimum": 1.0,
+      "maximum": 5,
+      "minimum": 1,
       "title": "Score",
       "description": "The overall rating."
      },
@@ -25486,8 +25545,8 @@
       "anyOf": [
        {
         "type": "integer",
-        "maximum": 5.0,
-        "minimum": 1.0
+        "maximum": 5,
+        "minimum": 1
        },
        {
         "type": "null"
@@ -25499,8 +25558,8 @@
       "anyOf": [
        {
         "type": "integer",
-        "maximum": 5.0,
-        "minimum": 1.0
+        "maximum": 5,
+        "minimum": 1
        },
        {
         "type": "null"
@@ -25512,8 +25571,8 @@
       "anyOf": [
        {
         "type": "integer",
-        "maximum": 5.0,
-        "minimum": 1.0
+        "maximum": 5,
+        "minimum": 1
        },
        {
         "type": "null"
@@ -25525,8 +25584,8 @@
       "anyOf": [
        {
         "type": "integer",
-        "maximum": 5.0,
-        "minimum": 1.0
+        "maximum": 5,
+        "minimum": 1
        },
        {
         "type": "null"
@@ -25935,8 +25994,8 @@
       "anyOf": [
        {
         "type": "number",
-        "maximum": 90.0,
-        "minimum": -90.0
+        "maximum": 90,
+        "minimum": -90
        },
        {
         "type": "null"
@@ -25952,8 +26011,8 @@
       "anyOf": [
        {
         "type": "number",
-        "maximum": 180.0,
-        "minimum": -180.0
+        "maximum": 180,
+        "minimum": -180
        },
        {
         "type": "null"
@@ -26071,8 +26130,8 @@
       "anyOf": [
        {
         "type": "number",
-        "maximum": 90.0,
-        "minimum": -90.0
+        "maximum": 90,
+        "minimum": -90
        },
        {
         "type": "null"
@@ -26084,8 +26143,8 @@
       "anyOf": [
        {
         "type": "number",
-        "maximum": 180.0,
-        "minimum": -180.0
+        "maximum": 180,
+        "minimum": -180
        },
        {
         "type": "null"
@@ -26216,7 +26275,7 @@
       "anyOf": [
        {
         "type": "number",
-        "exclusiveMinimum": 0.0
+        "exclusiveMinimum": 0
        },
        {
         "type": "string",
@@ -26569,7 +26628,7 @@
       "anyOf": [
        {
         "type": "number",
-        "minimum": 0.0
+        "minimum": 0
        },
        {
         "type": "string",
@@ -26585,7 +26644,7 @@
       "anyOf": [
        {
         "type": "integer",
-        "exclusiveMinimum": 0.0
+        "exclusiveMinimum": 0
        },
        {
         "type": "null"
@@ -26764,7 +26823,7 @@
       "anyOf": [
        {
         "type": "number",
-        "minimum": 0.0
+        "minimum": 0
        },
        {
         "type": "string",
@@ -26847,7 +26906,7 @@
       "anyOf": [
        {
         "type": "number",
-        "exclusiveMinimum": 0.0
+        "exclusiveMinimum": 0
        },
        {
         "type": "string",
@@ -26863,7 +26922,7 @@
       "anyOf": [
        {
         "type": "integer",
-        "exclusiveMinimum": 0.0
+        "exclusiveMinimum": 0
        },
        {
         "type": "null"
@@ -27137,12 +27196,12 @@
      },
      "row_number": {
       "type": "integer",
-      "exclusiveMinimum": 0.0,
+      "exclusiveMinimum": 0,
       "title": "Row Number"
      },
      "column_number": {
       "type": "integer",
-      "exclusiveMinimum": 0.0,
+      "exclusiveMinimum": 0,
       "title": "Column Number"
      },
      "seat_type": {
@@ -27175,12 +27234,12 @@
      },
      "rows": {
       "type": "integer",
-      "exclusiveMinimum": 0.0,
+      "exclusiveMinimum": 0,
       "title": "Rows"
      },
      "columns": {
       "type": "integer",
-      "exclusiveMinimum": 0.0,
+      "exclusiveMinimum": 0,
       "title": "Columns"
      },
      "seats": {
@@ -28202,14 +28261,14 @@
      },
      "latitude": {
       "type": "number",
-      "maximum": 90.0,
-      "minimum": -90.0,
+      "maximum": 90,
+      "minimum": -90,
       "title": "Latitude"
      },
      "longitude": {
       "type": "number",
-      "maximum": 180.0,
-      "minimum": -180.0,
+      "maximum": 180,
+      "minimum": -180,
       "title": "Longitude"
      },
      "address": {
@@ -28366,8 +28425,8 @@
       "anyOf": [
        {
         "type": "number",
-        "maximum": 90.0,
-        "minimum": -90.0
+        "maximum": 90,
+        "minimum": -90
        },
        {
         "type": "null"
@@ -28379,8 +28438,8 @@
       "anyOf": [
        {
         "type": "number",
-        "maximum": 180.0,
-        "minimum": -180.0
+        "maximum": 180,
+        "minimum": -180
        },
        {
         "type": "null"
@@ -28953,8 +29012,8 @@
       "anyOf": [
        {
         "type": "number",
-        "maximum": 90.0,
-        "minimum": -90.0
+        "maximum": 90,
+        "minimum": -90
        },
        {
         "type": "null"
@@ -28966,8 +29025,8 @@
       "anyOf": [
        {
         "type": "number",
-        "maximum": 180.0,
-        "minimum": -180.0
+        "maximum": 180,
+        "minimum": -180
        },
        {
         "type": "null"
@@ -29177,7 +29236,7 @@
       "anyOf": [
        {
         "type": "number",
-        "minimum": 0.0
+        "minimum": 0
        },
        {
         "type": "string",
@@ -30550,8 +30609,8 @@
       "anyOf": [
        {
         "type": "integer",
-        "maximum": 2100.0,
-        "minimum": 1970.0
+        "maximum": 2100,
+        "minimum": 1970
        },
        {
         "type": "null"
@@ -30561,8 +30620,8 @@
      },
      "capacity": {
       "type": "integer",
-      "maximum": 200.0,
-      "exclusiveMinimum": 0.0,
+      "maximum": 200,
+      "exclusiveMinimum": 0,
       "title": "Capacity"
      }
     },
@@ -30715,8 +30774,8 @@
       "anyOf": [
        {
         "type": "integer",
-        "maximum": 2100.0,
-        "minimum": 1970.0
+        "maximum": 2100,
+        "minimum": 1970
        },
        {
         "type": "null"
@@ -30728,8 +30787,8 @@
       "anyOf": [
        {
         "type": "integer",
-        "maximum": 200.0,
-        "exclusiveMinimum": 0.0
+        "maximum": 200,
+        "exclusiveMinimum": 0
        },
        {
         "type": "null"
@@ -30782,7 +30841,7 @@
       "anyOf": [
        {
         "type": "number",
-        "exclusiveMinimum": 0.0
+        "exclusiveMinimum": 0
        },
        {
         "type": "string",
@@ -30949,7 +31008,7 @@
       "anyOf": [
        {
         "type": "number",
-        "exclusiveMinimum": 0.0
+        "exclusiveMinimum": 0
        },
        {
         "type": "string",
@@ -31160,6 +31219,123 @@
      "failed"
     ],
     "title": "WithdrawalStatus"
+   },
+   "DocumentReviewBody": {
+    "properties": {
+     "decision": {
+      "type": "string",
+      "enum": [
+       "approved",
+       "rejected"
+      ],
+      "title": "Decision"
+     },
+     "expiry_date": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expiry Date",
+      "description": "The date printed on the document. Replaces any the uploader gave, and is needed to approve insurance. It may be in the past."
+     },
+     "rejection_reason": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 500,
+        "minLength": 5
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rejection Reason",
+      "description": "Needed to reject; shown to them."
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "decision"
+    ],
+    "title": "DocumentReviewBody"
+   },
+   "DocumentReviewResponse": {
+    "properties": {
+     "document_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Document Id"
+     },
+     "owner_type": {
+      "type": "string",
+      "enum": [
+       "driver",
+       "vehicle"
+      ],
+      "title": "Owner Type"
+     },
+     "owner_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Owner Id"
+     },
+     "document_type": {
+      "$ref": "#/components/schemas/DocumentType"
+     },
+     "status": {
+      "$ref": "#/components/schemas/DocumentStatus"
+     },
+     "expiry_date": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expiry Date"
+     },
+     "rejection_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rejection Reason"
+     },
+     "drivers_unblocked": {
+      "items": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "type": "array",
+      "title": "Drivers Unblocked",
+      "description": "Drivers this confirmation unblocked."
+     }
+    },
+    "type": "object",
+    "required": [
+     "document_id",
+     "owner_type",
+     "owner_id",
+     "document_type",
+     "status",
+     "expiry_date",
+     "rejection_reason",
+     "drivers_unblocked"
+    ],
+    "title": "DocumentReviewResponse"
    }
   },
   "securitySchemes": {

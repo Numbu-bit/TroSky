@@ -53,3 +53,26 @@ Notable changes to the TroSky admin dashboard, newest last. The dashboard as fir
 - **A click in the global search could be lost:** each new search swapped the results for a spinner,
   so a click arriving at that moment did nothing. The results now stay until the next ones arrive.
   This is what made the "finds a vehicle by its plate" test fail about one run in three.
+
+## 2026-11-09 - Confirming document dates
+
+- **Admins can accept a document with the date printed on it, or send it back with a reason,** on
+  the approvals screen and on a driver's or vehicle's page. Nothing recorded these dates before, so
+  the insurance dates on the fleet pages were always empty. Insurance can't be accepted without a
+  date. Drivers are warned and blocked by the dates accepted here, and accepting a later one
+  unblocks a driver at once (backend PR #69).
+
+## 2026-11-10 - Availability instead of Now
+
+- **The fleet lists say "Availability" where they said "Now",** in the vehicles and drivers columns,
+  their filters and the record pages, and a vehicle or driver not on a trip is **Available** rather
+  than **Free**. The filter's empty choice is now "Any availability".
+
+## 2026-11-10 - The top bar stays put on wide pages
+
+- **Scrolling a wide page sideways no longer slides the top bar over the sidebar and its logo.**
+  The page column grew to fit its widest row (on Driver performance, by 174 px at 1280 px wide), so
+  the whole window scrolled sideways and took the top bar with it. The column now keeps to the space
+  beside the sidebar, tables scroll in their own box, and anything else still too wide scrolls in
+  the content area.
+- **Dispatch, What drivers did: a trip's link says "View"** rather than "Open".
