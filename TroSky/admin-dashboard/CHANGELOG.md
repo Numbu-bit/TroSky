@@ -67,3 +67,12 @@ Notable changes to the TroSky admin dashboard, newest last. The dashboard as fir
 - **The fleet lists say "Availability" where they said "Now",** in the vehicles and drivers columns,
   their filters and the record pages, and a vehicle or driver not on a trip is **Available** rather
   than **Free**. The filter's empty choice is now "Any availability".
+
+## 2026-11-10 - The top bar stays put on wide pages
+
+- **Scrolling a wide page sideways no longer slides the top bar over the sidebar and its logo.**
+  The page column grew to fit its widest row (on Driver performance, by 174 px at 1280 px wide), so
+  the whole window scrolled sideways and took the top bar with it. The column now keeps to the space
+  beside the sidebar, tables scroll in their own box, and anything else still too wide scrolls in
+  the content area.
+- **Dispatch, What drivers did: a trip's link says "View"** rather than "Open".
