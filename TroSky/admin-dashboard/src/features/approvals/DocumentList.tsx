@@ -8,6 +8,7 @@ import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 import type { QueueKind } from './api'
+import { DocumentReview } from './DocumentReview'
 import { DocumentViewer } from './DocumentViewer'
 import { DOCUMENT_LABELS, DOCUMENT_STATUS, EXPECTED } from './documents'
 
@@ -53,6 +54,7 @@ export function Documents({
   owner: string
 }) {
   const [shown, setShown] = useState<string | null>(documents[0]?.id ?? null)
+  const shownDocument = documents.find((candidate) => candidate.id === shown)
   const missing = EXPECTED[kind].filter(
     (expected) => !documents.some((document) => document.document_type === expected.type),
   )
@@ -95,14 +97,14 @@ export function Documents({
       </ul>
       {shown ? (
         <>
-          {(() => {
-            const document = documents.find((candidate) => candidate.id === shown)
-            return document?.rejection_reason ? (
-              <p className="rounded-md bg-warning-soft p-2 text-sm text-warning-text">
-                Asked again: {document.rejection_reason}
-              </p>
-            ) : null
-          })()}
+          {shownDocument?.rejection_reason ? (
+            <p className="rounded-md bg-warning-soft p-2 text-sm text-warning-text">
+              Asked again: {shownDocument.rejection_reason}
+            </p>
+          ) : null}
+          {shownDocument ? (
+            <DocumentReview key={shown} kind={kind} document={shownDocument} />
+          ) : null}
           <DocumentViewer key={shown} documentId={shown} owner={owner} />
         </>
       ) : (

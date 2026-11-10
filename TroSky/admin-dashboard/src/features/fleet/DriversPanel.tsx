@@ -89,7 +89,7 @@ export function DriversPanel() {
       ),
     },
     {
-      header: 'Now',
+      header: 'Availability',
       cell: ({ row }) => {
         const live = LIVE[row.original.live_status]
         return <StatusBadge tone={live.tone} label={live.label} icon={live.icon} />
@@ -182,11 +182,11 @@ export function DriversPanel() {
           any="Any status"
         />
         <FilterSelect
-          label="Now"
+          label="Availability"
           value={filters.live}
           onChange={(live) => update({ live })}
           options={LIVE_OPTIONS}
-          any="Anything"
+          any="Any availability"
         />
         {seesFleets ? (
           <FilterSelect

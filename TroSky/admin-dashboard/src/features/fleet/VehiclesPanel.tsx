@@ -89,7 +89,7 @@ export function VehiclesPanel() {
         row.original.driver?.name ?? <span className="text-muted-foreground">—</span>,
     },
     {
-      header: 'Now',
+      header: 'Availability',
       cell: ({ row }) => {
         const live = LIVE[row.original.live_status]
         return row.original.current_trip_id ? (
@@ -182,11 +182,11 @@ export function VehiclesPanel() {
           any="Any status"
         />
         <FilterSelect
-          label="Now"
+          label="Availability"
           value={filters.live}
           onChange={(live) => update({ live })}
           options={LIVE_OPTIONS}
-          any="Anything"
+          any="Any availability"
         />
         {seesFleets ? (
           <FilterSelect

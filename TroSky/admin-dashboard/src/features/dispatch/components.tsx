@@ -307,7 +307,7 @@ function driverActionColumns(showTrip: boolean): ColumnDef<Action, unknown>[] {
             header: 'Trip',
             cell: ({ row }: { row: { original: Action } }) => (
               <Link to={`/trips/${row.original.trip_id}`} className="link-inline">
-                Open
+                View
               </Link>
             ),
           } satisfies ColumnDef<Action, unknown>,
