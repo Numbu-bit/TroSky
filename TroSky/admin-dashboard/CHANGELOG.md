@@ -39,3 +39,40 @@ Notable changes to the TroSky admin dashboard, newest last. The dashboard as fir
   rounded tile because the pin's navy would disappear against the navy sidebar and sign-in page.
   The wordmark version (name and tagline) isn't used: the name is already written beside the icon,
   and the sidebar folds down to the icon alone.
+
+## 2026-11-08 - Security updates, maps on MapLibre 6, and a lost click in search
+
+- **Every open security alert is fixed** (`npm audit` finds none): MapLibre GL 5 to 6 (a critical
+  cross-site scripting hole through a map's attribution text, which comes from CARTO's style), Zod,
+  Vite and undici. `minimatch` is forced past its advisory for `typescript-estree`, which still asks
+  for the old version; remove that `overrides` entry once it asks for 11.
+- **Maps on MapLibre 6:** it can't find its worker in a bundled app, and without one a map shows its
+  markers on a blank background, with no error until the page runs. `MapView` now tells it where the
+  worker is, and `check:build` fails if the worker isn't in the build. The security policy no longer
+  allows workers from `blob:`, which only MapLibre 5 needed.
+- **A click in the global search could be lost:** each new search swapped the results for a spinner,
+  so a click arriving at that moment did nothing. The results now stay until the next ones arrive.
+  This is what made the "finds a vehicle by its plate" test fail about one run in three.
+
+## 2026-11-09 - Confirming document dates
+
+- **Admins can accept a document with the date printed on it, or send it back with a reason,** on
+  the approvals screen and on a driver's or vehicle's page. Nothing recorded these dates before, so
+  the insurance dates on the fleet pages were always empty. Insurance can't be accepted without a
+  date. Drivers are warned and blocked by the dates accepted here, and accepting a later one
+  unblocks a driver at once (backend PR #69).
+
+## 2026-11-10 - Availability instead of Now
+
+- **The fleet lists say "Availability" where they said "Now",** in the vehicles and drivers columns,
+  their filters and the record pages, and a vehicle or driver not on a trip is **Available** rather
+  than **Free**. The filter's empty choice is now "Any availability".
+
+## 2026-11-10 - The top bar stays put on wide pages
+
+- **Scrolling a wide page sideways no longer slides the top bar over the sidebar and its logo.**
+  The page column grew to fit its widest row (on Driver performance, by 174 px at 1280 px wide), so
+  the whole window scrolled sideways and took the top bar with it. The column now keeps to the space
+  beside the sidebar, tables scroll in their own box, and anything else still too wide scrolls in
+  the content area.
+- **Dispatch, What drivers did: a trip's link says "View"** rather than "Open".

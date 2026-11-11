@@ -108,31 +108,65 @@ void main() {
         async.elapse(const Duration(seconds: 1));
         expect(ready, 3);
         // The whole budget for the first ask: no request times out.
-        expect(server.asks, [const Duration(minutes: 2)]);
+        expect(server.asks, [const Duration(minutes: 3)]);
         expect(states, [ServerState.waking, ServerState.awake]);
       });
     });
 
-    test('no internet: offline at once, and the next request asks again', () {
+    test('no internet: offline once checked twice; requests go at once, and '
+        'it wakes by itself when the internet is back', () {
       fakeAsync((async) {
         final server = _Server(internet: false);
         final wake = _wake(async, server);
         var ready = false;
 
         unawaited(wake.ready().then((_) => ready = true));
-        async.flushMicrotasks();
+        async.elapse(const Duration(seconds: 1));
+        // The first check failed; the second comes 2 s later.
+        expect(ready, isFalse);
+        async.elapse(const Duration(seconds: 1));
         expect(ready, isTrue);
         expect(wake.state, ServerState.offline);
 
+        // Requests don't wait while it's offline.
+        var again = false;
+        unawaited(wake.ready().then((_) => again = true));
+        async.flushMicrotasks();
+        expect(again, isTrue);
+        expect(server.asks, hasLength(1));
+
+        // Every 10 s it checks the internet; once back, it wakes the server.
+        async.elapse(const Duration(seconds: 10));
+        expect(wake.state, ServerState.offline);
         server.internet = true;
-        unawaited(wake.ready());
+        async.elapse(const Duration(seconds: 10));
         async.elapse(const Duration(seconds: 1));
         expect(server.asks, hasLength(2));
         expect(wake.state, ServerState.awake);
       });
     });
 
-    test('internet but no answer: asks every 3 s, then unreachable after 2 '
+    test('a single failed internet check is not "offline"', () {
+      fakeAsync((async) {
+        final server = _Server(up: false);
+        var checks = 0;
+        final wake = ServerWake(
+          ping: server.ping,
+          // The first look-up fails (a DNS hiccup), the next ones work.
+          hasInternet: () async => checks++ > 0,
+          now: async.getClock(DateTime.utc(2026, 10, 27)).now,
+        );
+        final states = <ServerState>[];
+        wake.changes.listen(states.add);
+        unawaited(wake.ready());
+        async.elapse(const Duration(seconds: 10));
+        expect(states, isNot(contains(ServerState.offline)));
+        expect(wake.state, ServerState.waking);
+        wake.dispose();
+      });
+    });
+
+    test('internet but no answer: asks every 3 s, then unreachable after 3 '
         'minutes', () {
       fakeAsync((async) {
         final server = _Server(up: false);
@@ -145,15 +179,65 @@ void main() {
         // starting.
         expect(wake.state, ServerState.waking);
 
-        async.elapse(const Duration(seconds: 118));
+        async.elapse(const Duration(seconds: 178));
         expect(ready, isFalse);
         async.elapse(const Duration(seconds: 2));
         expect(ready, isTrue);
         expect(wake.state, ServerState.unreachable);
         // One ask every 4 s (1 s to fail, 3 s apart); the last one gets the
         // time left.
-        expect(server.asks, hasLength(30));
+        expect(server.asks, hasLength(45));
         expect(server.asks.last, const Duration(seconds: 4));
+      });
+    });
+
+    test('unreachable: asked quietly every 10 s, awake when it answers; '
+        'requests meanwhile go at once', () {
+      fakeAsync((async) {
+        final server = _Server(up: false);
+        final wake = _wake(async, server);
+        unawaited(wake.ready());
+        async.elapse(const Duration(minutes: 3));
+        expect(wake.state, ServerState.unreachable);
+        final asked = server.asks.length;
+
+        var ready = false;
+        unawaited(wake.ready().then((_) => ready = true));
+        async.flushMicrotasks();
+        expect(ready, isTrue);
+
+        // A quiet ask 10 s after each failed one (1 s to fail); no bar.
+        final states = <ServerState>[];
+        wake.changes.listen(states.add);
+        async.elapse(const Duration(seconds: 11));
+        expect(server.asks, hasLength(asked + 1));
+        expect(wake.state, ServerState.unreachable);
+
+        server.up = true;
+        async.elapse(const Duration(seconds: 11));
+        expect(wake.state, ServerState.awake);
+        expect(states, [ServerState.awake]);
+      });
+    });
+
+    test('Retry wakes it again at once, for another 3 minutes', () {
+      fakeAsync((async) {
+        final server = _Server(up: false);
+        final wake = _wake(async, server);
+        unawaited(wake.ready());
+        async.elapse(const Duration(minutes: 3));
+        expect(wake.state, ServerState.unreachable);
+
+        server
+          ..up = true
+          ..after = const Duration(seconds: 30);
+        var ready = false;
+        unawaited(wake.retry().then((_) => ready = true));
+        async.elapse(const Duration(seconds: 2));
+        expect(wake.state, ServerState.waking);
+        async.elapse(const Duration(seconds: 28));
+        expect(ready, isTrue);
+        expect(wake.state, ServerState.awake);
       });
     });
 
@@ -196,7 +280,7 @@ void main() {
           'https://trosky-api.onrender.com/health/live',
         );
         // Real time: a millisecond or so has gone by.
-        expect(ask.receiveTimeout!.inSeconds, inInclusiveRange(119, 120));
+        expect(ask.receiveTimeout!.inSeconds, inInclusiveRange(179, 180));
         expect(wake.state, ServerState.awake);
       },
     );

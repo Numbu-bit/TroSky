@@ -29,6 +29,13 @@ class VehicleType(StrEnum):
     OTHER = "other"
 
 
+class SeatZone(StrEnum):
+    """The part of a vehicle a seat is in (app/services/seat_zones.py)."""
+
+    FRONT = "front"
+    BACK = "back"
+
+
 class SeatType(StrEnum):
     STANDARD = "standard"
     VIP = "vip"

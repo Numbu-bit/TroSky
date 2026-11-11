@@ -10,7 +10,7 @@ from typing import Literal
 from pydantic import Field
 
 from app.models.trips import AssignmentResponse, TripStatus
-from app.models.vehicles import SeatType, VehicleType
+from app.models.vehicles import SeatType, SeatZone, VehicleType
 from app.schemas.common import ApiModel, RequestModel
 
 
@@ -212,6 +212,14 @@ class TripSeatResponse(ApiModel):
     column_number: int
     seat_type: SeatType
     is_available: bool
+    zone: SeatZone = Field(..., description="The part of the vehicle this seat is in.")
+    is_selectable: bool = Field(
+        ...,
+        description=(
+            "Offer this seat to the passenger: free, and in their zone unless that zone "
+            "is full. Without a ride to go by, the same as being free."
+        ),
+    )
 
 
 class TripSeatsResponse(ApiModel):
@@ -219,6 +227,14 @@ class TripSeatsResponse(ApiModel):
     vehicle_id: uuid.UUID
     total_seats: int
     available_seats: int
+    passenger_zone: SeatZone | None = Field(
+        default=None,
+        description=(
+            "Where this ride chooses from: a short ride the front, a long one the back. "
+            "Null when the request gave no stops. A group that fills the free seats of "
+            "its zone may spill over into the other."
+        ),
+    )
     seats: list[TripSeatResponse]
 
 

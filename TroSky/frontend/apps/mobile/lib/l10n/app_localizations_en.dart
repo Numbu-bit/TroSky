@@ -386,8 +386,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'The server isn\'t answering. Showing your last saved details.';
 
   @override
-  String get serverWaking =>
-      'Waking up the server, this can take up to a minute…';
+  String get serverWaking => 'Waking up the server… usually under a minute';
 
   @override
   String get offlineRetry => 'Retry';

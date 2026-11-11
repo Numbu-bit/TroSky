@@ -1,0 +1,46 @@
+name: Keep staging awake (b)
+
+# Offset sibling of `keep-awake.yml`, see its comments. Fires at :15 and
+# :45 of each hour between 06:00 and 22:59 Africa/Accra, so the combined
+# ping across both workflows lands every 15 minutes while GitHub honours
+# both schedules.
+
+on:
+  schedule:
+    - cron: "15,45 6-22 * * *" # every 30 min at :15 and :45, 06:15-22:45 UTC
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    name: Wake the API and query the database
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      API: https://trosky-api.onrender.com
+    steps:
+      - name: Wake the API (a cold start takes about 30 s, sometimes minutes)
+        run: |
+          for i in $(seq 1 20); do
+            if curl -fsS -m 60 -o /dev/null "$API/health/live"; then
+              echo "awake after $i tries"
+              exit 0
+            fi
+            echo "not awake yet ($i)"
+            sleep 15
+          done
+          echo "::error::$API/health/live did not answer"
+          exit 1
+      - name: Query the database through /health/ready
+        run: |
+          for i in $(seq 1 10); do
+            code=$(curl -s -m 60 -o ready.json -w '%{http_code}' "$API/health/ready" || true)
+            echo "try $i: HTTP $code $(cat ready.json 2>/dev/null)"
+            if [ "$code" = 200 ]; then
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::/health/ready never answered 200: the database or Redis is not reachable"
+          exit 1

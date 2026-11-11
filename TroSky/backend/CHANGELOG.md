@@ -5,6 +5,38 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+
+- **Seat zones: a short ride chooses from the front seats, a long ride from the back.** `GET
+  /trips/{id}/seats` takes `origin_stop_id` and `destination_stop_id`, and says which part of the
+  vehicle each seat is in (`zone`), where this ride chooses from (`passenger_zone`) and which seats
+  to offer (`is_selectable`). A ride covering less than `SEAT_ZONE_NEAR_SHARE` (half) of the route
+  is short. Passengers still pick their own seat, and may take any free seat once their zone is
+  full. `POST /bookings` refuses other seats with `SEAT_NOT_IN_ZONE` only when `SEAT_ZONES_ENFORCED`
+  is on, which stays off until the app offers these seats. In a simulation of 1,500 synthetic trips
+  per scenario, this left about half the blocking of a free choice of seats.
+
+- **Drivers must renew their insurance within 30 days of it expiring, or they are blocked.** Once
+  it has expired, the driver and the fleet owners whose vehicles they drive are warned (days 1, 7,
+  14, 21, 25, 28, 29 and 30, `INSURANCE_WARNING_DAYS`). After `INSURANCE_GRACE_DAYS` the driver is
+  blocked: `drivers.status` becomes `suspended`, they can't accept or start trips (`DRIVER_BLOCKED`),
+  and they come off trips they haven't begun, for the operations team to reassign. A trip already
+  boarding or under way carries on. A blocked driver can still sign in, to upload the renewal.
+  Confirming a later date unblocks them at once. It goes by the later of the driver's own insurance
+  and that of the vehicles they're assigned to; a driver with no confirmed date is left alone.
+- **Documents can now hold real expiry dates and be approved.** Nothing ever wrote a document's
+  `expiry_date` or set it to `approved`, so the dashboard's insurance dates were always empty. `POST
+  /admin/documents/{id}/review` approves a document with its date, or rejects it with a reason. The
+  two upload endpoints take an optional `expiry_date`, and `GET /drivers/me/insurance` tells a
+  driver where they stand.
+- **Drivers are also reminded before their insurance expires,** 30, 14, 7, 3 and 1 days before
+  (`INSURANCE_REMINDER_DAYS`), and so are the fleet owners whose vehicles they drive. A worker that
+  slept through some sends only the latest one.
+
+### Fixed
+
+- **Celery worker was crashing at every startup** (`kombu.exceptions.VersionMismatch: Redis transport requires redis-py versions 6.1.0 or later. You have 5.3.1`), which took the API with it through `render-start.sh`'s supervisor and put staging into a restart loop of about 80 s cycles (~22 s healthy, ~60 s 503). `celery[redis]` left `kombu` unpinned, so a new build pulled kombu 5.6+ next to the `redis<6.0.0` pin and the two didn't talk at runtime. `kombu>=5.4.0,<5.6.0` is now a direct dependency to hold the compatible pair together until redis-py moves to 6.x.
+
 ### Phase 1 — Foundation (2026-08-04)
 
 Added:
@@ -2323,3 +2355,15 @@ pause, resume and end trips by hand, and admins cancel as before.
   after 5 minutes, and a server woken from sleep had forgotten them.
 - `docs/deploy-render.md` said the sandbox approves everything; it now says
   what it does.
+
+## [Unreleased] - 2026-11-01 - Onward trips past midnight; tests that pass at any hour
+
+- Onward trips (`GET /bookings/{id}/onward-trips` and the "you're at your stop"
+  notification) promise vehicles leaving within `ONWARD_TRIPS_WINDOW_MINUTES`,
+  but searched today's date only: a passenger getting off at 23:50 was never
+  offered a vehicle leaving at 00:10. Late at night the search now also looks
+  at tomorrow, up to the end of the window.
+- Backend CI on `main` failed after #53 merged because three tests depended on
+  the time of day: run after 23:00 UTC, "a trip in an hour" is tomorrow. The
+  admin directory tests now schedule a trip that is still today whenever they
+  run, and a new unit test pins the window crossing midnight.

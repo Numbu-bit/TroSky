@@ -266,6 +266,20 @@ class TripRepository:
         )
         return result.scalar_one_or_none()
 
+    async def driver_assignments_on_trips_in(
+        self, driver_id: uuid.UUID, statuses: Collection[TripStatus]
+    ) -> list[TripDriverAssignment]:
+        result = await self._session.execute(
+            select(TripDriverAssignment)
+            .join(Trip, Trip.id == TripDriverAssignment.trip_id)
+            .where(
+                TripDriverAssignment.driver_id == driver_id,
+                TripDriverAssignment.is_active.is_(True),
+                Trip.status.in_(statuses),
+            )
+        )
+        return list(result.scalars().all())
+
     async def unassign_driver(self, assignment: TripDriverAssignment) -> None:
         assignment.is_active = False
         await self._session.flush()

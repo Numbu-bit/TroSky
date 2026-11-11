@@ -781,7 +781,7 @@ abstract class AppLocalizations {
   /// Bar across the top of every screen while the app waits for the server to answer: the test server sleeps when unused (decision 29).
   ///
   /// In en, this message translates to:
-  /// **'Waking up the server, this can take up to a minute…'**
+  /// **'Waking up the server… usually under a minute'**
   String get serverWaking;
 
   /// Banner button that checks the session again.

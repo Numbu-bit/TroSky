@@ -378,6 +378,57 @@ export const fleetHandlers = [
     ),
   ),
 
+  endpoint.post(
+    '/admin/documents/:documentId/review',
+    ['drivers:approve', 'vehicles:approve'],
+    ({ params, body }) => {
+      const db = getDb()
+      const driver = db.drivers.find((candidate) =>
+        candidate.documents.some((document) => document.id === params.documentId),
+      )
+      const vehicle = db.vehicles.find((candidate) =>
+        candidate.documents.some((document) => document.id === params.documentId),
+      )
+      const owner = driver ?? vehicle
+      const document = owner?.documents.find((candidate) => candidate.id === params.documentId)
+      if (!owner || !document) return notFound('Document not found.')
+      const review = body as Schemas['DocumentReviewBody']
+      if (review.decision === 'approved') {
+        const expiry = review.expiry_date ?? document.expires_at
+        if (document.document_type === 'vehicle_insurance' && !expiry) {
+          return errorResponse(422, 'VALIDATION_ERROR', 'Enter the date this insurance expires.', {
+            param: 'expiry_date',
+          })
+        }
+        document.status = 'approved'
+        document.expires_at = expiry
+        document.rejection_reason = null
+      } else {
+        if (!review.rejection_reason) {
+          return errorResponse(
+            422,
+            'VALIDATION_ERROR',
+            'Give a reason for rejecting this document.',
+            { param: 'rejection_reason' },
+          )
+        }
+        document.status = 'rejected'
+        document.rejection_reason = review.rejection_reason
+      }
+      touch()
+      return {
+        document_id: document.id,
+        owner_type: driver ? 'driver' : 'vehicle',
+        owner_id: owner.id,
+        document_type: document.document_type,
+        status: document.status,
+        expiry_date: document.expires_at,
+        rejection_reason: document.rejection_reason,
+        drivers_unblocked: [],
+      } satisfies Schemas['DocumentReviewResponse']
+    },
+  ),
+
   endpoint.get(
     '/admin/documents/:documentId',
     ['drivers:approve', 'vehicles:approve'],

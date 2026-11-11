@@ -21,7 +21,7 @@ describe('Fleet', () => {
     )
     expect(plates).toEqual([...plates].sort((a, b) => a.localeCompare(b)))
 
-    await user.click(screen.getByRole('combobox', { name: 'Now' }))
+    await user.click(screen.getByRole('combobox', { name: 'Availability' }))
     await user.click(await screen.findByRole('option', { name: 'On a trip' }))
     await waitFor(() => expect(router.state.location.search).toContain('live=on_trip'))
     await waitFor(() => {
@@ -61,6 +61,67 @@ describe('Fleet', () => {
       'href',
       '/fleet/vehicles',
     )
+  })
+
+  describe('reviewing a document', () => {
+    const insured = () =>
+      getDb().vehicles.find(
+        (vehicle) =>
+          vehicle.status === 'approved' &&
+          vehicle.documents.some((document) => document.document_type === 'vehicle_insurance'),
+      )!
+    const insuranceOf = (vehicle: ReturnType<typeof insured>) =>
+      vehicle.documents.find((document) => document.document_type === 'vehicle_insurance')!
+
+    const openInsurance = async (user: ReturnType<typeof renderApp>['user']) => {
+      await user.click(await screen.findByRole('button', { name: /^Insurance certificate/ }))
+      return screen.findByRole('region', { name: 'Review Insurance certificate' })
+    }
+
+    it('accepts insurance with the date printed on it', async () => {
+      const vehicle = insured()
+      const { user } = renderApp(`/fleet/vehicles/${vehicle.id}`, { as: ADMIN })
+      const panel = await openInsurance(user)
+      const date = within(panel).getByLabelText('Expires on')
+      await user.clear(date)
+      await user.type(date, '2031-05-17')
+      await user.click(within(panel).getByRole('button', { name: /Accept|Save date/ }))
+      await waitFor(() => expect(insuranceOf(vehicle).status).toBe('approved'))
+      expect(insuranceOf(vehicle).expires_at).toBe('2031-05-17')
+    })
+
+    it('does not accept insurance without a date', async () => {
+      const vehicle = insured()
+      const { user } = renderApp(`/fleet/vehicles/${vehicle.id}`, { as: ADMIN })
+      const panel = await openInsurance(user)
+      await user.clear(within(panel).getByLabelText('Expires on'))
+      expect(within(panel).getByRole('button', { name: /Accept|Save date/ })).toBeDisabled()
+    })
+
+    it('sends a document back with a reason', async () => {
+      const vehicle = insured()
+      const { user } = renderApp(`/fleet/vehicles/${vehicle.id}`, { as: ADMIN })
+      const panel = await openInsurance(user)
+      await user.click(within(panel).getByRole('button', { name: 'Send back' }))
+      const send = within(panel).getByRole('button', { name: 'Send it back' })
+      expect(send).toBeDisabled()
+      await user.type(within(panel).getByLabelText(/What’s wrong/), 'The photo is too blurred.')
+      await user.click(send)
+      await waitFor(() => expect(insuranceOf(vehicle).status).toBe('rejected'))
+      expect(insuranceOf(vehicle).rejection_reason).toBe('The photo is too blurred.')
+    })
+
+    it('is not offered to someone who may not review it', async () => {
+      const vehicle = insured()
+      const { user } = renderApp(`/fleet/vehicles/${vehicle.id}`, {
+        as: staffWith('trips:monitor_live'),
+      })
+      const open = await screen.findByRole('button', { name: /^Insurance certificate/ })
+      await user.click(open)
+      expect(
+        screen.queryByRole('region', { name: 'Review Insurance certificate' }),
+      ).not.toBeInTheDocument()
+    })
   })
 
   it('opens a driver with links to their ratings, performance and account', async () => {

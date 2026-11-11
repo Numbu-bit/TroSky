@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
   Bus,
   CreditCard,
@@ -96,6 +96,9 @@ export default function SearchDialog({
     queryKey: ['search', search],
     queryFn: () =>
       unwrap(api.GET('/api/v1/admin/search', { params: { query: { q: search, limit: 5 } } })),
+    // The last results stay until the next ones arrive: swapping them for a
+    // spinner would lose a click already on its way to a result.
+    placeholderData: keepPreviousData,
     enabled: global && ready && open,
   })
   const accounts = useAccounts(search, NO_FILTERS, 1, 6, !global && ready && open)

@@ -357,12 +357,32 @@ class TripSearchService:
         leaving within ``ONWARD_TRIPS_WINDOW_MINUTES``; soonest first."""
         now = datetime.now(UTC)
         until = now + timedelta(minutes=self._settings.ONWARD_TRIPS_WINDOW_MINUTES)
+        crosses_midnight = until.date() != now.date()
+        offers = await self._onward_on(
+            stop_id, now.date(), None if crosses_midnight else until.time()
+        )
+        if crosses_midnight:
+            # Late at night the window runs into tomorrow: a vehicle leaving
+            # just after midnight is still a way on.
+            offers += await self._onward_on(stop_id, until.date(), until.time())
+        return [
+            offer
+            for offer in offers
+            if offer.summary.trip_id != exclude_trip_id
+            and not offer.has_passed_pickup
+            and offer.summary.available_seats > 0
+        ][:limit]
+
+    async def _onward_on(
+        self, stop_id: uuid.UUID, travel_date: date, departure_before: time | None
+    ) -> list[TripOffer]:
+        """One day's candidates for :meth:`onward`, soonest first."""
         offers, _ = await self.search(
             origin_stop_id=stop_id,
             destination_stop_id=None,
-            travel_date=now.date(),
+            travel_date=travel_date,
             departure_after=None,
-            departure_before=until.time() if until.date() == now.date() else None,
+            departure_before=departure_before,
             pickup_latitude=None,
             pickup_longitude=None,
             vehicle_type=None,
@@ -371,13 +391,7 @@ class TripSearchService:
             limit=self._settings.TRIP_SEARCH_MAX_CANDIDATES,
             offset=0,
         )
-        return [
-            offer
-            for offer in offers
-            if offer.summary.trip_id != exclude_trip_id
-            and not offer.has_passed_pickup
-            and offer.summary.available_seats > 0
-        ][:limit]
+        return offers
 
     async def _record(
         self,

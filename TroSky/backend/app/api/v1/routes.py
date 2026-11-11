@@ -41,6 +41,7 @@ from app.schemas.trip import (
     TripVehicleResponse,
 )
 from app.services.fare_quote_service import FareQuote
+from app.services.seat_zones import seat_zones, selectable_seats
 from app.services.trip_search_service import SearchSort, TripOffer
 from app.utilities.geo import wkb_to_latlng
 
@@ -328,15 +329,34 @@ async def get_fare_quote(
 
 
 @router.get("/trips/{trip_id}/seats", response_model=TripSeatsResponse)
-async def get_trip_seats(trip_id: uuid.UUID, service: RouteServiceDep) -> TripSeatsResponse:
+async def get_trip_seats(
+    trip_id: uuid.UUID,
+    service: RouteServiceDep,
+    origin_stop_id: uuid.UUID | None = Query(
+        default=None,
+        description=(
+            "Where the passenger boards. Give this or destination_stop_id to learn which "
+            "seats to offer them; a stop left out means that end of the route."
+        ),
+    ),
+    destination_stop_id: uuid.UUID | None = Query(default=None, description="Where they get off."),
+) -> TripSeatsResponse:
     """Seat layout for a trip's assigned vehicle, with real-time
-    availability reflecting active (held or confirmed) reservations."""
+    availability reflecting active (held or confirmed) reservations, and
+    which seats suit this ride: a short one chooses from the front, a long
+    one from the back."""
     vehicle, seats, taken_seat_ids = await service.get_trip_seats(trip_id)
+    zone = await service.passenger_seat_zone(
+        trip_id, origin_stop_id=origin_stop_id, destination_stop_id=destination_stop_id
+    )
+    zones = seat_zones(seats)
+    selectable = selectable_seats(seats, taken=taken_seat_ids, zone=zone)
     return TripSeatsResponse(
         trip_id=trip_id,
         vehicle_id=vehicle.id,
         total_seats=len(seats),
         available_seats=len(seats) - len(taken_seat_ids),
+        passenger_zone=zone,
         seats=[
             TripSeatResponse(
                 id=s.id,
@@ -345,6 +365,8 @@ async def get_trip_seats(trip_id: uuid.UUID, service: RouteServiceDep) -> TripSe
                 column_number=s.column_number,
                 seat_type=s.seat_type,
                 is_available=s.id not in taken_seat_ids,
+                zone=zones[s.id],
+                is_selectable=s.id in selectable,
             )
             for s in seats
         ],

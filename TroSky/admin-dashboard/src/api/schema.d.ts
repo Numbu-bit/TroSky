@@ -4166,6 +4166,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/documents/{document_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Review Document
+         * @description Approve a driver's or vehicle's document, confirming the date it
+         *     expires, or reject it with a reason. Confirming a later insurance date
+         *     unblocks any driver blocked over their insurance.
+         */
+        post: operations["review_document_api_v1_admin_documents__document_id__review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -10306,6 +10328,53 @@ export interface components {
          * @enum {string}
          */
         WithdrawalStatus: "pending" | "approved" | "rejected" | "completed" | "failed";
+        /** DocumentReviewBody */
+        DocumentReviewBody: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "approved" | "rejected";
+            /**
+             * Expiry Date
+             * @description The date printed on the document. Replaces any the uploader gave, and is needed to approve insurance. It may be in the past.
+             */
+            expiry_date?: string | null;
+            /**
+             * Rejection Reason
+             * @description Needed to reject; shown to them.
+             */
+            rejection_reason?: string | null;
+        };
+        /** DocumentReviewResponse */
+        DocumentReviewResponse: {
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /**
+             * Owner Type
+             * @enum {string}
+             */
+            owner_type: "driver" | "vehicle";
+            /**
+             * Owner Id
+             * Format: uuid
+             */
+            owner_id: string;
+            document_type: components["schemas"]["DocumentType"];
+            status: components["schemas"]["DocumentStatus"];
+            /** Expiry Date */
+            expiry_date: string | null;
+            /** Rejection Reason */
+            rejection_reason: string | null;
+            /**
+             * Drivers Unblocked
+             * @description Drivers this confirmation unblocked.
+             */
+            drivers_unblocked: string[];
+        };
     };
     responses: never;
     parameters: never;
@@ -17772,6 +17841,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SharedTripResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_document_api_v1_admin_documents__document_id__review_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocumentReviewBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentReviewResponse"];
                 };
             };
             /** @description Validation Error */

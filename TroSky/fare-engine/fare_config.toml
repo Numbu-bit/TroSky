@@ -1,0 +1,190 @@
+# Fare, driver payout and platform commission engine: configuration.
+#
+# Every number the engine uses lives here; nothing is hard-coded.
+# Money and rates are strings ("7.10") so they become Decimal without ever
+# passing through binary floating point. A float in this file is an error.
+#
+# Labels used below:
+#   [GIVEN]                the stated requirement
+#   [ASSUMPTION]           our working choice, to be confirmed
+#   [PLACEHOLDER]          a value to replace with a real one
+#   [VERIFY BEFORE LAUNCH] a Ghana-specific fact (fees, taxes, rules, MoMo behaviour)
+
+config_version = "2026-10-31.1"
+currency = "GHS"
+timezone = "Africa/Accra"            # UTC+0 all year, no daylight saving [VERIFY BEFORE LAUNCH]
+
+[pricing]
+mode = "A"                           # "A" flat-rate formula, "B" tapered bands
+distance_pricing = "linear"          # Mode A only: "linear" or "per_block"
+fare_reference = "7.10"              # [GIVEN] GH¢7.10 ...
+reference_distance_km = "8"          # [GIVEN] ... per 8 km. The per-km rate is derived, never stored.
+base_fare = "0.00"
+per_minute_rate = "0.00"
+minimum_fare = "1.90"                # matches the trotro "up to 1 km" fare [VERIFY BEFORE LAUNCH]
+fare_rounding_step = "0.10"          # [VERIFY BEFORE LAUNCH] the rounding rule
+fare_rounding_mode = "ROUND_HALF_UP"
+max_trip_km = "200"                  # [ASSUMPTION] longer quotes are refused and handled by hand
+
+# Mode B: shared-taxi distance bands.
+# [VERIFY BEFORE LAUNCH] against the official GPRTU/GRTCC schedule.
+[[pricing.mode_b_bands]]
+max_km = "1"
+fare = "1.90"
+[[pricing.mode_b_bands]]
+max_km = "4"
+fare = "2.90"
+[[pricing.mode_b_bands]]
+max_km = "8"
+fare = "4.70"
+[[pricing.mode_b_bands]]
+max_km = "12"
+fare = "5.60"
+[[pricing.mode_b_bands]]
+max_km = "16"
+fare = "8.40"
+[[pricing.mode_b_bands]]
+max_km = "40"
+fare = "20.20"
+
+[fees]
+service_fee_rate = "0.20"            # 25% scenario: "0.25" [VERIFY BEFORE LAUNCH] the current rate
+platform_fee_step = "0.01"
+platform_fee_rounding_mode = "ROUND_HALF_UP"
+
+[surge]
+floor = "1.0"
+cap = "2.0"                          # hard cap; configurable
+multiplier_step = "0.01"
+kill_switch = false                  # true forces every multiplier to 1.0
+source = "static"                    # "static" factor table (a prior) or "live" demand/supply
+
+# Static surge factors. All uplifts are [ASSUMPTION]s to calibrate with real demand data.
+# multiplier = min(cap, max(1.0, 1 + sum of active uplifts))
+# Each factor has its own valid_from / valid_to, so it can change without a code release.
+[[surge.factors]]
+id = "morning_rush"
+kind = "time"
+start = 06:30:00
+end = 09:00:00
+uplift = "0.25"
+reason = "morning rush"
+valid_from = 2026-01-01
+valid_to = 2027-12-31
+
+[[surge.factors]]
+id = "evening_rush"
+kind = "time"
+start = 16:30:00
+end = 20:00:00
+uplift = "0.30"
+reason = "evening rush"
+valid_from = 2026-01-01
+valid_to = 2027-12-31
+
+[[surge.factors]]
+id = "late_night"
+kind = "time"
+start = 22:00:00
+end = 05:00:00                       # crosses midnight
+uplift = "0.20"
+reason = "late night"
+valid_from = 2026-01-01
+valid_to = 2027-12-31
+
+[[surge.factors]]
+id = "light_rain"
+kind = "weather"
+conditions = ["light_rain"]
+uplift = "0.20"
+reason = "rain"
+valid_from = 2026-01-01
+valid_to = 2027-12-31
+
+[[surge.factors]]
+id = "heavy_rain"
+kind = "weather"
+conditions = ["heavy_rain", "storm"]
+uplift = "0.40"
+reason = "heavy rain"
+valid_from = 2026-01-01
+valid_to = 2027-12-31
+
+[[surge.factors]]
+id = "public_holiday"
+kind = "occasion"
+occasion = "public_holiday"
+uplift = "0.10"
+reason = "public holiday"
+valid_from = 2026-01-01
+valid_to = 2027-12-31
+
+[[surge.factors]]
+id = "festive_season"
+kind = "occasion"
+occasion = "festive_season"
+uplift = "0.25"
+reason = "festive season"
+valid_from = 2026-01-01
+valid_to = 2027-12-31
+
+[[surge.factors]]
+id = "major_event"
+kind = "occasion"
+occasion = "major_event"
+uplift = "0.30"
+reason = "event nearby"
+valid_from = 2026-01-01
+valid_to = 2027-12-31
+
+# Live surge (Phase 3): demand/supply ratio per zone, smoothed and capped.
+[surge.live]
+smoothing_alpha = "0.30"             # [ASSUMPTION] share of the gap closed each interval
+max_step_per_interval = "0.10"       # [ASSUMPTION] largest change per interval
+interval_seconds = 120               # [ASSUMPTION]
+# demand/supply ratio -> target multiplier, straight lines between points [ASSUMPTION]
+breakpoints = [["1.0", "1.0"], ["1.5", "1.2"], ["2.0", "1.5"], ["3.0", "2.0"]]
+
+# Occasion calendar. Dates are examples: [VERIFY BEFORE LAUNCH] against official notices.
+[[calendar]]
+kind = "public_holiday"
+name = "Independence Day"
+start = 2027-03-06T00:00:00
+end = 2027-03-07T00:00:00
+
+[[calendar]]
+kind = "festive_season"
+name = "Christmas season"            # [ASSUMPTION] window
+start = 2026-12-15T00:00:00
+end = 2027-01-03T00:00:00
+
+[[calendar]]
+kind = "major_event"
+name = "Example stadium event"       # [PLACEHOLDER] venue, time and radius
+start = 2026-11-14T15:00:00
+end = 2026-11-14T22:00:00
+lat = "5.5513"
+lon = "-0.1918"
+radius_km = "3"
+
+[quotes]
+ttl_seconds = 300                    # [ASSUMPTION] a quote can be confirmed for 5 minutes
+reprice_distance_tolerance = "0.15"  # [ASSUMPTION] reprice when actual distance differs by more than 15%
+reprice_min_km = "0.5"               # [ASSUMPTION] ... and by more than 0.5 km
+reprice_time_tolerance = "0.50"      # [ASSUMPTION] used only when per_minute_rate > 0
+gps_max_overrun = "0.25"             # [ASSUMPTION] GPS distance is capped at routed distance + 25%
+gps_max_speed_kmh = "150"            # [ASSUMPTION] faster jumps are GPS errors and dropped
+cancellation_fee = "0.00"            # [PLACEHOLDER] fee for a rider cancelling after a driver accepts
+
+[payouts]
+schedule = "weekly"                  # [ASSUMPTION]
+weekday = "MON"
+minimum_payout = "10.00"             # [PLACEHOLDER] smaller balances roll over to the next run
+
+# VERIFY, DO NOT ASSUME. Everything here stays zero until confirmed with GRA and a tax adviser.
+[taxes]
+vat_on_service_fee_rate = "0"        # if VAT and levies apply to the platform fee [VERIFY BEFORE LAUNCH]
+vat_inclusive = true                 # the fee already includes VAT, which is carved out of it
+vehicle_income_tax_per_period = "0"  # GRA vehicle income tax: reported per driver, not deducted
+vehicle_income_tax_period = "quarter"
+dvla_fees_per_year = "0"             # DVLA fees: reported only

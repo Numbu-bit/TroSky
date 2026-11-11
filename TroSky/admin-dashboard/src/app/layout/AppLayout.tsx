@@ -25,8 +25,10 @@ export function AppLayout() {
           Skip to content
         </a>
         <AppSidebar />
-        {/* SidebarInset is the page's one <main> landmark. */}
-        <SidebarInset id="main" tabIndex={-1} className="outline-none">
+        {/* SidebarInset is the page's one <main> landmark. min-w-0 keeps it to the
+            space beside the sidebar: without it a wide page widens the whole window,
+            and scrolling sideways slides the top bar over the sidebar. */}
+        <SidebarInset id="main" tabIndex={-1} className="min-w-0 outline-none">
           <TopBar
             tools={
               <>
@@ -37,7 +39,8 @@ export function AppLayout() {
             }
           />
           <SosBanner />
-          <div className="flex-1 p-4 sm:p-6">
+          {/* Anything still too wide scrolls here, under a top bar that stays put. */}
+          <div className="min-w-0 flex-1 overflow-x-auto p-4 sm:p-6">
             {/* A new page starts without the last page's failure. */}
             <WidgetBoundary key={pathname} title="This page failed">
               <Suspense fallback={<PageSkeleton />}>

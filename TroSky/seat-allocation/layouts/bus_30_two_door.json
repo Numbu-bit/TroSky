@@ -1,0 +1,583 @@
+{
+  "schema_version": 1,
+  "model": "bus-30-two-door",
+  "verification": "verify against the actual fleet before launch",
+  "doors": [
+    {
+      "id": "front"
+    },
+    {
+      "id": "rear"
+    }
+  ],
+  "seats": [
+    {
+      "id": "1LA",
+      "row": 1,
+      "column": 2,
+      "depth_rank": 1,
+      "exit_door": "front",
+      "blocked_by": [],
+      "blockers_count": 0,
+      "near_driver": false,
+      "accessible": true,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [
+        "priority"
+      ],
+      "tags": [
+        "front"
+      ]
+    },
+    {
+      "id": "1LW",
+      "row": 1,
+      "column": 1,
+      "depth_rank": 2,
+      "exit_door": "front",
+      "blocked_by": [
+        "1LA"
+      ],
+      "blockers_count": 1,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "front",
+        "window"
+      ]
+    },
+    {
+      "id": "1RA",
+      "row": 1,
+      "column": 4,
+      "depth_rank": 1,
+      "exit_door": "front",
+      "blocked_by": [],
+      "blockers_count": 0,
+      "near_driver": false,
+      "accessible": true,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [
+        "priority"
+      ],
+      "tags": [
+        "front"
+      ]
+    },
+    {
+      "id": "1RW",
+      "row": 1,
+      "column": 5,
+      "depth_rank": 2,
+      "exit_door": "front",
+      "blocked_by": [
+        "1RA"
+      ],
+      "blockers_count": 1,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "front",
+        "window"
+      ]
+    },
+    {
+      "id": "2LA",
+      "row": 2,
+      "column": 2,
+      "depth_rank": 3,
+      "exit_door": "front",
+      "blocked_by": [],
+      "blockers_count": 0,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "front"
+      ]
+    },
+    {
+      "id": "2LW",
+      "row": 2,
+      "column": 1,
+      "depth_rank": 4,
+      "exit_door": "front",
+      "blocked_by": [
+        "2LA"
+      ],
+      "blockers_count": 1,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "front",
+        "window"
+      ]
+    },
+    {
+      "id": "2RA",
+      "row": 2,
+      "column": 4,
+      "depth_rank": 3,
+      "exit_door": "front",
+      "blocked_by": [],
+      "blockers_count": 0,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "front"
+      ]
+    },
+    {
+      "id": "2RW",
+      "row": 2,
+      "column": 5,
+      "depth_rank": 4,
+      "exit_door": "front",
+      "blocked_by": [
+        "2RA"
+      ],
+      "blockers_count": 1,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "front",
+        "window"
+      ]
+    },
+    {
+      "id": "3LA",
+      "row": 3,
+      "column": 2,
+      "depth_rank": 5,
+      "exit_door": "front",
+      "blocked_by": [
+        "J1"
+      ],
+      "blockers_count": 1,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "middle"
+      ]
+    },
+    {
+      "id": "3LW",
+      "row": 3,
+      "column": 1,
+      "depth_rank": 6,
+      "exit_door": "front",
+      "blocked_by": [
+        "3LA"
+      ],
+      "blockers_count": 2,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "middle",
+        "window"
+      ]
+    },
+    {
+      "id": "3RA",
+      "row": 3,
+      "column": 4,
+      "depth_rank": 5,
+      "exit_door": "front",
+      "blocked_by": [
+        "J1"
+      ],
+      "blockers_count": 1,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "middle"
+      ]
+    },
+    {
+      "id": "3RW",
+      "row": 3,
+      "column": 5,
+      "depth_rank": 6,
+      "exit_door": "front",
+      "blocked_by": [
+        "3RA"
+      ],
+      "blockers_count": 2,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "middle",
+        "window"
+      ]
+    },
+    {
+      "id": "4LA",
+      "row": 4,
+      "column": 2,
+      "depth_rank": 1,
+      "exit_door": "rear",
+      "blocked_by": [],
+      "blockers_count": 0,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "middle"
+      ]
+    },
+    {
+      "id": "4LW",
+      "row": 4,
+      "column": 1,
+      "depth_rank": 2,
+      "exit_door": "rear",
+      "blocked_by": [
+        "4LA"
+      ],
+      "blockers_count": 1,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "middle",
+        "window"
+      ]
+    },
+    {
+      "id": "4RA",
+      "row": 4,
+      "column": 4,
+      "depth_rank": 1,
+      "exit_door": "rear",
+      "blocked_by": [],
+      "blockers_count": 0,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "middle"
+      ]
+    },
+    {
+      "id": "4RW",
+      "row": 4,
+      "column": 5,
+      "depth_rank": 2,
+      "exit_door": "rear",
+      "blocked_by": [
+        "4RA"
+      ],
+      "blockers_count": 1,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "middle",
+        "window"
+      ]
+    },
+    {
+      "id": "5LA",
+      "row": 5,
+      "column": 2,
+      "depth_rank": 3,
+      "exit_door": "rear",
+      "blocked_by": [],
+      "blockers_count": 0,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "middle"
+      ]
+    },
+    {
+      "id": "5LW",
+      "row": 5,
+      "column": 1,
+      "depth_rank": 4,
+      "exit_door": "rear",
+      "blocked_by": [
+        "5LA"
+      ],
+      "blockers_count": 1,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "middle",
+        "window"
+      ]
+    },
+    {
+      "id": "5RA",
+      "row": 5,
+      "column": 4,
+      "depth_rank": 3,
+      "exit_door": "rear",
+      "blocked_by": [],
+      "blockers_count": 0,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "middle"
+      ]
+    },
+    {
+      "id": "5RW",
+      "row": 5,
+      "column": 5,
+      "depth_rank": 4,
+      "exit_door": "rear",
+      "blocked_by": [
+        "5RA"
+      ],
+      "blockers_count": 1,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "middle",
+        "window"
+      ]
+    },
+    {
+      "id": "6LA",
+      "row": 6,
+      "column": 2,
+      "depth_rank": 5,
+      "exit_door": "rear",
+      "blocked_by": [
+        "J2"
+      ],
+      "blockers_count": 1,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "rear"
+      ]
+    },
+    {
+      "id": "6LW",
+      "row": 6,
+      "column": 1,
+      "depth_rank": 6,
+      "exit_door": "rear",
+      "blocked_by": [
+        "6LA"
+      ],
+      "blockers_count": 2,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "rear",
+        "window"
+      ]
+    },
+    {
+      "id": "6RA",
+      "row": 6,
+      "column": 4,
+      "depth_rank": 5,
+      "exit_door": "rear",
+      "blocked_by": [
+        "J2"
+      ],
+      "blockers_count": 1,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "rear"
+      ]
+    },
+    {
+      "id": "6RW",
+      "row": 6,
+      "column": 5,
+      "depth_rank": 6,
+      "exit_door": "rear",
+      "blocked_by": [
+        "6RA"
+      ],
+      "blockers_count": 2,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "rear",
+        "window"
+      ]
+    },
+    {
+      "id": "7LA",
+      "row": 7,
+      "column": 2,
+      "depth_rank": 7,
+      "exit_door": "rear",
+      "blocked_by": [
+        "J2"
+      ],
+      "blockers_count": 1,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "rear"
+      ]
+    },
+    {
+      "id": "7LW",
+      "row": 7,
+      "column": 1,
+      "depth_rank": 8,
+      "exit_door": "rear",
+      "blocked_by": [
+        "7LA"
+      ],
+      "blockers_count": 2,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "rear",
+        "window"
+      ]
+    },
+    {
+      "id": "7RA",
+      "row": 7,
+      "column": 4,
+      "depth_rank": 7,
+      "exit_door": "rear",
+      "blocked_by": [
+        "J2"
+      ],
+      "blockers_count": 1,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "rear"
+      ]
+    },
+    {
+      "id": "7RW",
+      "row": 7,
+      "column": 5,
+      "depth_rank": 8,
+      "exit_door": "rear",
+      "blocked_by": [
+        "7RA"
+      ],
+      "blockers_count": 2,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": false,
+      "reserved_for": [],
+      "tags": [
+        "rear",
+        "window"
+      ]
+    },
+    {
+      "id": "J1",
+      "row": 2,
+      "column": 3,
+      "depth_rank": 3,
+      "exit_door": "front",
+      "blocked_by": [],
+      "blockers_count": 0,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": true,
+      "reserved_for": [],
+      "tags": [
+        "folding"
+      ]
+    },
+    {
+      "id": "J2",
+      "row": 5,
+      "column": 3,
+      "depth_rank": 3,
+      "exit_door": "rear",
+      "blocked_by": [],
+      "blockers_count": 0,
+      "near_driver": false,
+      "accessible": false,
+      "bookable": true,
+      "folding": true,
+      "reserved_for": [],
+      "tags": [
+        "folding"
+      ]
+    }
+  ]
+}

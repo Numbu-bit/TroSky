@@ -7,7 +7,7 @@ export type LiveStatus = 'on_trip' | 'idle' | 'offline'
 
 export const LIVE: Record<LiveStatus, { tone: Tone; label: string; icon: LucideIcon }> = {
   on_trip: { tone: 'success', label: 'On a trip', icon: Bus },
-  idle: { tone: 'info', label: 'Free', icon: CircleDot },
+  idle: { tone: 'info', label: 'Available', icon: CircleDot },
   offline: { tone: 'neutral', label: 'Offline', icon: CircleDashed },
 }
 

@@ -32,6 +32,7 @@ from app.core.exceptions import (
     NoPickupNearbyError,
     NotFoundError,
     SeatNotAvailableError,
+    SeatNotInZoneError,
     StopNotOnRouteError,
 )
 from app.core.logging import get_logger
@@ -62,6 +63,7 @@ from app.schemas.booking import BookingCreateRequest
 from app.services.booking_acceptance_service import BookingAcceptanceService
 from app.services.fare_quote_service import FareQuote, FareQuoteService, QuoteRequest
 from app.services.notification_service import NotificationService
+from app.services.seat_zones import passenger_zone, seats_outside_zone
 from app.services.ticket_service import TicketService
 from app.services.vehicle_position import latest_position
 
@@ -323,6 +325,26 @@ class BookingService:
         geometry = (await self._geometries.for_routes([trip.route_id]))[trip.route_id]
         origin_stop_id, destination_stop_id = await self._resolve_segment(geometry, request)
         await self._assert_pickup_ahead(trip, geometry, origin_stop_id)
+        if self._settings.SEAT_ZONES_ENFORCED:
+            zone = passenger_zone(
+                geometry,
+                origin_stop_id,
+                destination_stop_id,
+                near_share=self._settings.SEAT_ZONE_NEAR_SHARE,
+            )
+            outside = seats_outside_zone(
+                requested_seat_ids,
+                seats=list(valid_seats.values()),
+                taken=await self._bookings.list_active_seat_ids_for_trip(trip.id),
+                zone=zone,
+            )
+            if outside:
+                raise SeatNotInZoneError(
+                    details={
+                        "seat_ids": [str(seat_id) for seat_id in outside],
+                        "passenger_zone": zone.value,
+                    }
+                )
         quote = await self._quote_segment(
             trip=trip,
             geometry=geometry,
