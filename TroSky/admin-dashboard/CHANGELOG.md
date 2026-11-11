@@ -76,3 +76,10 @@ Notable changes to the TroSky admin dashboard, newest last. The dashboard as fir
   beside the sidebar, tables scroll in their own box, and anything else still too wide scrolls in
   the content area.
 - **Dispatch, What drivers did: a trip's link says "View"** rather than "Open".
+
+## 2026-11-11 - "View trip"
+
+- **Links to a trip say "View trip"** rather than "Open the trip" (a booking's drawer and a
+  complaint) or "Open trip" (the live map's trip drawer).
+- **Revenue: "1 payment"** rather than "1 payments" in the notes of By hour of the day, By route and
+  By fleet.

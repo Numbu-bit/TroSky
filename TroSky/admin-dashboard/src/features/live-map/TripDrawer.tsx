@@ -167,7 +167,7 @@ export function TripDrawer({
         {tripId && can('trips:manage', 'trips:monitor_live') ? (
           <SheetFooter>
             <Button asChild>
-              <Link to={`/trips/${tripId}`}>Open trip</Link>
+              <Link to={`/trips/${tripId}`}>View trip</Link>
             </Button>
           </SheetFooter>
         ) : null}
