@@ -1,7 +1,8 @@
 """Drivers must renew their insurance within 30 days of it expiring.
 
-Once a driver's insurance has expired they are warned, along with the fleet
-owners whose vehicles they drive. If it still hasn't been renewed after
+Drivers are reminded before their insurance expires, and warned once it has,
+along with the fleet owners whose vehicles they drive. If it still hasn't been
+renewed after
 ``INSURANCE_GRACE_DAYS`` days, the driver is blocked: they can't accept or start
 trips, and they come off the trips they haven't begun. A trip already boarding
 or under way carries on, because its passengers are on board.
@@ -38,10 +39,12 @@ logger = get_logger(__name__)
 
 BLOCK_REASON = "insurance_expired"
 WARNING_ACTION = "insurance_warning"
+REMINDER_ACTION = "insurance_reminder"
 
 
 class InsuranceOutcome(StrEnum):
     NOTHING = "nothing"
+    REMINDED = "reminded"
     WARNED = "warned"
     BLOCKED = "blocked"
     UNBLOCKED = "unblocked"
@@ -108,14 +111,60 @@ class InsuranceService:
                 return InsuranceOutcome.NOTHING
             await self._unblock(driver, expiry)
             return InsuranceOutcome.UNBLOCKED
-        if driver.status != ApprovalStatus.APPROVED or expiry is None or expiry >= today:
+        if driver.status != ApprovalStatus.APPROVED or expiry is None:
             return InsuranceOutcome.NOTHING
+        if expiry >= today:
+            return await self._remind_if_due(driver, expiry, (expiry - today).days)
 
         days_late = (today - expiry).days
         if days_late > self._settings.INSURANCE_GRACE_DAYS:
             await self._block(driver, expiry)
             return InsuranceOutcome.BLOCKED
         return await self._warn_if_due(driver, expiry, days_late)
+
+    async def _remind_if_due(
+        self, driver: Driver, expiry: date, days_left: int
+    ) -> InsuranceOutcome:
+        """The reminder due before it expires, once: if the worker slept through
+        some, the driver gets the latest one rather than several at once."""
+        due = min(
+            (day for day in self._settings.insurance_reminder_days if day >= days_left),
+            default=None,
+        )
+        if due is None:
+            return InsuranceOutcome.NOTHING
+        sent = await self._insurance.warning_days_sent(
+            driver.user_id, action=REMINDER_ACTION, expiry=expiry
+        )
+        if sent and min(sent) <= due:
+            return InsuranceOutcome.NOTHING
+
+        when = (
+            "today" if days_left == 0 else "tomorrow" if days_left == 1 else f"in {days_left} days"
+        )
+        data = {
+            "action": REMINDER_ACTION,
+            "expiry_date": expiry.isoformat(),
+            "day": due,
+        }
+        await self._notifications.notify(
+            driver.user_id,
+            category=NotificationCategory.TRANSACTIONAL,
+            title="Your insurance expires soon",
+            body=(
+                f"Your insurance expires {when}, on {_day(expiry)}. Renew it and upload the new "
+                "document in the app, so you can keep taking trips."
+            ),
+            data=data,
+        )
+        await self._tell_fleet_owners(
+            driver,
+            title="A driver's insurance expires soon",
+            body=f"Insurance for {await self._name(driver)} expires {when}, on {_day(expiry)}.",
+            data=data,
+        )
+        logger.info("insurance_reminder_sent", driver_id=str(driver.id), day=due)
+        return InsuranceOutcome.REMINDED
 
     async def _warn_if_due(self, driver: Driver, expiry: date, days_late: int) -> InsuranceOutcome:
         """The latest warning due, once: if the worker slept through some,

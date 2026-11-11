@@ -29,6 +29,9 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
   /admin/documents/{id}/review` approves a document with its date, or rejects it with a reason. The
   two upload endpoints take an optional `expiry_date`, and `GET /drivers/me/insurance` tells a
   driver where they stand.
+- **Drivers are also reminded before their insurance expires,** 30, 14, 7, 3 and 1 days before
+  (`INSURANCE_REMINDER_DAYS`), and so are the fleet owners whose vehicles they drive. A worker that
+  slept through some sends only the latest one.
 
 ### Fixed
 
