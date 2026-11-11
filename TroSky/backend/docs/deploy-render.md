@@ -15,7 +15,7 @@ Render docs: [Blueprint spec](https://render.com/docs/blueprint-spec) ·
 |---|---|---|
 | **trosky-api** (web service, Docker) | Free: 512 MB RAM, 0.1 CPU | This image (`dockerfilePath: ./TroSky/backend/Dockerfile`, `dockerContext: ./TroSky/backend`, both from the repo root) started by `/app/scripts/render-start.sh`. It runs the API **and** a Celery worker with beat in one container, because free plans have no background workers. |
 | **Supabase project `trosky-staging`** (outside Render) | Free: Postgres 17, 500 MB | **The database**, in Frankfurt, reached through Supabase's Session pooler. See "Database: Supabase". Migration `20260804_0001` enables `postgis`, `pgcrypto` and `citext`. |
-| **trosky-db** (Postgres 17) | Free: 256 MB RAM, 1 GB storage | **Not used since 15 Oct 2026.** The data was copied to Supabase; trosky-db stays as a fallback until it expires on 10 Nov 2026. |
+| ~~**trosky-db**~~ | ~~Free: 256 MB RAM, 1 GB storage~~ | **Removed on 10 Nov 2026**, when its 30-day lease plus the 14-day grace period ran out. From 15 Oct it had only been a read-only fallback; the live database has been Supabase throughout. |
 | **trosky-redis** (Key Value) | Free: 25 MB | Rate limits, seat-hold hints, live vehicle positions, the Celery queue and its results, all in one database. `maxmemoryPolicy: noeviction`, Render's advice for job queues. |
 
 `scripts/render-start.sh`, on every start:
@@ -153,20 +153,20 @@ docker run --rm -e PGURL="$SUPABASE_DB_URL" -e PGSSLMODE=require -v "$PWD:/backu
 3. Afterwards, the row counts of all 71 tables matched (5,470 rows of app data), and
    `alembic_version` was `20261008_0021` on both sides.
 
-trosky-db was only read during this, and stays as a fallback until it expires on 10 Nov 2026.
+trosky-db was only read during this; it was kept as a fallback until it expired on 10 Nov 2026 and its block was removed from `render.yaml` in the same session.
 
 ## Deploying
 
 1. Create the Supabase project first ("Database: Supabase").
 2. Render dashboard → **New → Blueprint** → connect the GitHub repo `Numbu-bit/TroSky`, branch
-   `main`. Render reads `render.yaml` and lists `trosky-api`, `trosky-db` and `trosky-redis`.
+   `main`. Render reads `render.yaml` and lists `trosky-api` and `trosky-redis`.
 3. It asks for the variables marked `sync: false`:
    - **`DATABASE_URL`**: the Supabase Session pooler URI.
    - **`DEV_ADMIN_PASSWORD`**: 12 characters or more. Leave it empty to create no administrator.
 
    Render asks only when the Blueprint is created. Later syncs leave `sync: false` variables
    alone, so change them under **trosky-api → Environment**.
-4. **Apply.** Render creates Key Value (and the unused trosky-db), builds the image and deploys.
+4. **Apply.** Render creates Key Value, builds the image and deploys.
    The first start migrates the empty database. Watch the **Logs** tab for
    `[render-start] <time> starting the API on port 10000`.
 5. Check: `https://<your-service>.onrender.com/health/live` answers `{"status":"alive"}`, and
