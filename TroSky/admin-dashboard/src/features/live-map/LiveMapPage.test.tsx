@@ -46,7 +46,7 @@ describe('Live map', () => {
     expect(await within(drawer).findByText('Driver and vehicle')).toBeInTheDocument()
     expect(await within(drawer).findByText(/km\/h · updated/)).toBeInTheDocument()
     expect(await within(drawer).findByText(/km to go/)).toBeInTheDocument()
-    expect(within(drawer).getByRole('link', { name: 'Open trip' })).toHaveAttribute(
+    expect(within(drawer).getByRole('link', { name: 'View trip' })).toHaveAttribute(
       'href',
       expect.stringMatching(/^\/trips\//),
     )

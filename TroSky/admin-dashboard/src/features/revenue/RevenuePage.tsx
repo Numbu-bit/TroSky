@@ -35,6 +35,9 @@ import { useDebounced } from '@/lib/use-debounced'
 
 import { usePayments, useRevenue, type AdminPayment } from './api'
 
+const paymentCount = (count: number) =>
+  `${formatNumber(count)} ${count === 1 ? 'payment' : 'payments'}`
+
 function Transactions({ period }: { period: { from: string; to: string; city: string } }) {
   const { can } = useSession()
   const [filters, update] = useUrlState({
@@ -404,7 +407,7 @@ export default function RevenuePage() {
                   key: row.key,
                   label: row.label ?? `${row.key}:00`,
                   value: Number(row.amount),
-                  hint: `${formatNumber(row.payments)} payments`,
+                  hint: paymentCount(row.payments),
                 }))}
             />
             <BarList
@@ -418,7 +421,7 @@ export default function RevenuePage() {
                 key: row.key,
                 label: row.label ?? 'Retired route',
                 value: Number(row.amount),
-                hint: `${formatNumber(row.payments)} payments`,
+                hint: paymentCount(row.payments),
               }))}
             />
             <BarList
@@ -432,7 +435,7 @@ export default function RevenuePage() {
                 key: row.key,
                 label: row.label ?? 'Fleet',
                 value: Number(row.amount),
-                hint: `${formatNumber(row.payments)} payments`,
+                hint: paymentCount(row.payments),
               }))}
             />
           </div>
