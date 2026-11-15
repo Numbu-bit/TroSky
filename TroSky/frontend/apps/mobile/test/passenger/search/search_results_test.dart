@@ -442,10 +442,10 @@ void main() {
       expect(find.text('Tomorrow, Fri 2 Oct'), findsOneWidget);
       expect(_plates(tester), ['TMR-1', 'TMR-2']);
       // Two searches went out: today (empty) and tomorrow.
-      expect(
-        routes.queries.map((TripSearchQuery q) => q.travelDate).toList(),
-        [DateTime.utc(2026, 10, 1), tomorrow],
-      );
+      expect(routes.queries.map((TripSearchQuery q) => q.travelDate).toList(), [
+        DateTime.utc(2026, 10, 1),
+        tomorrow,
+      ]);
     });
 
     testWidgets('an error, then Retry', (tester) async {
@@ -706,10 +706,8 @@ class _ForgetfulFavourites implements UserRepository {
 /// A search whose results depend on the query's `travelDate`. Any date
 /// not in [byDate] returns an empty page.
 class _ByDateTrips extends ScriptedTrips {
-  _ByDateTrips(
-    MockBackend backend, {
-    required this.byDate,
-  }) : super(backend, const []);
+  _ByDateTrips(MockBackend backend, {required this.byDate})
+    : super(backend, const []);
 
   final Map<DateTime, List<TripSearchResultResponse>> byDate;
 
@@ -718,7 +716,8 @@ class _ByDateTrips extends ScriptedTrips {
     TripSearchQuery query,
   ) async {
     queries.add(query);
-    final items = byDate[query.travelDate] ?? const <TripSearchResultResponse>[];
+    final items =
+        byDate[query.travelDate] ?? const <TripSearchResultResponse>[];
     return Ok(
       Paginated(
         items: items.skip(query.offset).take(query.limit).toList(),

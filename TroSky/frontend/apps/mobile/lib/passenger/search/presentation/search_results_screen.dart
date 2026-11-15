@@ -459,9 +459,11 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
   /// automatically load tomorrow's first trips underneath.
   Widget _emptyTodayWithTomorrow(AppLocalizations l10n, EdgeInsets padding) {
     final now = ref.read(clockProvider)().toLocal();
-    final tomorrow = DateTime(now.year, now.month, now.day).add(
-      const Duration(days: 1),
-    );
+    final tomorrow = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).add(const Duration(days: 1));
     final tomorrowRequest = ResultsRequest(
       _search.copyWith(when: SearchWhen.at(tomorrow)),
       sort: _sort,
@@ -516,7 +518,12 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
         else
           for (final (i, trip) in tomorrowTrips.indexed) ...[
             if (i > 0) const SizedBox(height: TroskySpacing.s10),
-            tripCard(l10n, trip, bestMatch: false, onPressed: () => _open(trip)),
+            tripCard(
+              l10n,
+              trip,
+              bestMatch: false,
+              onPressed: () => _open(trip),
+            ),
           ],
       ],
     );
