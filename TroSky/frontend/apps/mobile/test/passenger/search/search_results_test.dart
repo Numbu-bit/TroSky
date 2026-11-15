@@ -406,10 +406,20 @@ void main() {
       expect(routes.queries.map((q) => q.offset), [0, 0]);
     });
 
-    testWidgets('empty: try another time', (tester) async {
+    testWidgets('empty on a future date: try another time (no tomorrow '
+        'fallback)', (tester) async {
       final world = morning();
       await openLiveResults(tester, world, ScriptedTrips(world.backend, []));
+      // Schedule for 3 Oct, so the search is not for today.
+      await tapPill(tester, 'Schedule');
+      await tester.tap(find.text('3'));
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      // The time picker opens next; keep the default.
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
       expect(find.text('No vehicles on this route right now'), findsOneWidget);
+      expect(find.text('No more trips today'), findsNothing);
       await tester.tap(find.text('Try another time'));
       await tester.pumpAndSettle();
       expect(find.byType(DatePickerDialog), findsOneWidget);
@@ -439,7 +449,16 @@ void main() {
       await openLiveResults(tester, world, routes);
 
       expect(find.text('No more trips today'), findsOneWidget);
-      expect(find.text('Tomorrow, Fri 2 Oct'), findsOneWidget);
+      expect(
+        find.text("Showing tomorrow's first trips instead"),
+        findsOneWidget,
+      );
+      expect(find.text('Tomorrow · Fri 2 Oct'), findsOneWidget);
+      expect(
+        find.bySemanticsLabel("Tomorrow's trips, Fri 2 Oct"),
+        findsOneWidget,
+      );
+      expect(find.text('Try another time'), findsNothing);
       expect(_plates(tester), ['TMR-1', 'TMR-2']);
       // Two searches went out: today (empty) and tomorrow.
       expect(routes.queries.map((TripSearchQuery q) => q.travelDate).toList(), [

@@ -749,8 +749,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get resultsNoMoreToday => 'No more trips today';
 
   @override
-  String resultsTomorrowHeader(String date) {
-    return 'Tomorrow, $date';
+  String get resultsNoMoreTodaySubline =>
+      'Showing tomorrow\'s first trips instead';
+
+  @override
+  String resultsTomorrowChip(String date) {
+    return 'Tomorrow · $date';
+  }
+
+  @override
+  String resultsTomorrowSemantics(String date) {
+    return 'Tomorrow\'s trips, $date';
   }
 
   @override
