@@ -95,7 +95,7 @@ class ScriptedBookings implements BookingRepository {
 
   /// Answers the next `POST /bookings/{id}/cancel`, in order.
   final List<AppFailure> cancelFailures = [];
-  final List<(String, String?)> cancels = [];
+  final List<(String, CancelReason?)> cancels = [];
 
   /// Trip History's pages asked for (20 a page; Home's held-booking check,
   /// 5 a page, isn't counted).
@@ -157,7 +157,7 @@ class ScriptedBookings implements BookingRepository {
   @override
   Future<Result<BookingResponse>> cancel(
     String bookingId, {
-    String? reason,
+    CancelReason? reason,
   }) async {
     cancels.add((bookingId, reason));
     if (cancelFailures.isNotEmpty) return Err(cancelFailures.removeAt(0));

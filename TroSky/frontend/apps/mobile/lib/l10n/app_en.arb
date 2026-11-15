@@ -1735,11 +1735,27 @@
   },
   "cancelReasonOther": "Other",
   "@cancelReasonOther": {
-    "description": "Cancel reason: the passenger writes their own."
+    "description": "Cancel reason."
   },
-  "cancelReasonHint": "Tell us more",
-  "@cancelReasonHint": {
-    "description": "Hint in the cancel sheet's text field for \"Other\"."
+  "bookingCancelledByYou": "Cancelled by you",
+  "@bookingCancelledByYou": {
+    "description": "Booking details, status line before the reason."
+  },
+  "bookingCancelledByTroSky": "Cancelled by TroSky",
+  "@bookingCancelledByTroSky": {
+    "description": "Booking details, status line before the reason when TroSky cancelled."
+  },
+  "bookingCancelledLine": "{by} · {reason}",
+  "@bookingCancelledLine": {
+    "description": "Booking details status line with a reason, e.g. 'Cancelled by you · Change of plans'.",
+    "placeholders": {
+      "by": { "type": "String", "example": "Cancelled by you" },
+      "reason": { "type": "String", "example": "Change of plans" }
+    }
+  },
+  "bookingExpiredLine": "Expired · Not paid in time",
+  "@bookingExpiredLine": {
+    "description": "Booking details line for an expired (unpaid) booking."
   },
   "cancelRefundTitle": "Refund: {amount}",
   "@cancelRefundTitle": {

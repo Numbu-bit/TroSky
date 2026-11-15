@@ -264,12 +264,14 @@ class MockBookingRepository implements BookingRepository {
   );
 
   @override
-  Future<Result<BookingResponse>> cancel(String bookingId, {String? reason}) =>
-      _authenticated(
-        _tokens(),
-        latency,
-        (token) => _backend.cancelBooking(token, bookingId, reason: reason),
-      );
+  Future<Result<BookingResponse>> cancel(
+    String bookingId, {
+    CancelReason? reason,
+  }) => _authenticated(
+    _tokens(),
+    latency,
+    (token) => _backend.cancelBooking(token, bookingId, reason: reason),
+  );
 }
 
 /// [PaymentRepository] against the in-memory [MockBackend]: the wallet pays

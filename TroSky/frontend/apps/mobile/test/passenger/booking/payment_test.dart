@@ -52,6 +52,29 @@ Future<void> _tap(WidgetTester tester, String text) async {
   await tester.pumpAndSettle();
 }
 
+/// Taps the Payment screen's bottom cancel button (labelled [label]),
+/// letting the shared P-16 cancel sheet animate in without using
+/// pumpAndSettle (booking_watch polls keep firing).
+Future<void> _tapCancelButton(WidgetTester tester, String label) async {
+  await tester.ensureVisible(find.text(label));
+  await tester.tap(find.text(label));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400));
+}
+
+/// Picks "Change of plans" in the shared cancel sheet, then taps its
+/// confirm button (labelled [confirmLabel] — "Cancel booking" from the
+/// trips path, "Release seats" from the payment release path).
+Future<void> _pickReasonAndConfirm(
+  WidgetTester tester,
+  String confirmLabel,
+) async {
+  await tester.tap(find.text('Change of plans'));
+  await tester.pump();
+  await tester.tap(find.widgetWithText(TroskyButton, confirmLabel));
+  await tester.pumpAndSettle();
+}
+
 /// The trip card's facts, label then value.
 void _expectFacts(String vehicle, String seats, String total) {
   for (final text in ['Vehicle', vehicle, 'Seats', seats, 'Total', total]) {
@@ -170,7 +193,8 @@ void main() {
       await reserve(tester, world: world, overrides: [bookings.provider]);
       await waitFor(tester, world, bookingPollEvery);
       expect(bookings.gets, 1);
-      await _tap(tester, 'Cancel request');
+      await _tapCancelButton(tester, 'Cancel request');
+      await _pickReasonAndConfirm(tester, 'Cancel booking');
       expect(find.byType(PaymentScreen), findsNothing);
       await waitFor(tester, world, const Duration(seconds: 30));
       expect(bookings.gets, 1);
@@ -360,7 +384,8 @@ void main() {
     testWidgets('Cancel request: cancelled on the server, back to the '
         'results', (tester) async {
       final (world, booking) = await reserve(tester);
-      await _tap(tester, 'Cancel request');
+      await _tapCancelButton(tester, 'Cancel request');
+      await _pickReasonAndConfirm(tester, 'Cancel booking');
       expect(world.backend.bookingStatus(booking.id), BookingStatus.cancelled);
       expect(find.byType(PaymentScreen), findsNothing);
       expect(find.byType(SeatSelectionScreen), findsNothing);
@@ -374,7 +399,8 @@ void main() {
     testWidgets('Cancel booking after a move', (tester) async {
       final (world, booking) = await reserve(tester);
       await letDeadlinePass(tester, world, booking);
-      await _tap(tester, 'Cancel booking');
+      await _tapCancelButton(tester, 'Cancel booking');
+      await _pickReasonAndConfirm(tester, 'Cancel booking');
       expect(world.backend.bookingStatus(booking.id), BookingStatus.cancelled);
       expect(find.byType(SearchResultsScreen), findsOneWidget);
     });
@@ -387,7 +413,10 @@ void main() {
       await nextPoll(tester, world);
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
-      await _tap(tester, 'Release seats');
+      await tester.tap(find.text('Release seats'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await _pickReasonAndConfirm(tester, 'Release seats');
       expect(world.backend.bookingStatus(booking.id), BookingStatus.cancelled);
       expect(find.byType(SeatSelectionScreen), findsOneWidget);
     });
@@ -401,7 +430,8 @@ void main() {
         overrides: [bookings.provider],
       );
       world.backend.declineBooking(booking.id, move: false);
-      await _tap(tester, 'Cancel request');
+      await _tapCancelButton(tester, 'Cancel request');
+      await _pickReasonAndConfirm(tester, 'Cancel booking');
       expect(bookings.cancelled, [booking.id]);
       expect(stageShown(tester), PaymentStage.notAccepted);
       expect(find.text('No driver accepted your booking'), findsOneWidget);
@@ -466,7 +496,11 @@ void main() {
     semantics.dispose();
     expect(find.text('Leave payment?'), findsOneWidget);
     await tester.tap(find.text('Release seats'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    // The leave sheet now hands off to the shared P-16 cancel sheet.
+    expect(find.text('Cancel this booking?'), findsOneWidget);
+    await _pickReasonAndConfirm(tester, 'Release seats');
     expect(world.backend.bookingStatus(booking.id), BookingStatus.cancelled);
     expect(find.byType(SeatSelectionScreen), findsOneWidget);
     expect(snackBarText(tester), 'Seats released. Choose again.');

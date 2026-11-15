@@ -250,7 +250,10 @@ class RecordingBookings implements BookingRepository {
       _inner.get(bookingId);
 
   @override
-  Future<Result<BookingResponse>> cancel(String bookingId, {String? reason}) {
+  Future<Result<BookingResponse>> cancel(
+    String bookingId, {
+    CancelReason? reason,
+  }) {
     cancelled.add(bookingId);
     return _inner.cancel(bookingId, reason: reason);
   }

@@ -456,11 +456,31 @@ void main() {
       );
       final b = (await LiveBookingRepository(
         dio(adapter),
-      ).cancel('b1', reason: 'Found another ride')).valueOrNull!;
+      ).cancel('b1', reason: CancelReason.foundAnotherRide)).valueOrNull!;
       final request = adapter.requests.single;
       expect(request.path, '/bookings/b1/cancel');
-      expect(request.data, {'reason': 'Found another ride'});
+      expect(request.data, {'reason': 'found_another_ride'});
       expect(b.status, BookingStatus.refundPending);
+    });
+
+    test('cancel without a reason sends an empty body (G37 fallback)', () async {
+      final adapter = FakeAdapter(
+        (_) async => FakeReply(200, {
+          'id': 'b2',
+          'booking_reference': 'TS-2',
+          'trip_id': 't1',
+          'status': 'cancelled',
+          'passenger_count': 1,
+          'fare_amount': '8.00',
+          'platform_fee': '0.50',
+          'total_amount': '8.50',
+          'expires_at': null,
+          'created_at': '2026-10-20T09:00:00Z',
+          'passengers': <Object>[],
+        }),
+      );
+      await LiveBookingRepository(dio(adapter)).cancel('b2');
+      expect(adapter.requests.single.data, <String, Object>{});
     });
   });
 

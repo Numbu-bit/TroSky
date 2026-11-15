@@ -369,7 +369,7 @@ void main() {
         await tester.tap(confirm());
         await tester.pumpAndSettle();
 
-        expect(bookings.cancels.single.$2, 'Found another ride');
+        expect(bookings.cancels.single.$2, CancelReason.foundAnotherRide);
         expect(find.text('Booking cancelled'), findsOneWidget);
         expect(find.text('Your seats have been released.'), findsOneWidget);
         expect(
@@ -391,7 +391,7 @@ void main() {
       },
     );
 
-    testWidgets('not paid: "Other" with a note; no refund; cancelled', (
+    testWidgets('not paid: "Other" sends reason=other; no refund; cancelled', (
       tester,
     ) async {
       final world = withHistory();
@@ -401,19 +401,14 @@ void main() {
       await tester.tap(link('Cancel booking'));
       await tester.pumpAndSettle();
       expect(find.byType(TroskyRefundBox), findsNothing);
-      await tester.enterText(find.byType(TextField), 'Rain in Circle');
+      // G37 isn't shipped: "Other" has no text field yet — the sheet
+      // just sends reason=other.
+      expect(find.byType(TextField), findsNothing);
+      await tester.tap(find.text('Other'));
       await tester.pump();
-      expect(
-        tester
-            .widget<TroskyRadioOption>(
-              find.widgetWithText(TroskyRadioOption, 'Other'),
-            )
-            .selected,
-        isTrue,
-      );
       await tester.tap(confirm());
       await tester.pumpAndSettle();
-      expect(bookings.cancels.single.$2, 'Rain in Circle');
+      expect(bookings.cancels.single.$2, CancelReason.other);
       expect(find.text('Booking cancelled'), findsOneWidget);
       expect(find.byType(TroskyRefundNote), findsNothing);
     });
@@ -426,12 +421,34 @@ void main() {
       await tester.tap(link('Cancel booking'));
       await tester.pumpAndSettle();
       expect(find.text('Your trip has started'), findsOneWidget);
+      // No reason is picked by default any more: choose one first.
+      await tester.tap(find.text('Change of plans'));
+      await tester.pump();
       await tester.tap(confirm());
       await tester.pumpAndSettle();
       expect(find.text('Cancellation requested'), findsOneWidget);
       await tester.tap(find.text('Back to trips'));
       await tester.pumpAndSettle();
       expect(rowOf(tester, 'Achimota', 'Lapaz').status, 'Paid · On the way');
+    });
+
+    testWidgets('confirm is disabled until a reason is picked', (tester) async {
+      final world = withHistory();
+      final bookings = ScriptedBookings(world);
+      await openTrips(tester, world: world, overrides: [bookings.provider]);
+      await openBooking(tester, 'Madina', 'Circle');
+      await tester.tap(link('Cancel booking'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TroskyButton>(confirm()).onPressed,
+        isNull,
+      );
+      await tester.tap(find.text('Change of plans'));
+      await tester.pump();
+      expect(
+        tester.widget<TroskyButton>(confirm()).onPressed,
+        isNotNull,
+      );
     });
 
     testWidgets('a failure stays in the sheet; Keep booking closes it', (
@@ -444,6 +461,8 @@ void main() {
       await openBooking(tester, 'Madina', 'Circle');
       await tester.tap(link('Cancel booking'));
       await tester.pumpAndSettle();
+      await tester.tap(find.text('Change of plans'));
+      await tester.pump();
       await tester.tap(confirm());
       await tester.pumpAndSettle();
       expect(find.text('Cancel this booking?'), findsOneWidget);

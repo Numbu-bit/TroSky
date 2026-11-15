@@ -5,30 +5,45 @@ import 'package:trosky_auth/trosky_auth.dart';
 import 'package:trosky_core/trosky_core.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
-import '../../../entry/auth/presentation/failure_messages.dart';
-import '../../../l10n/app_localizations.dart';
-import '../../booking/presentation/booking_format.dart';
-import '../application/trips_providers.dart';
+import '../../entry/auth/presentation/failure_messages.dart';
+import '../../l10n/app_localizations.dart';
+import '../booking/presentation/booking_format.dart';
+import '../trips/application/trips_providers.dart';
 
 /// How a cancel from the sheet went.
 @immutable
 class CancelOutcome {
-  const CancelOutcome(this.booking, {required this.requested});
+  const CancelOutcome(
+    this.booking, {
+    required this.reason,
+    required this.requested,
+  });
 
   /// As the server answered: `cancelled`, `refund_pending`, or unchanged.
   final BookingResponse booking;
+
+  /// What the passenger picked in the sheet.
+  final CancelReason reason;
 
   /// The trip had started: the cancel waits for TroSky, and the booking
   /// stays as it was (backend/app/services/booking_service.py).
   final bool requested;
 }
 
-/// The cancel sheet (P-16): why, what comes back, then
-/// `POST /bookings/{id}/cancel`. Null when the passenger keeps the booking.
+/// The one-and-only cancel sheet (P-16). Every passenger-initiated cancel
+/// — from Payment's "Release seats", from the back-gesture leave sheet,
+/// and from Booking Details — goes through this sheet.
+///
+/// `confirmLabel` lets callers reuse the words the site already shows
+/// (e.g. "Release seats" on the Payment screen) while the reason, refund
+/// box and backend call stay the same.
+///
+/// Null when the passenger keeps the booking.
 Future<CancelOutcome?> showCancelBookingSheet(
   BuildContext context, {
   required BookingResponse booking,
   TripStatus? tripStatus,
+  String? confirmLabel,
 }) => showModalBottomSheet<CancelOutcome>(
   context: context,
   isScrollControlled: true,
@@ -37,34 +52,36 @@ Future<CancelOutcome?> showCancelBookingSheet(
   shape: const RoundedRectangleBorder(
     borderRadius: BorderRadius.vertical(top: Radius.circular(TroskyRadii.r24)),
   ),
-  builder: (context) =>
-      _CancelBookingSheet(booking: booking, tripStatus: tripStatus),
+  builder: (context) => CancelBookingSheet(
+    key: const Key('cancel-booking-sheet'),
+    booking: booking,
+    tripStatus: tripStatus,
+    confirmLabel: confirmLabel,
+  ),
 );
 
-enum _Reason { plans, anotherRide, time, other }
-
-class _CancelBookingSheet extends ConsumerStatefulWidget {
-  const _CancelBookingSheet({required this.booking, this.tripStatus});
+/// Public so tests can assert constructor identity across all three
+/// entry points.
+class CancelBookingSheet extends ConsumerStatefulWidget {
+  const CancelBookingSheet({
+    super.key,
+    required this.booking,
+    this.tripStatus,
+    this.confirmLabel,
+  });
 
   final BookingResponse booking;
   final TripStatus? tripStatus;
+  final String? confirmLabel;
 
   @override
-  ConsumerState<_CancelBookingSheet> createState() =>
-      _CancelBookingSheetState();
+  ConsumerState<CancelBookingSheet> createState() => _CancelBookingSheetState();
 }
 
-class _CancelBookingSheetState extends ConsumerState<_CancelBookingSheet> {
-  _Reason _reason = _Reason.plans;
-  final _note = TextEditingController();
+class _CancelBookingSheetState extends ConsumerState<CancelBookingSheet> {
+  CancelReason? _reason;
   bool _busy = false;
   String? _error;
-
-  @override
-  void dispose() {
-    _note.dispose();
-    super.dispose();
-  }
 
   bool get _started => switch (widget.tripStatus ??
       widget.booking.trip?.status) {
@@ -72,16 +89,12 @@ class _CancelBookingSheetState extends ConsumerState<_CancelBookingSheet> {
     _ => false,
   };
 
-  String _reasonText(AppLocalizations l10n) => switch (_reason) {
-    _Reason.plans => l10n.cancelReasonPlans,
-    _Reason.anotherRide => l10n.cancelReasonAnotherRide,
-    _Reason.time => l10n.cancelReasonTime,
-    _Reason.other =>
-      _note.text.trim().isEmpty ? l10n.cancelReasonOther : _note.text.trim(),
-  };
+  /// A "paid" booking is one the backend would refund on cancel.
+  bool get _paid => widget.booking.status == BookingStatus.confirmed;
 
   Future<void> _confirm() async {
-    final l10n = AppLocalizations.of(context);
+    final reason = _reason;
+    if (reason == null) return;
     setState(() {
       _busy = true;
       _error = null;
@@ -89,13 +102,18 @@ class _CancelBookingSheetState extends ConsumerState<_CancelBookingSheet> {
     final before = widget.booking.status;
     final result = await ref
         .read(bookingRepositoryProvider)
-        .cancel(widget.booking.id, reason: _reasonText(l10n));
+        .cancel(widget.booking.id, reason: reason);
+    // TODO(G37): also forward a free-text note for CancelReason.other once
+    // the backend accepts `reason_note` (today the request model is
+    // extra="forbid"). The sheet drops the free-text input for now to
+    // avoid showing a field whose contents don't go anywhere.
     if (!mounted) return;
     switch (result) {
       case Ok(:final value):
         Navigator.of(context).pop(
           CancelOutcome(
             value,
+            reason: reason,
             requested:
                 value.status == before &&
                 value.status != BookingStatus.cancelled,
@@ -112,11 +130,10 @@ class _CancelBookingSheetState extends ConsumerState<_CancelBookingSheet> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final paid = widget.booking.status == BookingStatus.confirmed;
     // Where the refund goes, as the backend does it
     // (backend/app/services/refund_service.py `approve`): the wallet is
     // credited; MTN MoMo has no refund API, so the team pays it out.
-    final channel = paid
+    final channel = _paid
         ? ref.watch(bookingPaymentProvider(widget.booking.id)).value?.channel
         : null;
     final bottom = MediaQuery.viewInsetsOf(context).bottom;
@@ -152,64 +169,19 @@ class _CancelBookingSheetState extends ConsumerState<_CancelBookingSheet> {
               ),
             ),
             const SizedBox(height: TroskySpacing.s8),
-            for (final reason in _Reason.values)
+            for (final reason in CancelReason.values)
               TroskyRadioOption(
-                label: switch (reason) {
-                  _Reason.plans => l10n.cancelReasonPlans,
-                  _Reason.anotherRide => l10n.cancelReasonAnotherRide,
-                  _Reason.time => l10n.cancelReasonTime,
-                  _Reason.other => l10n.cancelReasonOther,
-                },
+                label: cancelReasonLabel(l10n, reason),
                 selected: _reason == reason,
                 onPressed: () => setState(() => _reason = reason),
               ),
-            Padding(
-              padding: const EdgeInsets.only(left: 36),
-              child: TextField(
-                controller: _note,
-                maxLength: 200,
-                enabled: !_busy,
-                // Writing here is choosing "Other".
-                onTap: () => setState(() => _reason = _Reason.other),
-                onChanged: (_) => setState(() => _reason = _Reason.other),
-                style: TroskyTypography.body13Regular.copyWith(
-                  color: TroskyColors.ink,
-                ),
-                decoration: InputDecoration(
-                  hintText: l10n.cancelReasonHint,
-                  hintStyle: TroskyTypography.body13Regular.copyWith(
-                    color: TroskyColors.textSecondary,
-                  ),
-                  counterText: '',
-                  filled: true,
-                  fillColor: TroskyColors.background,
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: TroskySpacing.s14,
-                    vertical: TroskySpacing.s12,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(TroskyRadii.r12),
-                    borderSide: const BorderSide(color: TroskyColors.border),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(TroskyRadii.r12),
-                    borderSide: const BorderSide(color: TroskyColors.border),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(TroskyRadii.r12),
-                    borderSide: const BorderSide(color: TroskyColors.green),
-                  ),
-                ),
-              ),
-            ),
             const SizedBox(height: TroskySpacing.s16),
             if (_started)
               TroskyRefundBox(
                 title: l10n.cancelReviewTitle,
                 body: l10n.cancelReviewBody,
               )
-            else if (paid)
+            else if (_paid)
               TroskyRefundBox(
                 title: l10n.cancelRefundTitle(
                   cedis(l10n, widget.booking.totalAmount),
@@ -234,10 +206,10 @@ class _CancelBookingSheetState extends ConsumerState<_CancelBookingSheet> {
             ],
             const SizedBox(height: TroskySpacing.s16),
             TroskyButton(
-              label: l10n.cancelConfirm,
+              label: widget.confirmLabel ?? l10n.cancelConfirm,
               variant: TroskyButtonVariant.danger,
               loading: _busy,
-              onPressed: _busy ? null : _confirm,
+              onPressed: (_busy || _reason == null) ? null : _confirm,
             ),
             const SizedBox(height: TroskySpacing.s10),
             TroskyButton(
@@ -251,3 +223,13 @@ class _CancelBookingSheetState extends ConsumerState<_CancelBookingSheet> {
     );
   }
 }
+
+/// The P-16 label for a reason: a single `l10n` lookup so Booking
+/// Details, the sheet and any analytics stay in sync.
+String cancelReasonLabel(AppLocalizations l10n, CancelReason reason) =>
+    switch (reason) {
+      CancelReason.changeOfPlans => l10n.cancelReasonPlans,
+      CancelReason.foundAnotherRide => l10n.cancelReasonAnotherRide,
+      CancelReason.departureTime => l10n.cancelReasonTime,
+      CancelReason.other => l10n.cancelReasonOther,
+    };

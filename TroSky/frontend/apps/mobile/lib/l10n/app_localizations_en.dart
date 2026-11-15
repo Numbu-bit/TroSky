@@ -1231,7 +1231,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cancelReasonOther => 'Other';
 
   @override
-  String get cancelReasonHint => 'Tell us more';
+  String get bookingCancelledByYou => 'Cancelled by you';
+
+  @override
+  String get bookingCancelledByTroSky => 'Cancelled by TroSky';
+
+  @override
+  String bookingCancelledLine(String by, String reason) {
+    return '$by · $reason';
+  }
+
+  @override
+  String get bookingExpiredLine => 'Expired · Not paid in time';
 
   @override
   String cancelRefundTitle(String amount) {
