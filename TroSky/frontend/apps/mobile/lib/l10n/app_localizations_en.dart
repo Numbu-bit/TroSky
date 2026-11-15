@@ -746,6 +746,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get resultsTryAnotherTime => 'Try another time';
 
   @override
+  String get resultsNoMoreToday => 'No more trips today';
+
+  @override
+  String resultsTomorrowHeader(String date) {
+    return 'Tomorrow, $date';
+  }
+
+  @override
   String get resultsNoMinibus => 'No minibuses among these trips.';
 
   @override

@@ -1384,6 +1384,18 @@ abstract class AppLocalizations {
   /// **'Try another time'**
   String get resultsTryAnotherTime;
 
+  /// Search Results late in the day: today's trips are all past, tomorrow's load underneath.
+  ///
+  /// In en, this message translates to:
+  /// **'No more trips today'**
+  String get resultsNoMoreToday;
+
+  /// Section header above tomorrow's first trips when today has none left. 'date' is a short weekday + day + month in the device locale.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow, {date}'**
+  String resultsTomorrowHeader(String date);
+
   /// Minibus filter left nothing.
   ///
   /// In en, this message translates to:
