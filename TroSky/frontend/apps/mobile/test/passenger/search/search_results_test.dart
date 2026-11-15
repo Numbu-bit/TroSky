@@ -8,6 +8,7 @@ import 'package:trosky_auth/trosky_auth.dart';
 import 'package:trosky_core/trosky_core.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
+import '../../helpers/fakes.dart';
 import '../home/home_helpers.dart';
 import 'search_helpers.dart';
 
@@ -414,6 +415,39 @@ void main() {
       expect(find.byType(DatePickerDialog), findsOneWidget);
     });
 
+    testWidgets('late evening with no trips left today: shows "No more trips '
+        "today\" and loads tomorrow's first trips underneath", (tester) async {
+      final world = TestWorld()..now = DateTime(2026, 10, 1, 22, 30);
+      final tomorrow = DateTime.utc(2026, 10, 2);
+      final routes = _ByDateTrips(
+        world.backend,
+        byDate: {
+          tomorrow: [
+            liveTrip(
+              id: 'tmr-1',
+              plate: 'TMR-1',
+              departs: DateTime(2026, 10, 2, 5, 15),
+            ),
+            liveTrip(
+              id: 'tmr-2',
+              plate: 'TMR-2',
+              departs: DateTime(2026, 10, 2, 5, 45),
+            ),
+          ],
+        },
+      );
+      await openLiveResults(tester, world, routes);
+
+      expect(find.text('No more trips today'), findsOneWidget);
+      expect(find.text('Tomorrow, Fri 2 Oct'), findsOneWidget);
+      expect(_plates(tester), ['TMR-1', 'TMR-2']);
+      // Two searches went out: today (empty) and tomorrow.
+      expect(
+        routes.queries.map((TripSearchQuery q) => q.travelDate).toList(),
+        [DateTime.utc(2026, 10, 1), tomorrow],
+      );
+    });
+
     testWidgets('an error, then Retry', (tester) async {
       final world = morning();
       final routes = ScriptedTrips(world.backend, _threeTrips(), failures: 1);
@@ -667,6 +701,33 @@ class _ForgetfulFavourites implements UserRepository {
   Future<Result<FavouriteRouteResponse>> addFavouriteRoute(
     FavouriteRouteCreateRequest request,
   ) => _inner.addFavouriteRoute(request);
+}
+
+/// A search whose results depend on the query's `travelDate`. Any date
+/// not in [byDate] returns an empty page.
+class _ByDateTrips extends ScriptedTrips {
+  _ByDateTrips(
+    MockBackend backend, {
+    required this.byDate,
+  }) : super(backend, const []);
+
+  final Map<DateTime, List<TripSearchResultResponse>> byDate;
+
+  @override
+  Future<Result<Paginated<TripSearchResultResponse>>> searchTrips(
+    TripSearchQuery query,
+  ) async {
+    queries.add(query);
+    final items = byDate[query.travelDate] ?? const <TripSearchResultResponse>[];
+    return Ok(
+      Paginated(
+        items: items.skip(query.offset).take(query.limit).toList(),
+        total: items.length,
+        limit: query.limit,
+        offset: query.offset,
+      ),
+    );
+  }
 }
 
 /// A search that answers only when [release]d.

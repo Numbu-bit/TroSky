@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:trosky_api/trosky_api.dart';
 import 'package:trosky_auth/trosky_auth.dart';
 import 'package:trosky_core/trosky_core.dart';
@@ -383,6 +384,9 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
         ),
       ]);
     }
+    if (loaded.trips.isEmpty && _searchIsForToday()) {
+      return _emptyTodayWithTomorrow(l10n, padding);
+    }
     if (loaded.trips.isEmpty) {
       return list([
         _Message(
@@ -441,6 +445,81 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
           ],
         ),
     ]);
+  }
+
+  /// The current search is for today (either "now" or a scheduled time
+  /// whose local date is today). Tomorrow fallback only fires then.
+  bool _searchIsForToday() {
+    final now = ref.read(clockProvider)().toLocal();
+    final at = (_search.when.at ?? now).toLocal();
+    return at.year == now.year && at.month == now.month && at.day == now.day;
+  }
+
+  /// Today's results came back empty: show "No more trips today" and
+  /// automatically load tomorrow's first trips underneath.
+  Widget _emptyTodayWithTomorrow(AppLocalizations l10n, EdgeInsets padding) {
+    final now = ref.read(clockProvider)().toLocal();
+    final tomorrow = DateTime(now.year, now.month, now.day).add(
+      const Duration(days: 1),
+    );
+    final tomorrowRequest = ResultsRequest(
+      _search.copyWith(when: SearchWhen.at(tomorrow)),
+      sort: _sort,
+      minibusOnly: _minibusOnly,
+    );
+    final tomorrowResults = ref.watch(
+      tripResultsControllerProvider(tomorrowRequest),
+    );
+    final tomorrowTrips =
+        tomorrowResults.value?.trips ?? const <TripSearchResultResponse>[];
+    final header = l10n.resultsTomorrowHeader(
+      DateFormat('EEE d MMM', l10n.localeName).format(tomorrow),
+    );
+    return ListView(
+      controller: _scroll,
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: padding,
+      children: [
+        _Message(
+          text: l10n.resultsNoMoreToday,
+          action: l10n.resultsTryAnotherTime,
+          onAction: _schedule,
+        ),
+        const SizedBox(height: TroskySpacing.s16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: TroskySpacing.s10),
+          child: Text(
+            header,
+            style: TroskyTypography.heading15Bold.copyWith(
+              color: TroskyColors.textPrimary,
+            ),
+          ),
+        ),
+        const SizedBox(height: TroskySpacing.s10),
+        if (tomorrowResults.isLoading && !tomorrowResults.hasValue) ...const [
+          _SkeletonCard(),
+          SizedBox(height: TroskySpacing.s10),
+          _SkeletonCard(),
+        ] else if (tomorrowTrips.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: TroskySpacing.s10,
+              vertical: TroskySpacing.s12,
+            ),
+            child: Text(
+              l10n.resultsEmpty,
+              style: TroskyTypography.body12Regular.copyWith(
+                color: TroskyColors.textSecondary,
+              ),
+            ),
+          )
+        else
+          for (final (i, trip) in tomorrowTrips.indexed) ...[
+            if (i > 0) const SizedBox(height: TroskySpacing.s10),
+            tripCard(l10n, trip, bestMatch: false, onPressed: () => _open(trip)),
+          ],
+      ],
+    );
   }
 }
 
