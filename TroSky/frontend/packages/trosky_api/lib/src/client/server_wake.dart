@@ -48,7 +48,7 @@ class ServerWake {
     this.idleAfter = const Duration(minutes: 10),
     this.giveUpAfter = const Duration(minutes: 3),
     this.showAfter = const Duration(seconds: 2),
-    this.retryEvery = const Duration(seconds: 3),
+    this.retryEvery = const Duration(seconds: 10),
     this.confirmOfflineAfter = const Duration(seconds: 2),
     this.recheckEvery = const Duration(seconds: 10),
     this._now = DateTime.now,

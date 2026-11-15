@@ -371,7 +371,7 @@ last saved details.") although the phone was online.
 3. **When an ask fails** (no connection, or Render's proxy answering 502/503), the app looks up
    the server's host name. If that fails too, the phone has no internet: requests go ahead and
    fail as before, and the offline start says "You're offline". Otherwise the server is still
-   starting: the app asks again every 3 s, with the bar up.
+   starting: the app asks again every 10 s, with the bar up.
 4. **After 2 minutes without an answer** requests go ahead anyway. An offline start then says
    "The server isn't answering. Showing your last saved details." with Retry, not "You're offline".
 5. Mock mode has no server and never shows the bar.

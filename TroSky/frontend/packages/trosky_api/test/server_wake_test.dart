@@ -166,8 +166,8 @@ void main() {
       });
     });
 
-    test('internet but no answer: asks every 3 s, then unreachable after 3 '
-        'minutes', () {
+    test('internet but no answer: asks every 10 s, then unreachable after '
+        '3 minutes', () {
       fakeAsync((async) {
         final server = _Server(up: false);
         final wake = _wake(async, server);
@@ -179,14 +179,15 @@ void main() {
         // starting.
         expect(wake.state, ServerState.waking);
 
-        async.elapse(const Duration(seconds: 178));
+        // One iteration = 1 s to fail + 10 s pause = 11 s. The last retry
+        // wait ends at t=187 (iter 17 ends at 177, waits to 187), and iter
+        // 18 then exits unreachable.
+        async.elapse(const Duration(seconds: 185));
         expect(ready, isFalse);
-        async.elapse(const Duration(seconds: 2));
+        async.elapse(const Duration(seconds: 3));
         expect(ready, isTrue);
         expect(wake.state, ServerState.unreachable);
-        // One ask every 4 s (1 s to fail, 3 s apart); the last one gets the
-        // time left.
-        expect(server.asks, hasLength(45));
+        expect(server.asks, hasLength(17));
         expect(server.asks.last, const Duration(seconds: 4));
       });
     });
@@ -197,7 +198,8 @@ void main() {
         final server = _Server(up: false);
         final wake = _wake(async, server);
         unawaited(wake.ready());
-        async.elapse(const Duration(minutes: 3));
+        // A touch over 3 min so iter 18's left<=0 check fires.
+        async.elapse(const Duration(seconds: 190));
         expect(wake.state, ServerState.unreachable);
         final asked = server.asks.length;
 
@@ -225,7 +227,7 @@ void main() {
         final server = _Server(up: false);
         final wake = _wake(async, server);
         unawaited(wake.ready());
-        async.elapse(const Duration(minutes: 3));
+        async.elapse(const Duration(seconds: 190));
         expect(wake.state, ServerState.unreachable);
 
         server
