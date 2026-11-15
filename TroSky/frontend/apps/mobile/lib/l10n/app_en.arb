@@ -1017,9 +1017,23 @@
   "@resultsNoMoreToday": {
     "description": "Search Results late in the day: today's trips are all past, tomorrow's load underneath."
   },
-  "resultsTomorrowHeader": "Tomorrow, {date}",
-  "@resultsTomorrowHeader": {
-    "description": "Section header above tomorrow's first trips when today has none left. 'date' is a short weekday + day + month in the device locale.",
+  "resultsNoMoreTodaySubline": "Showing tomorrow's first trips instead",
+  "@resultsNoMoreTodaySubline": {
+    "description": "Subline under the 'No more trips today' headline."
+  },
+  "resultsTomorrowChip": "Tomorrow · {date}",
+  "@resultsTomorrowChip": {
+    "description": "Chip above tomorrow's first trips when today has none left. 'date' is a short weekday + day + month in the device locale.",
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "Mon 16 Nov"
+      }
+    }
+  },
+  "resultsTomorrowSemantics": "Tomorrow's trips, {date}",
+  "@resultsTomorrowSemantics": {
+    "description": "Screen-reader label for the Tomorrow date chip.",
     "placeholders": {
       "date": {
         "type": "String",

@@ -458,12 +458,7 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
   /// Today's results came back empty: show "No more trips today" and
   /// automatically load tomorrow's first trips underneath.
   Widget _emptyTodayWithTomorrow(AppLocalizations l10n, EdgeInsets padding) {
-    final now = ref.read(clockProvider)().toLocal();
-    final tomorrow = DateTime(
-      now.year,
-      now.month,
-      now.day,
-    ).add(const Duration(days: 1));
+    final tomorrow = tomorrowMidnightLocal(ref.read(clockProvider)());
     final tomorrowRequest = ResultsRequest(
       _search.copyWith(when: SearchWhen.at(tomorrow)),
       sort: _sort,
@@ -474,26 +469,53 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
     );
     final tomorrowTrips =
         tomorrowResults.value?.trips ?? const <TripSearchResultResponse>[];
-    final header = l10n.resultsTomorrowHeader(
-      DateFormat('EEE d MMM', l10n.localeName).format(tomorrow),
-    );
+    final shortDate = DateFormat('EEE d MMM', l10n.localeName).format(tomorrow);
     return ListView(
       controller: _scroll,
       physics: const AlwaysScrollableScrollPhysics(),
       padding: padding,
       children: [
-        _Message(
-          text: l10n.resultsNoMoreToday,
-          action: l10n.resultsTryAnotherTime,
-          onAction: _schedule,
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: TroskySpacing.s10,
+            vertical: TroskySpacing.s20,
+          ),
+          child: Column(
+            children: [
+              Semantics(
+                liveRegion: true,
+                child: Text(
+                  l10n.resultsNoMoreToday,
+                  textAlign: TextAlign.center,
+                  style: TroskyTypography.heading15Bold.copyWith(
+                    color: TroskyColors.textPrimary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: TroskySpacing.s8),
+              Text(
+                l10n.resultsNoMoreTodaySubline,
+                textAlign: TextAlign.center,
+                style: TroskyTypography.body12Regular.copyWith(
+                  color: TroskyColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: TroskySpacing.s16),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: TroskySpacing.s10),
-          child: Text(
-            header,
-            style: TroskyTypography.heading15Bold.copyWith(
-              color: TroskyColors.textPrimary,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Semantics(
+              label: l10n.resultsTomorrowSemantics(shortDate),
+              container: true,
+              child: ExcludeSemantics(
+                child: TroskyChip(
+                  label: l10n.resultsTomorrowChip(shortDate),
+                  color: TroskyChipColor.gray,
+                ),
+              ),
             ),
           ),
         ),
@@ -528,6 +550,19 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
       ],
     );
   }
+}
+
+/// Local midnight of the day after [now], in the device's local time zone
+/// (Africa/Accra on staging, which is UTC+0 year-round; the computation
+/// stays correct in other zones since it uses `DateTime` constructor's
+/// local-time semantics).
+DateTime tomorrowMidnightLocal(DateTime now) {
+  final local = now.toLocal();
+  return DateTime(
+    local.year,
+    local.month,
+    local.day,
+  ).add(const Duration(days: 1));
 }
 
 /// A message in place of the results, with one action.

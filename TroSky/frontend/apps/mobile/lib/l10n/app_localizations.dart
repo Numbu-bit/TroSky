@@ -1390,11 +1390,23 @@ abstract class AppLocalizations {
   /// **'No more trips today'**
   String get resultsNoMoreToday;
 
-  /// Section header above tomorrow's first trips when today has none left. 'date' is a short weekday + day + month in the device locale.
+  /// Subline under the 'No more trips today' headline.
   ///
   /// In en, this message translates to:
-  /// **'Tomorrow, {date}'**
-  String resultsTomorrowHeader(String date);
+  /// **'Showing tomorrow\'s first trips instead'**
+  String get resultsNoMoreTodaySubline;
+
+  /// Chip above tomorrow's first trips when today has none left. 'date' is a short weekday + day + month in the device locale.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow · {date}'**
+  String resultsTomorrowChip(String date);
+
+  /// Screen-reader label for the Tomorrow date chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow\'s trips, {date}'**
+  String resultsTomorrowSemantics(String date);
 
   /// Minibus filter left nothing.
   ///
