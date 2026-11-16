@@ -119,3 +119,17 @@ findings.
 - Docs-only PRs still run `release-reviewer` before merging, but only
   `code-reviewer` on the diff (no `security-reviewer`) since there is no
   code to secure.
+
+## Production bar (Nov 2026)
+
+TroSky is built for millions of users. Every change meets this bar before PR goes ready:
+
+- Analytics: every user-visible action emits a named event through the existing telemetry provider. Event name + payload keys listed in the PR.
+- Accessibility: semantics labels on every interactive widget; 48dp minimum tap target; text contrast meets WCAG AA; respects MediaQuery.disableAnimations.
+- Localization: zero hardcoded user-visible strings in Dart. All copy via app_en.arb (future locales: tw, ha, fr).
+- States: every network-touching widget renders loading / empty / offline / error states explicitly. No bare spinners that can hang forever.
+- Performance: 60 fps on a Pixel 4a (low-end reference). First usable frame of any new screen under 800 ms on that device. Memory ceiling per screen documented in design-decisions.md.
+- Resilience: every network call uses retry-with-backoff and honours server rate-limit headers (429, Retry-After).
+- Observability: breadcrumbs around risky paths for crash reporting (Sentry/Crashlytics hook).
+- Rollout: anything risky ships behind a feature flag with a documented kill-switch (via Remote Config or env flag; name it in the PR).
+- Privacy: no PII (phone numbers, names, location coordinates) in logs, telemetry, or crash breadcrumbs. Hash or drop before emit.
