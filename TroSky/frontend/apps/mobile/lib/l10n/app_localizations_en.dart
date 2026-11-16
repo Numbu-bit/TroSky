@@ -1457,4 +1457,76 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get payFailedMomoFunds => 'Your MTN MoMo balance was too low.';
+
+  @override
+  String get testerMenuTitle => 'Tester menu';
+
+  @override
+  String get testerMenuTriggerNote => 'Triggered from Home · tap greeting 7×';
+
+  @override
+  String get testerMenuBuildInfo => 'Build info';
+
+  @override
+  String get testerMenuCommit => 'Commit';
+
+  @override
+  String get testerMenuBuilt => 'Built';
+
+  @override
+  String get testerMenuApiBase => 'API';
+
+  @override
+  String get testerMenuMode => 'Mode';
+
+  @override
+  String get testerMenuAppVersion => 'App version';
+
+  @override
+  String get testerMenuModeMock => 'mock';
+
+  @override
+  String get testerMenuModeLive => 'staging';
+
+  @override
+  String get testerMenuNotSet => 'unset';
+
+  @override
+  String get testerMenuWakeServer => 'Wake server';
+
+  @override
+  String get testerMenuWakeOk => 'Server is awake';
+
+  @override
+  String get testerMenuWakeFail => 'Server didn\'t answer';
+
+  @override
+  String get testerMenuWakeMockMode =>
+      'This is a mock build; no server to wake';
+
+  @override
+  String get testerMenuTopUp => 'Top up my wallet ₵100';
+
+  @override
+  String testerMenuTopUpOk(String balance) {
+    return 'Wallet topped up. New balance: ₵$balance';
+  }
+
+  @override
+  String get testerMenuTopUpMissing =>
+      'Wallet top-up not supported by this backend (PR #53 not deployed).';
+
+  @override
+  String testerMenuTopUpError(String message) {
+    return 'Top-up failed: $message';
+  }
+
+  @override
+  String get testerMenuTopUpSignIn => 'Sign in first to top up your wallet';
+
+  @override
+  String get testerMenuShowOnboarding => 'Show onboarding again';
+
+  @override
+  String get testerMenuSignOut => 'Sign out & clear data';
 }

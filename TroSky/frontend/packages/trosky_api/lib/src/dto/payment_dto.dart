@@ -72,6 +72,21 @@ abstract class PayBookingRequest with _$PayBookingRequest {
       _$PayBookingRequestFromJson(json);
 }
 
+/// `WalletTopupRequest` for `POST /wallet/topups`: either a saved
+/// payment method or a (channel, phone) pair, plus the amount.
+@freezed
+abstract class WalletTopupRequest with _$WalletTopupRequest {
+  const factory WalletTopupRequest({
+    required String amount,
+    String? paymentMethodId,
+    PaymentChannel? channel,
+    String? payerPhoneNumber,
+  }) = _WalletTopupRequest;
+
+  factory WalletTopupRequest.fromJson(Map<String, dynamic> json) =>
+      _$WalletTopupRequestFromJson(json);
+}
+
 /// `WalletResponse` from `GET /wallet`.
 @freezed
 abstract class WalletResponse with _$WalletResponse {

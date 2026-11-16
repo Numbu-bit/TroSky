@@ -37,6 +37,9 @@ class FakeOnboardingStore implements OnboardingStore {
 
   @override
   Future<void> markSeen() async => seen = true;
+
+  @override
+  Future<void> reset() async => seen = false;
 }
 
 /// [AppModeStore] in memory.

@@ -117,4 +117,8 @@ jobs:
       - run: flutter pub get
       - name: flutter build apk --debug
         working-directory: TroSky/frontend/apps/mobile
-        run: flutter build apk --debug --no-pub --dart-define-from-file=../../env/dev.example.json
+        run: |
+          flutter build apk --debug --no-pub \
+            --dart-define-from-file=../../env/dev.example.json \
+            --dart-define=GIT_COMMIT=$(git -C "$GITHUB_WORKSPACE" rev-parse --short HEAD) \
+            --dart-define=BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)

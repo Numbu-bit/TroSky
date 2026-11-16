@@ -8,6 +8,10 @@ abstract interface class OnboardingStore {
   Future<bool> isSeen();
 
   Future<void> markSeen();
+
+  /// Forgets the "seen" flag so onboarding plays again next launch.
+  /// Used by the tester menu's "Show onboarding again" action.
+  Future<void> reset();
 }
 
 /// [OnboardingStore] kept in shared preferences.
@@ -23,6 +27,9 @@ class SharedPreferencesOnboardingStore implements OnboardingStore {
 
   @override
   Future<void> markSeen() => _preferences.setBool(key, true);
+
+  @override
+  Future<void> reset() => _preferences.remove(key);
 }
 
 @Riverpod(keepAlive: true)

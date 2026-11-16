@@ -33,6 +33,14 @@ abstract interface class PaymentRepository {
     int offset = 0,
   });
 
+  /// `POST /wallet/topups`: starts a top-up, through MoMo in sandbox
+  /// (PR #53). `successful` or `processing` as for [pay]. 404 when the
+  /// backend predates PR #53 (the tester menu hides the button then).
+  Future<Result<PaymentResponse>> topUpWallet(
+    WalletTopupRequest request, {
+    required String idempotencyKey,
+  });
+
   /// `GET /wallet`.
   Future<Result<WalletResponse>> wallet();
 
@@ -83,6 +91,19 @@ class LivePaymentRepository implements PaymentRepository {
       queryParameters: {'limit': limit, 'offset': offset},
     ),
     (data) => Paginated.fromJson(jsonObject(data), PaymentResponse.fromJson),
+  );
+
+  @override
+  Future<Result<PaymentResponse>> topUpWallet(
+    WalletTopupRequest request, {
+    required String idempotencyKey,
+  }) => apiCall(
+    () => _dio.post<Object?>(
+      '/wallet/topups',
+      data: request.toJson(),
+      options: Options(headers: {'Idempotency-Key': idempotencyKey}),
+    ),
+    (data) => PaymentResponse.fromJson(jsonObject(data)),
   );
 
   @override

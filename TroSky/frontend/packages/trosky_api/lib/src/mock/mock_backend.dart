@@ -1554,6 +1554,34 @@ class MockBackend {
     );
   }
 
+  /// `POST /wallet/topups` (mock): credits the wallet at once and
+  /// returns a `successful` payment, like a wallet-to-wallet transfer.
+  /// Good enough for the tester menu to prove the balance refresh.
+  Result<PaymentResponse> createWalletTopup(
+    String? accessToken,
+    WalletTopupRequest request,
+  ) {
+    final auth = _authenticate(accessToken);
+    if (auth case Err(:final failure)) return Err(failure);
+    final userId = auth.valueOrNull!.userId;
+    final amount = double.tryParse(request.amount) ?? 0;
+    _wallets[userId] = (_wallets[userId] ?? 0) + amount;
+    final now = _now().toUtc();
+    return Ok(
+      PaymentResponse(
+        id: _uuid(),
+        bookingId: null,
+        purpose: PaymentPurpose.walletTopup,
+        channel: request.channel ?? PaymentChannel.mtnMomo,
+        amount: request.amount,
+        refundedAmount: '0.00',
+        currency: 'GHS',
+        status: PaymentStatus.successful,
+        createdAt: now,
+      ),
+    );
+  }
+
   /// `GET /users/me/payment-methods`, the default first.
   Result<List<PaymentMethodResponse>> listPaymentMethods(String? accessToken) {
     final auth = _authenticate(accessToken);

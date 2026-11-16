@@ -226,6 +226,12 @@ class RecordedPayments implements PaymentRepository {
   Future<Result<WalletResponse>> wallet() => _inner.wallet();
 
   @override
+  Future<Result<PaymentResponse>> topUpWallet(
+    WalletTopupRequest request, {
+    required String idempotencyKey,
+  }) => _inner.topUpWallet(request, idempotencyKey: idempotencyKey);
+
+  @override
   Future<Result<List<PaymentMethodResponse>>> methods() => _inner.methods();
 
   @override

@@ -9,6 +9,7 @@ import 'package:trosky_ui/trosky_ui.dart';
 
 import '../../../../app/app_providers.dart';
 import '../../../../app/routes.dart';
+import '../../../../app/tester/tester_menu.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../application/home_providers.dart';
 import '../greeting.dart';
@@ -72,10 +73,12 @@ class _HomeHeaderState extends ConsumerState<HomeHeader> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        greetingFor(l10n, now),
-                        style: TroskyTypography.body12Regular.copyWith(
-                          color: TroskyColors.whiteA55,
+                      TesterMenuTapCounter(
+                        child: Text(
+                          greetingFor(l10n, now),
+                          style: TroskyTypography.body12Regular.copyWith(
+                            color: TroskyColors.whiteA55,
+                          ),
                         ),
                       ),
                       const SizedBox(height: TroskySpacing.s2),
