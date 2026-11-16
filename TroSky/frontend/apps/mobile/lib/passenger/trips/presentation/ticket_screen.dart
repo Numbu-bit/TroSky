@@ -1,12 +1,19 @@
+import 'dart:io';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:trosky_api/trosky_api.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
 import '../../../app/app_providers.dart';
+import '../../../app/telemetry.dart';
 import '../../../l10n/app_localizations.dart';
 import '../application/ticket_providers.dart';
 import '../domain/ticket_args.dart';
@@ -30,37 +37,58 @@ class _TicketScreenState extends ConsumerState<TicketScreen> {
   int _page = 0;
 
   @override
-  void initState() {
-    super.initState();
-    _page = widget.args.initialPage;
-  }
-
-  @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
 
   @override
+  void initState() {
+    super.initState();
+    _page = widget.args.initialPage;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref
+          .read(telemetryProvider)
+          .emit(
+            TelemetryEvent('ticket_opened', {
+              'booking_status': widget.args.booking.status.name,
+            }),
+          );
+    });
+  }
+
+  void _onPageChanged(int to) {
+    final from = _page;
+    setState(() => _page = to);
+    ref
+        .read(telemetryProvider)
+        .emit(TelemetryEvent('ticket_swiped', {'from': from, 'to': to}));
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final booking = widget.args.booking;
-    final ticketsAsync = ref.watch(bookingTicketsProvider(booking.id));
+    final viewAsync = ref.watch(bookingTicketsProvider(booking.id));
     return Scaffold(
       backgroundColor: TroskyColors.background,
-      body: ticketsAsync.when(
+      body: viewAsync.when(
         loading: () => _Scaffold(
           booking: booking,
           child: const Center(child: CircularProgressIndicator()),
         ),
         error: (_, _) => _Scaffold(
           booking: booking,
-          child: _ErrorState(
-            message: l10n.ticketError,
+          child: _OfflineState(
+            title: l10n.ticketOfflineTitle,
+            subline: l10n.ticketOfflineSubline,
+            retryLabel: l10n.ticketRetry,
             onRetry: () => ref.invalidate(bookingTicketsProvider(booking.id)),
           ),
         ),
-        data: (tickets) {
+        data: (view) {
+          final tickets = view.tickets;
           if (tickets.isEmpty) {
             return _Scaffold(
               booking: booking,
@@ -69,6 +97,7 @@ class _TicketScreenState extends ConsumerState<TicketScreen> {
           }
           return _Scaffold(
             booking: booking,
+            banner: view.staleBannerVisible ? l10n.ticketOfflineBanner : null,
             child: Column(
               children: [
                 if (tickets.length > 1)
@@ -77,7 +106,7 @@ class _TicketScreenState extends ConsumerState<TicketScreen> {
                   child: PageView.builder(
                     controller: _controller,
                     itemCount: tickets.length,
-                    onPageChanged: (i) => setState(() => _page = i),
+                    onPageChanged: _onPageChanged,
                     itemBuilder: (context, i) => _TicketPage(
                       booking: booking,
                       ticket: tickets[i],
@@ -94,11 +123,67 @@ class _TicketScreenState extends ConsumerState<TicketScreen> {
   }
 }
 
+class _OfflineState extends StatelessWidget {
+  const _OfflineState({
+    required this.title,
+    required this.subline,
+    required this.retryLabel,
+    required this.onRetry,
+  });
+
+  final String title;
+  final String subline;
+  final String retryLabel;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Semantics(
+        label: '$title. $subline',
+        container: true,
+        child: Padding(
+          padding: const EdgeInsets.all(TroskySpacing.s24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TroskyTypography.heading20Bold.copyWith(
+                  color: TroskyColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: TroskySpacing.s8),
+              Text(
+                subline,
+                textAlign: TextAlign.center,
+                style: TroskyTypography.body14Regular.copyWith(
+                  color: TroskyColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: TroskySpacing.s16),
+              TroskyButton(
+                label: retryLabel,
+                variant: TroskyButtonVariant.outline,
+                onPressed: onRetry,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _Scaffold extends StatelessWidget {
-  const _Scaffold({required this.booking, required this.child});
+  const _Scaffold({required this.booking, required this.child, this.banner});
 
   final BookingResponse booking;
   final Widget child;
+
+  /// Optional "Showing last synced ticket" strip above the content.
+  final String? banner;
 
   @override
   Widget build(BuildContext context) {
@@ -143,8 +228,37 @@ class _Scaffold extends StatelessWidget {
             ),
           ),
         ),
+        if (banner != null) _StaleCacheBanner(message: banner!),
         Expanded(child: child),
       ],
+    );
+  }
+}
+
+class _StaleCacheBanner extends StatelessWidget {
+  const _StaleCacheBanner({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: TroskyColors.amberA15,
+      padding: const EdgeInsets.symmetric(
+        horizontal: TroskySpacing.s16,
+        vertical: TroskySpacing.s8,
+      ),
+      child: Semantics(
+        liveRegion: true,
+        child: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: TroskyTypography.body12SemiBoldH133.copyWith(
+            color: TroskyColors.goldText,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -211,7 +325,7 @@ class _PageIndicator extends StatelessWidget {
   }
 }
 
-class _TicketPage extends ConsumerWidget {
+class _TicketPage extends ConsumerStatefulWidget {
   const _TicketPage({
     required this.booking,
     required this.ticket,
@@ -223,23 +337,71 @@ class _TicketPage extends ConsumerWidget {
   final int seatIndex;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_TicketPage> createState() => _TicketPageState();
+}
+
+class _TicketPageState extends ConsumerState<_TicketPage> {
+  final GlobalKey _boundaryKey = GlobalKey();
+
+  /// Grabs the RepaintBoundary and writes it to a 3× PNG in the app temp
+  /// dir. Returns the temp-file path; a null means capture failed.
+  Future<String?> _writeImage() async {
+    final context = _boundaryKey.currentContext;
+    if (context == null) return null;
+    final boundary = context.findRenderObject() as RenderRepaintBoundary?;
+    if (boundary == null) return null;
+    final image = await boundary.toImage(pixelRatio: 3);
+    try {
+      final data = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (data == null) return null;
+      final dir = await getTemporaryDirectory();
+      final file = File(
+        '${dir.path}/ticket-${widget.ticket.ticketReference}.png',
+      );
+      await file.writeAsBytes(data.buffer.asUint8List(), flush: true);
+      return file.path;
+    } finally {
+      image.dispose();
+    }
+  }
+
+  Future<void> _save() async {
+    await _share('ticket_saved');
+  }
+
+  Future<void> _shareTicket() async {
+    await _share('ticket_shared');
+  }
+
+  Future<void> _share(String event) async {
+    final path = await _writeImage();
+    if (path == null) return;
+    ref
+        .read(telemetryProvider)
+        .emit(TelemetryEvent(event, {'seat_index': widget.seatIndex}));
+    await SharePlus.instance.share(ShareParams(files: [XFile(path)]));
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final now = ref.watch(clockProvider)();
-    final trip = booking.trip;
-    final departure = trip?.scheduledDepartureAt ?? ticket.issuedAt;
+    final trip = widget.booking.trip;
+    final departure = trip?.scheduledDepartureAt ?? widget.ticket.issuedAt;
     final pill = ticketPillStateFor(
-      ticket.status,
+      widget.ticket.status,
       tripDeparture: departure,
-      tripEnd: ticket.expiresAt,
+      tripEnd: widget.ticket.expiresAt,
       now: now,
     );
-    final passenger = booking.passengers.length > seatIndex
-        ? booking.passengers[seatIndex]
+    final passenger = widget.booking.passengers.length > widget.seatIndex
+        ? widget.booking.passengers[widget.seatIndex]
         : null;
     final seatNumber = passenger?.seatId ?? '';
-    final fromName = booking.boardingStopName ?? trip?.originStopName ?? '';
-    final toName = booking.alightingStopName ?? trip?.destinationStopName ?? '';
+    final fromName =
+        widget.booking.boardingStopName ?? trip?.originStopName ?? '';
+    final toName =
+        widget.booking.alightingStopName ?? trip?.destinationStopName ?? '';
     final route = l10n.ticketRouteHeadline(fromName, toName);
     final timeText = DateFormat(
       'HH:mm',
@@ -255,25 +417,52 @@ class _TicketPage extends ConsumerWidget {
       ),
       child: Column(
         children: [
-          _Card(
-            pill: pill,
-            validatedAt: ticket.validatedAt,
-            qrToken: ticket.qrToken,
-            qrSemantics: qrSemantics,
-            ticketReference: ticket.ticketReference,
-            seatNumber: seatNumber,
-            departs: timeText,
-            fare: booking.fareAmount,
-          ),
-          const SizedBox(height: TroskySpacing.s14),
-          _PassengerCard(
-            name: passenger?.fullName ?? '',
-            paid:
-                booking.status == BookingStatus.confirmed ||
-                booking.status == BookingStatus.completed,
+          RepaintBoundary(
+            key: _boundaryKey,
+            child: Column(
+              children: [
+                _Card(
+                  pill: pill,
+                  validatedAt: widget.ticket.validatedAt,
+                  qrToken: widget.ticket.qrToken,
+                  qrSemantics: qrSemantics,
+                  ticketReference: widget.ticket.ticketReference,
+                  seatNumber: seatNumber,
+                  departs: timeText,
+                  fare: widget.booking.fareAmount,
+                ),
+                const SizedBox(height: TroskySpacing.s14),
+                _PassengerCard(
+                  name: passenger?.fullName ?? '',
+                  paid:
+                      widget.booking.status == BookingStatus.confirmed ||
+                      widget.booking.status == BookingStatus.completed,
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: TroskySpacing.s12),
-          _CantScanExpander(reference: ticket.ticketReference),
+          _CantScanExpander(reference: widget.ticket.ticketReference),
+          const SizedBox(height: TroskySpacing.s12),
+          Row(
+            children: [
+              Expanded(
+                child: TroskyButton(
+                  label: l10n.ticketSave,
+                  variant: TroskyButtonVariant.outline,
+                  onPressed: _save,
+                ),
+              ),
+              const SizedBox(width: TroskySpacing.s12),
+              Expanded(
+                child: TroskyButton(
+                  label: l10n.ticketShare,
+                  variant: TroskyButtonVariant.primary,
+                  onPressed: _shareTicket,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

@@ -2774,6 +2774,36 @@ abstract class AppLocalizations {
   /// **'Retry'**
   String get ticketRetry;
 
+  /// Save-to-photos button on the Ticket screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Save to Photos'**
+  String get ticketSave;
+
+  /// Share button on the Ticket screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get ticketShare;
+
+  /// Full-screen offline state title: no cache, no network.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t load ticket'**
+  String get ticketOfflineTitle;
+
+  /// Full-screen offline state subline.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect to sync'**
+  String get ticketOfflineSubline;
+
+  /// Top banner when the ticket is loaded from cache after a failed refresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Showing last synced ticket'**
+  String get ticketOfflineBanner;
+
   /// Error state when the tickets fetch failed.
   ///
   /// In en, this message translates to:

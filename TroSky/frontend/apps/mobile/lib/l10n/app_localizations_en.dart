@@ -1595,6 +1595,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ticketRetry => 'Retry';
 
   @override
+  String get ticketSave => 'Save to Photos';
+
+  @override
+  String get ticketShare => 'Share';
+
+  @override
+  String get ticketOfflineTitle => 'Can\'t load ticket';
+
+  @override
+  String get ticketOfflineSubline => 'Reconnect to sync';
+
+  @override
+  String get ticketOfflineBanner => 'Showing last synced ticket';
+
+  @override
   String get ticketError => 'Can\'t load your ticket. Pull down to retry.';
 
   @override

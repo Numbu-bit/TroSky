@@ -2255,6 +2255,22 @@
   },
   "ticketRetry": "Retry",
   "@ticketRetry": { "description": "Retry button on the ticket error state." },
+  "ticketSave": "Save to Photos",
+  "@ticketSave": { "description": "Save-to-photos button on the Ticket screen." },
+  "ticketShare": "Share",
+  "@ticketShare": { "description": "Share button on the Ticket screen." },
+  "ticketOfflineTitle": "Can't load ticket",
+  "@ticketOfflineTitle": {
+    "description": "Full-screen offline state title: no cache, no network."
+  },
+  "ticketOfflineSubline": "Reconnect to sync",
+  "@ticketOfflineSubline": {
+    "description": "Full-screen offline state subline."
+  },
+  "ticketOfflineBanner": "Showing last synced ticket",
+  "@ticketOfflineBanner": {
+    "description": "Top banner when the ticket is loaded from cache after a failed refresh."
+  },
   "ticketError": "Can't load your ticket. Pull down to retry.",
   "@ticketError": {
     "description": "Error state when the tickets fetch failed."
