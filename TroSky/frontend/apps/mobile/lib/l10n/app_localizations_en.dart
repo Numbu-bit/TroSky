@@ -1618,4 +1618,98 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bookingShowTicket => 'Show ticket';
+
+  @override
+  String get bookingViewTripDetails => 'View trip details';
+
+  @override
+  String get tripDetailsTitle => 'Trip details';
+
+  @override
+  String get tripDetailsStatusUpcoming => 'Upcoming';
+
+  @override
+  String get tripDetailsStatusOnTheWay => 'On the way';
+
+  @override
+  String get tripDetailsStatusArrived => 'Arrived';
+
+  @override
+  String get tripDetailsStatusCancelled => 'Cancelled';
+
+  @override
+  String get tripDetailsSchedule => 'Schedule';
+
+  @override
+  String get tripDetailsStops => 'Stops';
+
+  @override
+  String get tripDetailsVehicle => 'Vehicle';
+
+  @override
+  String get tripDetailsDriver => 'Driver';
+
+  @override
+  String get tripDetailsYourSeats => 'Your seats';
+
+  @override
+  String get tripDetailsDeparts => 'Departs';
+
+  @override
+  String get tripDetailsArrives => 'Arrives';
+
+  @override
+  String get tripDetailsDuration => 'Duration';
+
+  @override
+  String get tripDetailsPlate => 'Plate';
+
+  @override
+  String tripDetailsDriverRating(String rating, int count) {
+    return '$rating ($count)';
+  }
+
+  @override
+  String get tripDetailsDriverUnrated => 'Not rated yet';
+
+  @override
+  String get tripDetailsDriverContactUnavailable =>
+      'Driver contact unavailable';
+
+  @override
+  String get tripDetailsCallDriver => 'Call driver';
+
+  @override
+  String get tripDetailsMessageDriver => 'Message driver';
+
+  @override
+  String get tripDetailsTrackTrip => 'Track trip';
+
+  @override
+  String get tripDetailsTrackComingSoon =>
+      'Live tracking coming in the next release';
+
+  @override
+  String get tripDetailsCancelBooking => 'Cancel booking';
+
+  @override
+  String get tripDetailsNotFound => 'This booking wasn\'t found.';
+
+  @override
+  String get tripDetailsOffline => 'Can\'t load trip details — reconnect';
+
+  @override
+  String get tripDetailsServerError =>
+      'Something went wrong. Please try again.';
+
+  @override
+  String tripDetailsSeatRow(String seat, String name) {
+    return 'Seat $seat · $name';
+  }
+
+  @override
+  String get tripDetailsStopBoardingTag => 'Boarding here';
+
+  @override
+  String get tripDetailsStopAlightingTag => 'Getting off';
 }

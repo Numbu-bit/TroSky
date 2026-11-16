@@ -2282,5 +2282,91 @@
   "bookingShowTicket": "Show ticket",
   "@bookingShowTicket": {
     "description": "Primary action on booking details that opens the Ticket screen."
+  },
+  "bookingViewTripDetails": "View trip details",
+  "@bookingViewTripDetails": {
+    "description": "Link on booking details that opens the P-04 Trip Details screen."
+  },
+  "tripDetailsTitle": "Trip details",
+  "@tripDetailsTitle": { "description": "App-bar title on P-04." },
+  "tripDetailsStatusUpcoming": "Upcoming",
+  "tripDetailsStatusOnTheWay": "On the way",
+  "tripDetailsStatusArrived": "Arrived",
+  "tripDetailsStatusCancelled": "Cancelled",
+  "@tripDetailsStatusUpcoming": { "description": "Trip status pill." },
+  "@tripDetailsStatusOnTheWay": { "description": "Trip status pill." },
+  "@tripDetailsStatusArrived": { "description": "Trip status pill." },
+  "@tripDetailsStatusCancelled": { "description": "Trip status pill." },
+  "tripDetailsSchedule": "Schedule",
+  "tripDetailsStops": "Stops",
+  "tripDetailsVehicle": "Vehicle",
+  "tripDetailsDriver": "Driver",
+  "tripDetailsYourSeats": "Your seats",
+  "@tripDetailsSchedule": { "description": "Section header on P-04." },
+  "@tripDetailsStops": { "description": "Section header on P-04." },
+  "@tripDetailsVehicle": { "description": "Section header on P-04." },
+  "@tripDetailsDriver": { "description": "Section header on P-04." },
+  "@tripDetailsYourSeats": { "description": "Section header on P-04." },
+  "tripDetailsDeparts": "Departs",
+  "tripDetailsArrives": "Arrives",
+  "tripDetailsDuration": "Duration",
+  "@tripDetailsDeparts": { "description": "Schedule row label." },
+  "@tripDetailsArrives": { "description": "Schedule row label." },
+  "@tripDetailsDuration": { "description": "Schedule row label." },
+  "tripDetailsPlate": "Plate",
+  "@tripDetailsPlate": { "description": "Vehicle row label." },
+  "tripDetailsDriverRating": "{rating} ({count})",
+  "@tripDetailsDriverRating": {
+    "description": "Driver rating with count, e.g. '4.8 (112)'.",
+    "placeholders": {
+      "rating": { "type": "String", "example": "4.8" },
+      "count": { "type": "int", "example": "112" }
+    }
+  },
+  "tripDetailsDriverUnrated": "Not rated yet",
+  "@tripDetailsDriverUnrated": {
+    "description": "Driver row when average_rating is null."
+  },
+  "tripDetailsDriverContactUnavailable": "Driver contact unavailable",
+  "@tripDetailsDriverContactUnavailable": {
+    "description": "Shown in place of Call/Message when driver_phone is missing."
+  },
+  "tripDetailsCallDriver": "Call driver",
+  "tripDetailsMessageDriver": "Message driver",
+  "@tripDetailsCallDriver": { "description": "Semantics label on the call icon button." },
+  "@tripDetailsMessageDriver": { "description": "Semantics label on the message icon button." },
+  "tripDetailsTrackTrip": "Track trip",
+  "@tripDetailsTrackTrip": { "description": "Primary CTA; step17/B wires the real screen." },
+  "tripDetailsTrackComingSoon": "Live tracking coming in the next release",
+  "@tripDetailsTrackComingSoon": {
+    "description": "Snackbar for the Track trip stub."
+  },
+  "tripDetailsCancelBooking": "Cancel booking",
+  "@tripDetailsCancelBooking": { "description": "Secondary ghost CTA on P-04." },
+  "tripDetailsNotFound": "This booking wasn't found.",
+  "@tripDetailsNotFound": { "description": "Shown when the trip id 404s." },
+  "tripDetailsOffline": "Can't load trip details — reconnect",
+  "@tripDetailsOffline": {
+    "description": "Shown when offline with no cached booking to fall back on."
+  },
+  "tripDetailsServerError": "Something went wrong. Please try again.",
+  "@tripDetailsServerError": {
+    "description": "Generic error state."
+  },
+  "tripDetailsSeatRow": "Seat {seat} · {name}",
+  "@tripDetailsSeatRow": {
+    "description": "One row of the Your seats card.",
+    "placeholders": {
+      "seat": { "type": "String", "example": "4B" },
+      "name": { "type": "String", "example": "Kofi Mensah" }
+    }
+  },
+  "tripDetailsStopBoardingTag": "Boarding here",
+  "@tripDetailsStopBoardingTag": {
+    "description": "Chip next to the passenger's boarding stop in the Stops card."
+  },
+  "tripDetailsStopAlightingTag": "Getting off",
+  "@tripDetailsStopAlightingTag": {
+    "description": "Chip next to the passenger's alighting stop in the Stops card."
   }
 }

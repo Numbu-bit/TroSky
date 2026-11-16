@@ -2821,6 +2821,180 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show ticket'**
   String get bookingShowTicket;
+
+  /// Link on booking details that opens the P-04 Trip Details screen.
+  ///
+  /// In en, this message translates to:
+  /// **'View trip details'**
+  String get bookingViewTripDetails;
+
+  /// App-bar title on P-04.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip details'**
+  String get tripDetailsTitle;
+
+  /// Trip status pill.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming'**
+  String get tripDetailsStatusUpcoming;
+
+  /// Trip status pill.
+  ///
+  /// In en, this message translates to:
+  /// **'On the way'**
+  String get tripDetailsStatusOnTheWay;
+
+  /// Trip status pill.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrived'**
+  String get tripDetailsStatusArrived;
+
+  /// Trip status pill.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get tripDetailsStatusCancelled;
+
+  /// Section header on P-04.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule'**
+  String get tripDetailsSchedule;
+
+  /// Section header on P-04.
+  ///
+  /// In en, this message translates to:
+  /// **'Stops'**
+  String get tripDetailsStops;
+
+  /// Section header on P-04.
+  ///
+  /// In en, this message translates to:
+  /// **'Vehicle'**
+  String get tripDetailsVehicle;
+
+  /// Section header on P-04.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver'**
+  String get tripDetailsDriver;
+
+  /// Section header on P-04.
+  ///
+  /// In en, this message translates to:
+  /// **'Your seats'**
+  String get tripDetailsYourSeats;
+
+  /// Schedule row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Departs'**
+  String get tripDetailsDeparts;
+
+  /// Schedule row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrives'**
+  String get tripDetailsArrives;
+
+  /// Schedule row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration'**
+  String get tripDetailsDuration;
+
+  /// Vehicle row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Plate'**
+  String get tripDetailsPlate;
+
+  /// Driver rating with count, e.g. '4.8 (112)'.
+  ///
+  /// In en, this message translates to:
+  /// **'{rating} ({count})'**
+  String tripDetailsDriverRating(String rating, int count);
+
+  /// Driver row when average_rating is null.
+  ///
+  /// In en, this message translates to:
+  /// **'Not rated yet'**
+  String get tripDetailsDriverUnrated;
+
+  /// Shown in place of Call/Message when driver_phone is missing.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver contact unavailable'**
+  String get tripDetailsDriverContactUnavailable;
+
+  /// Semantics label on the call icon button.
+  ///
+  /// In en, this message translates to:
+  /// **'Call driver'**
+  String get tripDetailsCallDriver;
+
+  /// Semantics label on the message icon button.
+  ///
+  /// In en, this message translates to:
+  /// **'Message driver'**
+  String get tripDetailsMessageDriver;
+
+  /// Primary CTA; step17/B wires the real screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Track trip'**
+  String get tripDetailsTrackTrip;
+
+  /// Snackbar for the Track trip stub.
+  ///
+  /// In en, this message translates to:
+  /// **'Live tracking coming in the next release'**
+  String get tripDetailsTrackComingSoon;
+
+  /// Secondary ghost CTA on P-04.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel booking'**
+  String get tripDetailsCancelBooking;
+
+  /// Shown when the trip id 404s.
+  ///
+  /// In en, this message translates to:
+  /// **'This booking wasn\'t found.'**
+  String get tripDetailsNotFound;
+
+  /// Shown when offline with no cached booking to fall back on.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t load trip details — reconnect'**
+  String get tripDetailsOffline;
+
+  /// Generic error state.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Please try again.'**
+  String get tripDetailsServerError;
+
+  /// One row of the Your seats card.
+  ///
+  /// In en, this message translates to:
+  /// **'Seat {seat} · {name}'**
+  String tripDetailsSeatRow(String seat, String name);
+
+  /// Chip next to the passenger's boarding stop in the Stops card.
+  ///
+  /// In en, this message translates to:
+  /// **'Boarding here'**
+  String get tripDetailsStopBoardingTag;
+
+  /// Chip next to the passenger's alighting stop in the Stops card.
+  ///
+  /// In en, this message translates to:
+  /// **'Getting off'**
+  String get tripDetailsStopAlightingTag;
 }
 
 class _AppLocalizationsDelegate
