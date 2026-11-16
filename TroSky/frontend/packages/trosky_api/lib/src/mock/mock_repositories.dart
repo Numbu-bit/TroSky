@@ -7,6 +7,7 @@ import '../dto/driver_dto.dart';
 import '../dto/paginated.dart';
 import '../dto/payment_dto.dart';
 import '../dto/route_dto.dart';
+import '../dto/ticket_dto.dart';
 import '../dto/tracking_dto.dart';
 import '../dto/user_dto.dart';
 import '../repositories/auth_repository.dart';
@@ -14,6 +15,7 @@ import '../repositories/booking_repository.dart';
 import '../repositories/driver_repository.dart';
 import '../repositories/payment_repository.dart';
 import '../repositories/route_repository.dart';
+import '../repositories/ticket_repository.dart';
 import '../repositories/tracking_repository.dart';
 import '../repositories/user_repository.dart';
 import 'mock_backend.dart';
@@ -379,4 +381,25 @@ class MockTrackingRepository implements TrackingRepository {
       limit: limit,
     ),
   );
+}
+
+/// [TicketRepository] on a [MockBackend].
+class MockTicketRepository implements TicketRepository {
+  MockTicketRepository(
+    this._backend, {
+    required this._tokens,
+    this.latency = Duration.zero,
+  });
+
+  final MockBackend _backend;
+  final SessionTokens Function() _tokens;
+  final Duration latency;
+
+  @override
+  Future<Result<List<TicketResponse>>> listForBooking(String bookingId) =>
+      _authenticated(
+        _tokens(),
+        latency,
+        (token) => _backend.listTicketsForBooking(token, bookingId),
+      );
 }

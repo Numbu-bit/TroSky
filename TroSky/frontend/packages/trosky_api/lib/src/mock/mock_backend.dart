@@ -8,6 +8,7 @@ import '../dto/driver_dto.dart';
 import '../dto/paginated.dart';
 import '../dto/payment_dto.dart';
 import '../dto/route_dto.dart';
+import '../dto/ticket_dto.dart';
 import '../dto/tracking_dto.dart';
 import '../dto/user_dto.dart';
 import '../repositories/booking_repository.dart';
@@ -2543,6 +2544,58 @@ class MockBackend {
   String _uuid() {
     final n = (++_counter).toRadixString(16).padLeft(12, '0');
     return '00000000-0000-4000-8000-$n';
+  }
+
+  /// `GET /bookings/{id}/tickets`: one issued ticket per booked seat. The
+  /// mock issues them once a booking is confirmed or completed; otherwise
+  /// the list is empty, as the live backend does.
+  Result<List<TicketResponse>> listTicketsForBooking(
+    String? accessToken,
+    String bookingId,
+  ) {
+    final auth = _authenticate(accessToken);
+    if (auth case Err(:final failure)) return Err(failure);
+    final booking = _bookings[bookingId];
+    if (booking == null || booking.userId != auth.valueOrNull!.userId) {
+      return _error(404, 'BOOKING_NOT_FOUND', 'That booking does not exist.');
+    }
+    const issuedStatuses = {BookingStatus.confirmed, BookingStatus.completed};
+    if (!issuedStatuses.contains(booking.status)) {
+      return const Ok([]);
+    }
+    final issuedAt = booking.createdAt.toUtc();
+    final expiresAt = booking.trip.result.scheduledDepartureAt.toUtc().add(
+      const Duration(hours: 4),
+    );
+    final tickets = <TicketResponse>[];
+    for (var i = 0; i < booking.passengers.length; i++) {
+      final passenger = booking.passengers[i];
+      final reference =
+          'TRO-${booking.reference}-${(i + 1).toString().padLeft(2, '0')}';
+      final id = _uuid();
+      // Mock bearer: enough bytes to look real, never shared outside the
+      // in-memory backend.
+      final qrToken = 'mock.$id.$reference.${booking.number}';
+      tickets.add(
+        TicketResponse(
+          id: id,
+          ticketReference: reference,
+          bookingId: booking.id,
+          bookingPassengerId: passenger.id,
+          tripId: booking.trip.result.tripId,
+          status: booking.status == BookingStatus.completed
+              ? TicketStatus.validated
+              : TicketStatus.issued,
+          issuedAt: issuedAt,
+          expiresAt: expiresAt,
+          validatedAt: booking.status == BookingStatus.completed
+              ? booking.trip.result.scheduledDepartureAt.toUtc()
+              : null,
+          qrToken: qrToken,
+        ),
+      );
+    }
+    return Ok(tickets);
   }
 }
 

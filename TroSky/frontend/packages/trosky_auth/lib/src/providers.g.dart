@@ -674,6 +674,57 @@ final class BookingRepositoryProvider
 
 String _$bookingRepositoryHash() => r'2fdcac728430e45f48814f8cbae9a5c8c06874e1';
 
+/// Boarding tickets issued for confirmed bookings (one per seat).
+
+@ProviderFor(ticketRepository)
+final ticketRepositoryProvider = TicketRepositoryProvider._();
+
+/// Boarding tickets issued for confirmed bookings (one per seat).
+
+final class TicketRepositoryProvider
+    extends
+        $FunctionalProvider<
+          TicketRepository,
+          TicketRepository,
+          TicketRepository
+        >
+    with $Provider<TicketRepository> {
+  /// Boarding tickets issued for confirmed bookings (one per seat).
+  TicketRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'ticketRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$ticketRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<TicketRepository> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  TicketRepository create(Ref ref) {
+    return ticketRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(TicketRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<TicketRepository>(value),
+    );
+  }
+}
+
+String _$ticketRepositoryHash() => r'28a1fe7ff544343d7c28b937b5456868d4843533';
+
 /// Paying for bookings, the wallet and saved mobile money numbers.
 
 @ProviderFor(paymentRepository)
