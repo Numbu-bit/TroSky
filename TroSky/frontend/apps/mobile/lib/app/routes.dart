@@ -22,8 +22,10 @@ import '../passenger/seats/domain/seat_selection_args.dart';
 import '../passenger/seats/presentation/seat_selection_screen.dart';
 import '../passenger/shell/passenger_shell.dart';
 import '../passenger/trips/domain/ticket_args.dart';
+import '../passenger/trips/domain/trip_details_args.dart';
 import '../passenger/trips/presentation/booking_details_screen.dart';
 import '../passenger/trips/presentation/ticket_screen.dart';
+import '../passenger/trips/presentation/trip_details_screen.dart';
 import '../passenger/trips/presentation/trips_screen.dart';
 import 'placeholder_screen.dart';
 
@@ -74,6 +76,11 @@ enum AppRoute {
   /// Ticket / Boarding Pass (P-10): one QR per seat, swipeable;
   /// `extra` is a [TicketArgs]. Gated by `TICKET_QR_ENABLED`.
   ticket('/bookings/:bookingId/ticket'),
+
+  /// Trip details (P-04, derived): the whole trip around a booking
+  /// (route, stops, vehicle, driver, seats). `extra` is a
+  /// [TripDetailsArgs]. Gated by `TRIP_DETAILS_ENABLED`.
+  tripDetails('/bookings/:bookingId/trip-details'),
   notifications('/notifications'),
   favouriteRoutes('/favourite-routes'),
   subscribe('/subscribe'),
@@ -212,6 +219,14 @@ GoRouter router(Ref ref) {
             state.extra is TicketArgs ? null : AppRoute.trips.path,
         builder: (context, state) =>
             TicketScreen(args: state.extra! as TicketArgs),
+      ),
+      GoRoute(
+        path: AppRoute.tripDetails.path,
+        name: AppRoute.tripDetails.name,
+        redirect: (context, state) =>
+            state.extra is TripDetailsArgs ? null : AppRoute.trips.path,
+        builder: (context, state) =>
+            TripDetailsScreen(args: state.extra! as TripDetailsArgs),
       ),
       for (final (pushed, title)
           in <(AppRoute, String Function(AppLocalizations))>[

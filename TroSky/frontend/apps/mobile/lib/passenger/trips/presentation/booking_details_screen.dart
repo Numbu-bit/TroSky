@@ -18,6 +18,7 @@ import '../application/trips_providers.dart';
 import '../domain/booking_view.dart';
 import '../../shared/cancel_booking_sheet.dart';
 import '../domain/ticket_args.dart';
+import '../domain/trip_details_args.dart';
 
 /// Booking details (P-16): the trip, vehicle and driver, seats and fare,
 /// with the status chip in the header and the actions its status allows.
@@ -260,8 +261,26 @@ class _BookingDetailsScreenState extends ConsumerState<BookingDetailsScreen> {
             const SizedBox(height: TroskySpacing.s14),
             TroskyRefundNote(text: refund),
           ],
+          if (tripDetailsEnabled) ...[
+            const SizedBox(height: TroskySpacing.s12),
+            TroskyTextLink(
+              prompt: '',
+              action: l10n.bookingViewTripDetails,
+              onPressed: () => _openTripDetails(booking),
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  /// Opens P-04 (Trip details) with the booking we already have. Gated
+  /// by `TRIP_DETAILS_ENABLED`.
+  void _openTripDetails(BookingResponse booking) {
+    context.pushNamed(
+      AppRoute.tripDetails.name,
+      pathParameters: {'bookingId': booking.id},
+      extra: TripDetailsArgs(booking: booking, source: TripDetailsSource.trips),
     );
   }
 
