@@ -491,7 +491,9 @@ class _StopRow extends StatelessWidget {
                 Expanded(
                   child: Container(
                     width: 2,
-                    color: isFirst ? TroskyColors.transparent : TroskyColors.border,
+                    color: isFirst
+                        ? TroskyColors.transparent
+                        : TroskyColors.border,
                   ),
                 ),
                 Container(
@@ -507,7 +509,9 @@ class _StopRow extends StatelessWidget {
                 Expanded(
                   child: Container(
                     width: 2,
-                    color: isLast ? TroskyColors.transparent : TroskyColors.border,
+                    color: isLast
+                        ? TroskyColors.transparent
+                        : TroskyColors.border,
                   ),
                 ),
               ],
