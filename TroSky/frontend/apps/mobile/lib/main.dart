@@ -3,12 +3,17 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
 import 'app/trosky_mobile_app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Hive stores the encrypted boarding-ticket cache (box tickets_v1, key
+  // in flutter_secure_storage). Must be initialised before any screen
+  // reads it.
+  await Hive.initFlutter();
   // Draw behind the status and navigation bars; each screen picks the
   // icon colour.
   unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge));

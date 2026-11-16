@@ -3,5 +3,6 @@
   "WS_BASE_URL": "wss://trosky-api.onrender.com/api/v1",
   "API_MODE": "live",
   "MAP_TILE_URL": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-  "TESTER_MENU": "true"
+  "TESTER_MENU": "true",
+  "TICKET_QR_ENABLED": "true"
 }
