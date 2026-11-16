@@ -211,9 +211,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       return;
     }
     _say(released ? l10n.paymentReleased : l10n.paymentCancelled);
-    _close(
-      released ? PaymentOutcome.released : PaymentOutcome.cancelled,
-    );
+    _close(released ? PaymentOutcome.released : PaymentOutcome.cancelled);
   }
 
   /// Search again from the same stops, starting over from Home.

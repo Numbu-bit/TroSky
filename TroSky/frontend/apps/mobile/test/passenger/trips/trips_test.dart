@@ -439,16 +439,10 @@ void main() {
       await openBooking(tester, 'Madina', 'Circle');
       await tester.tap(link('Cancel booking'));
       await tester.pumpAndSettle();
-      expect(
-        tester.widget<TroskyButton>(confirm()).onPressed,
-        isNull,
-      );
+      expect(tester.widget<TroskyButton>(confirm()).onPressed, isNull);
       await tester.tap(find.text('Change of plans'));
       await tester.pump();
-      expect(
-        tester.widget<TroskyButton>(confirm()).onPressed,
-        isNotNull,
-      );
+      expect(tester.widget<TroskyButton>(confirm()).onPressed, isNotNull);
     });
 
     testWidgets('a failure stays in the sheet; Keep booking closes it', (

@@ -131,7 +131,5 @@ String cancelReasonName(CancelReason reason) => _snake(reason.name);
 /// The backend's name for [status] ("payment_pending").
 String bookingStatusName(BookingStatus status) => _snake(status.name);
 
-String _snake(String camel) => camel.replaceAllMapped(
-  RegExp('[A-Z]'),
-  (m) => '_${m[0]!.toLowerCase()}',
-);
+String _snake(String camel) =>
+    camel.replaceAllMapped(RegExp('[A-Z]'), (m) => '_${m[0]!.toLowerCase()}');

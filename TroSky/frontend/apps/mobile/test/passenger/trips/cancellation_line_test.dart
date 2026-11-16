@@ -23,9 +23,8 @@ BookingResponse _b({
   cancelReason: cancelReason,
 );
 
-Future<AppLocalizations> _l10n() => AppLocalizations.delegate.load(
-  const Locale('en'),
-);
+Future<AppLocalizations> _l10n() =>
+    AppLocalizations.delegate.load(const Locale('en'));
 
 void main() {
   late AppLocalizations l10n;
@@ -60,10 +59,7 @@ void main() {
     });
 
     test('expired: fixed line, no placeholder', () {
-      final line = cancellationLine(
-        l10n,
-        _b(status: BookingStatus.expired),
-      );
+      final line = cancellationLine(l10n, _b(status: BookingStatus.expired));
       expect(line, 'Expired · Not paid in time');
     });
 
@@ -90,8 +86,11 @@ void main() {
         BookingStatus.completed,
         BookingStatus.refunded,
       ]) {
-        expect(cancellationLine(l10n, _b(status: status)), isNull,
-            reason: '$status should not render a cancellation line');
+        expect(
+          cancellationLine(l10n, _b(status: status)),
+          isNull,
+          reason: '$status should not render a cancellation line',
+        );
       }
     });
   });

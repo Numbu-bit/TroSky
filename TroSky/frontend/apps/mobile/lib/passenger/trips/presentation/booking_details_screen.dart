@@ -226,9 +226,7 @@ class _BookingDetailsScreenState extends ConsumerState<BookingDetailsScreen> {
           if (cancellationLine(l10n, booking) case final line?) ...[
             const SizedBox(height: TroskySpacing.s8),
             Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: TroskySpacing.s4,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: TroskySpacing.s4),
               child: Semantics(
                 liveRegion: true,
                 child: Text(

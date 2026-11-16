@@ -29,35 +29,33 @@ void main() {
     expect(tester.widget(sharedSheet()), isA<CancelBookingSheet>());
   });
 
-  testWidgets(
-    'Payment screen → bottom Cancel request opens the shared sheet',
-    (tester) async {
-      await reserve(tester);
-      await tester.ensureVisible(find.text('Cancel request'));
-      await tester.tap(find.text('Cancel request'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 400));
-      expect(sharedSheet(), findsOneWidget);
-      expect(tester.widget(sharedSheet()), isA<CancelBookingSheet>());
-    },
-  );
+  testWidgets('Payment screen → bottom Cancel request opens the shared sheet', (
+    tester,
+  ) async {
+    await reserve(tester);
+    await tester.ensureVisible(find.text('Cancel request'));
+    await tester.tap(find.text('Cancel request'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(sharedSheet(), findsOneWidget);
+    expect(tester.widget(sharedSheet()), isA<CancelBookingSheet>());
+  });
 
-  testWidgets(
-    'Payment screen → Back → Release seats opens the shared sheet',
-    (tester) async {
-      await reserve(tester);
-      await tester.binding.handlePopRoute();
-      await tester.pumpAndSettle();
-      expect(find.text('Leave payment?'), findsOneWidget);
-      await tester.tap(find.text('Release seats'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 400));
-      expect(sharedSheet(), findsOneWidget);
-      expect(tester.widget(sharedSheet()), isA<CancelBookingSheet>());
-      // Unpaid booking: the refund banner is hidden.
-      expect(find.byType(TroskyRefundBox), findsNothing);
-    },
-  );
+  testWidgets('Payment screen → Back → Release seats opens the shared sheet', (
+    tester,
+  ) async {
+    await reserve(tester);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('Leave payment?'), findsOneWidget);
+    await tester.tap(find.text('Release seats'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(sharedSheet(), findsOneWidget);
+    expect(tester.widget(sharedSheet()), isA<CancelBookingSheet>());
+    // Unpaid booking: the refund banner is hidden.
+    expect(find.byType(TroskyRefundBox), findsNothing);
+  });
 
   testWidgets('Booking Details cancel sheet with an unpaid booking hides '
       'the refund banner', (tester) async {
