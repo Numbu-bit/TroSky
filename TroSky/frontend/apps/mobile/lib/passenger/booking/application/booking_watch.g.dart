@@ -75,7 +75,7 @@ final class BookingWatchControllerProvider
 }
 
 String _$bookingWatchControllerHash() =>
-    r'6093fd9ddf863c54a12a726f18d1ada6d15dc9ac';
+    r'b2937d50ce6bf7af2aba736b3ab1bc5b987cf4c9';
 
 /// The booking shown on Payment, kept up to date: polled every
 /// [bookingPollEvery] while the driver hasn't answered, backing off after

@@ -67,6 +67,12 @@ enum BookingChip {
   /// does it, as designed.
   bool get canCancel =>
       this == pendingPayment || this == paidUpcoming || this == paidUnderWay;
+
+  /// "Show ticket" (P-10): the booking has at least one issued ticket.
+  /// Tickets are issued on confirmation and stay viewable until
+  /// completion; cancelled / expired / pending don't carry one.
+  bool get canShowTicket =>
+      this == paidUpcoming || this == paidUnderWay || this == completed;
 }
 
 /// The refund line on Booking details, if the booking has one.

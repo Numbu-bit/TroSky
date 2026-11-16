@@ -1529,4 +1529,78 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get testerMenuSignOut => 'Sign out & clear data';
+
+  @override
+  String get ticketBoardingPass => 'BOARDING PASS';
+
+  @override
+  String ticketRouteHeadline(String from, String to) {
+    return '$from → $to';
+  }
+
+  @override
+  String get ticketScanSubline => 'Scan this code when boarding';
+
+  @override
+  String get ticketPillNotYetValid => 'Not yet valid';
+
+  @override
+  String get ticketPillReadyToBoard => 'Ready to Board';
+
+  @override
+  String ticketPillUsed(String time) {
+    return 'Used · $time';
+  }
+
+  @override
+  String get ticketPillExpired => 'Expired';
+
+  @override
+  String get ticketPillNotValid => 'Not valid';
+
+  @override
+  String get ticketSeat => 'Seat';
+
+  @override
+  String get ticketDeparts => 'Departs';
+
+  @override
+  String get ticketFare => 'Fare';
+
+  @override
+  String get ticketPaid => 'PAID';
+
+  @override
+  String get ticketVerifiedGhanaCard => 'Verified · Ghana Card';
+
+  @override
+  String get ticketCantScan => 'Can\'t scan? Show code';
+
+  @override
+  String ticketCountOf(int current, int total) {
+    return '$current / $total';
+  }
+
+  @override
+  String ticketSemanticLabel(String route, String time, String seat) {
+    return 'Boarding QR for $route at $time, seat $seat';
+  }
+
+  @override
+  String ticketPageDotsLabel(int current, int total) {
+    return 'Ticket $current of $total';
+  }
+
+  @override
+  String get ticketRetry => 'Retry';
+
+  @override
+  String get ticketError => 'Can\'t load your ticket. Pull down to retry.';
+
+  @override
+  String get ticketEmpty =>
+      'No ticket yet. It appears after the booking is confirmed.';
+
+  @override
+  String get bookingShowTicket => 'Show ticket';
 }

@@ -2182,5 +2182,89 @@
   "testerMenuSignOut": "Sign out & clear data",
   "@testerMenuSignOut": {
     "description": "Tester menu action button (destructive)."
+  },
+  "ticketBoardingPass": "BOARDING PASS",
+  "@ticketBoardingPass": {
+    "description": "Overline above the route headline on the Ticket screen."
+  },
+  "ticketRouteHeadline": "{from} → {to}",
+  "@ticketRouteHeadline": {
+    "description": "Route headline on the Ticket screen (P-10).",
+    "placeholders": {
+      "from": { "type": "String", "example": "Madina" },
+      "to": { "type": "String", "example": "Circle" }
+    }
+  },
+  "ticketScanSubline": "Scan this code when boarding",
+  "@ticketScanSubline": { "description": "Subline under the QR." },
+  "ticketPillNotYetValid": "Not yet valid",
+  "@ticketPillNotYetValid": { "description": "Ticket status pill label." },
+  "ticketPillReadyToBoard": "Ready to Board",
+  "@ticketPillReadyToBoard": { "description": "Ticket status pill label." },
+  "ticketPillUsed": "Used · {time}",
+  "@ticketPillUsed": {
+    "description": "Ticket status pill once validated.",
+    "placeholders": {
+      "time": { "type": "String", "example": "08:42" }
+    }
+  },
+  "ticketPillExpired": "Expired",
+  "@ticketPillExpired": { "description": "Ticket status pill label." },
+  "ticketPillNotValid": "Not valid",
+  "@ticketPillNotValid": { "description": "Ticket status pill label for revoked tickets." },
+  "ticketSeat": "Seat",
+  "@ticketSeat": { "description": "Three-column strip label." },
+  "ticketDeparts": "Departs",
+  "@ticketDeparts": { "description": "Three-column strip label." },
+  "ticketFare": "Fare",
+  "@ticketFare": { "description": "Three-column strip label." },
+  "ticketPaid": "PAID",
+  "@ticketPaid": { "description": "Payment pill on the passenger card." },
+  "ticketVerifiedGhanaCard": "Verified · Ghana Card",
+  "@ticketVerifiedGhanaCard": {
+    "description": "Passenger verification sub-line (P-10)."
+  },
+  "ticketCantScan": "Can't scan? Show code",
+  "@ticketCantScan": {
+    "description": "Expander button under the QR."
+  },
+  "ticketCountOf": "{current} / {total}",
+  "@ticketCountOf": {
+    "description": "Ticket page indicator for bookings with more than 3 seats.",
+    "placeholders": {
+      "current": { "type": "int", "example": "2" },
+      "total": { "type": "int", "example": "3" }
+    }
+  },
+  "ticketSemanticLabel": "Boarding QR for {route} at {time}, seat {seat}",
+  "@ticketSemanticLabel": {
+    "description": "Semantics label on the QR image.",
+    "placeholders": {
+      "route": { "type": "String", "example": "Madina → Circle" },
+      "time": { "type": "String", "example": "08:30" },
+      "seat": { "type": "String", "example": "4B" }
+    }
+  },
+  "ticketPageDotsLabel": "Ticket {current} of {total}",
+  "@ticketPageDotsLabel": {
+    "description": "Semantics label on the ticket page dots.",
+    "placeholders": {
+      "current": { "type": "int", "example": "1" },
+      "total": { "type": "int", "example": "2" }
+    }
+  },
+  "ticketRetry": "Retry",
+  "@ticketRetry": { "description": "Retry button on the ticket error state." },
+  "ticketError": "Can't load your ticket. Pull down to retry.",
+  "@ticketError": {
+    "description": "Error state when the tickets fetch failed."
+  },
+  "ticketEmpty": "No ticket yet. It appears after the booking is confirmed.",
+  "@ticketEmpty": {
+    "description": "State for bookings with no tickets issued yet (e.g. awaiting acceptance)."
+  },
+  "bookingShowTicket": "Show ticket",
+  "@bookingShowTicket": {
+    "description": "Primary action on booking details that opens the Ticket screen."
   }
 }

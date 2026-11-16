@@ -21,7 +21,9 @@ import '../passenger/search/search_prefill.dart';
 import '../passenger/seats/domain/seat_selection_args.dart';
 import '../passenger/seats/presentation/seat_selection_screen.dart';
 import '../passenger/shell/passenger_shell.dart';
+import '../passenger/trips/domain/ticket_args.dart';
 import '../passenger/trips/presentation/booking_details_screen.dart';
+import '../passenger/trips/presentation/ticket_screen.dart';
 import '../passenger/trips/presentation/trips_screen.dart';
 import 'placeholder_screen.dart';
 
@@ -68,6 +70,10 @@ enum AppRoute {
   /// Booking details (P-16), from Trips; `extra` may be the
   /// [BookingResponse] as listed.
   bookingDetails('/bookings/:bookingId'),
+
+  /// Ticket / Boarding Pass (P-10): one QR per seat, swipeable;
+  /// `extra` is a [TicketArgs]. Gated by `TICKET_QR_ENABLED`.
+  ticket('/bookings/:bookingId/ticket'),
   notifications('/notifications'),
   favouriteRoutes('/favourite-routes'),
   subscribe('/subscribe'),
@@ -198,6 +204,14 @@ GoRouter router(Ref ref) {
               ? state.extra! as BookingResponse
               : null,
         ),
+      ),
+      GoRoute(
+        path: AppRoute.ticket.path,
+        name: AppRoute.ticket.name,
+        redirect: (context, state) =>
+            state.extra is TicketArgs ? null : AppRoute.trips.path,
+        builder: (context, state) =>
+            TicketScreen(args: state.extra! as TicketArgs),
       ),
       for (final (pushed, title)
           in <(AppRoute, String Function(AppLocalizations))>[

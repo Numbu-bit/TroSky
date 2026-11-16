@@ -151,6 +151,18 @@ BookingRepository bookingRepository(Ref ref) =>
       ),
     };
 
+/// Boarding tickets issued for confirmed bookings (one per seat).
+@Riverpod(keepAlive: true)
+TicketRepository ticketRepository(Ref ref) =>
+    switch (ref.watch(envProvider).apiMode) {
+      ApiMode.live => LiveTicketRepository(ref.watch(apiClientProvider)),
+      ApiMode.mock => MockTicketRepository(
+        ref.watch(mockBackendProvider),
+        tokens: () => ref.read(tokenManagerProvider),
+        latency: ref.watch(mockLatencyProvider),
+      ),
+    };
+
 /// Paying for bookings, the wallet and saved mobile money numbers.
 @Riverpod(keepAlive: true)
 PaymentRepository paymentRepository(Ref ref) =>

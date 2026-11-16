@@ -2665,6 +2665,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sign out & clear data'**
   String get testerMenuSignOut;
+
+  /// Overline above the route headline on the Ticket screen.
+  ///
+  /// In en, this message translates to:
+  /// **'BOARDING PASS'**
+  String get ticketBoardingPass;
+
+  /// Route headline on the Ticket screen (P-10).
+  ///
+  /// In en, this message translates to:
+  /// **'{from} → {to}'**
+  String ticketRouteHeadline(String from, String to);
+
+  /// Subline under the QR.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan this code when boarding'**
+  String get ticketScanSubline;
+
+  /// Ticket status pill label.
+  ///
+  /// In en, this message translates to:
+  /// **'Not yet valid'**
+  String get ticketPillNotYetValid;
+
+  /// Ticket status pill label.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to Board'**
+  String get ticketPillReadyToBoard;
+
+  /// Ticket status pill once validated.
+  ///
+  /// In en, this message translates to:
+  /// **'Used · {time}'**
+  String ticketPillUsed(String time);
+
+  /// Ticket status pill label.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get ticketPillExpired;
+
+  /// Ticket status pill label for revoked tickets.
+  ///
+  /// In en, this message translates to:
+  /// **'Not valid'**
+  String get ticketPillNotValid;
+
+  /// Three-column strip label.
+  ///
+  /// In en, this message translates to:
+  /// **'Seat'**
+  String get ticketSeat;
+
+  /// Three-column strip label.
+  ///
+  /// In en, this message translates to:
+  /// **'Departs'**
+  String get ticketDeparts;
+
+  /// Three-column strip label.
+  ///
+  /// In en, this message translates to:
+  /// **'Fare'**
+  String get ticketFare;
+
+  /// Payment pill on the passenger card.
+  ///
+  /// In en, this message translates to:
+  /// **'PAID'**
+  String get ticketPaid;
+
+  /// Passenger verification sub-line (P-10).
+  ///
+  /// In en, this message translates to:
+  /// **'Verified · Ghana Card'**
+  String get ticketVerifiedGhanaCard;
+
+  /// Expander button under the QR.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t scan? Show code'**
+  String get ticketCantScan;
+
+  /// Ticket page indicator for bookings with more than 3 seats.
+  ///
+  /// In en, this message translates to:
+  /// **'{current} / {total}'**
+  String ticketCountOf(int current, int total);
+
+  /// Semantics label on the QR image.
+  ///
+  /// In en, this message translates to:
+  /// **'Boarding QR for {route} at {time}, seat {seat}'**
+  String ticketSemanticLabel(String route, String time, String seat);
+
+  /// Semantics label on the ticket page dots.
+  ///
+  /// In en, this message translates to:
+  /// **'Ticket {current} of {total}'**
+  String ticketPageDotsLabel(int current, int total);
+
+  /// Retry button on the ticket error state.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get ticketRetry;
+
+  /// Error state when the tickets fetch failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t load your ticket. Pull down to retry.'**
+  String get ticketError;
+
+  /// State for bookings with no tickets issued yet (e.g. awaiting acceptance).
+  ///
+  /// In en, this message translates to:
+  /// **'No ticket yet. It appears after the booking is confirmed.'**
+  String get ticketEmpty;
+
+  /// Primary action on booking details that opens the Ticket screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Show ticket'**
+  String get bookingShowTicket;
 }
 
 class _AppLocalizationsDelegate
