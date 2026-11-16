@@ -584,6 +584,278 @@ as String?,
 
 
 /// @nodoc
+mixin _$WalletTopupRequest {
+
+ String get amount; String? get paymentMethodId; PaymentChannel? get channel; String? get payerPhoneNumber;
+/// Create a copy of WalletTopupRequest
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$WalletTopupRequestCopyWith<WalletTopupRequest> get copyWith => _$WalletTopupRequestCopyWithImpl<WalletTopupRequest>(this as WalletTopupRequest, _$identity);
+
+  /// Serializes this WalletTopupRequest to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is WalletTopupRequest&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.paymentMethodId, paymentMethodId) || other.paymentMethodId == paymentMethodId)&&(identical(other.channel, channel) || other.channel == channel)&&(identical(other.payerPhoneNumber, payerPhoneNumber) || other.payerPhoneNumber == payerPhoneNumber));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,amount,paymentMethodId,channel,payerPhoneNumber);
+
+@override
+String toString() {
+  return 'WalletTopupRequest(amount: $amount, paymentMethodId: $paymentMethodId, channel: $channel, payerPhoneNumber: $payerPhoneNumber)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $WalletTopupRequestCopyWith<$Res>  {
+  factory $WalletTopupRequestCopyWith(WalletTopupRequest value, $Res Function(WalletTopupRequest) _then) = _$WalletTopupRequestCopyWithImpl;
+@useResult
+$Res call({
+ String amount, String? paymentMethodId, PaymentChannel? channel, String? payerPhoneNumber
+});
+
+
+
+
+}
+/// @nodoc
+class _$WalletTopupRequestCopyWithImpl<$Res>
+    implements $WalletTopupRequestCopyWith<$Res> {
+  _$WalletTopupRequestCopyWithImpl(this._self, this._then);
+
+  final WalletTopupRequest _self;
+  final $Res Function(WalletTopupRequest) _then;
+
+/// Create a copy of WalletTopupRequest
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? amount = null,Object? paymentMethodId = freezed,Object? channel = freezed,Object? payerPhoneNumber = freezed,}) {
+  return _then(WalletTopupRequest(
+amount: null == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
+as String,paymentMethodId: freezed == paymentMethodId ? _self.paymentMethodId : paymentMethodId // ignore: cast_nullable_to_non_nullable
+as String?,channel: freezed == channel ? _self.channel : channel // ignore: cast_nullable_to_non_nullable
+as PaymentChannel?,payerPhoneNumber: freezed == payerPhoneNumber ? _self.payerPhoneNumber : payerPhoneNumber // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [WalletTopupRequest].
+extension WalletTopupRequestPatterns on WalletTopupRequest {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _WalletTopupRequest value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _WalletTopupRequest() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _WalletTopupRequest value)  $default,){
+final _that = this;
+switch (_that) {
+case _WalletTopupRequest():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _WalletTopupRequest value)?  $default,){
+final _that = this;
+switch (_that) {
+case _WalletTopupRequest() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String amount,  String? paymentMethodId,  PaymentChannel? channel,  String? payerPhoneNumber)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _WalletTopupRequest() when $default != null:
+return $default(_that.amount,_that.paymentMethodId,_that.channel,_that.payerPhoneNumber);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String amount,  String? paymentMethodId,  PaymentChannel? channel,  String? payerPhoneNumber)  $default,) {final _that = this;
+switch (_that) {
+case _WalletTopupRequest():
+return $default(_that.amount,_that.paymentMethodId,_that.channel,_that.payerPhoneNumber);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String amount,  String? paymentMethodId,  PaymentChannel? channel,  String? payerPhoneNumber)?  $default,) {final _that = this;
+switch (_that) {
+case _WalletTopupRequest() when $default != null:
+return $default(_that.amount,_that.paymentMethodId,_that.channel,_that.payerPhoneNumber);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _WalletTopupRequest implements WalletTopupRequest {
+  const _WalletTopupRequest({required this.amount, this.paymentMethodId, this.channel, this.payerPhoneNumber});
+  factory _WalletTopupRequest.fromJson(Map<String, dynamic> json) => _$WalletTopupRequestFromJson(json);
+
+@override final  String amount;
+@override final  String? paymentMethodId;
+@override final  PaymentChannel? channel;
+@override final  String? payerPhoneNumber;
+
+/// Create a copy of WalletTopupRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$WalletTopupRequestCopyWith<_WalletTopupRequest> get copyWith => __$WalletTopupRequestCopyWithImpl<_WalletTopupRequest>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$WalletTopupRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _WalletTopupRequest&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.paymentMethodId, paymentMethodId) || other.paymentMethodId == paymentMethodId)&&(identical(other.channel, channel) || other.channel == channel)&&(identical(other.payerPhoneNumber, payerPhoneNumber) || other.payerPhoneNumber == payerPhoneNumber));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,amount,paymentMethodId,channel,payerPhoneNumber);
+
+@override
+String toString() {
+  return 'WalletTopupRequest(amount: $amount, paymentMethodId: $paymentMethodId, channel: $channel, payerPhoneNumber: $payerPhoneNumber)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$WalletTopupRequestCopyWith<$Res> implements $WalletTopupRequestCopyWith<$Res> {
+  factory _$WalletTopupRequestCopyWith(_WalletTopupRequest value, $Res Function(_WalletTopupRequest) _then) = __$WalletTopupRequestCopyWithImpl;
+@override @useResult
+$Res call({
+ String amount, String? paymentMethodId, PaymentChannel? channel, String? payerPhoneNumber
+});
+
+
+
+
+}
+/// @nodoc
+class __$WalletTopupRequestCopyWithImpl<$Res>
+    implements _$WalletTopupRequestCopyWith<$Res> {
+  __$WalletTopupRequestCopyWithImpl(this._self, this._then);
+
+  final _WalletTopupRequest _self;
+  final $Res Function(_WalletTopupRequest) _then;
+
+/// Create a copy of WalletTopupRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? amount = null,Object? paymentMethodId = freezed,Object? channel = freezed,Object? payerPhoneNumber = freezed,}) {
+  return _then(_WalletTopupRequest(
+amount: null == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
+as String,paymentMethodId: freezed == paymentMethodId ? _self.paymentMethodId : paymentMethodId // ignore: cast_nullable_to_non_nullable
+as String?,channel: freezed == channel ? _self.channel : channel // ignore: cast_nullable_to_non_nullable
+as PaymentChannel?,payerPhoneNumber: freezed == payerPhoneNumber ? _self.payerPhoneNumber : payerPhoneNumber // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
 mixin _$WalletResponse {
 
 @JsonKey(fromJson: decimalString) String get balance; String get currency;

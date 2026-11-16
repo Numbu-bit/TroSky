@@ -2533,6 +2533,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your MTN MoMo balance was too low.'**
   String get payFailedMomoFunds;
+
+  /// Hidden tester menu title (staging and demo builds).
+  ///
+  /// In en, this message translates to:
+  /// **'Tester menu'**
+  String get testerMenuTitle;
+
+  /// Subline in the tester menu header, describing where the 7-tap trigger lives.
+  ///
+  /// In en, this message translates to:
+  /// **'Triggered from Home · tap greeting 7×'**
+  String get testerMenuTriggerNote;
+
+  /// Tester menu section header for the read-only build info block.
+  ///
+  /// In en, this message translates to:
+  /// **'Build info'**
+  String get testerMenuBuildInfo;
+
+  /// Tester menu build-info row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit'**
+  String get testerMenuCommit;
+
+  /// Tester menu build-info row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Built'**
+  String get testerMenuBuilt;
+
+  /// Tester menu build-info row label.
+  ///
+  /// In en, this message translates to:
+  /// **'API'**
+  String get testerMenuApiBase;
+
+  /// Tester menu build-info row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode'**
+  String get testerMenuMode;
+
+  /// Tester menu build-info row label.
+  ///
+  /// In en, this message translates to:
+  /// **'App version'**
+  String get testerMenuAppVersion;
+
+  /// Tester menu build-info mode value.
+  ///
+  /// In en, this message translates to:
+  /// **'mock'**
+  String get testerMenuModeMock;
+
+  /// Tester menu build-info mode value for live API (always staging in the hidden menu).
+  ///
+  /// In en, this message translates to:
+  /// **'staging'**
+  String get testerMenuModeLive;
+
+  /// Tester menu build-info value when GIT_COMMIT or BUILD_DATE weren't passed at build time.
+  ///
+  /// In en, this message translates to:
+  /// **'unset'**
+  String get testerMenuNotSet;
+
+  /// Tester menu action button.
+  ///
+  /// In en, this message translates to:
+  /// **'Wake server'**
+  String get testerMenuWakeServer;
+
+  /// Toast after a successful Wake server tap.
+  ///
+  /// In en, this message translates to:
+  /// **'Server is awake'**
+  String get testerMenuWakeOk;
+
+  /// Toast after a failed Wake server tap.
+  ///
+  /// In en, this message translates to:
+  /// **'Server didn\'t answer'**
+  String get testerMenuWakeFail;
+
+  /// Toast when Wake server runs in a mock-mode build.
+  ///
+  /// In en, this message translates to:
+  /// **'This is a mock build; no server to wake'**
+  String get testerMenuWakeMockMode;
+
+  /// Tester menu action button.
+  ///
+  /// In en, this message translates to:
+  /// **'Top up my wallet ₵100'**
+  String get testerMenuTopUp;
+
+  /// Toast after a successful wallet top-up.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallet topped up. New balance: ₵{balance}'**
+  String testerMenuTopUpOk(String balance);
+
+  /// Toast when the wallet-top-up endpoint returns 404.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallet top-up not supported by this backend (PR #53 not deployed).'**
+  String get testerMenuTopUpMissing;
+
+  /// Toast when the wallet-top-up endpoint errored.
+  ///
+  /// In en, this message translates to:
+  /// **'Top-up failed: {message}'**
+  String testerMenuTopUpError(String message);
+
+  /// Toast when Top up is tapped without a signed-in session.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in first to top up your wallet'**
+  String get testerMenuTopUpSignIn;
+
+  /// Tester menu action button.
+  ///
+  /// In en, this message translates to:
+  /// **'Show onboarding again'**
+  String get testerMenuShowOnboarding;
+
+  /// Tester menu action button (destructive).
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out & clear data'**
+  String get testerMenuSignOut;
 }
 
 class _AppLocalizationsDelegate

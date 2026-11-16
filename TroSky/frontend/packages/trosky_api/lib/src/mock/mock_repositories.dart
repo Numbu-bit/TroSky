@@ -322,6 +322,16 @@ class MockPaymentRepository implements PaymentRepository {
   );
 
   @override
+  Future<Result<PaymentResponse>> topUpWallet(
+    WalletTopupRequest request, {
+    required String idempotencyKey,
+  }) => _authenticated(
+    _tokens(),
+    latency,
+    (token) => _backend.createWalletTopup(token, request),
+  );
+
+  @override
   Future<Result<WalletResponse>> wallet() =>
       _authenticated(_tokens(), latency, _backend.getWallet);
 

@@ -93,6 +93,22 @@ Map<String, dynamic> _$PayBookingRequestToJson(_PayBookingRequest instance) =>
       'payer_phone_number': ?instance.payerPhoneNumber,
     };
 
+_WalletTopupRequest _$WalletTopupRequestFromJson(Map<String, dynamic> json) =>
+    _WalletTopupRequest(
+      amount: json['amount'] as String,
+      paymentMethodId: json['payment_method_id'] as String?,
+      channel: $enumDecodeNullable(_$PaymentChannelEnumMap, json['channel']),
+      payerPhoneNumber: json['payer_phone_number'] as String?,
+    );
+
+Map<String, dynamic> _$WalletTopupRequestToJson(_WalletTopupRequest instance) =>
+    <String, dynamic>{
+      'amount': instance.amount,
+      'payment_method_id': ?instance.paymentMethodId,
+      'channel': ?_$PaymentChannelEnumMap[instance.channel],
+      'payer_phone_number': ?instance.payerPhoneNumber,
+    };
+
 _WalletResponse _$WalletResponseFromJson(Map<String, dynamic> json) =>
     _WalletResponse(
       balance: decimalString(json['balance']),

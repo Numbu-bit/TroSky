@@ -2088,5 +2088,99 @@
   "payFailedMomoFunds": "Your MTN MoMo balance was too low.",
   "@payFailedMomoFunds": {
     "description": "Payment result (P-09): MTN reports not enough funds."
+  },
+  "testerMenuTitle": "Tester menu",
+  "@testerMenuTitle": {
+    "description": "Hidden tester menu title (staging and demo builds)."
+  },
+  "testerMenuTriggerNote": "Triggered from Home · tap greeting 7×",
+  "@testerMenuTriggerNote": {
+    "description": "Subline in the tester menu header, describing where the 7-tap trigger lives."
+  },
+  "testerMenuBuildInfo": "Build info",
+  "@testerMenuBuildInfo": {
+    "description": "Tester menu section header for the read-only build info block."
+  },
+  "testerMenuCommit": "Commit",
+  "@testerMenuCommit": {
+    "description": "Tester menu build-info row label."
+  },
+  "testerMenuBuilt": "Built",
+  "@testerMenuBuilt": {
+    "description": "Tester menu build-info row label."
+  },
+  "testerMenuApiBase": "API",
+  "@testerMenuApiBase": {
+    "description": "Tester menu build-info row label."
+  },
+  "testerMenuMode": "Mode",
+  "@testerMenuMode": {
+    "description": "Tester menu build-info row label."
+  },
+  "testerMenuAppVersion": "App version",
+  "@testerMenuAppVersion": {
+    "description": "Tester menu build-info row label."
+  },
+  "testerMenuModeMock": "mock",
+  "@testerMenuModeMock": {
+    "description": "Tester menu build-info mode value."
+  },
+  "testerMenuModeLive": "staging",
+  "@testerMenuModeLive": {
+    "description": "Tester menu build-info mode value for live API (always staging in the hidden menu)."
+  },
+  "testerMenuNotSet": "unset",
+  "@testerMenuNotSet": {
+    "description": "Tester menu build-info value when GIT_COMMIT or BUILD_DATE weren't passed at build time."
+  },
+  "testerMenuWakeServer": "Wake server",
+  "@testerMenuWakeServer": {
+    "description": "Tester menu action button."
+  },
+  "testerMenuWakeOk": "Server is awake",
+  "@testerMenuWakeOk": {
+    "description": "Toast after a successful Wake server tap."
+  },
+  "testerMenuWakeFail": "Server didn't answer",
+  "@testerMenuWakeFail": {
+    "description": "Toast after a failed Wake server tap."
+  },
+  "testerMenuWakeMockMode": "This is a mock build; no server to wake",
+  "@testerMenuWakeMockMode": {
+    "description": "Toast when Wake server runs in a mock-mode build."
+  },
+  "testerMenuTopUp": "Top up my wallet ₵100",
+  "@testerMenuTopUp": {
+    "description": "Tester menu action button."
+  },
+  "testerMenuTopUpOk": "Wallet topped up. New balance: ₵{balance}",
+  "@testerMenuTopUpOk": {
+    "description": "Toast after a successful wallet top-up.",
+    "placeholders": {
+      "balance": { "type": "String", "example": "250.00" }
+    }
+  },
+  "testerMenuTopUpMissing": "Wallet top-up not supported by this backend (PR #53 not deployed).",
+  "@testerMenuTopUpMissing": {
+    "description": "Toast when the wallet-top-up endpoint returns 404."
+  },
+  "testerMenuTopUpError": "Top-up failed: {message}",
+  "@testerMenuTopUpError": {
+    "description": "Toast when the wallet-top-up endpoint errored.",
+    "placeholders": {
+      "message": { "type": "String", "example": "Network error" }
+    }
+  },
+  "testerMenuTopUpSignIn": "Sign in first to top up your wallet",
+  "@testerMenuTopUpSignIn": {
+    "description": "Toast when Top up is tapped without a signed-in session."
+  },
+  "testerMenuShowOnboarding": "Show onboarding again",
+  "@testerMenuShowOnboarding": {
+    "description": "Tester menu action button."
+  },
+  "testerMenuSignOut": "Sign out & clear data",
+  "@testerMenuSignOut": {
+    "description": "Tester menu action button (destructive)."
   }
 }

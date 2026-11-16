@@ -16,6 +16,9 @@ class _FailingOnboardingStore implements OnboardingStore {
 
   @override
   Future<void> markSeen() async {}
+
+  @override
+  Future<void> reset() async {}
 }
 
 void main() {
