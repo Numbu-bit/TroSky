@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:trosky_api/trosky_api.dart';
-import 'package:trosky_core/trosky_core.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
 import '../../../app/app_providers.dart';
@@ -15,6 +14,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../search/presentation/trip_view.dart';
 import '../../search/search_prefill.dart';
 import '../../seats/application/seat_providers.dart';
+import '../../shared/cancel_booking_sheet.dart';
 import '../../trips/application/trips_providers.dart';
 import '../application/booking_watch.dart';
 import '../application/pay_controller.dart';
@@ -182,35 +182,36 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       case LeaveChoice.keep:
         _home();
       case LeaveChoice.release:
-        await _cancel(released: true);
+        await _askCancel(released: true);
       case null:
         break;
     }
   }
 
-  Future<void> _cancel({bool released = false}) async {
+  /// Every passenger-initiated cancel from this screen (bottom "Cancel"
+  /// button, and the "Release seats" branch of the leave sheet) opens
+  /// the shared P-16 cancel sheet. The sheet calls the backend and
+  /// handles its own in-sheet errors; here we just react to the outcome.
+  Future<void> _cancel() => _askCancel();
+
+  Future<void> _askCancel({bool released = false}) async {
     final l10n = AppLocalizations.of(context);
-    setState(() {
-      _cancelling = true;
-      _error = null;
-    });
-    final result = await ref.read(_watch.notifier).cancel();
+    setState(() => _cancelling = true);
+    final outcome = await showCancelBookingSheet(
+      context,
+      booking: ref.read(_watch).booking,
+      confirmLabel: released ? l10n.paymentReleaseConfirm : null,
+    );
     if (!mounted) return;
     setState(() => _cancelling = false);
-    switch (result) {
-      case Ok() when released:
-        _say(l10n.paymentReleased);
-        _close(PaymentOutcome.released);
-      case Ok():
-        _say(l10n.paymentCancelled);
-        _close(PaymentOutcome.cancelled);
-      case Err(:final failure) when failure.code == 'INVALID_STATE_TRANSITION':
-        // It ended on the server meanwhile; the booking was read again and
-        // the screen shows how.
-        break;
-      case Err(:final failure):
-        setState(() => _error = failureMessage(context, failure));
+    if (outcome == null) return;
+    if (outcome.requested) {
+      // The trip had started: the backend logged a review request and
+      // the booking stays as it was. The screen keeps itself open.
+      return;
     }
+    _say(released ? l10n.paymentReleased : l10n.paymentCancelled);
+    _close(released ? PaymentOutcome.released : PaymentOutcome.cancelled);
   }
 
   /// Search again from the same stops, starting over from Home.

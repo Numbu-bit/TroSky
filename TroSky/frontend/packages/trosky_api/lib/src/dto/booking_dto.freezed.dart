@@ -1966,7 +1966,9 @@ mixin _$BookingResponse {
 
  String get id; String get bookingReference; String get tripId;@JsonKey(unknownEnumValue: BookingStatus.pending) BookingStatus get status; int get passengerCount; String? get originStopId; String? get destinationStopId;@JsonKey(fromJson: decimalString) String get fareAmount;@JsonKey(fromJson: decimalString) String get platformFee;@JsonKey(fromJson: decimalString) String get totalAmount;/// The deadline: for the driver's answer ([BookingStatus.
 /// awaitingAcceptance]), then for paying ([BookingStatus.pending]).
- DateTime? get expiresAt; DateTime get createdAt; List<BookingPassengerResponse> get passengers; BookingTripSummaryResponse? get trip; String? get boardingStopName; String? get alightingStopName;
+ DateTime? get expiresAt; DateTime get createdAt; List<BookingPassengerResponse> get passengers; BookingTripSummaryResponse? get trip; String? get boardingStopName; String? get alightingStopName;/// Set by the backend once G37 ships (cancel-reason flow). Until
+/// then the app leaves it null and falls back to the status.
+@JsonKey(unknownEnumValue: null) CancelReason? get cancelReason;@JsonKey(unknownEnumValue: null) CancelledBy? get cancelledBy; DateTime? get cancelledAt;
 /// Create a copy of BookingResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1979,16 +1981,16 @@ $BookingResponseCopyWith<BookingResponse> get copyWith => _$BookingResponseCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BookingResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.bookingReference, bookingReference) || other.bookingReference == bookingReference)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.status, status) || other.status == status)&&(identical(other.passengerCount, passengerCount) || other.passengerCount == passengerCount)&&(identical(other.originStopId, originStopId) || other.originStopId == originStopId)&&(identical(other.destinationStopId, destinationStopId) || other.destinationStopId == destinationStopId)&&(identical(other.fareAmount, fareAmount) || other.fareAmount == fareAmount)&&(identical(other.platformFee, platformFee) || other.platformFee == platformFee)&&(identical(other.totalAmount, totalAmount) || other.totalAmount == totalAmount)&&(identical(other.expiresAt, expiresAt) || other.expiresAt == expiresAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&const DeepCollectionEquality().equals(other.passengers, passengers)&&(identical(other.trip, trip) || other.trip == trip)&&(identical(other.boardingStopName, boardingStopName) || other.boardingStopName == boardingStopName)&&(identical(other.alightingStopName, alightingStopName) || other.alightingStopName == alightingStopName));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BookingResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.bookingReference, bookingReference) || other.bookingReference == bookingReference)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.status, status) || other.status == status)&&(identical(other.passengerCount, passengerCount) || other.passengerCount == passengerCount)&&(identical(other.originStopId, originStopId) || other.originStopId == originStopId)&&(identical(other.destinationStopId, destinationStopId) || other.destinationStopId == destinationStopId)&&(identical(other.fareAmount, fareAmount) || other.fareAmount == fareAmount)&&(identical(other.platformFee, platformFee) || other.platformFee == platformFee)&&(identical(other.totalAmount, totalAmount) || other.totalAmount == totalAmount)&&(identical(other.expiresAt, expiresAt) || other.expiresAt == expiresAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&const DeepCollectionEquality().equals(other.passengers, passengers)&&(identical(other.trip, trip) || other.trip == trip)&&(identical(other.boardingStopName, boardingStopName) || other.boardingStopName == boardingStopName)&&(identical(other.alightingStopName, alightingStopName) || other.alightingStopName == alightingStopName)&&(identical(other.cancelReason, cancelReason) || other.cancelReason == cancelReason)&&(identical(other.cancelledBy, cancelledBy) || other.cancelledBy == cancelledBy)&&(identical(other.cancelledAt, cancelledAt) || other.cancelledAt == cancelledAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,bookingReference,tripId,status,passengerCount,originStopId,destinationStopId,fareAmount,platformFee,totalAmount,expiresAt,createdAt,const DeepCollectionEquality().hash(passengers),trip,boardingStopName,alightingStopName);
+int get hashCode => Object.hashAll([runtimeType,id,bookingReference,tripId,status,passengerCount,originStopId,destinationStopId,fareAmount,platformFee,totalAmount,expiresAt,createdAt,const DeepCollectionEquality().hash(passengers),trip,boardingStopName,alightingStopName,cancelReason,cancelledBy,cancelledAt]);
 
 @override
 String toString() {
-  return 'BookingResponse(id: $id, bookingReference: $bookingReference, tripId: $tripId, status: $status, passengerCount: $passengerCount, originStopId: $originStopId, destinationStopId: $destinationStopId, fareAmount: $fareAmount, platformFee: $platformFee, totalAmount: $totalAmount, expiresAt: $expiresAt, createdAt: $createdAt, passengers: $passengers, trip: $trip, boardingStopName: $boardingStopName, alightingStopName: $alightingStopName)';
+  return 'BookingResponse(id: $id, bookingReference: $bookingReference, tripId: $tripId, status: $status, passengerCount: $passengerCount, originStopId: $originStopId, destinationStopId: $destinationStopId, fareAmount: $fareAmount, platformFee: $platformFee, totalAmount: $totalAmount, expiresAt: $expiresAt, createdAt: $createdAt, passengers: $passengers, trip: $trip, boardingStopName: $boardingStopName, alightingStopName: $alightingStopName, cancelReason: $cancelReason, cancelledBy: $cancelledBy, cancelledAt: $cancelledAt)';
 }
 
 
@@ -1999,7 +2001,7 @@ abstract mixin class $BookingResponseCopyWith<$Res>  {
   factory $BookingResponseCopyWith(BookingResponse value, $Res Function(BookingResponse) _then) = _$BookingResponseCopyWithImpl;
 @useResult
 $Res call({
- String id, String bookingReference, String tripId,@JsonKey(unknownEnumValue: BookingStatus.pending) BookingStatus status, int passengerCount, String? originStopId, String? destinationStopId,@JsonKey(fromJson: decimalString) String fareAmount,@JsonKey(fromJson: decimalString) String platformFee,@JsonKey(fromJson: decimalString) String totalAmount, DateTime? expiresAt, DateTime createdAt, List<BookingPassengerResponse> passengers, BookingTripSummaryResponse? trip, String? boardingStopName, String? alightingStopName
+ String id, String bookingReference, String tripId,@JsonKey(unknownEnumValue: BookingStatus.pending) BookingStatus status, int passengerCount, String? originStopId, String? destinationStopId,@JsonKey(fromJson: decimalString) String fareAmount,@JsonKey(fromJson: decimalString) String platformFee,@JsonKey(fromJson: decimalString) String totalAmount, DateTime? expiresAt, DateTime createdAt, List<BookingPassengerResponse> passengers, BookingTripSummaryResponse? trip, String? boardingStopName, String? alightingStopName,@JsonKey(unknownEnumValue: null) CancelReason? cancelReason,@JsonKey(unknownEnumValue: null) CancelledBy? cancelledBy, DateTime? cancelledAt
 });
 
 
@@ -2016,7 +2018,7 @@ class _$BookingResponseCopyWithImpl<$Res>
 
 /// Create a copy of BookingResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? bookingReference = null,Object? tripId = null,Object? status = null,Object? passengerCount = null,Object? originStopId = freezed,Object? destinationStopId = freezed,Object? fareAmount = null,Object? platformFee = null,Object? totalAmount = null,Object? expiresAt = freezed,Object? createdAt = null,Object? passengers = null,Object? trip = freezed,Object? boardingStopName = freezed,Object? alightingStopName = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? bookingReference = null,Object? tripId = null,Object? status = null,Object? passengerCount = null,Object? originStopId = freezed,Object? destinationStopId = freezed,Object? fareAmount = null,Object? platformFee = null,Object? totalAmount = null,Object? expiresAt = freezed,Object? createdAt = null,Object? passengers = null,Object? trip = freezed,Object? boardingStopName = freezed,Object? alightingStopName = freezed,Object? cancelReason = freezed,Object? cancelledBy = freezed,Object? cancelledAt = freezed,}) {
   return _then(BookingResponse(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,bookingReference: null == bookingReference ? _self.bookingReference : bookingReference // ignore: cast_nullable_to_non_nullable
@@ -2034,7 +2036,10 @@ as DateTime,passengers: null == passengers ? _self.passengers : passengers // ig
 as List<BookingPassengerResponse>,trip: freezed == trip ? _self.trip : trip // ignore: cast_nullable_to_non_nullable
 as BookingTripSummaryResponse?,boardingStopName: freezed == boardingStopName ? _self.boardingStopName : boardingStopName // ignore: cast_nullable_to_non_nullable
 as String?,alightingStopName: freezed == alightingStopName ? _self.alightingStopName : alightingStopName // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,cancelReason: freezed == cancelReason ? _self.cancelReason : cancelReason // ignore: cast_nullable_to_non_nullable
+as CancelReason?,cancelledBy: freezed == cancelledBy ? _self.cancelledBy : cancelledBy // ignore: cast_nullable_to_non_nullable
+as CancelledBy?,cancelledAt: freezed == cancelledAt ? _self.cancelledAt : cancelledAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,
   ));
 }
 /// Create a copy of BookingResponse
@@ -2131,10 +2136,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String bookingReference,  String tripId, @JsonKey(unknownEnumValue: BookingStatus.pending)  BookingStatus status,  int passengerCount,  String? originStopId,  String? destinationStopId, @JsonKey(fromJson: decimalString)  String fareAmount, @JsonKey(fromJson: decimalString)  String platformFee, @JsonKey(fromJson: decimalString)  String totalAmount,  DateTime? expiresAt,  DateTime createdAt,  List<BookingPassengerResponse> passengers,  BookingTripSummaryResponse? trip,  String? boardingStopName,  String? alightingStopName)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String bookingReference,  String tripId, @JsonKey(unknownEnumValue: BookingStatus.pending)  BookingStatus status,  int passengerCount,  String? originStopId,  String? destinationStopId, @JsonKey(fromJson: decimalString)  String fareAmount, @JsonKey(fromJson: decimalString)  String platformFee, @JsonKey(fromJson: decimalString)  String totalAmount,  DateTime? expiresAt,  DateTime createdAt,  List<BookingPassengerResponse> passengers,  BookingTripSummaryResponse? trip,  String? boardingStopName,  String? alightingStopName, @JsonKey(unknownEnumValue: null)  CancelReason? cancelReason, @JsonKey(unknownEnumValue: null)  CancelledBy? cancelledBy,  DateTime? cancelledAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _BookingResponse() when $default != null:
-return $default(_that.id,_that.bookingReference,_that.tripId,_that.status,_that.passengerCount,_that.originStopId,_that.destinationStopId,_that.fareAmount,_that.platformFee,_that.totalAmount,_that.expiresAt,_that.createdAt,_that.passengers,_that.trip,_that.boardingStopName,_that.alightingStopName);case _:
+return $default(_that.id,_that.bookingReference,_that.tripId,_that.status,_that.passengerCount,_that.originStopId,_that.destinationStopId,_that.fareAmount,_that.platformFee,_that.totalAmount,_that.expiresAt,_that.createdAt,_that.passengers,_that.trip,_that.boardingStopName,_that.alightingStopName,_that.cancelReason,_that.cancelledBy,_that.cancelledAt);case _:
   return orElse();
 
 }
@@ -2152,10 +2157,10 @@ return $default(_that.id,_that.bookingReference,_that.tripId,_that.status,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String bookingReference,  String tripId, @JsonKey(unknownEnumValue: BookingStatus.pending)  BookingStatus status,  int passengerCount,  String? originStopId,  String? destinationStopId, @JsonKey(fromJson: decimalString)  String fareAmount, @JsonKey(fromJson: decimalString)  String platformFee, @JsonKey(fromJson: decimalString)  String totalAmount,  DateTime? expiresAt,  DateTime createdAt,  List<BookingPassengerResponse> passengers,  BookingTripSummaryResponse? trip,  String? boardingStopName,  String? alightingStopName)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String bookingReference,  String tripId, @JsonKey(unknownEnumValue: BookingStatus.pending)  BookingStatus status,  int passengerCount,  String? originStopId,  String? destinationStopId, @JsonKey(fromJson: decimalString)  String fareAmount, @JsonKey(fromJson: decimalString)  String platformFee, @JsonKey(fromJson: decimalString)  String totalAmount,  DateTime? expiresAt,  DateTime createdAt,  List<BookingPassengerResponse> passengers,  BookingTripSummaryResponse? trip,  String? boardingStopName,  String? alightingStopName, @JsonKey(unknownEnumValue: null)  CancelReason? cancelReason, @JsonKey(unknownEnumValue: null)  CancelledBy? cancelledBy,  DateTime? cancelledAt)  $default,) {final _that = this;
 switch (_that) {
 case _BookingResponse():
-return $default(_that.id,_that.bookingReference,_that.tripId,_that.status,_that.passengerCount,_that.originStopId,_that.destinationStopId,_that.fareAmount,_that.platformFee,_that.totalAmount,_that.expiresAt,_that.createdAt,_that.passengers,_that.trip,_that.boardingStopName,_that.alightingStopName);case _:
+return $default(_that.id,_that.bookingReference,_that.tripId,_that.status,_that.passengerCount,_that.originStopId,_that.destinationStopId,_that.fareAmount,_that.platformFee,_that.totalAmount,_that.expiresAt,_that.createdAt,_that.passengers,_that.trip,_that.boardingStopName,_that.alightingStopName,_that.cancelReason,_that.cancelledBy,_that.cancelledAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -2172,10 +2177,10 @@ return $default(_that.id,_that.bookingReference,_that.tripId,_that.status,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String bookingReference,  String tripId, @JsonKey(unknownEnumValue: BookingStatus.pending)  BookingStatus status,  int passengerCount,  String? originStopId,  String? destinationStopId, @JsonKey(fromJson: decimalString)  String fareAmount, @JsonKey(fromJson: decimalString)  String platformFee, @JsonKey(fromJson: decimalString)  String totalAmount,  DateTime? expiresAt,  DateTime createdAt,  List<BookingPassengerResponse> passengers,  BookingTripSummaryResponse? trip,  String? boardingStopName,  String? alightingStopName)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String bookingReference,  String tripId, @JsonKey(unknownEnumValue: BookingStatus.pending)  BookingStatus status,  int passengerCount,  String? originStopId,  String? destinationStopId, @JsonKey(fromJson: decimalString)  String fareAmount, @JsonKey(fromJson: decimalString)  String platformFee, @JsonKey(fromJson: decimalString)  String totalAmount,  DateTime? expiresAt,  DateTime createdAt,  List<BookingPassengerResponse> passengers,  BookingTripSummaryResponse? trip,  String? boardingStopName,  String? alightingStopName, @JsonKey(unknownEnumValue: null)  CancelReason? cancelReason, @JsonKey(unknownEnumValue: null)  CancelledBy? cancelledBy,  DateTime? cancelledAt)?  $default,) {final _that = this;
 switch (_that) {
 case _BookingResponse() when $default != null:
-return $default(_that.id,_that.bookingReference,_that.tripId,_that.status,_that.passengerCount,_that.originStopId,_that.destinationStopId,_that.fareAmount,_that.platformFee,_that.totalAmount,_that.expiresAt,_that.createdAt,_that.passengers,_that.trip,_that.boardingStopName,_that.alightingStopName);case _:
+return $default(_that.id,_that.bookingReference,_that.tripId,_that.status,_that.passengerCount,_that.originStopId,_that.destinationStopId,_that.fareAmount,_that.platformFee,_that.totalAmount,_that.expiresAt,_that.createdAt,_that.passengers,_that.trip,_that.boardingStopName,_that.alightingStopName,_that.cancelReason,_that.cancelledBy,_that.cancelledAt);case _:
   return null;
 
 }
@@ -2187,7 +2192,7 @@ return $default(_that.id,_that.bookingReference,_that.tripId,_that.status,_that.
 @JsonSerializable()
 
 class _BookingResponse implements BookingResponse {
-  const _BookingResponse({required this.id, required this.bookingReference, required this.tripId, @JsonKey(unknownEnumValue: BookingStatus.pending) required this.status, required this.passengerCount, this.originStopId, this.destinationStopId, @JsonKey(fromJson: decimalString) required this.fareAmount, @JsonKey(fromJson: decimalString) required this.platformFee, @JsonKey(fromJson: decimalString) required this.totalAmount, this.expiresAt, required this.createdAt, required  List<BookingPassengerResponse> passengers, this.trip, this.boardingStopName, this.alightingStopName}): _passengers = passengers;
+  const _BookingResponse({required this.id, required this.bookingReference, required this.tripId, @JsonKey(unknownEnumValue: BookingStatus.pending) required this.status, required this.passengerCount, this.originStopId, this.destinationStopId, @JsonKey(fromJson: decimalString) required this.fareAmount, @JsonKey(fromJson: decimalString) required this.platformFee, @JsonKey(fromJson: decimalString) required this.totalAmount, this.expiresAt, required this.createdAt, required  List<BookingPassengerResponse> passengers, this.trip, this.boardingStopName, this.alightingStopName, @JsonKey(unknownEnumValue: null) this.cancelReason, @JsonKey(unknownEnumValue: null) this.cancelledBy, this.cancelledAt}): _passengers = passengers;
   factory _BookingResponse.fromJson(Map<String, dynamic> json) => _$BookingResponseFromJson(json);
 
 @override final  String id;
@@ -2214,6 +2219,11 @@ class _BookingResponse implements BookingResponse {
 @override final  BookingTripSummaryResponse? trip;
 @override final  String? boardingStopName;
 @override final  String? alightingStopName;
+/// Set by the backend once G37 ships (cancel-reason flow). Until
+/// then the app leaves it null and falls back to the status.
+@override@JsonKey(unknownEnumValue: null) final  CancelReason? cancelReason;
+@override@JsonKey(unknownEnumValue: null) final  CancelledBy? cancelledBy;
+@override final  DateTime? cancelledAt;
 
 /// Create a copy of BookingResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -2228,16 +2238,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BookingResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.bookingReference, bookingReference) || other.bookingReference == bookingReference)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.status, status) || other.status == status)&&(identical(other.passengerCount, passengerCount) || other.passengerCount == passengerCount)&&(identical(other.originStopId, originStopId) || other.originStopId == originStopId)&&(identical(other.destinationStopId, destinationStopId) || other.destinationStopId == destinationStopId)&&(identical(other.fareAmount, fareAmount) || other.fareAmount == fareAmount)&&(identical(other.platformFee, platformFee) || other.platformFee == platformFee)&&(identical(other.totalAmount, totalAmount) || other.totalAmount == totalAmount)&&(identical(other.expiresAt, expiresAt) || other.expiresAt == expiresAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&const DeepCollectionEquality().equals(other._passengers, _passengers)&&(identical(other.trip, trip) || other.trip == trip)&&(identical(other.boardingStopName, boardingStopName) || other.boardingStopName == boardingStopName)&&(identical(other.alightingStopName, alightingStopName) || other.alightingStopName == alightingStopName));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BookingResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.bookingReference, bookingReference) || other.bookingReference == bookingReference)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.status, status) || other.status == status)&&(identical(other.passengerCount, passengerCount) || other.passengerCount == passengerCount)&&(identical(other.originStopId, originStopId) || other.originStopId == originStopId)&&(identical(other.destinationStopId, destinationStopId) || other.destinationStopId == destinationStopId)&&(identical(other.fareAmount, fareAmount) || other.fareAmount == fareAmount)&&(identical(other.platformFee, platformFee) || other.platformFee == platformFee)&&(identical(other.totalAmount, totalAmount) || other.totalAmount == totalAmount)&&(identical(other.expiresAt, expiresAt) || other.expiresAt == expiresAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&const DeepCollectionEquality().equals(other._passengers, _passengers)&&(identical(other.trip, trip) || other.trip == trip)&&(identical(other.boardingStopName, boardingStopName) || other.boardingStopName == boardingStopName)&&(identical(other.alightingStopName, alightingStopName) || other.alightingStopName == alightingStopName)&&(identical(other.cancelReason, cancelReason) || other.cancelReason == cancelReason)&&(identical(other.cancelledBy, cancelledBy) || other.cancelledBy == cancelledBy)&&(identical(other.cancelledAt, cancelledAt) || other.cancelledAt == cancelledAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,bookingReference,tripId,status,passengerCount,originStopId,destinationStopId,fareAmount,platformFee,totalAmount,expiresAt,createdAt,const DeepCollectionEquality().hash(_passengers),trip,boardingStopName,alightingStopName);
+int get hashCode => Object.hashAll([runtimeType,id,bookingReference,tripId,status,passengerCount,originStopId,destinationStopId,fareAmount,platformFee,totalAmount,expiresAt,createdAt,const DeepCollectionEquality().hash(_passengers),trip,boardingStopName,alightingStopName,cancelReason,cancelledBy,cancelledAt]);
 
 @override
 String toString() {
-  return 'BookingResponse(id: $id, bookingReference: $bookingReference, tripId: $tripId, status: $status, passengerCount: $passengerCount, originStopId: $originStopId, destinationStopId: $destinationStopId, fareAmount: $fareAmount, platformFee: $platformFee, totalAmount: $totalAmount, expiresAt: $expiresAt, createdAt: $createdAt, passengers: $passengers, trip: $trip, boardingStopName: $boardingStopName, alightingStopName: $alightingStopName)';
+  return 'BookingResponse(id: $id, bookingReference: $bookingReference, tripId: $tripId, status: $status, passengerCount: $passengerCount, originStopId: $originStopId, destinationStopId: $destinationStopId, fareAmount: $fareAmount, platformFee: $platformFee, totalAmount: $totalAmount, expiresAt: $expiresAt, createdAt: $createdAt, passengers: $passengers, trip: $trip, boardingStopName: $boardingStopName, alightingStopName: $alightingStopName, cancelReason: $cancelReason, cancelledBy: $cancelledBy, cancelledAt: $cancelledAt)';
 }
 
 
@@ -2248,7 +2258,7 @@ abstract mixin class _$BookingResponseCopyWith<$Res> implements $BookingResponse
   factory _$BookingResponseCopyWith(_BookingResponse value, $Res Function(_BookingResponse) _then) = __$BookingResponseCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String bookingReference, String tripId,@JsonKey(unknownEnumValue: BookingStatus.pending) BookingStatus status, int passengerCount, String? originStopId, String? destinationStopId,@JsonKey(fromJson: decimalString) String fareAmount,@JsonKey(fromJson: decimalString) String platformFee,@JsonKey(fromJson: decimalString) String totalAmount, DateTime? expiresAt, DateTime createdAt, List<BookingPassengerResponse> passengers, BookingTripSummaryResponse? trip, String? boardingStopName, String? alightingStopName
+ String id, String bookingReference, String tripId,@JsonKey(unknownEnumValue: BookingStatus.pending) BookingStatus status, int passengerCount, String? originStopId, String? destinationStopId,@JsonKey(fromJson: decimalString) String fareAmount,@JsonKey(fromJson: decimalString) String platformFee,@JsonKey(fromJson: decimalString) String totalAmount, DateTime? expiresAt, DateTime createdAt, List<BookingPassengerResponse> passengers, BookingTripSummaryResponse? trip, String? boardingStopName, String? alightingStopName,@JsonKey(unknownEnumValue: null) CancelReason? cancelReason,@JsonKey(unknownEnumValue: null) CancelledBy? cancelledBy, DateTime? cancelledAt
 });
 
 
@@ -2265,7 +2275,7 @@ class __$BookingResponseCopyWithImpl<$Res>
 
 /// Create a copy of BookingResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? bookingReference = null,Object? tripId = null,Object? status = null,Object? passengerCount = null,Object? originStopId = freezed,Object? destinationStopId = freezed,Object? fareAmount = null,Object? platformFee = null,Object? totalAmount = null,Object? expiresAt = freezed,Object? createdAt = null,Object? passengers = null,Object? trip = freezed,Object? boardingStopName = freezed,Object? alightingStopName = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? bookingReference = null,Object? tripId = null,Object? status = null,Object? passengerCount = null,Object? originStopId = freezed,Object? destinationStopId = freezed,Object? fareAmount = null,Object? platformFee = null,Object? totalAmount = null,Object? expiresAt = freezed,Object? createdAt = null,Object? passengers = null,Object? trip = freezed,Object? boardingStopName = freezed,Object? alightingStopName = freezed,Object? cancelReason = freezed,Object? cancelledBy = freezed,Object? cancelledAt = freezed,}) {
   return _then(_BookingResponse(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,bookingReference: null == bookingReference ? _self.bookingReference : bookingReference // ignore: cast_nullable_to_non_nullable
@@ -2283,7 +2293,10 @@ as DateTime,passengers: null == passengers ? _self._passengers : passengers // i
 as List<BookingPassengerResponse>,trip: freezed == trip ? _self.trip : trip // ignore: cast_nullable_to_non_nullable
 as BookingTripSummaryResponse?,boardingStopName: freezed == boardingStopName ? _self.boardingStopName : boardingStopName // ignore: cast_nullable_to_non_nullable
 as String?,alightingStopName: freezed == alightingStopName ? _self.alightingStopName : alightingStopName // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,cancelReason: freezed == cancelReason ? _self.cancelReason : cancelReason // ignore: cast_nullable_to_non_nullable
+as CancelReason?,cancelledBy: freezed == cancelledBy ? _self.cancelledBy : cancelledBy // ignore: cast_nullable_to_non_nullable
+as CancelledBy?,cancelledAt: freezed == cancelledAt ? _self.cancelledAt : cancelledAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,
   ));
 }
 

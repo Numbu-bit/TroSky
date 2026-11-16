@@ -16,7 +16,7 @@ import '../../search/presentation/trip_view.dart';
 import '../../seats/application/seat_providers.dart';
 import '../application/trips_providers.dart';
 import '../domain/booking_view.dart';
-import 'cancel_booking_sheet.dart';
+import '../../shared/cancel_booking_sheet.dart';
 
 /// Booking details (P-16): the trip, vehicle and driver, seats and fare,
 /// with the status chip in the header and the actions its status allows.
@@ -223,6 +223,21 @@ class _BookingDetailsScreenState extends ConsumerState<BookingDetailsScreen> {
                 ? null
                 : l10n.bookingArrival(clockTime(arrives)),
           ),
+          if (cancellationLine(l10n, booking) case final line?) ...[
+            const SizedBox(height: TroskySpacing.s8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: TroskySpacing.s4),
+              child: Semantics(
+                liveRegion: true,
+                child: Text(
+                  line,
+                  style: TroskyTypography.body13Medium.copyWith(
+                    color: TroskyColors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: TroskySpacing.s14),
           _VehicleCard(
             booking: booking,

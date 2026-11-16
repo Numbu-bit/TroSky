@@ -1658,7 +1658,7 @@ class MockBackend {
   Result<BookingResponse> cancelBooking(
     String? accessToken,
     String bookingId, {
-    String? reason,
+    CancelReason? reason,
   }) {
     final auth = _authenticate(accessToken);
     if (auth case Err(:final failure)) return Err(failure);
@@ -1688,6 +1688,9 @@ class MockBackend {
           ? BookingStatus.refundPending
           : BookingStatus.cancelled;
     }
+    booking.cancelReason = reason;
+    booking.cancelledBy = CancelledBy.user;
+    booking.cancelledAt = _now().toUtc();
     return Ok(booking.toResponse(_now().toUtc()));
   }
 
@@ -2735,6 +2738,13 @@ class _MockBooking {
   /// booking stays as it was (no passenger endpoint shows the request).
   bool cancellationRequested = false;
 
+  /// G37 (anticipated): what the passenger or TroSky picked, and when it
+  /// ended. The live backend doesn't yet send these; the mock does so
+  /// the app's display can be tested end to end.
+  CancelReason? cancelReason;
+  CancelledBy? cancelledBy;
+  DateTime? cancelledAt;
+
   /// The deadline shown at [now]: [expiresAt], or the current turn of a
   /// [rolling] one.
   DateTime deadlineAt(DateTime now) {
@@ -2778,6 +2788,9 @@ class _MockBooking {
     alightingStopName: MockBackend.stops.values
         .firstWhere((s) => s.id == destinationStopId, orElse: () => trip.alight)
         .name,
+    cancelReason: cancelReason,
+    cancelledBy: cancelledBy,
+    cancelledAt: cancelledAt,
   );
 }
 

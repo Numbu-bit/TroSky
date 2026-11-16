@@ -96,6 +96,31 @@ enum BookingStatus {
   refunded,
 }
 
+/// Why a booking was cancelled: the four options P-16 shows, plus a
+/// future `other` catch-all. Serialised as snake_case for the backend's
+/// `reason` field (planned G37 enum uses the same convention as every
+/// other TroSky enum). Add new values only after the backend adds them.
+@JsonEnum(fieldRename: FieldRename.snake)
+enum CancelReason { changeOfPlans, foundAnotherRide, departureTime, other }
+
+/// Who cancelled a booking, as the backend will return on G37. The app
+/// infers it from status until the field lands (see
+/// `cancelledByFromStatus`). `system` covers the `expired` case.
+@JsonEnum(fieldRename: FieldRename.snake)
+enum CancelledBy { user, trosky, system }
+
+/// Infer `cancelled_by` from a cancelled/expired booking's status when
+/// the backend has not yet sent the field (G37). Paid-then-cancelled
+/// bookings land in `refundPending`; the status alone can't tell who
+/// cancelled, so the app assumes the passenger — admin-initiated
+/// cancels are rare on staging today.
+// TODO(G37): remove once BookingResponse.cancelledBy is populated.
+CancelledBy? cancelledByFromStatus(BookingStatus status) => switch (status) {
+  BookingStatus.cancelled || BookingStatus.refundPending => CancelledBy.user,
+  BookingStatus.expired => CancelledBy.system,
+  _ => null,
+};
+
 @freezed
 abstract class BookingPassengerResponse with _$BookingPassengerResponse {
   const factory BookingPassengerResponse({
@@ -173,6 +198,14 @@ abstract class BookingResponse with _$BookingResponse {
     BookingTripSummaryResponse? trip,
     String? boardingStopName,
     String? alightingStopName,
+
+    /// Set by the backend once G37 ships (cancel-reason flow). Until
+    /// then the app leaves it null and falls back to the status.
+    // TODO(G37): drop the fallback in cancelledByFromStatus once this
+    // lands.
+    @JsonKey(unknownEnumValue: null) CancelReason? cancelReason,
+    @JsonKey(unknownEnumValue: null) CancelledBy? cancelledBy,
+    DateTime? cancelledAt,
   }) = _BookingResponse;
 
   factory BookingResponse.fromJson(Map<String, dynamic> json) =>

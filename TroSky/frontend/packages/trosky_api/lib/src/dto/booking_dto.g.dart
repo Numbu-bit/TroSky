@@ -172,39 +172,46 @@ Map<String, dynamic> _$BookingSummaryResponseToJson(
   'total_saved': instance.totalSaved,
 };
 
-_BookingResponse _$BookingResponseFromJson(Map<String, dynamic> json) =>
-    _BookingResponse(
-      id: json['id'] as String,
-      bookingReference: json['booking_reference'] as String,
-      tripId: json['trip_id'] as String,
-      status: $enumDecode(
-        _$BookingStatusEnumMap,
-        json['status'],
-        unknownValue: BookingStatus.pending,
-      ),
-      passengerCount: (json['passenger_count'] as num).toInt(),
-      originStopId: json['origin_stop_id'] as String?,
-      destinationStopId: json['destination_stop_id'] as String?,
-      fareAmount: decimalString(json['fare_amount']),
-      platformFee: decimalString(json['platform_fee']),
-      totalAmount: decimalString(json['total_amount']),
-      expiresAt: json['expires_at'] == null
-          ? null
-          : DateTime.parse(json['expires_at'] as String),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      passengers: (json['passengers'] as List<dynamic>)
-          .map(
-            (e) => BookingPassengerResponse.fromJson(e as Map<String, dynamic>),
-          )
-          .toList(),
-      trip: json['trip'] == null
-          ? null
-          : BookingTripSummaryResponse.fromJson(
-              json['trip'] as Map<String, dynamic>,
-            ),
-      boardingStopName: json['boarding_stop_name'] as String?,
-      alightingStopName: json['alighting_stop_name'] as String?,
-    );
+_BookingResponse _$BookingResponseFromJson(
+  Map<String, dynamic> json,
+) => _BookingResponse(
+  id: json['id'] as String,
+  bookingReference: json['booking_reference'] as String,
+  tripId: json['trip_id'] as String,
+  status: $enumDecode(
+    _$BookingStatusEnumMap,
+    json['status'],
+    unknownValue: BookingStatus.pending,
+  ),
+  passengerCount: (json['passenger_count'] as num).toInt(),
+  originStopId: json['origin_stop_id'] as String?,
+  destinationStopId: json['destination_stop_id'] as String?,
+  fareAmount: decimalString(json['fare_amount']),
+  platformFee: decimalString(json['platform_fee']),
+  totalAmount: decimalString(json['total_amount']),
+  expiresAt: json['expires_at'] == null
+      ? null
+      : DateTime.parse(json['expires_at'] as String),
+  createdAt: DateTime.parse(json['created_at'] as String),
+  passengers: (json['passengers'] as List<dynamic>)
+      .map((e) => BookingPassengerResponse.fromJson(e as Map<String, dynamic>))
+      .toList(),
+  trip: json['trip'] == null
+      ? null
+      : BookingTripSummaryResponse.fromJson(
+          json['trip'] as Map<String, dynamic>,
+        ),
+  boardingStopName: json['boarding_stop_name'] as String?,
+  alightingStopName: json['alighting_stop_name'] as String?,
+  cancelReason: $enumDecodeNullable(
+    _$CancelReasonEnumMap,
+    json['cancel_reason'],
+  ),
+  cancelledBy: $enumDecodeNullable(_$CancelledByEnumMap, json['cancelled_by']),
+  cancelledAt: json['cancelled_at'] == null
+      ? null
+      : DateTime.parse(json['cancelled_at'] as String),
+);
 
 Map<String, dynamic> _$BookingResponseToJson(_BookingResponse instance) =>
     <String, dynamic>{
@@ -224,6 +231,9 @@ Map<String, dynamic> _$BookingResponseToJson(_BookingResponse instance) =>
       'trip': ?instance.trip?.toJson(),
       'boarding_stop_name': ?instance.boardingStopName,
       'alighting_stop_name': ?instance.alightingStopName,
+      'cancel_reason': ?_$CancelReasonEnumMap[instance.cancelReason],
+      'cancelled_by': ?_$CancelledByEnumMap[instance.cancelledBy],
+      'cancelled_at': ?instance.cancelledAt?.toIso8601String(),
     };
 
 const _$BookingStatusEnumMap = {
@@ -236,4 +246,17 @@ const _$BookingStatusEnumMap = {
   BookingStatus.completed: 'completed',
   BookingStatus.refundPending: 'refund_pending',
   BookingStatus.refunded: 'refunded',
+};
+
+const _$CancelReasonEnumMap = {
+  CancelReason.changeOfPlans: 'change_of_plans',
+  CancelReason.foundAnotherRide: 'found_another_ride',
+  CancelReason.departureTime: 'departure_time',
+  CancelReason.other: 'other',
+};
+
+const _$CancelledByEnumMap = {
+  CancelledBy.user: 'user',
+  CancelledBy.trosky: 'trosky',
+  CancelledBy.system: 'system',
 };

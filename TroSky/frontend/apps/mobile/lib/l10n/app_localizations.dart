@@ -2156,17 +2156,35 @@ abstract class AppLocalizations {
   /// **'Departure time doesn\'t suit me'**
   String get cancelReasonTime;
 
-  /// Cancel reason: the passenger writes their own.
+  /// Cancel reason.
   ///
   /// In en, this message translates to:
   /// **'Other'**
   String get cancelReasonOther;
 
-  /// Hint in the cancel sheet's text field for "Other".
+  /// Booking details, status line before the reason.
   ///
   /// In en, this message translates to:
-  /// **'Tell us more'**
-  String get cancelReasonHint;
+  /// **'Cancelled by you'**
+  String get bookingCancelledByYou;
+
+  /// Booking details, status line before the reason when TroSky cancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled by TroSky'**
+  String get bookingCancelledByTroSky;
+
+  /// Booking details status line with a reason, e.g. 'Cancelled by you · Change of plans'.
+  ///
+  /// In en, this message translates to:
+  /// **'{by} · {reason}'**
+  String bookingCancelledLine(String by, String reason);
+
+  /// Booking details line for an expired (unpaid) booking.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired · Not paid in time'**
+  String get bookingExpiredLine;
 
   /// Cancel sheet refund box for a paid booking (the design names the wallet; the backend refunds the way it was paid).
   ///

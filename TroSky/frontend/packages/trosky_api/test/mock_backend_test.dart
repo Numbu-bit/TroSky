@@ -1285,7 +1285,7 @@ void main() {
     test('cancel: paid before the trip, a refund to approve', () {
       final paid = byRef('TS-8KQ2');
       final cancelled = history
-          .cancelBooking(token, paid.id, reason: 'Change of plans')
+          .cancelBooking(token, paid.id, reason: CancelReason.changeOfPlans)
           .valueOrNull!;
       expect(cancelled.status, BookingStatus.refundPending);
     });
