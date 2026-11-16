@@ -73,14 +73,24 @@ class _HomeHeaderState extends ConsumerState<HomeHeader> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TesterMenuTapCounter(
-                        child: Text(
-                          greetingFor(l10n, now),
-                          style: TroskyTypography.body12Regular.copyWith(
-                            color: TroskyColors.whiteA55,
-                          ),
-                        ),
-                      ),
+                      // The whole class reference is behind the const
+                      // flag so release builds tree-shake it too — not
+                      // just its internals.
+                      testerMenuEnabled
+                          ? TesterMenuTapCounter(
+                              child: Text(
+                                greetingFor(l10n, now),
+                                style: TroskyTypography.body12Regular.copyWith(
+                                  color: TroskyColors.whiteA55,
+                                ),
+                              ),
+                            )
+                          : Text(
+                              greetingFor(l10n, now),
+                              style: TroskyTypography.body12Regular.copyWith(
+                                color: TroskyColors.whiteA55,
+                              ),
+                            ),
                       const SizedBox(height: TroskySpacing.s2),
                       Semantics(
                         header: true,
