@@ -2368,5 +2368,35 @@
   "tripDetailsStopAlightingTag": "Getting off",
   "@tripDetailsStopAlightingTag": {
     "description": "Chip next to the passenger's alighting stop in the Stops card."
-  }
+  },
+  "tripDetailsDriverVerified": "Verified",
+  "@tripDetailsDriverVerified": {
+    "description": "Pill under the driver's name when verification_status == verified."
+  },
+  "tripDetailsDriverVerificationPending": "Verification pending",
+  "@tripDetailsDriverVerificationPending": {
+    "description": "Pill under the driver's name when verification_status == pending."
+  },
+  "tripDetailsDriverVerifiedSemantics": "Driver verification status: Verified",
+  "@tripDetailsDriverVerifiedSemantics": {
+    "description": "Screen-reader label for the Verified pill."
+  },
+  "tripDetailsDriverVerificationPendingSemantics": "Driver verification pending",
+  "@tripDetailsDriverVerificationPendingSemantics": {
+    "description": "Screen-reader label for the Verification-pending pill."
+  },
+  "tripDetailsStopSemantics": "Stop {current} of {total}, {name}, {kind}",
+  "@tripDetailsStopSemantics": {
+    "description": "Screen-reader label on each stop row of the Stops card.",
+    "placeholders": {
+      "current": { "type": "int", "example": "2" },
+      "total": { "type": "int", "example": "5" },
+      "name": { "type": "String", "example": "Accra Legon" },
+      "kind": { "type": "String", "example": "boarding" }
+    }
+  },
+  "tripDetailsStopBoardingSemantic": "boarding",
+  "@tripDetailsStopBoardingSemantic": { "description": "Stop kind announced by the screen reader." },
+  "tripDetailsStopRegularSemantic": "regular",
+  "@tripDetailsStopRegularSemantic": { "description": "Stop kind announced by the screen reader." }
 }

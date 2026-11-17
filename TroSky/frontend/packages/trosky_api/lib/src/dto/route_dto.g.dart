@@ -208,6 +208,14 @@ _TripDriverResponse _$TripDriverResponseFromJson(Map<String, dynamic> json) =>
       avatarUrl: json['avatar_url'] as String?,
       averageRating: decimalOrNull(json['average_rating']),
       ratingCount: (json['rating_count'] as num).toInt(),
+      phoneNumber: json['phone_number'] as String?,
+      verificationStatus:
+          $enumDecodeNullable(
+            _$VerificationStatusEnumMap,
+            json['verification_status'],
+            unknownValue: VerificationStatus.unverified,
+          ) ??
+          VerificationStatus.unverified,
     );
 
 Map<String, dynamic> _$TripDriverResponseToJson(_TripDriverResponse instance) =>
@@ -217,7 +225,17 @@ Map<String, dynamic> _$TripDriverResponseToJson(_TripDriverResponse instance) =>
       'avatar_url': ?instance.avatarUrl,
       'average_rating': ?instance.averageRating,
       'rating_count': instance.ratingCount,
+      'phone_number': ?instance.phoneNumber,
+      'verification_status':
+          _$VerificationStatusEnumMap[instance.verificationStatus]!,
     };
+
+const _$VerificationStatusEnumMap = {
+  VerificationStatus.unverified: 'unverified',
+  VerificationStatus.pending: 'pending',
+  VerificationStatus.verified: 'verified',
+  VerificationStatus.rejected: 'rejected',
+};
 
 _TripDetailResponse _$TripDetailResponseFromJson(Map<String, dynamic> json) =>
     _TripDetailResponse(
@@ -257,6 +275,11 @@ _TripDetailResponse _$TripDetailResponseFromJson(Map<String, dynamic> json) =>
       ridersCount: (json['riders_count'] as num).toInt(),
       seatsTotal: (json['seats_total'] as num).toInt(),
       availableSeats: (json['available_seats'] as num).toInt(),
+      stops:
+          (json['stops'] as List<dynamic>?)
+              ?.map((e) => StopResponse.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const <StopResponse>[],
     );
 
 Map<String, dynamic> _$TripDetailResponseToJson(_TripDetailResponse instance) =>
@@ -279,6 +302,7 @@ Map<String, dynamic> _$TripDetailResponseToJson(_TripDetailResponse instance) =>
       'riders_count': instance.ridersCount,
       'seats_total': instance.seatsTotal,
       'available_seats': instance.availableSeats,
+      'stops': instance.stops.map((e) => e.toJson()).toList(),
     };
 
 _NearbyStopResponse _$NearbyStopResponseFromJson(Map<String, dynamic> json) =>

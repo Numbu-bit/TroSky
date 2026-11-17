@@ -405,50 +405,32 @@ class _StopsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    // Full ordered stops list isn't on TripDetailResponse today (backend
-    // gap G-trip-stops). Show origin -> destination; the passenger's own
-    // boarding + alighting get the chip when they differ from those two.
-    final boardingName = booking.boardingStopName ?? trip.originStopName;
-    final alightingName = booking.alightingStopName ?? trip.destinationStopName;
-    final rows = <Widget>[
-      _StopRow(
-        name: trip.originStopName,
-        isPassengerStop: boardingName == trip.originStopName,
-        tag: boardingName == trip.originStopName
-            ? l10n.tripDetailsStopBoardingTag
-            : null,
-        isFirst: true,
-        isLast: false,
-      ),
-      if (boardingName != trip.originStopName &&
-          boardingName != trip.destinationStopName)
-        _StopRow(
-          name: boardingName,
-          isPassengerStop: true,
-          tag: l10n.tripDetailsStopBoardingTag,
-          isFirst: false,
-          isLast: false,
-        ),
-      if (alightingName != trip.destinationStopName &&
-          alightingName != boardingName &&
-          alightingName != trip.originStopName)
-        _StopRow(
-          name: alightingName,
-          isPassengerStop: true,
-          tag: l10n.tripDetailsStopAlightingTag,
-          isFirst: false,
-          isLast: false,
-        ),
-      _StopRow(
-        name: trip.destinationStopName,
-        isPassengerStop: alightingName == trip.destinationStopName,
-        tag: alightingName == trip.destinationStopName
-            ? l10n.tripDetailsStopAlightingTag
-            : null,
-        isFirst: false,
-        isLast: true,
-      ),
-    ];
+    // Full ordered stops from the backend (PR #89). Falls back to
+    // origin/destination when the list is empty (older backend, cached
+    // response from before the migration): keeps the card useful rather
+    // than empty.
+    final stops = trip.stops.isNotEmpty
+        ? trip.stops
+        : <StopResponse>[
+            StopResponse(
+              id: trip.originStopId,
+              name: trip.originStopName,
+              latitude: 0,
+              longitude: 0,
+            ),
+            StopResponse(
+              id: trip.destinationStopId,
+              name: trip.destinationStopName,
+              latitude: 0,
+              longitude: 0,
+            ),
+          ];
+    // The passenger's own boarding stop: match the booking's own origin
+    // id first, then fall back to the trip's origin (first stop). Owner
+    // noted in the task that a first-stop fallback is OK — called out
+    // in the PR body.
+    final boardingStopId = booking.originStopId ?? stops.first.id;
+    final alightingStopId = booking.destinationStopId ?? stops.last.id;
     return _Card(
       title: l10n.tripDetailsStops,
       child: Semantics(
@@ -456,10 +438,43 @@ class _StopsCard extends StatelessWidget {
         label: l10n.tripDetailsStops,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: rows,
+          children: [
+            for (var i = 0; i < stops.length; i++)
+              _StopRow(
+                name: stops[i].name,
+                isPassengerStop: stops[i].id == boardingStopId,
+                tag: _tagFor(
+                  l10n,
+                  stops[i].id,
+                  boardingStopId,
+                  alightingStopId,
+                ),
+                isFirst: i == 0,
+                isLast: i == stops.length - 1,
+                sequenceLabel: l10n.tripDetailsStopSemantics(
+                  i + 1,
+                  stops.length,
+                  stops[i].name,
+                  stops[i].id == boardingStopId
+                      ? l10n.tripDetailsStopBoardingSemantic
+                      : l10n.tripDetailsStopRegularSemantic,
+                ),
+              ),
+          ],
         ),
       ),
     );
+  }
+
+  String? _tagFor(
+    AppLocalizations l10n,
+    String stopId,
+    String boardingId,
+    String alightingId,
+  ) {
+    if (stopId == boardingId) return l10n.tripDetailsStopBoardingTag;
+    if (stopId == alightingId) return l10n.tripDetailsStopAlightingTag;
+    return null;
   }
 }
 
@@ -470,6 +485,7 @@ class _StopRow extends StatelessWidget {
     required this.tag,
     required this.isFirst,
     required this.isLast,
+    required this.sequenceLabel,
   });
 
   final String name;
@@ -477,73 +493,80 @@ class _StopRow extends StatelessWidget {
   final String? tag;
   final bool isFirst;
   final bool isLast;
+  final String sequenceLabel;
 
   @override
   Widget build(BuildContext context) {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            width: 24,
-            child: Column(
-              children: [
-                Expanded(
-                  child: Container(
-                    width: 2,
-                    color: isFirst
-                        ? TroskyColors.transparent
-                        : TroskyColors.border,
-                  ),
-                ),
-                Container(
-                  width: isPassengerStop ? 14 : 10,
-                  height: isPassengerStop ? 14 : 10,
-                  decoration: BoxDecoration(
-                    color: isPassengerStop
-                        ? TroskyColors.green
-                        : TroskyColors.border,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                Expanded(
-                  child: Container(
-                    width: 2,
-                    color: isLast
-                        ? TroskyColors.transparent
-                        : TroskyColors.border,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: TroskySpacing.s10),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: TroskySpacing.s10),
-              child: Row(
+    return Semantics(
+      label: sequenceLabel,
+      excludeSemantics: true,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              width: 24,
+              child: Column(
                 children: [
                   Expanded(
-                    child: Text(
-                      name,
-                      style: isPassengerStop
-                          ? TroskyTypography.body14SemiBold.copyWith(
-                              color: TroskyColors.textPrimary,
-                            )
-                          : TroskyTypography.body14Regular.copyWith(
-                              color: TroskyColors.textSecondary,
-                            ),
+                    child: Container(
+                      width: 2,
+                      color: isFirst
+                          ? TroskyColors.transparent
+                          : TroskyColors.border,
                     ),
                   ),
-                  if (tag != null) ...[
-                    const SizedBox(width: TroskySpacing.s8),
-                    TroskyChip(label: tag!, color: TroskyChipColor.green),
-                  ],
+                  Container(
+                    width: isPassengerStop ? 14 : 10,
+                    height: isPassengerStop ? 14 : 10,
+                    decoration: BoxDecoration(
+                      color: isPassengerStop
+                          ? TroskyColors.green
+                          : TroskyColors.border,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  Expanded(
+                    child: Container(
+                      width: 2,
+                      color: isLast
+                          ? TroskyColors.transparent
+                          : TroskyColors.border,
+                    ),
+                  ),
                 ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: TroskySpacing.s10),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: TroskySpacing.s10,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: isPassengerStop
+                            ? TroskyTypography.body14SemiBold.copyWith(
+                                color: TroskyColors.textPrimary,
+                              )
+                            : TroskyTypography.body14Regular.copyWith(
+                                color: TroskyColors.textSecondary,
+                              ),
+                      ),
+                    ),
+                    if (tag != null) ...[
+                      const SizedBox(width: TroskySpacing.s8),
+                      TroskyChip(label: tag!, color: TroskyChipColor.green),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -592,9 +615,10 @@ class _DriverCard extends ConsumerWidget {
     if (driver == null) return const SizedBox.shrink();
     final name = driver.fullName ?? '';
     final initial = name.isNotEmpty ? name.characters.first.toUpperCase() : '';
-    // Driver phone isn't on the response today (backend gap G-driver-phone).
-    // When it lands, read it here and show the two buttons.
-    const String? phone = null;
+    // Live phone, gated by the backend to callers with a confirmed /
+    // completed booking on this trip (null otherwise). Kept in a local
+    // so the render path never touches the field name twice.
+    final phone = driver.phoneNumber;
     return _Card(
       title: l10n.tripDetailsDriver,
       child: Row(
@@ -642,6 +666,7 @@ class _DriverCard extends ConsumerWidget {
                     color: TroskyColors.textSecondary,
                   ),
                 ),
+                _VerificationPill(status: driver.verificationStatus),
               ],
             ),
           ),
@@ -732,6 +757,44 @@ class _IconAction extends StatelessWidget {
           ),
           child: Icon(icon, size: 20, color: TroskyColors.navy),
         ),
+      ),
+    );
+  }
+}
+
+/// Small pill under the driver's name. `verified` -> brand green;
+/// `pending` -> muted; `rejected` / `unverified` -> hidden (nothing to
+/// reassure the passenger with, and showing "Rejected" in the UI is
+/// an admin signal, not a passenger-facing one).
+class _VerificationPill extends StatelessWidget {
+  const _VerificationPill({required this.status});
+
+  final VerificationStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final (label, color, semantics) = switch (status) {
+      VerificationStatus.verified => (
+        l10n.tripDetailsDriverVerified,
+        TroskyChipColor.green,
+        l10n.tripDetailsDriverVerifiedSemantics,
+      ),
+      VerificationStatus.pending => (
+        l10n.tripDetailsDriverVerificationPending,
+        TroskyChipColor.gray,
+        l10n.tripDetailsDriverVerificationPendingSemantics,
+      ),
+      VerificationStatus.unverified ||
+      VerificationStatus.rejected => (null, null, null),
+    };
+    if (label == null || color == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: TroskySpacing.s4),
+      child: Semantics(
+        label: semantics,
+        container: true,
+        child: TroskyChip(label: label, color: color),
       ),
     );
   }
