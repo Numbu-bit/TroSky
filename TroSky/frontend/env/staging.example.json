@@ -5,5 +5,6 @@
   "MAP_TILE_URL": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
   "TESTER_MENU": "true",
   "TICKET_QR_ENABLED": "true",
-  "TRIP_DETAILS_ENABLED": "true"
+  "TRIP_DETAILS_ENABLED": "true",
+  "TRIP_TRACKING_ENABLED": "true"
 }

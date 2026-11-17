@@ -2398,5 +2398,81 @@
   "tripDetailsStopBoardingSemantic": "boarding",
   "@tripDetailsStopBoardingSemantic": { "description": "Stop kind announced by the screen reader." },
   "tripDetailsStopRegularSemantic": "regular",
-  "@tripDetailsStopRegularSemantic": { "description": "Stop kind announced by the screen reader." }
+  "@tripDetailsStopRegularSemantic": { "description": "Stop kind announced by the screen reader." },
+  "trackTripStatusBoardingAtOrigin": "Boarding at origin",
+  "@trackTripStatusBoardingAtOrigin": { "description": "P-11 amber chip when the trip hasn't started." },
+  "trackTripStatusArrivingIn": "Arriving in ~{minutes} min",
+  "@trackTripStatusArrivingIn": {
+    "description": "P-11 amber chip when the trip is on the way.",
+    "placeholders": {
+      "minutes": { "type": "int", "example": "24" }
+    }
+  },
+  "trackTripStatusAtYourStop": "At your stop",
+  "@trackTripStatusAtYourStop": { "description": "P-11 amber chip when within 100 m." },
+  "trackTripStatusCompleted": "Trip completed",
+  "@trackTripStatusCompleted": { "description": "P-11 amber chip once the trip finishes." },
+  "trackTripEta": "ETA {time}",
+  "@trackTripEta": {
+    "description": "Clock-time half of the amber chip.",
+    "placeholders": {
+      "time": { "type": "String", "example": "08:05" }
+    }
+  },
+  "trackTripDestination": "DESTINATION",
+  "@trackTripDestination": { "description": "Pin label on the destination stop." },
+  "trackTripLiveFare": "Live fare",
+  "trackTripRiders": "Riders",
+  "trackTripSeat": "Seat",
+  "@trackTripLiveFare": { "description": "P-11 info tile label." },
+  "@trackTripRiders": { "description": "P-11 info tile label." },
+  "@trackTripSeat": { "description": "P-11 info tile label." },
+  "trackTripShare": "Share Trip",
+  "@trackTripShare": { "description": "Ghost CTA at the bottom of P-11." },
+  "trackTripSos": "SOS",
+  "@trackTripSos": { "description": "Red CTA at the bottom of P-11." },
+  "trackTripRecenter": "Recentre map",
+  "@trackTripRecenter": { "description": "Semantics label on the recentre FAB." },
+  "trackTripRidersOf": "{current} / {total}",
+  "@trackTripRidersOf": {
+    "description": "Riders tile value.",
+    "placeholders": {
+      "current": { "type": "int", "example": "7" },
+      "total": { "type": "int", "example": "14" }
+    }
+  },
+  "trackTripSeatValue": "#{seat}",
+  "@trackTripSeatValue": {
+    "description": "Seat tile value.",
+    "placeholders": {
+      "seat": { "type": "String", "example": "4" }
+    }
+  },
+  "trackTripShareText": "Tracking my trotro: {route} · ETA {time} · Seat {seat} · {plate}",
+  "@trackTripShareText": {
+    "description": "Text template for Share Trip (no coords, no token).",
+    "placeholders": {
+      "route": { "type": "String", "example": "Madina → Circle" },
+      "time": { "type": "String", "example": "08:05" },
+      "seat": { "type": "String", "example": "4" },
+      "plate": { "type": "String", "example": "GR-4821" }
+    }
+  },
+  "trackTripFallbackBanner": "Realtime offline, polling every 5 s",
+  "@trackTripFallbackBanner": {
+    "description": "Thin banner when the WS dropped and the service fell back to polling."
+  },
+  "trackTripSosTitle": "Emergency",
+  "trackTripSosBody": "Full emergency features land in Step 19. If you are in danger, call 191 (Ghana Police).",
+  "trackTripSosCall": "Call 191",
+  "@trackTripSosTitle": { "description": "Title of the SOS placeholder sheet." },
+  "@trackTripSosBody": { "description": "Body copy of the SOS placeholder sheet." },
+  "@trackTripSosCall": { "description": "Call-191 tertiary button in the SOS sheet." },
+  "trackTripSemanticsMap": "Live tracking map, bus is {minutes} minutes away",
+  "@trackTripSemanticsMap": {
+    "description": "Semantics summary for the map.",
+    "placeholders": {
+      "minutes": { "type": "int", "example": "24" }
+    }
+  }
 }
