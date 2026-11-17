@@ -33,6 +33,7 @@ class _RecordingTelemetry implements TelemetryService {
 TripDetailResponse _trip({
   TripDriverResponse? driver,
   TripStatus status = TripStatus.scheduled,
+  List<StopResponse> stops = const [],
 }) => TripDetailResponse(
   id: 't1',
   routeId: 'r1',
@@ -55,6 +56,7 @@ TripDetailResponse _trip({
   ridersCount: 10,
   seatsTotal: 14,
   availableSeats: 4,
+  stops: stops,
 );
 
 BookingResponse _booking() => BookingResponse(
@@ -235,4 +237,217 @@ void main() {
       );
     }
   });
+
+  TripDriverResponse driverFixture({
+    String? phone,
+    VerificationStatus verification = VerificationStatus.unverified,
+  }) => TripDriverResponse(
+    id: 'd1',
+    fullName: 'Kwame Owusu',
+    avatarUrl: null,
+    averageRating: null,
+    ratingCount: 0,
+    phoneNumber: phone,
+    verificationStatus: verification,
+  );
+
+  testWidgets('driver phone present: renders Call + Message, no muted line', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final repo = _FakeRouteRepository(
+      Ok(_trip(driver: driverFixture(phone: '+233244555666'))),
+    );
+    await tester.pumpWidget(
+      _host(
+        repo: repo,
+        telemetry: _RecordingTelemetry(),
+        args: TripDetailsArgs(
+          booking: _booking(),
+          source: TripDetailsSource.trips,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.phone), findsOneWidget);
+    expect(find.byIcon(Icons.chat_bubble_outline), findsOneWidget);
+    expect(find.text('Driver contact unavailable'), findsNothing);
+    // The phone must never render as visible text.
+    expect(find.textContaining('+2332'), findsNothing);
+  });
+
+  testWidgets('verification verified: brand-green pill + semantics', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final repo = _FakeRouteRepository(
+      Ok(
+        _trip(driver: driverFixture(verification: VerificationStatus.verified)),
+      ),
+    );
+    await tester.pumpWidget(
+      _host(
+        repo: repo,
+        telemetry: _RecordingTelemetry(),
+        args: TripDetailsArgs(
+          booking: _booking(),
+          source: TripDetailsSource.trips,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Verified'), findsOneWidget);
+    expect(find.text('Verification pending'), findsNothing);
+  });
+
+  testWidgets('verification pending: muted "Verification pending" pill', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final repo = _FakeRouteRepository(
+      Ok(
+        _trip(driver: driverFixture(verification: VerificationStatus.pending)),
+      ),
+    );
+    await tester.pumpWidget(
+      _host(
+        repo: repo,
+        telemetry: _RecordingTelemetry(),
+        args: TripDetailsArgs(
+          booking: _booking(),
+          source: TripDetailsSource.trips,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Verification pending'), findsOneWidget);
+  });
+
+  testWidgets('verification unverified / rejected: no pill rendered', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    for (final status in [
+      VerificationStatus.unverified,
+      VerificationStatus.rejected,
+    ]) {
+      final repo = _FakeRouteRepository(
+        Ok(_trip(driver: driverFixture(verification: status))),
+      );
+      await tester.pumpWidget(
+        _host(
+          repo: repo,
+          telemetry: _RecordingTelemetry(),
+          args: TripDetailsArgs(
+            booking: _booking(),
+            source: TripDetailsSource.trips,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Verified'), findsNothing, reason: '$status');
+      expect(
+        find.text('Verification pending'),
+        findsNothing,
+        reason: '$status',
+      );
+    }
+  });
+
+  testWidgets('stops card: renders all stops in order; boarding highlighted', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final stops = const [
+      StopResponse(
+        id: 's1',
+        name: 'Madina',
+        code: null,
+        address: null,
+        city: 'Accra',
+        region: 'Greater Accra',
+        latitude: 5.66,
+        longitude: -0.17,
+      ),
+      StopResponse(
+        id: 's1a',
+        name: 'Legon',
+        code: null,
+        address: null,
+        city: 'Accra',
+        region: 'Greater Accra',
+        latitude: 5.65,
+        longitude: -0.18,
+      ),
+      StopResponse(
+        id: 's1b',
+        name: '37 Station',
+        code: null,
+        address: null,
+        city: 'Accra',
+        region: 'Greater Accra',
+        latitude: 5.59,
+        longitude: -0.18,
+      ),
+      StopResponse(
+        id: 's2',
+        name: 'Circle',
+        code: null,
+        address: null,
+        city: 'Accra',
+        region: 'Greater Accra',
+        latitude: 5.57,
+        longitude: -0.20,
+      ),
+    ];
+    final repo = _FakeRouteRepository(Ok(_trip(stops: stops)));
+    await tester.pumpWidget(
+      _host(
+        repo: repo,
+        telemetry: _RecordingTelemetry(),
+        args: TripDetailsArgs(
+          booking: _booking(),
+          source: TripDetailsSource.trips,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Madina'), findsAtLeastNWidgets(1));
+    expect(find.text('Legon'), findsOneWidget);
+    expect(find.text('37 Station'), findsOneWidget);
+    expect(find.text('Circle'), findsAtLeastNWidgets(1));
+    // Booking's originStopId is 's1' → boarding chip on Madina.
+    expect(find.text('Boarding here'), findsOneWidget);
+    expect(find.text('Getting off'), findsOneWidget);
+  });
+
+  test(
+    'VerificationStatus.fromJson falls back to unverified on unknown value',
+    () {
+      // freezed/json_serializable's enum decode goes through
+      // $enumDecode — exercise it the same way the generated fromJson
+      // does by pushing a trip payload with an unknown value.
+      final payload = <String, dynamic>{
+        'id': 'd1',
+        'full_name': 'K',
+        'avatar_url': null,
+        'average_rating': null,
+        'rating_count': 0,
+        'phone_number': null,
+        'verification_status': 'something_new_from_the_future',
+      };
+      final driver = TripDriverResponse.fromJson(payload);
+      expect(driver.verificationStatus, VerificationStatus.unverified);
+    },
+  );
 }

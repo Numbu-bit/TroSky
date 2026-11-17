@@ -1712,4 +1712,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tripDetailsStopAlightingTag => 'Getting off';
+
+  @override
+  String get tripDetailsDriverVerified => 'Verified';
+
+  @override
+  String get tripDetailsDriverVerificationPending => 'Verification pending';
+
+  @override
+  String get tripDetailsDriverVerifiedSemantics =>
+      'Driver verification status: Verified';
+
+  @override
+  String get tripDetailsDriverVerificationPendingSemantics =>
+      'Driver verification pending';
+
+  @override
+  String tripDetailsStopSemantics(
+    int current,
+    int total,
+    String name,
+    String kind,
+  ) {
+    return 'Stop $current of $total, $name, $kind';
+  }
+
+  @override
+  String get tripDetailsStopBoardingSemantic => 'boarding';
+
+  @override
+  String get tripDetailsStopRegularSemantic => 'regular';
 }

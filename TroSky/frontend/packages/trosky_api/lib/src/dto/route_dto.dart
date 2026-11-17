@@ -194,6 +194,12 @@ abstract class TripVehicleResponse with _$TripVehicleResponse {
       _$TripVehicleResponseFromJson(json);
 }
 
+/// Passenger-visible driver verification (backend 0.14.0+). Four states;
+/// an unknown value falls back to [unverified] so a future addition
+/// doesn't crash older clients.
+@JsonEnum(fieldRename: FieldRename.snake)
+enum VerificationStatus { unverified, pending, verified, rejected }
+
 /// `TripDriverResponse`: the driver assigned to a trip.
 @freezed
 abstract class TripDriverResponse with _$TripDriverResponse {
@@ -205,6 +211,18 @@ abstract class TripDriverResponse with _$TripDriverResponse {
     /// 1-5, null until rated.
     @JsonKey(fromJson: decimalOrNull) double? averageRating,
     required int ratingCount,
+
+    /// E.164. Populated only when the caller has a confirmed/completed
+    /// booking on this trip (backend gates it in the schema builder);
+    /// null everywhere else. Bearer-like — never log, never render as
+    /// visible text, never emit in telemetry.
+    String? phoneNumber,
+
+    /// Defaults to [VerificationStatus.unverified] on an older backend
+    /// that doesn't send the field.
+    @JsonKey(unknownEnumValue: VerificationStatus.unverified)
+    @Default(VerificationStatus.unverified)
+    VerificationStatus verificationStatus,
   }) = _TripDriverResponse;
 
   factory TripDriverResponse.fromJson(Map<String, dynamic> json) =>
@@ -236,6 +254,10 @@ abstract class TripDetailResponse with _$TripDetailResponse {
     required int ridersCount,
     required int seatsTotal,
     required int availableSeats,
+
+    /// The route's ordered stops, origin first, destination last; order
+    /// is the array position (backend 0.14.0+, else an empty list).
+    @Default(<StopResponse>[]) List<StopResponse> stops,
   }) = _TripDetailResponse;
 
   factory TripDetailResponse.fromJson(Map<String, dynamic> json) =>

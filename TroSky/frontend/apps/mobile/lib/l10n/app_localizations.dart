@@ -2995,6 +2995,53 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Getting off'**
   String get tripDetailsStopAlightingTag;
+
+  /// Pill under the driver's name when verification_status == verified.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified'**
+  String get tripDetailsDriverVerified;
+
+  /// Pill under the driver's name when verification_status == pending.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification pending'**
+  String get tripDetailsDriverVerificationPending;
+
+  /// Screen-reader label for the Verified pill.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver verification status: Verified'**
+  String get tripDetailsDriverVerifiedSemantics;
+
+  /// Screen-reader label for the Verification-pending pill.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver verification pending'**
+  String get tripDetailsDriverVerificationPendingSemantics;
+
+  /// Screen-reader label on each stop row of the Stops card.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop {current} of {total}, {name}, {kind}'**
+  String tripDetailsStopSemantics(
+    int current,
+    int total,
+    String name,
+    String kind,
+  );
+
+  /// Stop kind announced by the screen reader.
+  ///
+  /// In en, this message translates to:
+  /// **'boarding'**
+  String get tripDetailsStopBoardingSemantic;
+
+  /// Stop kind announced by the screen reader.
+  ///
+  /// In en, this message translates to:
+  /// **'regular'**
+  String get tripDetailsStopRegularSemantic;
 }
 
 class _AppLocalizationsDelegate
