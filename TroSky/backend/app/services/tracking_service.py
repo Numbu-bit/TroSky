@@ -30,7 +30,7 @@ from decimal import Decimal
 from typing import Any, cast
 
 from redis.asyncio import Redis
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
@@ -51,6 +51,7 @@ from app.repositories.trip_view_repository import (
     TripSummary,
     TripViewRepository,
 )
+from app.services.fare_service import FareService
 from app.utilities.geo import haversine_distance_km, wkb_to_latlng
 
 logger = get_logger(__name__)
@@ -92,6 +93,12 @@ class LiveLocation:
     heading_degrees: Decimal | None
     recorded_at: datetime
     is_stale: bool
+    # Derived fields populated at every emit site (REST + WS) so the
+    # passenger's map always shows the current split fare + riders. Null
+    # on cached-only reads from an older codepath; the serving layer
+    # recomputes before returning.
+    live_fare_per_seat: Decimal | None = None
+    riders_count: int | None = None
 
     @property
     def age_seconds(self) -> float:
@@ -108,6 +115,10 @@ class LiveLocation:
                     str(self.heading_degrees) if self.heading_degrees is not None else None
                 ),
                 "recorded_at": self.recorded_at.isoformat(),
+                "live_fare_per_seat": (
+                    str(self.live_fare_per_seat) if self.live_fare_per_seat is not None else None
+                ),
+                "riders_count": self.riders_count,
             }
         )
 
@@ -133,6 +144,7 @@ class TrackingService:
         self._locations = TripLocationRepository(session)
         self._views = TripViewRepository(session)
         self._maps: MapsProvider = get_maps_provider(self._settings)
+        self._fares = FareService(self._settings)
 
     # ------------------------------------------------------------------
     # Ingestion
@@ -193,6 +205,7 @@ class TrackingService:
                 recorded_at=recorded_at,
             )
 
+        riders, fare_per_seat = await self._live_fare_fields(trip)
         live = LiveLocation(
             trip_id=trip_id,
             latitude=latitude,
@@ -201,6 +214,8 @@ class TrackingService:
             heading_degrees=heading_degrees,
             recorded_at=recorded_at,
             is_stale=False,
+            live_fare_per_seat=fare_per_seat,
+            riders_count=riders,
         )
         await self._cache_location(live)
         await self._redis.publish(channel_name(trip_id), live.to_publish_payload())
@@ -281,12 +296,49 @@ class TrackingService:
     # ------------------------------------------------------------------
     async def get_live_location(self, trip_id: uuid.UUID) -> LiveLocation | None:
         cached = await self._get_cached_location(trip_id)
-        if cached is not None:
-            return cached
+        if cached is None:
+            # Redis miss (cold cache, restart, TTL expiry) — durable fallback.
+            latest = await self._locations.get_latest_for_trip(trip_id)
+            if latest is None:
+                return None
+            cached = self._from_record(latest)
+            if cached is None:
+                return None
+        return await self._with_live_fare(cached)
 
-        # Redis miss (cold cache, restart, TTL expiry) — durable fallback.
-        latest = await self._locations.get_latest_for_trip(trip_id)
-        return self._from_record(latest) if latest is not None else None
+    async def _with_live_fare(self, location: LiveLocation) -> LiveLocation:
+        """Attach ``live_fare_per_seat`` + ``riders_count`` to a cached
+        ``LiveLocation``. Runs on every poll tick so the numbers are
+        always fresh — bookings move faster than GPS updates."""
+        trip = await self._trips.get_by_id(location.trip_id)
+        if trip is None:
+            return location
+        riders, fare_per_seat = await self._live_fare_fields(trip)
+        return LiveLocation(
+            trip_id=location.trip_id,
+            latitude=location.latitude,
+            longitude=location.longitude,
+            speed_kmh=location.speed_kmh,
+            heading_degrees=location.heading_degrees,
+            recorded_at=location.recorded_at,
+            is_stale=location.is_stale,
+            live_fare_per_seat=fare_per_seat,
+            riders_count=riders,
+        )
+
+    async def _live_fare_fields(self, trip: Trip) -> tuple[int, Decimal]:
+        """``(riders_count, live_fare_per_seat)`` for the trip. Reads
+        bookings in status ``CONFIRMED`` / ``COMPLETED`` (seats that have
+        actually committed to the fare, not merely held). One query."""
+        row = await self._session.execute(
+            select(func.coalesce(func.sum(Booking.passenger_count), 0)).where(
+                Booking.trip_id == trip.id,
+                Booking.status.in_((BookingStatus.CONFIRMED, BookingStatus.COMPLETED)),
+            )
+        )
+        riders = int(row.scalar_one() or 0)
+        fare = self._fares.live_fare_per_seat(full_route_fare=trip.fare_amount, riders_count=riders)
+        return riders, fare
 
     def _from_record(self, record: Any) -> LiveLocation | None:
         latlng = wkb_to_latlng(record.location)

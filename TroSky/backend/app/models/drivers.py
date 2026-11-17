@@ -33,6 +33,18 @@ class ApprovalStatus(StrEnum):
     EXPIRED = "expired"
 
 
+class VerificationStatus(StrEnum):
+    """Passenger-facing driver verification. Simple and independent of the
+    admin onboarding lifecycle (:class:`ApprovalStatus`) so UIs don't have
+    to teach passengers what ``under_review`` / ``suspended`` / ``expired``
+    mean. Rendered on Ticket (P-10) and Trip details (P-04)."""
+
+    UNVERIFIED = "unverified"
+    PENDING = "pending"
+    VERIFIED = "verified"
+    REJECTED = "rejected"
+
+
 class DocumentType(StrEnum):
     DRIVER_LICENSE = "driver_license"
     PROFILE_PHOTO = "profile_photo"
@@ -77,6 +89,21 @@ class Driver(UUIDAuditBase):
         nullable=False,
         default=ApprovalStatus.PENDING,
     )
+    # Passenger-contactable number on a confirmed booking. E.164
+    # (``+233XXXXXXXXX``); validated on write by the admin KYC flow.
+    # Never written to logs — see ``app/core/logging.py`` scrub list.
+    phone_number: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    verification_status: Mapped[VerificationStatus] = mapped_column(
+        PgEnum(
+            VerificationStatus,
+            name="verification_status",
+            native_enum=True,
+            values_callable=enum_values,
+        ),
+        nullable=False,
+        default=VerificationStatus.UNVERIFIED,
+        server_default=VerificationStatus.UNVERIFIED.value,
+    )
 
     __table_args__ = (
         UniqueConstraint("user_id", name="uq_drivers_user_id"),
@@ -85,7 +112,12 @@ class Driver(UUIDAuditBase):
             "years_of_experience IS NULL OR years_of_experience >= 0",
             name="years_of_experience_non_negative",
         ),
+        CheckConstraint(
+            r"phone_number IS NULL OR phone_number ~ '^\+[1-9][0-9]{7,14}$'",
+            name="phone_number_e164",
+        ),
         Index("ix_drivers_status", "status"),
+        Index("ix_drivers_verification_status", "verification_status"),
     )
 
 

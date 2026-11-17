@@ -236,6 +236,17 @@ class RouteRepository:
         )
         return list(result.scalars().all())
 
+    async def list_route_stops_with_stop(self, route_id: uuid.UUID) -> list[tuple[RouteStop, Stop]]:
+        """``RouteStop`` + its ``Stop`` for ``TripDetailResponse.stops``.
+        One query, ordered by ``sequence_number``."""
+        result = await self._session.execute(
+            select(RouteStop, Stop)
+            .join(Stop, RouteStop.stop_id == Stop.id)
+            .where(RouteStop.route_id == route_id)
+            .order_by(RouteStop.sequence_number)
+        )
+        return [(row[0], row[1]) for row in result.all()]
+
     async def create_schedule(
         self,
         *,

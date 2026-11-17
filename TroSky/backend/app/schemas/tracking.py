@@ -43,6 +43,21 @@ class LiveLocationResponse(ApiModel):
             "staying at the last stop completes it."
         ),
     )
+    live_fare_per_seat: Decimal | None = Field(
+        default=None,
+        description=(
+            "Current per-seat fare, split across confirmed/completed riders. "
+            "Appears on every poll tick and every WebSocket push; null only "
+            "on a cold legacy cache."
+        ),
+    )
+    riders_count: int | None = Field(
+        default=None,
+        description=(
+            "Count of confirmed/completed bookings on this trip. Same value "
+            "the ``live_fare_per_seat`` split was computed against."
+        ),
+    )
 
 
 class EtaResponse(ApiModel):

@@ -36,6 +36,7 @@ from app.api.admin_dependencies import (
 from app.api.auth_dependencies import (
     AuthServiceDep,
     CurrentPrincipal,
+    OptionalPrincipal,
     UserServiceDep,
     get_auth_service,
     get_current_principal,
@@ -118,6 +119,7 @@ __all__ = [
     "MalwareScannerDep",
     "NotificationServiceDep",
     "OptionalIdempotencyKey",
+    "OptionalPrincipal",
     "Pagination",
     "PaginationParams",
     "PaymentServiceDep",

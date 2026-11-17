@@ -88,7 +88,24 @@ async def get_current_principal(
     return principal
 
 
+async def get_optional_principal(
+    request: Request,
+    db: DbSession,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)],
+) -> Principal | None:
+    """Like ``get_current_principal``, but returns ``None`` instead of
+    raising when no bearer token is present. For endpoints that remain
+    public but gate individual response fields on who's asking
+    (``GET /trips/{id}`` driver phone, etc.)."""
+    if credentials is None:
+        return None
+    principal = await resolve_principal(db, credentials.credentials)
+    request.state.principal = principal
+    return principal
+
+
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
+OptionalPrincipal = Annotated[Principal | None, Depends(get_optional_principal)]
 
 
 def get_auth_service(
