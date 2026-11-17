@@ -3042,6 +3042,131 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'regular'**
   String get tripDetailsStopRegularSemantic;
+
+  /// P-11 amber chip when the trip hasn't started.
+  ///
+  /// In en, this message translates to:
+  /// **'Boarding at origin'**
+  String get trackTripStatusBoardingAtOrigin;
+
+  /// P-11 amber chip when the trip is on the way.
+  ///
+  /// In en, this message translates to:
+  /// **'Arriving in ~{minutes} min'**
+  String trackTripStatusArrivingIn(int minutes);
+
+  /// P-11 amber chip when within 100 m.
+  ///
+  /// In en, this message translates to:
+  /// **'At your stop'**
+  String get trackTripStatusAtYourStop;
+
+  /// P-11 amber chip once the trip finishes.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip completed'**
+  String get trackTripStatusCompleted;
+
+  /// Clock-time half of the amber chip.
+  ///
+  /// In en, this message translates to:
+  /// **'ETA {time}'**
+  String trackTripEta(String time);
+
+  /// Pin label on the destination stop.
+  ///
+  /// In en, this message translates to:
+  /// **'DESTINATION'**
+  String get trackTripDestination;
+
+  /// P-11 info tile label.
+  ///
+  /// In en, this message translates to:
+  /// **'Live fare'**
+  String get trackTripLiveFare;
+
+  /// P-11 info tile label.
+  ///
+  /// In en, this message translates to:
+  /// **'Riders'**
+  String get trackTripRiders;
+
+  /// P-11 info tile label.
+  ///
+  /// In en, this message translates to:
+  /// **'Seat'**
+  String get trackTripSeat;
+
+  /// Ghost CTA at the bottom of P-11.
+  ///
+  /// In en, this message translates to:
+  /// **'Share Trip'**
+  String get trackTripShare;
+
+  /// Red CTA at the bottom of P-11.
+  ///
+  /// In en, this message translates to:
+  /// **'SOS'**
+  String get trackTripSos;
+
+  /// Semantics label on the recentre FAB.
+  ///
+  /// In en, this message translates to:
+  /// **'Recentre map'**
+  String get trackTripRecenter;
+
+  /// Riders tile value.
+  ///
+  /// In en, this message translates to:
+  /// **'{current} / {total}'**
+  String trackTripRidersOf(int current, int total);
+
+  /// Seat tile value.
+  ///
+  /// In en, this message translates to:
+  /// **'#{seat}'**
+  String trackTripSeatValue(String seat);
+
+  /// Text template for Share Trip (no coords, no token).
+  ///
+  /// In en, this message translates to:
+  /// **'Tracking my trotro: {route} · ETA {time} · Seat {seat} · {plate}'**
+  String trackTripShareText(
+    String route,
+    String time,
+    String seat,
+    String plate,
+  );
+
+  /// Thin banner when the WS dropped and the service fell back to polling.
+  ///
+  /// In en, this message translates to:
+  /// **'Realtime offline, polling every 5 s'**
+  String get trackTripFallbackBanner;
+
+  /// Title of the SOS placeholder sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Emergency'**
+  String get trackTripSosTitle;
+
+  /// Body copy of the SOS placeholder sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Full emergency features land in Step 19. If you are in danger, call 191 (Ghana Police).'**
+  String get trackTripSosBody;
+
+  /// Call-191 tertiary button in the SOS sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Call 191'**
+  String get trackTripSosCall;
+
+  /// Semantics summary for the map.
+  ///
+  /// In en, this message translates to:
+  /// **'Live tracking map, bus is {minutes} minutes away'**
+  String trackTripSemanticsMap(int minutes);
 }
 
 class _AppLocalizationsDelegate

@@ -16,6 +16,7 @@ import '../../../app/routes.dart';
 import '../../../app/telemetry.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../shared/cancel_booking_sheet.dart';
+import '../../tracking/domain/track_trip_args.dart';
 import '../application/trip_details_providers.dart';
 import '../domain/ticket_args.dart';
 import '../domain/trip_details_args.dart';
@@ -904,10 +905,45 @@ class _Actions extends ConsumerWidget {
 
   void _onTrack(BuildContext context, WidgetRef ref, AppLocalizations l10n) {
     ref.read(telemetryProvider).emit(TelemetryEvent('trip_track_tapped'));
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(l10n.tripDetailsTrackComingSoon)));
+    // Step 17/B landed P-11; gate on tripTrackingEnabled so the owner
+    // can flip the flag off per env without touching code.
+    if (!tripTrackingEnabled) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text(l10n.tripDetailsTrackComingSoon)),
+        );
+      return;
+    }
+    final trip =
+        ref.read(tripDetailsProvider(booking.tripId)).value ??
+        _stubTrip(booking);
+    context.pushNamed(
+      AppRoute.trackTrip.name,
+      pathParameters: {'bookingId': booking.id},
+      extra: TrackTripArgs(booking: booking, trip: trip),
+    );
   }
+
+  /// If we haven't fetched the full TripDetailResponse yet, hand P-11 a
+  /// minimal stub built from the booking so the map opens at the right
+  /// destination name while the real fetch finishes.
+  TripDetailResponse _stubTrip(BookingResponse booking) => TripDetailResponse(
+    id: booking.tripId,
+    routeId: '',
+    scheduledDepartureAt:
+        booking.trip?.scheduledDepartureAt ?? booking.createdAt,
+    status: booking.trip?.status ?? TripStatus.scheduled,
+    fareAmount: booking.fareAmount,
+    routeName: booking.trip?.routeName ?? '',
+    originStopId: booking.originStopId ?? '',
+    originStopName: booking.trip?.originStopName ?? '',
+    destinationStopId: booking.destinationStopId ?? '',
+    destinationStopName: booking.trip?.destinationStopName ?? '',
+    ridersCount: 0,
+    seatsTotal: 0,
+    availableSeats: 0,
+  );
 
   void _onShowTicket(BuildContext context) {
     context.pushNamed(

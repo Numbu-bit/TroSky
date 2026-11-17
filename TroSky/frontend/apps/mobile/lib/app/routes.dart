@@ -21,6 +21,8 @@ import '../passenger/search/search_prefill.dart';
 import '../passenger/seats/domain/seat_selection_args.dart';
 import '../passenger/seats/presentation/seat_selection_screen.dart';
 import '../passenger/shell/passenger_shell.dart';
+import '../passenger/tracking/domain/track_trip_args.dart';
+import '../passenger/tracking/presentation/track_trip_screen.dart';
 import '../passenger/trips/domain/ticket_args.dart';
 import '../passenger/trips/domain/trip_details_args.dart';
 import '../passenger/trips/presentation/booking_details_screen.dart';
@@ -81,6 +83,10 @@ enum AppRoute {
   /// (route, stops, vehicle, driver, seats). `extra` is a
   /// [TripDetailsArgs]. Gated by `TRIP_DETAILS_ENABLED`.
   tripDetails('/bookings/:bookingId/trip-details'),
+
+  /// Live tracking (P-11): full-screen map + bottom card. `extra` is a
+  /// [TrackTripArgs]. Gated by `TRIP_TRACKING_ENABLED`.
+  trackTrip('/bookings/:bookingId/track'),
   notifications('/notifications'),
   favouriteRoutes('/favourite-routes'),
   subscribe('/subscribe'),
@@ -227,6 +233,14 @@ GoRouter router(Ref ref) {
             state.extra is TripDetailsArgs ? null : AppRoute.trips.path,
         builder: (context, state) =>
             TripDetailsScreen(args: state.extra! as TripDetailsArgs),
+      ),
+      GoRoute(
+        path: AppRoute.trackTrip.path,
+        name: AppRoute.trackTrip.name,
+        redirect: (context, state) =>
+            state.extra is TrackTripArgs ? null : AppRoute.trips.path,
+        builder: (context, state) =>
+            TrackTripScreen(args: state.extra! as TrackTripArgs),
       ),
       for (final (pushed, title)
           in <(AppRoute, String Function(AppLocalizations))>[

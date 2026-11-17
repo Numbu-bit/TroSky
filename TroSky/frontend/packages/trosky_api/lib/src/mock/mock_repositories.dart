@@ -381,6 +381,26 @@ class MockTrackingRepository implements TrackingRepository {
       limit: limit,
     ),
   );
+
+  @override
+  Future<Result<LiveLocationResponse>> tripLocation(String tripId) async =>
+      const Err(
+        UnknownFailure(
+          code: 'NOT_IMPLEMENTED',
+          message: 'Live tracking is not yet available in mock mode.',
+        ),
+      );
+
+  @override
+  Future<Result<EtaResponse>> tripEta(
+    String tripId, {
+    String? destinationStopId,
+  }) async => const Err(
+    UnknownFailure(
+      code: 'NOT_IMPLEMENTED',
+      message: 'Live tracking is not yet available in mock mode.',
+    ),
+  );
 }
 
 /// [TicketRepository] on a [MockBackend].

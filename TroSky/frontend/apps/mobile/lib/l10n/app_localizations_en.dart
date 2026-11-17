@@ -1742,4 +1742,82 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tripDetailsStopRegularSemantic => 'regular';
+
+  @override
+  String get trackTripStatusBoardingAtOrigin => 'Boarding at origin';
+
+  @override
+  String trackTripStatusArrivingIn(int minutes) {
+    return 'Arriving in ~$minutes min';
+  }
+
+  @override
+  String get trackTripStatusAtYourStop => 'At your stop';
+
+  @override
+  String get trackTripStatusCompleted => 'Trip completed';
+
+  @override
+  String trackTripEta(String time) {
+    return 'ETA $time';
+  }
+
+  @override
+  String get trackTripDestination => 'DESTINATION';
+
+  @override
+  String get trackTripLiveFare => 'Live fare';
+
+  @override
+  String get trackTripRiders => 'Riders';
+
+  @override
+  String get trackTripSeat => 'Seat';
+
+  @override
+  String get trackTripShare => 'Share Trip';
+
+  @override
+  String get trackTripSos => 'SOS';
+
+  @override
+  String get trackTripRecenter => 'Recentre map';
+
+  @override
+  String trackTripRidersOf(int current, int total) {
+    return '$current / $total';
+  }
+
+  @override
+  String trackTripSeatValue(String seat) {
+    return '#$seat';
+  }
+
+  @override
+  String trackTripShareText(
+    String route,
+    String time,
+    String seat,
+    String plate,
+  ) {
+    return 'Tracking my trotro: $route · ETA $time · Seat $seat · $plate';
+  }
+
+  @override
+  String get trackTripFallbackBanner => 'Realtime offline, polling every 5 s';
+
+  @override
+  String get trackTripSosTitle => 'Emergency';
+
+  @override
+  String get trackTripSosBody =>
+      'Full emergency features land in Step 19. If you are in danger, call 191 (Ghana Police).';
+
+  @override
+  String get trackTripSosCall => 'Call 191';
+
+  @override
+  String trackTripSemanticsMap(int minutes) {
+    return 'Live tracking map, bus is $minutes minutes away';
+  }
 }

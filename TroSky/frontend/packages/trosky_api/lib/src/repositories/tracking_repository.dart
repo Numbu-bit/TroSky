@@ -14,6 +14,17 @@ abstract interface class TrackingRepository {
     required int radiusM,
     int limit = 20,
   });
+
+  /// `GET /trips/{id}/location`: one location point (polling fallback for
+  /// the WebSocket).
+  Future<Result<LiveLocationResponse>> tripLocation(String tripId);
+
+  /// `GET /trips/{id}/eta`: how far and how long to [destinationStopId]
+  /// (default: the trip's destination).
+  Future<Result<EtaResponse>> tripEta(
+    String tripId, {
+    String? destinationStopId,
+  });
 }
 
 /// [TrackingRepository] against the backend.
@@ -42,5 +53,25 @@ class LiveTrackingRepository implements TrackingRepository {
       for (final vehicle in data! as List)
         NearbyVehicleResponse.fromJson(jsonObject(vehicle)),
     ],
+  );
+
+  @override
+  Future<Result<LiveLocationResponse>> tripLocation(String tripId) => apiCall(
+    () => _dio.get<Object?>('/trips/$tripId/location'),
+    (data) => LiveLocationResponse.fromJson(jsonObject(data)),
+  );
+
+  @override
+  Future<Result<EtaResponse>> tripEta(
+    String tripId, {
+    String? destinationStopId,
+  }) => apiCall(
+    () => _dio.get<Object?>(
+      '/trips/$tripId/eta',
+      queryParameters: destinationStopId == null
+          ? null
+          : {'destination_stop_id': destinationStopId},
+    ),
+    (data) => EtaResponse.fromJson(jsonObject(data)),
   );
 }
