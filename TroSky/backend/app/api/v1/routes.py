@@ -306,19 +306,7 @@ async def get_trip(
             verification_status=details.driver_verification_status,
         )
     route_stops = await RouteRepository(db).list_route_stops_with_stop(trip.route_id)
-    stops = [
-        StopResponse(
-            id=stop.id,
-            name=stop.name,
-            code=stop.code,
-            address=stop.address,
-            city=stop.city,
-            region=stop.region,
-            latitude=stop.latitude,
-            longitude=stop.longitude,
-        )
-        for _, stop in route_stops
-    ]
+    stops = [_stop_response(stop) for _, stop in route_stops]
     return TripDetailResponse(
         **TripResponse.model_validate(trip).model_dump(),
         route_name=summary.route_name,

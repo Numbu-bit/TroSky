@@ -10,8 +10,6 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-import pytest
-
 from app.core.config import Settings
 from app.services.fare_service import FareService
 
@@ -60,11 +58,11 @@ class TestLiveFareSchemaParity:
     def test_rest_and_ws_payloads_share_the_fare_keys(self) -> None:
         # Imported inside the test to keep import-side effects off the
         # hot path if the modules move.
-        from app.services.tracking_service import LiveLocation
-        from decimal import Decimal as D
-        from datetime import UTC, datetime
         import json
         import uuid
+        from datetime import UTC, datetime
+
+        from app.services.tracking_service import LiveLocation
 
         live = LiveLocation(
             trip_id=uuid.UUID("00000000-0000-4000-8000-000000000001"),
@@ -74,7 +72,7 @@ class TestLiveFareSchemaParity:
             heading_degrees=None,
             recorded_at=datetime.now(UTC),
             is_stale=False,
-            live_fare_per_seat=D("5.33"),
+            live_fare_per_seat=Decimal("5.33"),
             riders_count=3,
         )
         payload = json.loads(live.to_publish_payload())

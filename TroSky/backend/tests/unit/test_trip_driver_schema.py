@@ -15,13 +15,13 @@ from app.schemas.trip import TripDriverResponse
 
 
 def _base() -> dict[str, object]:
-    return dict(
-        id=uuid.UUID("00000000-0000-4000-8000-000000000001"),
-        full_name="Kwame Owusu",
-        avatar_url=None,
-        average_rating=Decimal("4.8"),
-        rating_count=112,
-    )
+    return {
+        "id": uuid.UUID("00000000-0000-4000-8000-000000000001"),
+        "full_name": "Kwame Owusu",
+        "avatar_url": None,
+        "average_rating": Decimal("4.8"),
+        "rating_count": 112,
+    }
 
 
 class TestTripDriverResponseDefaults:
