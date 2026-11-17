@@ -523,3 +523,20 @@ class BookingRepository:
         request.decided_at = decided_at
         request.decision_notes = decision_notes
         await self._session.flush()
+
+    async def user_has_boarding_booking(self, *, user_id: uuid.UUID, trip_id: uuid.UUID) -> bool:
+        """``True`` when ``user_id`` holds a confirmed/completed booking on
+        ``trip_id`` — the access gate for the driver phone number on
+        ``TripDriverResponse``. ``COMPLETED`` keeps the number visible
+        until the booking is archived so a just-finished trip still lets
+        the passenger call the driver about a lost item."""
+        row = await self._session.execute(
+            select(Booking.id)
+            .where(
+                Booking.passenger_id == user_id,
+                Booking.trip_id == trip_id,
+                Booking.status.in_((BookingStatus.CONFIRMED, BookingStatus.COMPLETED)),
+            )
+            .limit(1)
+        )
+        return row.first() is not None

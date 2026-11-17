@@ -32,10 +32,12 @@ from app.core.config import Settings, get_settings
 from app.core.database import keep_writes_on_failure
 from app.core.exceptions import NoPickupNearbyError, NotFoundError, StopNotOnRouteError
 from app.models.analytics import SEARCH_GRID_DEGREES, SearchEvent
+from app.models.drivers import VerificationStatus
 from app.models.identity import UserProfile
 from app.models.routes import Stop
 from app.models.trips import TripStatus
 from app.models.vehicles import VehicleType
+from app.repositories.driver_repository import DriverRepository
 from app.repositories.route_geometry import (
     PASSED_STOP_TOLERANCE_KM,
     RouteGeometry,
@@ -76,6 +78,8 @@ class TripDetails:
     driver_profile: UserProfile | None
     driver_average_rating: Decimal | None
     driver_rating_count: int
+    driver_phone_number: str | None = None
+    driver_verification_status: VerificationStatus = VerificationStatus.UNVERIFIED
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,6 +115,7 @@ class TripSearchService:
         self._ratings = RatingService(session)
         self._trips = TripRepository(session)
         self._users = UserRepository(session)
+        self._drivers = DriverRepository(session)
 
     async def _summary(self, trip_id: uuid.UUID) -> TripSummary:
         summary = (await self._views.summaries_by_ids([trip_id])).get(trip_id)
@@ -122,11 +127,24 @@ class TripSearchService:
         summary = await self._summary(trip_id)
         profile = None
         average, count = None, 0
+        phone = None
+        verification = VerificationStatus.UNVERIFIED
         if summary.driver_id is not None and summary.driver_user_id is not None:
-            driver = await self._users.get_by_id(summary.driver_user_id)
-            profile = driver.profile if driver is not None else None
+            driver_user = await self._users.get_by_id(summary.driver_user_id)
+            profile = driver_user.profile if driver_user is not None else None
             average, count = await self._ratings.get_driver_average_rating(summary.driver_id)
-        return TripDetails(summary, profile, average, count)
+            driver_row = await self._drivers.get_by_id(summary.driver_id)
+            if driver_row is not None:
+                phone = driver_row.phone_number
+                verification = driver_row.verification_status
+        return TripDetails(
+            summary,
+            profile,
+            average,
+            count,
+            driver_phone_number=phone,
+            driver_verification_status=verification,
+        )
 
     async def next_departures(
         self, journeys: Sequence[tuple[uuid.UUID, uuid.UUID]]
