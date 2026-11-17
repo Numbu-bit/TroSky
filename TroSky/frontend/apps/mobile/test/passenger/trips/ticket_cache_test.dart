@@ -45,8 +45,8 @@ void main() {
     test('round-trip: write then read returns the same shape', () async {
       final c = cache();
       final list = [
-        _ticket(id: '1', expiresAt: DateTime.utc(2026, 11, 17, 12)),
-        _ticket(id: '2', expiresAt: DateTime.utc(2026, 11, 17, 12)),
+        _ticket(id: '1', expiresAt: DateTime.utc(2099, 1, 1)),
+        _ticket(id: '2', expiresAt: DateTime.utc(2099, 1, 1)),
       ];
       await c.write('b1', list);
       final back = await c.read('b1');
@@ -73,7 +73,7 @@ void main() {
       final c = cache();
       await c.write('b-mixed', [
         _ticket(id: 'past', expiresAt: DateTime.utc(2026, 11, 16, 6)),
-        _ticket(id: 'future', expiresAt: DateTime.utc(2026, 11, 17, 12)),
+        _ticket(id: 'future', expiresAt: DateTime.utc(2099, 1, 1)),
       ]);
       final back = await c.read('b-mixed', now: DateTime.utc(2026, 11, 16, 9));
       expect(back, isNotNull);
@@ -85,7 +85,7 @@ void main() {
       () async {
         final c = cache();
         await c.write('b1', [
-          _ticket(id: '1', expiresAt: DateTime.utc(2026, 11, 17, 12)),
+          _ticket(id: '1', expiresAt: DateTime.utc(2099, 1, 1)),
         ]);
         expect(await secure.read(key: TicketCache.secureStorageKey), isNotNull);
 
@@ -108,7 +108,7 @@ void main() {
     test('bad secure-storage key on re-open: generates a fresh key', () async {
       final c = cache();
       await c.write('b1', [
-        _ticket(id: '1', expiresAt: DateTime.utc(2026, 11, 17, 12)),
+        _ticket(id: '1', expiresAt: DateTime.utc(2099, 1, 1)),
       ]);
       final first = await secure.read(key: TicketCache.secureStorageKey);
       expect(first, isNotNull);

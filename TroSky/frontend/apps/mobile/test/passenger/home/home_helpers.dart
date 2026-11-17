@@ -109,6 +109,17 @@ class FakeTracking implements TrackingRepository {
     }
     return Ok(vehicles);
   }
+
+  // Step 17/B added two methods; Home never calls them.
+  @override
+  Future<Result<LiveLocationResponse>> tripLocation(String tripId) async =>
+      const Err(NetworkFailure());
+
+  @override
+  Future<Result<EtaResponse>> tripEta(
+    String tripId, {
+    String? destinationStopId,
+  }) async => const Err(NetworkFailure());
 }
 
 /// A vehicle a real backend could report.
