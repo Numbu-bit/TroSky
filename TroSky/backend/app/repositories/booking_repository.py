@@ -533,7 +533,7 @@ class BookingRepository:
         row = await self._session.execute(
             select(Booking.id)
             .where(
-                Booking.user_id == user_id,
+                Booking.passenger_id == user_id,
                 Booking.trip_id == trip_id,
                 Booking.status.in_((BookingStatus.CONFIRMED, BookingStatus.COMPLETED)),
             )
