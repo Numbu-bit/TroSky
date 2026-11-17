@@ -53,37 +53,28 @@ WebSocketChannel _defaultOpener(Uri uri) => WebSocketChannel.connect(uri);
 
 class LiveTripTrackingService implements TripTrackingService {
   LiveTripTrackingService({
-    required Env env,
+    required this.env,
     required TrackingRepository repository,
-    required Future<String?> Function() accessToken,
-    TripTrackingSocketOpener openSocket = _defaultOpener,
-    Duration pollInterval = const Duration(seconds: 5),
-    Duration webSocketRetryEvery = const Duration(seconds: 60),
-    Duration wsConnectTimeout = const Duration(seconds: 5),
-    Duration dropWindow = const Duration(seconds: 30),
-    int dropsToTriggerFallback = 2,
+    required this.accessToken,
+    this.openSocket = _defaultOpener,
+    this.pollInterval = const Duration(seconds: 5),
+    this.webSocketRetryEvery = const Duration(seconds: 60),
+    this.wsConnectTimeout = const Duration(seconds: 5),
+    this.dropWindow = const Duration(seconds: 30),
+    this.dropsToTriggerFallback = 2,
     Random? random,
-  }) : _env = env,
-       _repo = repository,
-       _accessToken = accessToken,
-       _openSocket = openSocket,
-       _pollInterval = pollInterval,
-       _webSocketRetryEvery = webSocketRetryEvery,
-       _wsConnectTimeout = wsConnectTimeout,
-       _dropWindow = dropWindow,
-       _dropsToTriggerFallback = dropsToTriggerFallback,
-       // ignore: prefer_initializing_formals
+  }) : _repo = repository,
        _random = random ?? Random.secure();
 
-  final Env _env;
+  final Env env;
   final TrackingRepository _repo;
-  final Future<String?> Function() _accessToken;
-  final TripTrackingSocketOpener _openSocket;
-  final Duration _pollInterval;
-  final Duration _webSocketRetryEvery;
-  final Duration _wsConnectTimeout;
-  final Duration _dropWindow;
-  final int _dropsToTriggerFallback;
+  final Future<String?> Function() accessToken;
+  final TripTrackingSocketOpener openSocket;
+  final Duration pollInterval;
+  final Duration webSocketRetryEvery;
+  final Duration wsConnectTimeout;
+  final Duration dropWindow;
+  final int dropsToTriggerFallback;
   final Random _random;
 
   late final StreamController<TripTrackingUpdate> _out =
@@ -138,22 +129,22 @@ class LiveTripTrackingService implements TripTrackingService {
   }
 
   Uri _wsUri(String tripId, String token) {
-    final base = _env.wsBaseUrl;
+    final base = env.wsBaseUrl;
     // base is like "wss://host/api/v1" — append the WS path.
     return Uri.parse('$base/ws/trips/$tripId/track?token=$token');
   }
 
   Future<void> _attemptWebSocket() async {
     if (_paused || _disposed || _tripId == null) return;
-    final token = await _accessToken();
+    final token = await accessToken();
     if (token == null || token.isEmpty) {
       _switchToPolling();
       return;
     }
     try {
-      final channel = _openSocket(_wsUri(_tripId!, token));
+      final channel = openSocket(_wsUri(_tripId!, token));
       // Treat the ready future as a connect timeout.
-      await channel.ready.timeout(_wsConnectTimeout);
+      await channel.ready.timeout(wsConnectTimeout);
       if (_paused || _disposed) {
         await channel.sink.close();
         return;
@@ -198,8 +189,8 @@ class LiveTripTrackingService implements TripTrackingService {
     final now = DateTime.now();
     _recentDrops
       ..add(now)
-      ..removeWhere((t) => now.difference(t) > _dropWindow);
-    if (_recentDrops.length >= _dropsToTriggerFallback) {
+      ..removeWhere((t) => now.difference(t) > dropWindow);
+    if (_recentDrops.length >= dropsToTriggerFallback) {
       _switchToPolling();
       _scheduleWsRetry();
     } else {
@@ -220,7 +211,7 @@ class LiveTripTrackingService implements TripTrackingService {
   void _switchToPolling() {
     if (_pollTimer != null || _paused || _disposed) return;
     _pollNow();
-    _pollTimer = Timer.periodic(_pollInterval, (_) => _pollNow());
+    _pollTimer = Timer.periodic(pollInterval, (_) => _pollNow());
   }
 
   Future<void> _pollNow() async {
@@ -248,7 +239,7 @@ class LiveTripTrackingService implements TripTrackingService {
     if (_paused || _disposed) return;
     _wsRetryTimer?.cancel();
     _wsRetryTimer = Timer.periodic(
-      _webSocketRetryEvery,
+      webSocketRetryEvery,
       (_) => _attemptWebSocket(),
     );
   }
