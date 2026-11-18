@@ -349,6 +349,44 @@ class MockPaymentRepository implements PaymentRepository {
     latency,
     (token) => _backend.addPaymentMethod(token, request),
   );
+
+  // Step 18 added these three. Mock mode shows the empty/no-op state; the
+  // live app is the target. Widget tests use their own repository fakes.
+  @override
+  Future<Result<PaymentMethodResponse>> updateMethod(
+    String methodId,
+    PaymentMethodUpdateRequest request,
+  ) async => const Err(
+    UnknownFailure(
+      code: 'NOT_IMPLEMENTED',
+      message: 'Managing saved methods is not yet available in mock mode.',
+    ),
+  );
+
+  @override
+  Future<Result<void>> deleteMethod(String methodId) async => const Err(
+    UnknownFailure(
+      code: 'NOT_IMPLEMENTED',
+      message: 'Managing saved methods is not yet available in mock mode.',
+    ),
+  );
+
+  @override
+  Future<Result<Paginated<WalletTransactionResponse>>> transactions({
+    WalletReferenceType? referenceType,
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    if (latency > Duration.zero) await Future<void>.delayed(latency);
+    return Ok(
+      Paginated(
+        items: const [],
+        total: 0,
+        limit: limit,
+        offset: offset,
+      ),
+    );
+  }
 }
 
 /// [TrackingRepository] on a [MockBackend] (`API_MODE=mock`): invented

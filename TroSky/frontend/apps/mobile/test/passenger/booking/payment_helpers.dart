@@ -238,4 +238,25 @@ class RecordedPayments implements PaymentRepository {
   Future<Result<PaymentMethodResponse>> addMethod(
     PaymentMethodCreateRequest request,
   ) => _inner.addMethod(request);
+
+  @override
+  Future<Result<PaymentMethodResponse>> updateMethod(
+    String methodId,
+    PaymentMethodUpdateRequest request,
+  ) => _inner.updateMethod(methodId, request);
+
+  @override
+  Future<Result<void>> deleteMethod(String methodId) =>
+      _inner.deleteMethod(methodId);
+
+  @override
+  Future<Result<Paginated<WalletTransactionResponse>>> transactions({
+    WalletReferenceType? referenceType,
+    int limit = 20,
+    int offset = 0,
+  }) => _inner.transactions(
+    referenceType: referenceType,
+    limit: limit,
+    offset: offset,
+  );
 }
