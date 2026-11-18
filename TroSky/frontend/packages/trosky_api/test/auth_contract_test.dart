@@ -22,24 +22,21 @@ void main() {
     expect(json.containsKey('phone_number'), isFalse);
   });
 
-  test(
-    'LoginRequest.toJson includes device only when present, as snake_case '
-    'device.device_id',
-    () {
-      final withoutDevice = const LoginRequest(
-        identifier: 'x',
-        password: 'y',
-      ).toJson();
-      expect(withoutDevice.containsKey('device'), isFalse);
+  test('LoginRequest.toJson includes device only when present, as snake_case '
+      'device.device_id', () {
+    final withoutDevice = const LoginRequest(
+      identifier: 'x',
+      password: 'y',
+    ).toJson();
+    expect(withoutDevice.containsKey('device'), isFalse);
 
-      final withDevice = const LoginRequest(
-        identifier: 'x',
-        password: 'y',
-        device: DeviceContext(deviceId: 'abc', deviceName: 'iPhone'),
-      ).toJson();
-      final device = withDevice['device'] as Map<String, dynamic>;
-      expect(device['device_id'], 'abc');
-      expect(device['device_name'], 'iPhone');
-    },
-  );
+    final withDevice = const LoginRequest(
+      identifier: 'x',
+      password: 'y',
+      device: DeviceContext(deviceId: 'abc', deviceName: 'iPhone'),
+    ).toJson();
+    final device = withDevice['device'] as Map<String, dynamic>;
+    expect(device['device_id'], 'abc');
+    expect(device['device_name'], 'iPhone');
+  });
 }

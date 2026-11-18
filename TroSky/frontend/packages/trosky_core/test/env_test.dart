@@ -7,22 +7,19 @@ void main() {
     expect(env.apiMode, ApiMode.mock);
   });
 
-  test(
-    'no API_MODE but a real API_BASE_URL means live '
-    '(release build with --dart-define-from-file that dropped API_MODE)',
-    () {
-      // Pre-fix this would silently become mock and reject every real
-      // credential as "invalid". Post-fix, a non-empty base URL is proof
-      // the build was meant to talk to a backend.
-      final env = Env.parse(
-        apiBaseUrl: 'https://trosky-api.onrender.com/api/v1',
-        wsBaseUrl: 'wss://trosky-api.onrender.com/api/v1',
-        apiMode: '',
-      );
-      expect(env.apiMode, ApiMode.live);
-      expect(env.apiBaseUrl, 'https://trosky-api.onrender.com/api/v1');
-    },
-  );
+  test('no API_MODE but a real API_BASE_URL means live '
+      '(release build with --dart-define-from-file that dropped API_MODE)', () {
+    // Pre-fix this would silently become mock and reject every real
+    // credential as "invalid". Post-fix, a non-empty base URL is proof
+    // the build was meant to talk to a backend.
+    final env = Env.parse(
+      apiBaseUrl: 'https://trosky-api.onrender.com/api/v1',
+      wsBaseUrl: 'wss://trosky-api.onrender.com/api/v1',
+      apiMode: '',
+    );
+    expect(env.apiMode, ApiMode.live);
+    expect(env.apiBaseUrl, 'https://trosky-api.onrender.com/api/v1');
+  });
 
   test('live mode with a URL; the trailing slash is dropped', () {
     final env = Env.parse(
