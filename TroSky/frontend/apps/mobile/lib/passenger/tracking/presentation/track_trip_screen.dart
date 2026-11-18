@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:share_plus/share_plus.dart';
@@ -13,8 +14,10 @@ import 'package:trosky_ui/trosky_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/app_providers.dart';
+import '../../../app/routes.dart';
 import '../../../app/telemetry.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../safety/domain/safety_args.dart';
 import '../application/tracking_providers.dart';
 import '../data/trip_tracking_service.dart';
 import '../domain/track_status.dart';
@@ -306,8 +309,19 @@ class _TrackTripScreenState extends ConsumerState<TrackTripScreen>
   }
 
   Future<void> _openSos(BuildContext context) async {
-    final l10n = AppLocalizations.of(context);
     ref.read(telemetryProvider).emit(TelemetryEvent('track_trip_sos_tapped'));
+    if (sosEnabled) {
+      await context.pushNamed(
+        AppRoute.sosAlert.name,
+        extra: SosArgs(
+          tripId: widget.args.trip.id,
+          booking: widget.args.booking,
+        ),
+      );
+      return;
+    }
+    // Fallback (prod until SOS_ENABLED=true): the original Call 191 sheet.
+    final l10n = AppLocalizations.of(context);
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: TroskyColors.surface,

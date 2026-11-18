@@ -3443,6 +3443,264 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Retry'**
   String get walletTopUpRetry;
+
+  /// P-12 header.
+  ///
+  /// In en, this message translates to:
+  /// **'Emergency'**
+  String get sosTitle;
+
+  /// Semantics label on the SOS hold button.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold to send SOS, 3 second hold'**
+  String get sosHoldSemantics;
+
+  /// Instruction under the hold button.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold for 3 seconds'**
+  String get sosHoldInstruction;
+
+  /// Status while the SOS request is in flight.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending alert…'**
+  String get sosSending;
+
+  /// Failure line on the SOS screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send the alert.'**
+  String get sosSendFailed;
+
+  /// Retry action after a failed SOS send.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get sosRetry;
+
+  /// Label above the reason chips.
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s happening?'**
+  String get sosReasonLabel;
+
+  /// SOS reason chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver danger'**
+  String get sosReasonDriverDanger;
+
+  /// SOS reason chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Accident'**
+  String get sosReasonAccident;
+
+  /// SOS reason chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Medical'**
+  String get sosReasonMedical;
+
+  /// SOS reason chip; default.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get sosReasonOther;
+
+  /// Tertiary button to dial Ghana Police emergency line.
+  ///
+  /// In en, this message translates to:
+  /// **'Call 191'**
+  String get sosCall191;
+
+  /// P-12 confirmation title.
+  ///
+  /// In en, this message translates to:
+  /// **'Help is on the way'**
+  String get sosConfirmationTitle;
+
+  /// P-12 confirmation body.
+  ///
+  /// In en, this message translates to:
+  /// **'Your emergency contacts have been notified.'**
+  String get sosConfirmationBody;
+
+  /// Note on confirmation when coords weren't attached.
+  ///
+  /// In en, this message translates to:
+  /// **'Location not shared'**
+  String get sosLocationNotShared;
+
+  /// Ghost button to close the SOS confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'m safe now'**
+  String get sosMarkSafe;
+
+  /// P-13 header.
+  ///
+  /// In en, this message translates to:
+  /// **'Report an issue'**
+  String get reportTitle;
+
+  /// Small label above the category list, showing which booking.
+  ///
+  /// In en, this message translates to:
+  /// **'About booking {reference}'**
+  String reportBookingContext(String reference);
+
+  /// Label above the category chips.
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s the issue?'**
+  String get reportCategoryLabel;
+
+  /// Report category chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Accident'**
+  String get reportCategoryAccident;
+
+  /// Report category chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Breakdown'**
+  String get reportCategoryBreakdown;
+
+  /// Report category chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Delay'**
+  String get reportCategoryDelay;
+
+  /// Report category chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Safety concern'**
+  String get reportCategorySafety;
+
+  /// Report category chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Passenger issue'**
+  String get reportCategoryPassenger;
+
+  /// Report category chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Road hazard'**
+  String get reportCategoryRoadHazard;
+
+  /// Report category chip; default.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get reportCategoryOther;
+
+  /// Label above the description text field.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe what happened'**
+  String get reportDescriptionLabel;
+
+  /// Hint in the description field.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell us what happened (at least 10 characters).'**
+  String get reportDescriptionHint;
+
+  /// P-13 primary button.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit report'**
+  String get reportSubmit;
+
+  /// P-13 inline failure line.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t submit. Please try again.'**
+  String get reportSubmitFailure;
+
+  /// Snackbar after a successful report.
+  ///
+  /// In en, this message translates to:
+  /// **'Report submitted. We\'ll review within 48 hours.'**
+  String get reportSuccess;
+
+  /// P-14 header.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate your trip'**
+  String get rateTitle;
+
+  /// Fallback when the driver's name isn't known.
+  ///
+  /// In en, this message translates to:
+  /// **'Your driver'**
+  String get rateDriverFallback;
+
+  /// Fallback for the route line.
+  ///
+  /// In en, this message translates to:
+  /// **'Your trip'**
+  String get rateRouteFallback;
+
+  /// Accessibility label for the current star count.
+  ///
+  /// In en, this message translates to:
+  /// **'{stars} of 5 stars'**
+  String rateStarsSemantic(int stars);
+
+  /// Tooltip on each star in the picker.
+  ///
+  /// In en, this message translates to:
+  /// **'{star} stars'**
+  String rateStarTooltip(int star);
+
+  /// P-14 comment field hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a comment (optional)'**
+  String get rateCommentHint;
+
+  /// P-14 primary button.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit rating'**
+  String get rateSubmit;
+
+  /// P-14 inline failure line.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t submit. Please try again.'**
+  String get rateSubmitFailure;
+
+  /// Snackbar after a successful rating.
+  ///
+  /// In en, this message translates to:
+  /// **'Thanks for rating your trip.'**
+  String get rateThanks;
+
+  /// Trips tab banner title for an unrated completed booking.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate your last trip'**
+  String get rateBannerTitle;
+
+  /// Trips tab banner CTA.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate'**
+  String get rateBannerAction;
+
+  /// Tester menu action to open the SOS screen off-trip.
+  ///
+  /// In en, this message translates to:
+  /// **'Open P-12 Emergency'**
+  String get testerMenuEmergency;
 }
 
 class _AppLocalizationsDelegate

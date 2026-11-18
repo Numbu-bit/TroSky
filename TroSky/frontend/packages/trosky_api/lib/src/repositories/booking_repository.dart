@@ -4,6 +4,7 @@ import 'package:trosky_core/trosky_core.dart';
 import '../client/api_client.dart';
 import '../dto/booking_dto.dart';
 import '../dto/paginated.dart';
+import '../dto/safety_dto.dart';
 
 /// `/bookings` (backend/app/api/v1/bookings.py).
 abstract interface class BookingRepository {
@@ -55,6 +56,17 @@ abstract interface class BookingRepository {
     String bookingId, {
     CancelReason? reason,
   });
+
+  /// `POST /bookings/{booking_id}/rating` — rate a completed trip.
+  /// 409 if already rated (ratings are not editable).
+  Future<Result<RatingResponse>> rate(
+    String bookingId,
+    RateBookingRequest request,
+  );
+
+  /// `GET /bookings/{booking_id}/rating` — null when the passenger hasn't
+  /// rated yet. 404 at the HTTP layer surfaces as `NotFoundFailure`.
+  Future<Result<RatingResponse>> getRating(String bookingId);
 }
 
 /// [BookingRepository] against the backend.
@@ -121,6 +133,24 @@ class LiveBookingRepository implements BookingRepository {
       data: {if (reason != null) 'reason': cancelReasonName(reason)},
     ),
     (data) => BookingResponse.fromJson(jsonObject(data)),
+  );
+
+  @override
+  Future<Result<RatingResponse>> rate(
+    String bookingId,
+    RateBookingRequest request,
+  ) => apiCall(
+    () => _dio.post<Object?>(
+      '/bookings/$bookingId/rating',
+      data: request.toJson(),
+    ),
+    (data) => RatingResponse.fromJson(jsonObject(data)),
+  );
+
+  @override
+  Future<Result<RatingResponse>> getRating(String bookingId) => apiCall(
+    () => _dio.get<Object?>('/bookings/$bookingId/rating'),
+    (data) => RatingResponse.fromJson(jsonObject(data)),
   );
 }
 
