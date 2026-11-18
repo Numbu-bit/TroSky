@@ -24,6 +24,7 @@ import 'package:trosky_ui/trosky_ui.dart';
 
 import '../../entry/onboarding/data/onboarding_store.dart';
 import '../../l10n/app_localizations.dart';
+import '../../passenger/wallet/domain/wallet_args.dart';
 import '../routes.dart';
 
 /// Whole feature's on/off switch. `const bool.fromEnvironment` means
@@ -146,45 +147,29 @@ class _TesterMenuSheetState extends ConsumerState<TesterMenuSheet> {
   }
 
   Future<void> _topUp() async {
+    // Step 18 converged this shortcut onto P-18 so there's only one code
+    // path for top-ups. Pick the first saved MoMo method; if none, say so.
     final l10n = AppLocalizations.of(context);
-    final phone = switch (ref.read(sessionControllerProvider).value) {
-      SessionAuthenticated(:final user) => user.phoneNumber,
-      _ => null,
-    };
-    if (phone == null) {
-      _say(l10n.testerMenuTopUpSignIn);
-      return;
-    }
-    final result = await ref
-        .read(paymentRepositoryProvider)
-        .topUpWallet(
-          WalletTopupRequest(
-            amount: '100.00',
-            channel: PaymentChannel.mtnMomo,
-            payerPhoneNumber: phone,
-          ),
-          idempotencyKey:
-              'tester-topup-${DateTime.now().microsecondsSinceEpoch}',
-        );
+    final router = GoRouter.of(context);
+    final methods = await ref.read(paymentRepositoryProvider).methods();
     if (!mounted) return;
-    switch (result) {
-      case Ok():
-        // No watchable wallet provider yet; fetch once so the toast
-        // reports the new balance. When a wallet screen lands and keeps
-        // a provider, swap this for `ref.invalidate(walletProvider)`.
-        final balance = await ref.read(paymentRepositoryProvider).wallet();
-        if (!mounted) return;
-        _say(
-          l10n.testerMenuTopUpOk(switch (balance) {
-            Ok(:final value) => value.balance,
-            _ => '?',
-          }),
+    switch (methods) {
+      case Ok(:final value) when value.isNotEmpty:
+        final momo = value.firstWhere(
+          (m) => m.channel == PaymentChannel.mtnMomo,
+          orElse: () => value.first,
         );
+        Navigator.of(context).pop();
+        router.pushNamed(
+          AppRoute.topUp.name,
+          extra: TopUpArgs(method: momo, presetAmount: '100'),
+        );
+      case Ok():
+        _say(l10n.testerMenuTopUpSignIn);
       case Err(:final failure) when failure.code == 'NOT_FOUND':
-        // Backend predates PR #53: hide the row on next sheet open.
         setState(() => _topUpSupported = false);
         debugPrint(
-          'tester-menu: wallet top-up endpoint missing (G: PR #53 not deployed)',
+          'tester-menu: wallet endpoint missing (G: PR #53 not deployed)',
         );
         _say(l10n.testerMenuTopUpMissing);
       case Err(:final failure):
