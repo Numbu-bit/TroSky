@@ -128,9 +128,11 @@ class _PaymentMethodsCard extends ConsumerWidget {
       title: l10n.walletPaymentMethodsTitle,
       child: asyncMethods.when(
         loading: () => const _CardSkeleton(),
-        error: (_, _) => _CardError(onRetry: () {
-          ref.invalidate(paymentMethodsProvider);
-        }),
+        error: (_, _) => _CardError(
+          onRetry: () {
+            ref.invalidate(paymentMethodsProvider);
+          },
+        ),
         data: (result) => switch (result) {
           Err() => _CardError(
             onRetry: () => ref.invalidate(paymentMethodsProvider),
@@ -168,7 +170,10 @@ class _MethodsList extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (final m in methods) _MethodRow(method: m),
-        const Divider(height: TroskySpacing.s16, color: TroskyColors.dividerSubtle),
+        const Divider(
+          height: TroskySpacing.s16,
+          color: TroskyColors.dividerSubtle,
+        ),
         _AddMethodButton(),
       ],
     );
@@ -197,7 +202,10 @@ class _MethodRow extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(vertical: TroskySpacing.s10),
           child: Row(
             children: [
-              _BrandTile(color: brandColor, text: _brandInitial(method.channel)),
+              _BrandTile(
+                color: brandColor,
+                text: _brandInitial(method.channel),
+              ),
               const SizedBox(width: TroskySpacing.s12),
               Expanded(
                 child: Column(
@@ -328,13 +336,12 @@ class _RecentTransactions extends ConsumerWidget {
       error: (_, _) =>
           _CardError(onRetry: () => ref.invalidate(recentTransactionsProvider)),
       data: (result) => switch (result) {
-        Err() =>
-          _CardError(onRetry: () => ref.invalidate(recentTransactionsProvider)),
+        Err() => _CardError(
+          onRetry: () => ref.invalidate(recentTransactionsProvider),
+        ),
         Ok(:final value) when value.items.isEmpty => _EmptyTransactions(),
         Ok(:final value) => Column(
-          children: [
-            for (final t in value.items) _TransactionRow(txn: t),
-          ],
+          children: [for (final t in value.items) _TransactionRow(txn: t)],
         ),
       },
     );
@@ -361,7 +368,12 @@ class _ExpandedTransactions extends ConsumerWidget {
             Err() => _CardError(
               onRetry: () => ref.invalidate(expandedTransactionsProvider),
             ),
-            Ok(:final value) => _buildGrouped(context, value.items, filter, l10n),
+            Ok(:final value) => _buildGrouped(
+              context,
+              value.items,
+              filter,
+              l10n,
+            ),
           },
         ),
       ],
@@ -435,7 +447,9 @@ class _FilterChips extends ConsumerWidget {
             ref.read(transactionFilterProvider.notifier).set(f);
             ref
                 .read(telemetryProvider)
-                .emit(TelemetryEvent('wallet_filter_changed', {'type': f.name}));
+                .emit(
+                  TelemetryEvent('wallet_filter_changed', {'type': f.name}),
+                );
           },
         ),
       );
@@ -466,8 +480,7 @@ class _TransactionRow extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final kind = kindFor(txn);
     final isCredit = txn.entryType == WalletEntryType.credit;
-    final amountText =
-        '${isCredit ? '+' : ''}${formatCurrencyGhs(txn.amount)}';
+    final amountText = '${isCredit ? '+' : ''}${formatCurrencyGhs(txn.amount)}';
     final amountColor = isCredit ? TroskyColors.success : TroskyColors.ink;
     final (iconData, bg) = _kindIcon(kind);
     return Semantics(
@@ -478,9 +491,11 @@ class _TransactionRow extends ConsumerWidget {
         onTap: () {
           ref
               .read(telemetryProvider)
-              .emit(TelemetryEvent('wallet_transaction_opened', {
-                'type': kind.name,
-              }));
+              .emit(
+                TelemetryEvent('wallet_transaction_opened', {
+                  'type': kind.name,
+                }),
+              );
           _openTransactionDetail(context, txn);
         },
         child: Padding(
@@ -693,27 +708,28 @@ String _brandInitial(PaymentChannel channel) => switch (channel) {
 
 (IconData, Color) _kindIcon(TransactionKind kind) => switch (kind) {
   TransactionKind.topUp => (Icons.add_circle_outline, TroskyColors.background),
-  TransactionKind.trip => (Icons.directions_bus_outlined, TroskyColors.background),
+  TransactionKind.trip => (
+    Icons.directions_bus_outlined,
+    TroskyColors.background,
+  ),
   TransactionKind.refund => (Icons.undo_rounded, TroskyColors.background),
   TransactionKind.earning => (Icons.payments_outlined, TroskyColors.background),
   TransactionKind.withdrawal => (
     Icons.account_balance_wallet_outlined,
     TroskyColors.background,
   ),
-  TransactionKind.adjustment => (
-    Icons.tune_rounded,
-    TroskyColors.background,
-  ),
+  TransactionKind.adjustment => (Icons.tune_rounded, TroskyColors.background),
 };
 
-String _kindLabel(AppLocalizations l10n, TransactionKind kind) => switch (kind) {
-  TransactionKind.topUp => l10n.walletKindTopUp,
-  TransactionKind.trip => l10n.walletKindTrip,
-  TransactionKind.refund => l10n.walletKindRefund,
-  TransactionKind.earning => l10n.walletKindEarning,
-  TransactionKind.withdrawal => l10n.walletKindWithdrawal,
-  TransactionKind.adjustment => l10n.walletKindAdjustment,
-};
+String _kindLabel(AppLocalizations l10n, TransactionKind kind) =>
+    switch (kind) {
+      TransactionKind.topUp => l10n.walletKindTopUp,
+      TransactionKind.trip => l10n.walletKindTrip,
+      TransactionKind.refund => l10n.walletKindRefund,
+      TransactionKind.earning => l10n.walletKindEarning,
+      TransactionKind.withdrawal => l10n.walletKindWithdrawal,
+      TransactionKind.adjustment => l10n.walletKindAdjustment,
+    };
 
 // ─────────────────────────────────────────────────────────────── Sheets
 
@@ -725,15 +741,19 @@ void _openMethodSheet(
   final l10n = AppLocalizations.of(context);
   ref
       .read(telemetryProvider)
-      .emit(TelemetryEvent('wallet_payment_method_tapped', {
-        'type': method.channel.name,
-      }));
+      .emit(
+        TelemetryEvent('wallet_payment_method_tapped', {
+          'type': method.channel.name,
+        }),
+      );
   showModalBottomSheet<void>(
     context: context,
     useSafeArea: true,
     backgroundColor: TroskyColors.surface,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(TroskyRadii.r24)),
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(TroskyRadii.r24),
+      ),
     ),
     builder: (sheetCtx) => SafeArea(
       child: Padding(
@@ -766,10 +786,11 @@ void _openMethodSheet(
                 if (res is Ok) {
                   ref
                       .read(telemetryProvider)
-                      .emit(TelemetryEvent(
-                        'wallet_payment_method_set_default',
-                        {'type': method.channel.name},
-                      ));
+                      .emit(
+                        TelemetryEvent('wallet_payment_method_set_default', {
+                          'type': method.channel.name,
+                        }),
+                      );
                   ref.invalidate(paymentMethodsProvider);
                 }
               },
@@ -787,10 +808,11 @@ void _openMethodSheet(
                 if (res is Ok) {
                   ref
                       .read(telemetryProvider)
-                      .emit(TelemetryEvent(
-                        'wallet_payment_method_removed',
-                        {'type': method.channel.name},
-                      ));
+                      .emit(
+                        TelemetryEvent('wallet_payment_method_removed', {
+                          'type': method.channel.name,
+                        }),
+                      );
                   ref.invalidate(paymentMethodsProvider);
                 }
               },
@@ -809,7 +831,9 @@ void _openAddMethodPicker(BuildContext context, WidgetRef ref) {
     useSafeArea: true,
     backgroundColor: TroskyColors.surface,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(TroskyRadii.r24)),
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(TroskyRadii.r24),
+      ),
     ),
     builder: (sheetCtx) => SafeArea(
       child: Padding(
@@ -907,7 +931,9 @@ void _showMomoForm(BuildContext context, WidgetRef ref) {
     useSafeArea: true,
     backgroundColor: TroskyColors.surface,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(TroskyRadii.r24)),
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(TroskyRadii.r24),
+      ),
     ),
     builder: (sheetCtx) => Padding(
       padding: EdgeInsets.only(
@@ -957,10 +983,11 @@ void _showMomoForm(BuildContext context, WidgetRef ref) {
                   if (res is Ok<PaymentMethodResponse>) {
                     ref
                         .read(telemetryProvider)
-                        .emit(TelemetryEvent(
-                          'wallet_add_method_submitted',
-                          {'type': 'mtn_momo'},
-                        ));
+                        .emit(
+                          TelemetryEvent('wallet_add_method_submitted', {
+                            'type': 'mtn_momo',
+                          }),
+                        );
                     ref.invalidate(paymentMethodsProvider);
                     Navigator.of(sheetCtx).pop();
                     unawaitedGo(
@@ -1007,7 +1034,9 @@ void _openTransactionDetail(
     useSafeArea: true,
     backgroundColor: TroskyColors.surface,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(TroskyRadii.r24)),
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(TroskyRadii.r24),
+      ),
     ),
     builder: (sheetCtx) => SafeArea(
       child: Padding(

@@ -13,10 +13,7 @@ import 'package:trosky_auth/trosky_auth.dart';
 import 'package:trosky_core/trosky_core.dart';
 
 class _FakeRepo implements PaymentRepository {
-  _FakeRepo({
-    this.methodsResult,
-    this.transactionsResult,
-  });
+  _FakeRepo({this.methodsResult, this.transactionsResult});
 
   Result<List<PaymentMethodResponse>>? methodsResult;
   Result<Paginated<WalletTransactionResponse>>? transactionsResult;
@@ -202,48 +199,47 @@ void main() {
     expect(find.text('Row t2'), findsOneWidget);
   });
 
-  testWidgets(
-    'See all / See less toggles the expanded list and filter chips',
-    (tester) async {
-      tester.view.physicalSize = const Size(400, 1600);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.reset);
-      final telemetry = _RecordingTelemetry();
-      final repo = _FakeRepo(
-        methodsResult: const Ok([]),
-        transactionsResult: Ok(
-          Paginated(
-            items: [
-              _txn(
-                id: 't1',
-                ref: WalletReferenceType.walletTopup,
-                entry: WalletEntryType.credit,
-              ),
-            ],
-            total: 1,
-            limit: 5,
-            offset: 0,
-          ),
+  testWidgets('See all / See less toggles the expanded list and filter chips', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final telemetry = _RecordingTelemetry();
+    final repo = _FakeRepo(
+      methodsResult: const Ok([]),
+      transactionsResult: Ok(
+        Paginated(
+          items: [
+            _txn(
+              id: 't1',
+              ref: WalletReferenceType.walletTopup,
+              entry: WalletEntryType.credit,
+            ),
+          ],
+          total: 1,
+          limit: 5,
+          offset: 0,
         ),
-      );
-      await tester.pumpWidget(_host(repo: repo, telemetry: telemetry));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('See all'));
-      await tester.pumpAndSettle();
-      expect(find.text('All'), findsOneWidget);
-      expect(find.text('Top-ups', skipOffstage: false), findsOneWidget);
-      expect(find.text('Trips', skipOffstage: false), findsOneWidget);
-      expect(find.text('Refunds', skipOffstage: false), findsOneWidget);
-      expect(find.text('See less'), findsOneWidget);
-      expect(
-        telemetry.events.any((e) => e.name == 'wallet_transactions_expanded'),
-        isTrue,
-      );
-      await tester.tap(find.text('See less'));
-      await tester.pumpAndSettle();
-      expect(find.text('All'), findsNothing);
-    },
-  );
+      ),
+    );
+    await tester.pumpWidget(_host(repo: repo, telemetry: telemetry));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('See all'));
+    await tester.pumpAndSettle();
+    expect(find.text('All'), findsOneWidget);
+    expect(find.text('Top-ups', skipOffstage: false), findsOneWidget);
+    expect(find.text('Trips', skipOffstage: false), findsOneWidget);
+    expect(find.text('Refunds', skipOffstage: false), findsOneWidget);
+    expect(find.text('See less'), findsOneWidget);
+    expect(
+      telemetry.events.any((e) => e.name == 'wallet_transactions_expanded'),
+      isTrue,
+    );
+    await tester.tap(find.text('See less'));
+    await tester.pumpAndSettle();
+    expect(find.text('All'), findsNothing);
+  });
 
   testWidgets(
     'Tapping non-default method opens sheet; Set as default calls updateMethod',

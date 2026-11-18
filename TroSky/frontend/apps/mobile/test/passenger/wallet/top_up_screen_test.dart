@@ -141,27 +141,26 @@ void main() {
     expect(repo.topupCalls, isEmpty);
   });
 
-  testWidgets(
-    'Submit calls repository with the idempotency key and amount',
-    (tester) async {
-      tester.view.physicalSize = const Size(400, 1600);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.reset);
-      final telemetry = _RecordingTelemetry();
-      final repo = _FakeRepo();
-      await tester.pumpWidget(_host(repo: repo, telemetry: telemetry));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Top up ₵100.00'));
-      await tester.pump();
-      expect(repo.topupCalls.length, 1);
-      final (req, key) = repo.topupCalls.single;
-      expect(req.amount, '100.00');
-      expect(req.paymentMethodId, 'm1');
-      expect(key, isNotEmpty);
-      expect(
-        telemetry.events.any((e) => e.name == 'wallet_topup_submitted'),
-        isTrue,
-      );
-    },
-  );
+  testWidgets('Submit calls repository with the idempotency key and amount', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final telemetry = _RecordingTelemetry();
+    final repo = _FakeRepo();
+    await tester.pumpWidget(_host(repo: repo, telemetry: telemetry));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Top up ₵100.00'));
+    await tester.pump();
+    expect(repo.topupCalls.length, 1);
+    final (req, key) = repo.topupCalls.single;
+    expect(req.amount, '100.00');
+    expect(req.paymentMethodId, 'm1');
+    expect(key, isNotEmpty);
+    expect(
+      telemetry.events.any((e) => e.name == 'wallet_topup_submitted'),
+      isTrue,
+    );
+  });
 }

@@ -61,7 +61,9 @@ void main() {
     test('produces v4-shaped strings (8-4-4-4-12)', () {
       final key = uuidV4();
       expect(
-        RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$').hasMatch(key),
+        RegExp(
+          r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+        ).hasMatch(key),
         isTrue,
         reason: 'got: $key',
       );

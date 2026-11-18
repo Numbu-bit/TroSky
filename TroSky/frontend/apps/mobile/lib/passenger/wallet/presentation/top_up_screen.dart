@@ -82,10 +82,12 @@ class _TopUpScreenState extends ConsumerState<TopUpScreen> {
     });
     final key = _idempotencyKey ??= uuidV4();
     final amountString = v.toStringAsFixed(2);
-    ref.read(telemetryProvider).emit(
-          TelemetryEvent('wallet_topup_submitted', {'amount': v}),
-        );
-    final result = await ref.read(paymentRepositoryProvider).topUpWallet(
+    ref
+        .read(telemetryProvider)
+        .emit(TelemetryEvent('wallet_topup_submitted', {'amount': v}));
+    final result = await ref
+        .read(paymentRepositoryProvider)
+        .topUpWallet(
           WalletTopupRequest(
             amount: amountString,
             paymentMethodId: widget.args.method.id,
@@ -144,9 +146,9 @@ class _TopUpScreenState extends ConsumerState<TopUpScreen> {
       _submitting = false;
       _failure = reason;
     });
-    ref.read(telemetryProvider).emit(
-          TelemetryEvent('wallet_topup_failed', {'reason': reason}),
-        );
+    ref
+        .read(telemetryProvider)
+        .emit(TelemetryEvent('wallet_topup_failed', {'reason': reason}));
   }
 
   @override
@@ -186,7 +188,9 @@ class _TopUpScreenState extends ConsumerState<TopUpScreen> {
                       onSelected: (_) {
                         _amount.text = preset.toString();
                         setState(() => _amountError = null);
-                        ref.read(telemetryProvider).emit(
+                        ref
+                            .read(telemetryProvider)
+                            .emit(
                               TelemetryEvent('wallet_topup_preset_picked', {
                                 'amount': preset,
                               }),

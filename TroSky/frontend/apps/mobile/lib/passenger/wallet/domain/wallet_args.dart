@@ -19,17 +19,15 @@ class TopUpArgs {
 
 /// How we classify a wallet transaction's "kind" for icon + copy on P-17.
 /// Mirrors [WalletReferenceType] but keeps the UI mapping in one place.
-TransactionKind kindFor(WalletTransactionResponse txn) => switch ((
-  txn.referenceType,
-  txn.entryType,
-)) {
-  (WalletReferenceType.walletTopup, _) => TransactionKind.topUp,
-  (WalletReferenceType.bookingPayment, _) => TransactionKind.trip,
-  (WalletReferenceType.refund, _) => TransactionKind.refund,
-  (WalletReferenceType.tripEarning, _) => TransactionKind.earning,
-  (WalletReferenceType.withdrawal, _) => TransactionKind.withdrawal,
-  (WalletReferenceType.adminAdjustment, _) => TransactionKind.adjustment,
-};
+TransactionKind kindFor(WalletTransactionResponse txn) =>
+    switch ((txn.referenceType, txn.entryType)) {
+      (WalletReferenceType.walletTopup, _) => TransactionKind.topUp,
+      (WalletReferenceType.bookingPayment, _) => TransactionKind.trip,
+      (WalletReferenceType.refund, _) => TransactionKind.refund,
+      (WalletReferenceType.tripEarning, _) => TransactionKind.earning,
+      (WalletReferenceType.withdrawal, _) => TransactionKind.withdrawal,
+      (WalletReferenceType.adminAdjustment, _) => TransactionKind.adjustment,
+    };
 
 enum TransactionKind { topUp, trip, refund, earning, withdrawal, adjustment }
 

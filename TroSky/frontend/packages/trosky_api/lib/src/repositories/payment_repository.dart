@@ -184,8 +184,10 @@ class LivePaymentRepository implements PaymentRepository {
           'reference_type': _referenceTypeParam(referenceType),
       },
     ),
-    (data) =>
-        Paginated.fromJson(jsonObject(data), WalletTransactionResponse.fromJson),
+    (data) => Paginated.fromJson(
+      jsonObject(data),
+      WalletTransactionResponse.fromJson,
+    ),
   );
 }
 

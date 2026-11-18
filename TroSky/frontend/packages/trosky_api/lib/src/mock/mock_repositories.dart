@@ -379,12 +379,7 @@ class MockPaymentRepository implements PaymentRepository {
   }) async {
     if (latency > Duration.zero) await Future<void>.delayed(latency);
     return Ok(
-      Paginated(
-        items: const [],
-        total: 0,
-        limit: limit,
-        offset: offset,
-      ),
+      Paginated(items: const [], total: 0, limit: limit, offset: offset),
     );
   }
 }
