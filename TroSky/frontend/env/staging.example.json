@@ -6,5 +6,6 @@
   "TESTER_MENU": "true",
   "TICKET_QR_ENABLED": "true",
   "TRIP_DETAILS_ENABLED": "true",
-  "TRIP_TRACKING_ENABLED": "true"
+  "TRIP_TRACKING_ENABLED": "true",
+  "WALLET_ENABLED": "true"
 }

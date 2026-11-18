@@ -53,6 +53,27 @@ abstract interface class PaymentRepository {
   Future<Result<PaymentMethodResponse>> addMethod(
     PaymentMethodCreateRequest request,
   );
+
+  /// `PATCH /users/me/payment-methods/{id}`: rename a method or make it
+  /// the default. To change the default, set `isDefault: true` on the
+  /// new method; the backend clears the flag on the previous one.
+  Future<Result<PaymentMethodResponse>> updateMethod(
+    String methodId,
+    PaymentMethodUpdateRequest request,
+  );
+
+  /// `DELETE /users/me/payment-methods/{id}`. If the removed one was the
+  /// default, the backend promotes the newest remaining method.
+  Future<Result<void>> deleteMethod(String methodId);
+
+  /// `GET /wallet/transactions`: the signed-in user's wallet ledger,
+  /// newest first. Optional [referenceType] narrows to one kind
+  /// (`walletTopup`, `bookingPayment`, `refund`, …).
+  Future<Result<Paginated<WalletTransactionResponse>>> transactions({
+    WalletReferenceType? referenceType,
+    int limit = 20,
+    int offset = 0,
+  });
 }
 
 /// [PaymentRepository] against the backend.
@@ -129,4 +150,54 @@ class LivePaymentRepository implements PaymentRepository {
         _dio.post<Object?>('/users/me/payment-methods', data: request.toJson()),
     (data) => PaymentMethodResponse.fromJson(jsonObject(data)),
   );
+
+  @override
+  Future<Result<PaymentMethodResponse>> updateMethod(
+    String methodId,
+    PaymentMethodUpdateRequest request,
+  ) => apiCall(
+    () => _dio.patch<Object?>(
+      '/users/me/payment-methods/$methodId',
+      data: request.toJson(),
+    ),
+    (data) => PaymentMethodResponse.fromJson(jsonObject(data)),
+  );
+
+  @override
+  Future<Result<void>> deleteMethod(String methodId) => apiCall(
+    () => _dio.delete<Object?>('/users/me/payment-methods/$methodId'),
+    (_) {},
+  );
+
+  @override
+  Future<Result<Paginated<WalletTransactionResponse>>> transactions({
+    WalletReferenceType? referenceType,
+    int limit = 20,
+    int offset = 0,
+  }) => apiCall(
+    () => _dio.get<Object?>(
+      '/wallet/transactions',
+      queryParameters: {
+        'limit': limit,
+        'offset': offset,
+        if (referenceType != null)
+          'reference_type': _referenceTypeParam(referenceType),
+      },
+    ),
+    (data) => Paginated.fromJson(
+      jsonObject(data),
+      WalletTransactionResponse.fromJson,
+    ),
+  );
 }
+
+/// Snake-case value for `reference_type` query param. Keeps the DTO's
+/// enum map internal; the backend expects the literal snake_case value.
+String _referenceTypeParam(WalletReferenceType type) => switch (type) {
+  WalletReferenceType.bookingPayment => 'booking_payment',
+  WalletReferenceType.walletTopup => 'wallet_topup',
+  WalletReferenceType.refund => 'refund',
+  WalletReferenceType.adminAdjustment => 'admin_adjustment',
+  WalletReferenceType.tripEarning => 'trip_earning',
+  WalletReferenceType.withdrawal => 'withdrawal',
+};

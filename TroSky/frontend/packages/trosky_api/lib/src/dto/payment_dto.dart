@@ -131,3 +131,55 @@ abstract class PaymentMethodCreateRequest with _$PaymentMethodCreateRequest {
   factory PaymentMethodCreateRequest.fromJson(Map<String, dynamic> json) =>
       _$PaymentMethodCreateRequestFromJson(json);
 }
+
+/// `PaymentMethodUpdateRequest` for `PATCH /users/me/payment-methods/{id}`:
+/// rename a method or make it the default.
+@freezed
+abstract class PaymentMethodUpdateRequest with _$PaymentMethodUpdateRequest {
+  const factory PaymentMethodUpdateRequest({String? label, bool? isDefault}) =
+      _PaymentMethodUpdateRequest;
+
+  factory PaymentMethodUpdateRequest.fromJson(Map<String, dynamic> json) =>
+      _$PaymentMethodUpdateRequestFromJson(json);
+}
+
+/// `WalletEntryType`. Every wallet transaction is one or the other.
+@JsonEnum(fieldRename: FieldRename.snake)
+enum WalletEntryType { credit, debit }
+
+/// `WalletReferenceType` — the "kind" of each ledger entry. Drives the
+/// P-17 icon + copy for a row.
+@JsonEnum(fieldRename: FieldRename.snake)
+enum WalletReferenceType {
+  bookingPayment,
+  walletTopup,
+  refund,
+  adminAdjustment,
+  tripEarning,
+  withdrawal,
+}
+
+/// `WalletTransactionResponse` from `GET /wallet/transactions`. Append-only
+/// ledger: every row is a completed fact, no `status` field. Pending/failed
+/// state for a top-up lives on the matching `/payments` row.
+@freezed
+abstract class WalletTransactionResponse with _$WalletTransactionResponse {
+  const factory WalletTransactionResponse({
+    required String id,
+    @JsonKey(unknownEnumValue: WalletEntryType.debit)
+    required WalletEntryType entryType,
+    @JsonKey(fromJson: decimalString) required String amount,
+    @JsonKey(fromJson: decimalString) required String balanceAfter,
+    @JsonKey(unknownEnumValue: WalletReferenceType.adminAdjustment)
+    required WalletReferenceType referenceType,
+
+    /// Points to the booking for `bookingPayment`/`refund`, to the trip
+    /// for `tripEarning`, to the withdrawal for `withdrawal`.
+    String? referenceId,
+    required String description,
+    required DateTime createdAt,
+  }) = _WalletTransactionResponse;
+
+  factory WalletTransactionResponse.fromJson(Map<String, dynamic> json) =>
+      _$WalletTransactionResponseFromJson(json);
+}

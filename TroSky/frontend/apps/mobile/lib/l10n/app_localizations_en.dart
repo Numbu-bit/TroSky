@@ -1820,4 +1820,149 @@ class AppLocalizationsEn extends AppLocalizations {
   String trackTripSemanticsMap(int minutes) {
     return 'Live tracking map, bus is $minutes minutes away';
   }
+
+  @override
+  String get walletTitle => 'Wallet';
+
+  @override
+  String get walletPaymentMethodsTitle => 'Payment Methods';
+
+  @override
+  String get walletRecentTransactions => 'Recent Transactions';
+
+  @override
+  String get walletSeeAll => 'See all';
+
+  @override
+  String get walletSeeLess => 'See less';
+
+  @override
+  String get walletAddMethod => '+ Add method';
+
+  @override
+  String get walletAddMethodTitle => 'Add a payment method';
+
+  @override
+  String get walletDefault => 'Default';
+
+  @override
+  String get walletSetAsDefault => 'Set as default';
+
+  @override
+  String get walletRemoveMethod => 'Remove';
+
+  @override
+  String get walletComingSoon => 'Coming soon';
+
+  @override
+  String get walletBrandMtnMomo => 'MTN MoMo';
+
+  @override
+  String get walletBrandTelecelCash => 'Telecel Cash';
+
+  @override
+  String get walletBrandAirteltigo => 'AirtelTigo Money';
+
+  @override
+  String get walletBrandVisa => 'Visa Debit';
+
+  @override
+  String get walletBrandWallet => 'Wallet';
+
+  @override
+  String get walletNoPaymentMethods => 'You have no saved payment methods.';
+
+  @override
+  String get walletTransactionsEmpty =>
+      'No transactions yet. Top up to get started.';
+
+  @override
+  String get walletFilterAll => 'All';
+
+  @override
+  String get walletFilterTopUps => 'Top-ups';
+
+  @override
+  String get walletFilterTrips => 'Trips';
+
+  @override
+  String get walletFilterRefunds => 'Refunds';
+
+  @override
+  String get walletNoMatches => 'No transactions match this filter.';
+
+  @override
+  String get walletErrorLoad => 'Couldn\'t load.';
+
+  @override
+  String get walletRetry => 'Retry';
+
+  @override
+  String walletEndingIn(String last4) {
+    return 'ending in $last4';
+  }
+
+  @override
+  String get walletMomoFormTitle => 'Enter your MoMo number';
+
+  @override
+  String get walletMomoFormPhoneLabel => 'Phone number';
+
+  @override
+  String get walletKindTopUp => 'Top up';
+
+  @override
+  String get walletKindTrip => 'Trip';
+
+  @override
+  String get walletKindRefund => 'Refund';
+
+  @override
+  String get walletKindEarning => 'Earning';
+
+  @override
+  String get walletKindWithdrawal => 'Withdrawal';
+
+  @override
+  String get walletKindAdjustment => 'Adjustment';
+
+  @override
+  String get walletTxnReference => 'Reference';
+
+  @override
+  String get walletViewTrip => 'View trip';
+
+  @override
+  String get walletTopUpTitle => 'Top up';
+
+  @override
+  String get walletTopUpAmount => 'Amount';
+
+  @override
+  String get walletTopUpCustomAmount => 'Custom amount';
+
+  @override
+  String get walletTopUpAmountError => 'Enter an amount between ₵1 and ₵1,000.';
+
+  @override
+  String get walletTopUpAmountFallback => '₵0.00';
+
+  @override
+  String walletTopUpCta(String amount) {
+    return 'Top up $amount';
+  }
+
+  @override
+  String get walletTopUpWaiting => 'Waiting for MoMo confirmation…';
+
+  @override
+  String walletTopUpSuccess(String amount) {
+    return 'Top up of $amount succeeded.';
+  }
+
+  @override
+  String get walletTopUpFailure => 'Top up failed. Try again.';
+
+  @override
+  String get walletTopUpRetry => 'Retry';
 }

@@ -29,6 +29,9 @@ import '../passenger/trips/presentation/booking_details_screen.dart';
 import '../passenger/trips/presentation/ticket_screen.dart';
 import '../passenger/trips/presentation/trip_details_screen.dart';
 import '../passenger/trips/presentation/trips_screen.dart';
+import '../passenger/wallet/domain/wallet_args.dart';
+import '../passenger/wallet/presentation/top_up_screen.dart';
+import '../passenger/wallet/presentation/wallet_screen.dart';
 import 'placeholder_screen.dart';
 
 part 'routes.g.dart';
@@ -87,6 +90,10 @@ enum AppRoute {
   /// Live tracking (P-11): full-screen map + bottom card. `extra` is a
   /// [TrackTripArgs]. Gated by `TRIP_TRACKING_ENABLED`.
   trackTrip('/bookings/:bookingId/track'),
+
+  /// Top up (P-18, derived): one screen to add GHS to the in-app wallet
+  /// via MoMo. `extra` is a [TopUpArgs]. Gated by `WALLET_ENABLED`.
+  topUp('/wallet/top-up'),
   notifications('/notifications'),
   favouriteRoutes('/favourite-routes'),
   subscribe('/subscribe'),
@@ -158,8 +165,9 @@ GoRouter router(Ref ref) {
             routes: [
               route(
                 AppRoute.wallet,
-                (context, state) =>
-                    PlaceholderScreen(routeName: AppRoute.wallet.name),
+                (context, state) => walletEnabled
+                    ? const WalletScreen()
+                    : PlaceholderScreen(routeName: AppRoute.wallet.name),
               ),
             ],
           ),
@@ -241,6 +249,15 @@ GoRouter router(Ref ref) {
             state.extra is TrackTripArgs ? null : AppRoute.trips.path,
         builder: (context, state) =>
             TrackTripScreen(args: state.extra! as TrackTripArgs),
+      ),
+      GoRoute(
+        path: AppRoute.topUp.path,
+        name: AppRoute.topUp.name,
+        redirect: (context, state) => state.extra is TopUpArgs
+            ? (walletEnabled ? null : AppRoute.wallet.path)
+            : AppRoute.wallet.path,
+        builder: (context, state) =>
+            TopUpScreen(args: state.extra! as TopUpArgs),
       ),
       for (final (pushed, title)
           in <(AppRoute, String Function(AppLocalizations))>[

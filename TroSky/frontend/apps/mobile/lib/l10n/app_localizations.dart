@@ -3167,6 +3167,282 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Live tracking map, bus is {minutes} minutes away'**
   String trackTripSemanticsMap(int minutes);
+
+  /// P-17 header.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallet'**
+  String get walletTitle;
+
+  /// P-17 card title.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment Methods'**
+  String get walletPaymentMethodsTitle;
+
+  /// P-17 card title.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent Transactions'**
+  String get walletRecentTransactions;
+
+  /// P-17 expand link.
+  ///
+  /// In en, this message translates to:
+  /// **'See all'**
+  String get walletSeeAll;
+
+  /// P-17 collapse link.
+  ///
+  /// In en, this message translates to:
+  /// **'See less'**
+  String get walletSeeLess;
+
+  /// P-17 add link.
+  ///
+  /// In en, this message translates to:
+  /// **'+ Add method'**
+  String get walletAddMethod;
+
+  /// Add-method sheet title.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a payment method'**
+  String get walletAddMethodTitle;
+
+  /// Default-method pill.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get walletDefault;
+
+  /// Method sheet action.
+  ///
+  /// In en, this message translates to:
+  /// **'Set as default'**
+  String get walletSetAsDefault;
+
+  /// Method sheet destructive action.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get walletRemoveMethod;
+
+  /// Disabled picker row hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming soon'**
+  String get walletComingSoon;
+
+  /// Brand name.
+  ///
+  /// In en, this message translates to:
+  /// **'MTN MoMo'**
+  String get walletBrandMtnMomo;
+
+  /// Brand name.
+  ///
+  /// In en, this message translates to:
+  /// **'Telecel Cash'**
+  String get walletBrandTelecelCash;
+
+  /// Brand name.
+  ///
+  /// In en, this message translates to:
+  /// **'AirtelTigo Money'**
+  String get walletBrandAirteltigo;
+
+  /// Brand name.
+  ///
+  /// In en, this message translates to:
+  /// **'Visa Debit'**
+  String get walletBrandVisa;
+
+  /// Brand name (in-app wallet).
+  ///
+  /// In en, this message translates to:
+  /// **'Wallet'**
+  String get walletBrandWallet;
+
+  /// Empty methods state.
+  ///
+  /// In en, this message translates to:
+  /// **'You have no saved payment methods.'**
+  String get walletNoPaymentMethods;
+
+  /// First-time user transactions empty state.
+  ///
+  /// In en, this message translates to:
+  /// **'No transactions yet. Top up to get started.'**
+  String get walletTransactionsEmpty;
+
+  /// Filter chip.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get walletFilterAll;
+
+  /// Filter chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Top-ups'**
+  String get walletFilterTopUps;
+
+  /// Filter chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Trips'**
+  String get walletFilterTrips;
+
+  /// Filter chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Refunds'**
+  String get walletFilterRefunds;
+
+  /// Filter empty state.
+  ///
+  /// In en, this message translates to:
+  /// **'No transactions match this filter.'**
+  String get walletNoMatches;
+
+  /// Card error message.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load.'**
+  String get walletErrorLoad;
+
+  /// Retry action.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get walletRetry;
+
+  /// Accessibility fragment for a payment method.
+  ///
+  /// In en, this message translates to:
+  /// **'ending in {last4}'**
+  String walletEndingIn(String last4);
+
+  /// Add MoMo form title.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your MoMo number'**
+  String get walletMomoFormTitle;
+
+  /// Phone field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone number'**
+  String get walletMomoFormPhoneLabel;
+
+  /// Transaction kind label.
+  ///
+  /// In en, this message translates to:
+  /// **'Top up'**
+  String get walletKindTopUp;
+
+  /// Transaction kind label.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip'**
+  String get walletKindTrip;
+
+  /// Transaction kind label.
+  ///
+  /// In en, this message translates to:
+  /// **'Refund'**
+  String get walletKindRefund;
+
+  /// Transaction kind label.
+  ///
+  /// In en, this message translates to:
+  /// **'Earning'**
+  String get walletKindEarning;
+
+  /// Transaction kind label.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdrawal'**
+  String get walletKindWithdrawal;
+
+  /// Transaction kind label.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjustment'**
+  String get walletKindAdjustment;
+
+  /// Reference id label on the detail sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Reference'**
+  String get walletTxnReference;
+
+  /// Link into trip details.
+  ///
+  /// In en, this message translates to:
+  /// **'View trip'**
+  String get walletViewTrip;
+
+  /// P-18 AppBar title.
+  ///
+  /// In en, this message translates to:
+  /// **'Top up'**
+  String get walletTopUpTitle;
+
+  /// P-18 section title.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get walletTopUpAmount;
+
+  /// P-18 custom amount field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom amount'**
+  String get walletTopUpCustomAmount;
+
+  /// Invalid amount error.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an amount between ₵1 and ₵1,000.'**
+  String get walletTopUpAmountError;
+
+  /// Fallback amount text on the CTA label while the input is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'₵0.00'**
+  String get walletTopUpAmountFallback;
+
+  /// P-18 primary button.
+  ///
+  /// In en, this message translates to:
+  /// **'Top up {amount}'**
+  String walletTopUpCta(String amount);
+
+  /// P-18 pending status row.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for MoMo confirmation…'**
+  String get walletTopUpWaiting;
+
+  /// P-18 success snackbar.
+  ///
+  /// In en, this message translates to:
+  /// **'Top up of {amount} succeeded.'**
+  String walletTopUpSuccess(String amount);
+
+  /// P-18 inline failure message.
+  ///
+  /// In en, this message translates to:
+  /// **'Top up failed. Try again.'**
+  String get walletTopUpFailure;
+
+  /// P-18 retry CTA.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get walletTopUpRetry;
 }
 
 class _AppLocalizationsDelegate
