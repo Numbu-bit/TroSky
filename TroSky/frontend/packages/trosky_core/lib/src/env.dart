@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// Which repositories the app uses: built-in mock data, or the backend.
 enum ApiMode { mock, live }
 
@@ -52,12 +54,29 @@ class Env {
     String mapTileUrl = '',
     String? features,
   }) {
+    final base = apiBaseUrl.trim();
+    // An empty API_MODE with a real base URL would otherwise silently fall
+    // back to mock — so a release build whose --dart-define-from-file was
+    // dropped (or whose env file is missing/stale) would start up on the
+    // in-memory mock backend and reject every real credential as "invalid".
+    // Treat a non-empty base URL as proof the build was meant to be live.
     final mode = switch (apiMode.trim().toLowerCase()) {
-      '' || 'mock' => ApiMode.mock,
+      'mock' => ApiMode.mock,
+      '' when base.isEmpty => ApiMode.mock,
+      '' => ApiMode.live,
       'live' => ApiMode.live,
       _ => throw ArgumentError.value(apiMode, 'API_MODE', 'Use mock or live'),
     };
-    final base = apiBaseUrl.trim();
+    // In a release APK, an empty API_MODE *and* an empty API_BASE_URL both
+    // being empty means the build pipeline forgot the dart-defines. The
+    // app has no server to talk to; fail loud instead of silently going
+    // mock (which would reject real users with "invalid credentials").
+    if (kReleaseMode && apiMode.trim().isEmpty && base.isEmpty) {
+      throw ArgumentError(
+        'Release build is missing both API_MODE and API_BASE_URL. '
+        'Pass --dart-define-from-file=env/<env>.json at build time.',
+      );
+    }
     if (mode == ApiMode.live) {
       final uri = Uri.tryParse(base);
       if (uri == null ||
