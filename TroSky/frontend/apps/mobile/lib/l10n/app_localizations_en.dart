@@ -1967,7 +1967,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get walletTopUpRetry => 'Retry';
 
   @override
-<<<<<<< HEAD
   String get sosTitle => 'Emergency';
 
   @override
@@ -2104,7 +2103,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get testerMenuEmergency => 'Open P-12 Emergency';
-=======
   String get profileAnonymousName => 'Passenger';
 
   @override
@@ -2283,5 +2281,4 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get signInResetPassword => 'Reset password';
->>>>>>> origin/main
 }

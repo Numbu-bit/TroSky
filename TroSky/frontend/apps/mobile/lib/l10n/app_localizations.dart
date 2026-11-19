@@ -3444,7 +3444,6 @@ abstract class AppLocalizations {
   /// **'Retry'**
   String get walletTopUpRetry;
 
-<<<<<<< HEAD
   /// P-12 header.
   ///
   /// In en, this message translates to:
@@ -3702,7 +3701,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open P-12 Emergency'**
   String get testerMenuEmergency;
-=======
   /// P-21 header fallback when the user has no name.
   ///
   /// In en, this message translates to:
@@ -4050,7 +4048,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reset password'**
   String get signInResetPassword;
->>>>>>> origin/main
 }
 
 class _AppLocalizationsDelegate

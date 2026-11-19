@@ -2578,7 +2578,6 @@
   "walletTopUpRetry": "Retry",
   "@walletTopUpRetry": { "description": "P-18 retry CTA." },
 
-<<<<<<< HEAD
   "sosTitle": "Emergency",
   "@sosTitle": { "description": "P-12 header." },
   "sosHoldSemantics": "Hold to send SOS, 3 second hold",
@@ -2675,8 +2674,7 @@
   "rateBannerAction": "Rate",
   "@rateBannerAction": { "description": "Trips tab banner CTA." },
   "testerMenuEmergency": "Open P-12 Emergency",
-  "@testerMenuEmergency": { "description": "Tester menu action to open the SOS screen off-trip." }
-=======
+  "@testerMenuEmergency": { "description": "Tester menu action to open the SOS screen off-trip." },
   "profileAnonymousName": "Passenger",
   "@profileAnonymousName": { "description": "P-21 header fallback when the user has no name." },
   "profileVerified": "Verified",
@@ -2797,5 +2795,4 @@
 
   "signInResetPassword": "Reset password",
   "@signInResetPassword": { "description": "Sign-in link to S-09a." }
->>>>>>> origin/main
 }
