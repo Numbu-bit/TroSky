@@ -54,6 +54,15 @@ class _RecordingAuth implements AuthRepository {
       inner.refresh(r);
   @override
   Future<Result<void>> logout() => inner.logout();
+
+  @override
+  Future<Result<MessageResponse>> forgotPassword(
+    ForgotPasswordRequest request,
+  ) => inner.forgotPassword(request);
+
+  @override
+  Future<Result<MessageResponse>> resetPassword(ResetPasswordRequest request) =>
+      inner.resetPassword(request);
 }
 
 void main() {

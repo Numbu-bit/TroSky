@@ -33,6 +33,15 @@ class _FlakyAuth implements AuthRepository {
       _inner.otpLogin(r);
   @override
   Future<Result<void>> logout() => _inner.logout();
+
+  @override
+  Future<Result<MessageResponse>> forgotPassword(
+    ForgotPasswordRequest request,
+  ) => _inner.forgotPassword(request);
+
+  @override
+  Future<Result<MessageResponse>> resetPassword(ResetPasswordRequest request) =>
+      _inner.resetPassword(request);
 }
 
 /// The server's state, set by the test.

@@ -161,6 +161,15 @@ class FlakyFavourites implements UserRepository {
     }
     return _inner.listFavouriteRoutes();
   }
+
+  @override
+  Future<Result<UserResponse>> updateMe(UserProfileUpdateRequest request) =>
+      _inner.updateMe(request);
+
+  @override
+  Future<Result<MessageResponse>> deleteAccount(
+    AccountDeletionRequest request,
+  ) => _inner.deleteAccount(request);
 }
 
 /// [UserRepository] override using [wrap] around the mock one.
