@@ -1967,6 +1967,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get walletTopUpRetry => 'Retry';
 
   @override
+<<<<<<< HEAD
   String get sosTitle => 'Emergency';
 
   @override
@@ -2103,4 +2104,184 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get testerMenuEmergency => 'Open P-12 Emergency';
+=======
+  String get profileAnonymousName => 'Passenger';
+
+  @override
+  String get profileVerified => 'Verified';
+
+  @override
+  String get profileUnverified => 'Unverified';
+
+  @override
+  String get profileSectionAccount => 'ACCOUNT';
+
+  @override
+  String get profileSectionPreferences => 'PREFERENCES';
+
+  @override
+  String get profileSectionPayments => 'PAYMENTS';
+
+  @override
+  String get profileSectionSupport => 'SUPPORT';
+
+  @override
+  String get profileRowPersonalInfo => 'Personal information';
+
+  @override
+  String get profileRowChangePassword => 'Change password';
+
+  @override
+  String get profileRowChangeEmail => 'Change email';
+
+  @override
+  String get profileRowNotifications => 'Notifications';
+
+  @override
+  String get profileRowFavourites => 'Favourite routes';
+
+  @override
+  String get profileRowLanguage => 'Language';
+
+  @override
+  String get profileRowPaymentMethods => 'Payment methods';
+
+  @override
+  String get profileRowTransactions => 'Transactions';
+
+  @override
+  String get profileRowHelpCentre => 'Help centre';
+
+  @override
+  String get profileRowReportProblem => 'Report a problem';
+
+  @override
+  String get profileRowAbout => 'About TroSky';
+
+  @override
+  String get profileComingSoon => 'Coming soon';
+
+  @override
+  String get profileSignOut => 'Sign out';
+
+  @override
+  String get profileSignOutCancel => 'Cancel';
+
+  @override
+  String get profileSignOutConfirmTitle => 'Sign out of TroSky?';
+
+  @override
+  String get profileSignOutConfirmBody =>
+      'You can sign back in any time with your phone or email.';
+
+  @override
+  String get profileDeleteAccount => 'Delete account';
+
+  @override
+  String get piiTitle => 'Personal information';
+
+  @override
+  String get piiNameLabel => 'Full name';
+
+  @override
+  String get piiEmailLabel => 'Email';
+
+  @override
+  String get piiPhoneLabel => 'Phone';
+
+  @override
+  String get piiAvatarLabel => 'Avatar';
+
+  @override
+  String get piiNotSet => 'Not set';
+
+  @override
+  String get piiChangeViaSupport => 'Contact support to change this.';
+
+  @override
+  String get piiSave => 'Save changes';
+
+  @override
+  String get piiEditSaved => 'Saved.';
+
+  @override
+  String get piiEditFailure => 'Couldn\'t save. Please try again.';
+
+  @override
+  String get deleteAccountTitle => 'Delete account';
+
+  @override
+  String get deleteAccountWarning => 'Deleting your account is permanent.';
+
+  @override
+  String get deleteAccountBody =>
+      'This signs you out everywhere and removes your profile from TroSky. Data-retention rules may keep anonymised trip records for accounting.';
+
+  @override
+  String get deleteAccountScopeTitle => 'What gets deleted:';
+
+  @override
+  String get deleteAccountScopeBullets =>
+      '• Your profile, name and contact details.\n• Saved payment methods.\n• Favourite routes and preferences.\n• Local tickets and cached data.';
+
+  @override
+  String get deleteAccountConfirmInstruction =>
+      'To confirm, type DELETE below and enter your password.';
+
+  @override
+  String get deleteAccountConfirmLabel => 'Type DELETE';
+
+  @override
+  String get deleteAccountPasswordLabel => 'Current password';
+
+  @override
+  String get deleteAccountCta => 'Delete my account';
+
+  @override
+  String get deleteAccountFailure => 'Couldn\'t delete. Please try again.';
+
+  @override
+  String get resetRequestTitle => 'Reset password';
+
+  @override
+  String get resetRequestInstruction =>
+      'Enter your phone number or email. If an account exists, we\'ll send a 6-digit code.';
+
+  @override
+  String get resetIdentifierLabel => 'Phone or email';
+
+  @override
+  String get resetRequestCta => 'Send code';
+
+  @override
+  String get resetRequestNeutralConfirmation =>
+      'If an account exists for this, we\'ve sent a code with instructions.';
+
+  @override
+  String get resetIHaveACode => 'I have a code →';
+
+  @override
+  String get resetNewTitle => 'New password';
+
+  @override
+  String get resetCodeLabel => '6-digit code';
+
+  @override
+  String get resetNewPasswordLabel => 'New password';
+
+  @override
+  String get resetConfirmPasswordLabel => 'Confirm new password';
+
+  @override
+  String get resetNewCta => 'Set new password';
+
+  @override
+  String get resetFailure => 'Couldn\'t reset. Check the code and try again.';
+
+  @override
+  String get resetSuccess => 'Password changed. Please sign in again.';
+
+  @override
+  String get signInResetPassword => 'Reset password';
+>>>>>>> origin/main
 }

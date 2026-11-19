@@ -61,6 +61,42 @@ Map<String, dynamic> _$UserResponseToJson(_UserResponse instance) =>
       'profile': ?instance.profile?.toJson(),
     };
 
+_UserProfileUpdateRequest _$UserProfileUpdateRequestFromJson(
+  Map<String, dynamic> json,
+) => _UserProfileUpdateRequest(
+  fullName: json['full_name'] as String?,
+  dateOfBirth: json['date_of_birth'] == null
+      ? null
+      : DateTime.parse(json['date_of_birth'] as String),
+  gender: json['gender'] as String?,
+  preferredLanguage: json['preferred_language'] as String?,
+  avatarUrl: json['avatar_url'] as String?,
+);
+
+Map<String, dynamic> _$UserProfileUpdateRequestToJson(
+  _UserProfileUpdateRequest instance,
+) => <String, dynamic>{
+  'full_name': ?instance.fullName,
+  'date_of_birth': ?instance.dateOfBirth?.toIso8601String(),
+  'gender': ?instance.gender,
+  'preferred_language': ?instance.preferredLanguage,
+  'avatar_url': ?instance.avatarUrl,
+};
+
+_AccountDeletionRequest _$AccountDeletionRequestFromJson(
+  Map<String, dynamic> json,
+) => _AccountDeletionRequest(
+  password: json['password'] as String,
+  reason: json['reason'] as String?,
+);
+
+Map<String, dynamic> _$AccountDeletionRequestToJson(
+  _AccountDeletionRequest instance,
+) => <String, dynamic>{
+  'password': instance.password,
+  'reason': ?instance.reason,
+};
+
 _FavouriteRouteCreateRequest _$FavouriteRouteCreateRequestFromJson(
   Map<String, dynamic> json,
 ) => _FavouriteRouteCreateRequest(

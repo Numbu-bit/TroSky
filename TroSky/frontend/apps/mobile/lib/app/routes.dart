@@ -29,10 +29,18 @@ import '../passenger/trips/presentation/booking_details_screen.dart';
 import '../passenger/trips/presentation/ticket_screen.dart';
 import '../passenger/trips/presentation/trip_details_screen.dart';
 import '../passenger/trips/presentation/trips_screen.dart';
+<<<<<<< HEAD
 import '../passenger/safety/domain/safety_args.dart';
 import '../passenger/safety/presentation/rate_screen.dart';
 import '../passenger/safety/presentation/report_screen.dart';
 import '../passenger/safety/presentation/sos_screen.dart';
+=======
+import '../passenger/account/domain/account_args.dart';
+import '../passenger/account/presentation/delete_account_screen.dart';
+import '../passenger/account/presentation/personal_info_screen.dart';
+import '../passenger/account/presentation/profile_screen.dart';
+import '../passenger/account/presentation/reset_password_screen.dart';
+>>>>>>> origin/main
 import '../passenger/wallet/domain/wallet_args.dart';
 import '../passenger/wallet/presentation/top_up_screen.dart';
 import '../passenger/wallet/presentation/wallet_screen.dart';
@@ -99,6 +107,7 @@ enum AppRoute {
   /// via MoMo. `extra` is a [TopUpArgs]. Gated by `WALLET_ENABLED`.
   topUp('/wallet/top-up'),
 
+<<<<<<< HEAD
   /// SOS (P-12): full-screen Emergency. `extra` may be a [SosArgs] (trip
   /// context). Gated by `SOS_ENABLED`.
   sosAlert('/sos/alert'),
@@ -110,6 +119,23 @@ enum AppRoute {
   /// Rate (P-14): rate a completed trip. `extra` is a [RateArgs]. Gated
   /// by `RATE_ENABLED`.
   rate('/bookings/:bookingId/rate'),
+=======
+  /// Personal information (P-22) — sub-page of Profile. Gated by
+  /// `ACCOUNT_ENABLED`.
+  personalInfo('/profile/personal-info'),
+
+  /// Delete account (P-25) — type-to-confirm + password. Gated by
+  /// `ACCOUNT_ENABLED`.
+  deleteAccount('/profile/delete'),
+
+  /// Reset password step A (S-09a): enter the identifier the code goes
+  /// to. Public; no `ACCOUNT_ENABLED` gate.
+  resetPassword('/reset-password'),
+
+  /// Reset password step B (S-09b): enter code + new password. `extra`
+  /// is a [ResetPasswordArgs].
+  resetPasswordNew('/reset-password/new'),
+>>>>>>> origin/main
   notifications('/notifications'),
   favouriteRoutes('/favourite-routes'),
   subscribe('/subscribe'),
@@ -191,8 +217,9 @@ GoRouter router(Ref ref) {
             routes: [
               route(
                 AppRoute.profile,
-                (context, state) =>
-                    SignedInPlaceholder(routeName: AppRoute.profile.name),
+                (context, state) => accountEnabled
+                    ? const ProfileScreen()
+                    : SignedInPlaceholder(routeName: AppRoute.profile.name),
               ),
             ],
           ),
@@ -276,6 +303,7 @@ GoRouter router(Ref ref) {
             TopUpScreen(args: state.extra! as TopUpArgs),
       ),
       GoRoute(
+<<<<<<< HEAD
         path: AppRoute.sosAlert.path,
         name: AppRoute.sosAlert.name,
         redirect: (context, state) => sosEnabled ? null : AppRoute.home.path,
@@ -301,6 +329,33 @@ GoRouter router(Ref ref) {
             ? (rateEnabled ? null : AppRoute.trips.path)
             : AppRoute.trips.path,
         builder: (context, state) => RateScreen(args: state.extra! as RateArgs),
+=======
+        path: AppRoute.personalInfo.path,
+        name: AppRoute.personalInfo.name,
+        redirect: (context, state) =>
+            accountEnabled ? null : AppRoute.profile.path,
+        builder: (context, state) => const PersonalInfoScreen(),
+      ),
+      GoRoute(
+        path: AppRoute.deleteAccount.path,
+        name: AppRoute.deleteAccount.name,
+        redirect: (context, state) =>
+            accountEnabled ? null : AppRoute.profile.path,
+        builder: (context, state) => const DeleteAccountScreen(),
+      ),
+      route(
+        AppRoute.resetPassword,
+        (context, state) => const RequestResetScreen(),
+      ),
+      GoRoute(
+        path: AppRoute.resetPasswordNew.path,
+        name: AppRoute.resetPasswordNew.name,
+        redirect: (context, state) => state.extra is ResetPasswordArgs
+            ? null
+            : AppRoute.resetPassword.path,
+        builder: (context, state) =>
+            NewPasswordScreen(args: state.extra! as ResetPasswordArgs),
+>>>>>>> origin/main
       ),
       for (final (pushed, title)
           in <(AppRoute, String Function(AppLocalizations))>[

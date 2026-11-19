@@ -88,6 +88,29 @@ class MockAuthRepository implements AuthRepository {
   @override
   Future<Result<void>> logout() =>
       _authenticated(_tokens(), latency, _backend.logout);
+
+  // Step 20: password reset. Mock mode returns a generic success so the
+  // UI can be exercised without touching the live backend; replace with
+  // _backend methods when mock seed data gets a reset flow.
+  @override
+  Future<Result<MessageResponse>> forgotPassword(
+    ForgotPasswordRequest request,
+  ) async {
+    if (latency > Duration.zero) await Future<void>.delayed(latency);
+    return const Ok(
+      MessageResponse(
+        message: 'If an account exists, a reset code has been sent.',
+      ),
+    );
+  }
+
+  @override
+  Future<Result<MessageResponse>> resetPassword(
+    ResetPasswordRequest request,
+  ) async {
+    if (latency > Duration.zero) await Future<void>.delayed(latency);
+    return const Ok(MessageResponse(message: 'Password reset successfully.'));
+  }
 }
 
 /// [UserRepository] on a [MockBackend] (`API_MODE=mock`).
@@ -117,6 +140,30 @@ class MockUserRepository implements UserRepository {
     _tokens(),
     latency,
     (token) => _backend.addFavouriteRoute(token, request),
+  );
+
+  // Step 20: PATCH /users/me + DELETE /users/me. The mock backend doesn't
+  // track profile edits or deletion; these return a NOT_IMPLEMENTED error
+  // so the Profile UI shows an offline-style line in mock mode. Live is
+  // the target.
+  @override
+  Future<Result<UserResponse>> updateMe(
+    UserProfileUpdateRequest request,
+  ) async => const Err(
+    UnknownFailure(
+      code: 'NOT_IMPLEMENTED',
+      message: 'Profile editing is not available in mock mode.',
+    ),
+  );
+
+  @override
+  Future<Result<MessageResponse>> deleteAccount(
+    AccountDeletionRequest request,
+  ) async => const Err(
+    UnknownFailure(
+      code: 'NOT_IMPLEMENTED',
+      message: 'Account deletion is not available in mock mode.',
+    ),
   );
 }
 

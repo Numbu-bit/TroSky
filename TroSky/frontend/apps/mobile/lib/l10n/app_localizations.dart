@@ -3444,6 +3444,7 @@ abstract class AppLocalizations {
   /// **'Retry'**
   String get walletTopUpRetry;
 
+<<<<<<< HEAD
   /// P-12 header.
   ///
   /// In en, this message translates to:
@@ -3701,6 +3702,355 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open P-12 Emergency'**
   String get testerMenuEmergency;
+=======
+  /// P-21 header fallback when the user has no name.
+  ///
+  /// In en, this message translates to:
+  /// **'Passenger'**
+  String get profileAnonymousName;
+
+  /// Pill on a verified email or phone.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified'**
+  String get profileVerified;
+
+  /// Pill on an unverified email or phone.
+  ///
+  /// In en, this message translates to:
+  /// **'Unverified'**
+  String get profileUnverified;
+
+  /// P-21 section header.
+  ///
+  /// In en, this message translates to:
+  /// **'ACCOUNT'**
+  String get profileSectionAccount;
+
+  /// P-21 section header.
+  ///
+  /// In en, this message translates to:
+  /// **'PREFERENCES'**
+  String get profileSectionPreferences;
+
+  /// P-21 section header.
+  ///
+  /// In en, this message translates to:
+  /// **'PAYMENTS'**
+  String get profileSectionPayments;
+
+  /// P-21 section header.
+  ///
+  /// In en, this message translates to:
+  /// **'SUPPORT'**
+  String get profileSectionSupport;
+
+  /// P-21 row to P-22.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal information'**
+  String get profileRowPersonalInfo;
+
+  /// P-21 row to P-23 (coming soon).
+  ///
+  /// In en, this message translates to:
+  /// **'Change password'**
+  String get profileRowChangePassword;
+
+  /// P-21 row to P-24 (coming soon).
+  ///
+  /// In en, this message translates to:
+  /// **'Change email'**
+  String get profileRowChangeEmail;
+
+  /// P-21 row.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get profileRowNotifications;
+
+  /// P-21 row.
+  ///
+  /// In en, this message translates to:
+  /// **'Favourite routes'**
+  String get profileRowFavourites;
+
+  /// P-21 row.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get profileRowLanguage;
+
+  /// P-21 row (deep-links to Wallet).
+  ///
+  /// In en, this message translates to:
+  /// **'Payment methods'**
+  String get profileRowPaymentMethods;
+
+  /// P-21 row (deep-links to Wallet).
+  ///
+  /// In en, this message translates to:
+  /// **'Transactions'**
+  String get profileRowTransactions;
+
+  /// P-21 row.
+  ///
+  /// In en, this message translates to:
+  /// **'Help centre'**
+  String get profileRowHelpCentre;
+
+  /// P-21 row.
+  ///
+  /// In en, this message translates to:
+  /// **'Report a problem'**
+  String get profileRowReportProblem;
+
+  /// P-21 row.
+  ///
+  /// In en, this message translates to:
+  /// **'About TroSky'**
+  String get profileRowAbout;
+
+  /// Subtitle on unwired P-21 rows.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming soon'**
+  String get profileComingSoon;
+
+  /// P-21 danger-zone sign-out button.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get profileSignOut;
+
+  /// Sign-out confirmation cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get profileSignOutCancel;
+
+  /// Sign-out confirmation title.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out of TroSky?'**
+  String get profileSignOutConfirmTitle;
+
+  /// Sign-out confirmation body.
+  ///
+  /// In en, this message translates to:
+  /// **'You can sign back in any time with your phone or email.'**
+  String get profileSignOutConfirmBody;
+
+  /// P-21 danger-zone delete button.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get profileDeleteAccount;
+
+  /// P-22 AppBar title.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal information'**
+  String get piiTitle;
+
+  /// P-22 name field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Full name'**
+  String get piiNameLabel;
+
+  /// P-22 email read-only label.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get piiEmailLabel;
+
+  /// P-22 phone read-only label.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone'**
+  String get piiPhoneLabel;
+
+  /// P-22 avatar read-only label.
+  ///
+  /// In en, this message translates to:
+  /// **'Avatar'**
+  String get piiAvatarLabel;
+
+  /// P-22 empty-field value.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get piiNotSet;
+
+  /// P-22 note on read-only email/phone.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact support to change this.'**
+  String get piiChangeViaSupport;
+
+  /// P-22 primary button.
+  ///
+  /// In en, this message translates to:
+  /// **'Save changes'**
+  String get piiSave;
+
+  /// P-22 success snackbar.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved.'**
+  String get piiEditSaved;
+
+  /// P-22 inline failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save. Please try again.'**
+  String get piiEditFailure;
+
+  /// P-25 AppBar title.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get deleteAccountTitle;
+
+  /// P-25 big red headline.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleting your account is permanent.'**
+  String get deleteAccountWarning;
+
+  /// P-25 explainer.
+  ///
+  /// In en, this message translates to:
+  /// **'This signs you out everywhere and removes your profile from TroSky. Data-retention rules may keep anonymised trip records for accounting.'**
+  String get deleteAccountBody;
+
+  /// P-25 scope section title.
+  ///
+  /// In en, this message translates to:
+  /// **'What gets deleted:'**
+  String get deleteAccountScopeTitle;
+
+  /// P-25 bullet list of deleted data.
+  ///
+  /// In en, this message translates to:
+  /// **'• Your profile, name and contact details.\n• Saved payment methods.\n• Favourite routes and preferences.\n• Local tickets and cached data.'**
+  String get deleteAccountScopeBullets;
+
+  /// P-25 instruction.
+  ///
+  /// In en, this message translates to:
+  /// **'To confirm, type DELETE below and enter your password.'**
+  String get deleteAccountConfirmInstruction;
+
+  /// P-25 type-to-confirm label.
+  ///
+  /// In en, this message translates to:
+  /// **'Type DELETE'**
+  String get deleteAccountConfirmLabel;
+
+  /// P-25 password label.
+  ///
+  /// In en, this message translates to:
+  /// **'Current password'**
+  String get deleteAccountPasswordLabel;
+
+  /// P-25 destructive CTA.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete my account'**
+  String get deleteAccountCta;
+
+  /// P-25 inline failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t delete. Please try again.'**
+  String get deleteAccountFailure;
+
+  /// S-09a title.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset password'**
+  String get resetRequestTitle;
+
+  /// S-09a instruction.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your phone number or email. If an account exists, we\'ll send a 6-digit code.'**
+  String get resetRequestInstruction;
+
+  /// S-09a identifier field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone or email'**
+  String get resetIdentifierLabel;
+
+  /// S-09a primary button.
+  ///
+  /// In en, this message translates to:
+  /// **'Send code'**
+  String get resetRequestCta;
+
+  /// S-09a neutral confirmation (same text for known + unknown).
+  ///
+  /// In en, this message translates to:
+  /// **'If an account exists for this, we\'ve sent a code with instructions.'**
+  String get resetRequestNeutralConfirmation;
+
+  /// S-09a link to S-09b.
+  ///
+  /// In en, this message translates to:
+  /// **'I have a code →'**
+  String get resetIHaveACode;
+
+  /// S-09b title.
+  ///
+  /// In en, this message translates to:
+  /// **'New password'**
+  String get resetNewTitle;
+
+  /// S-09b code field label.
+  ///
+  /// In en, this message translates to:
+  /// **'6-digit code'**
+  String get resetCodeLabel;
+
+  /// S-09b new password field label.
+  ///
+  /// In en, this message translates to:
+  /// **'New password'**
+  String get resetNewPasswordLabel;
+
+  /// S-09b confirm password field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm new password'**
+  String get resetConfirmPasswordLabel;
+
+  /// S-09b primary button.
+  ///
+  /// In en, this message translates to:
+  /// **'Set new password'**
+  String get resetNewCta;
+
+  /// S-09b inline failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reset. Check the code and try again.'**
+  String get resetFailure;
+
+  /// S-09b success snackbar.
+  ///
+  /// In en, this message translates to:
+  /// **'Password changed. Please sign in again.'**
+  String get resetSuccess;
+
+  /// Sign-in link to S-09a.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset password'**
+  String get signInResetPassword;
+>>>>>>> origin/main
 }
 
 class _AppLocalizationsDelegate

@@ -700,6 +700,15 @@ class _OfflineAuth implements AuthRepository {
       _inner.otpLogin(r);
   @override
   Future<Result<void>> logout() => _inner.logout();
+
+  @override
+  Future<Result<MessageResponse>> forgotPassword(
+    ForgotPasswordRequest request,
+  ) => _inner.forgotPassword(request);
+
+  @override
+  Future<Result<MessageResponse>> resetPassword(ResetPasswordRequest request) =>
+      _inner.resetPassword(request);
 }
 
 /// Favourites on the phone are empty (an old list); saving goes to the
@@ -720,6 +729,15 @@ class _ForgetfulFavourites implements UserRepository {
   Future<Result<FavouriteRouteResponse>> addFavouriteRoute(
     FavouriteRouteCreateRequest request,
   ) => _inner.addFavouriteRoute(request);
+
+  @override
+  Future<Result<UserResponse>> updateMe(UserProfileUpdateRequest request) =>
+      _inner.updateMe(request);
+
+  @override
+  Future<Result<MessageResponse>> deleteAccount(
+    AccountDeletionRequest request,
+  ) => _inner.deleteAccount(request);
 }
 
 /// A search whose results depend on the query's `travelDate`. Any date
