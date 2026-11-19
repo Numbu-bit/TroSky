@@ -1967,6 +1967,142 @@ class AppLocalizationsEn extends AppLocalizations {
   String get walletTopUpRetry => 'Retry';
 
   @override
+  String get sosTitle => 'Emergency';
+
+  @override
+  String get sosHoldSemantics => 'Hold to send SOS, 3 second hold';
+
+  @override
+  String get sosHoldInstruction => 'Hold for 3 seconds';
+
+  @override
+  String get sosSending => 'Sending alert…';
+
+  @override
+  String get sosSendFailed => 'Couldn\'t send the alert.';
+
+  @override
+  String get sosRetry => 'Retry';
+
+  @override
+  String get sosReasonLabel => 'What\'s happening?';
+
+  @override
+  String get sosReasonDriverDanger => 'Driver danger';
+
+  @override
+  String get sosReasonAccident => 'Accident';
+
+  @override
+  String get sosReasonMedical => 'Medical';
+
+  @override
+  String get sosReasonOther => 'Other';
+
+  @override
+  String get sosCall191 => 'Call 191';
+
+  @override
+  String get sosConfirmationTitle => 'Help is on the way';
+
+  @override
+  String get sosConfirmationBody =>
+      'Your emergency contacts have been notified.';
+
+  @override
+  String get sosLocationNotShared => 'Location not shared';
+
+  @override
+  String get sosMarkSafe => 'I\'m safe now';
+
+  @override
+  String get reportTitle => 'Report an issue';
+
+  @override
+  String reportBookingContext(String reference) {
+    return 'About booking $reference';
+  }
+
+  @override
+  String get reportCategoryLabel => 'What\'s the issue?';
+
+  @override
+  String get reportCategoryAccident => 'Accident';
+
+  @override
+  String get reportCategoryBreakdown => 'Breakdown';
+
+  @override
+  String get reportCategoryDelay => 'Delay';
+
+  @override
+  String get reportCategorySafety => 'Safety concern';
+
+  @override
+  String get reportCategoryPassenger => 'Passenger issue';
+
+  @override
+  String get reportCategoryRoadHazard => 'Road hazard';
+
+  @override
+  String get reportCategoryOther => 'Other';
+
+  @override
+  String get reportDescriptionLabel => 'Describe what happened';
+
+  @override
+  String get reportDescriptionHint =>
+      'Tell us what happened (at least 10 characters).';
+
+  @override
+  String get reportSubmit => 'Submit report';
+
+  @override
+  String get reportSubmitFailure => 'Couldn\'t submit. Please try again.';
+
+  @override
+  String get reportSuccess =>
+      'Report submitted. We\'ll review within 48 hours.';
+
+  @override
+  String get rateTitle => 'Rate your trip';
+
+  @override
+  String get rateDriverFallback => 'Your driver';
+
+  @override
+  String get rateRouteFallback => 'Your trip';
+
+  @override
+  String rateStarsSemantic(int stars) {
+    return '$stars of 5 stars';
+  }
+
+  @override
+  String rateStarTooltip(int star) {
+    return '$star stars';
+  }
+
+  @override
+  String get rateCommentHint => 'Add a comment (optional)';
+
+  @override
+  String get rateSubmit => 'Submit rating';
+
+  @override
+  String get rateSubmitFailure => 'Couldn\'t submit. Please try again.';
+
+  @override
+  String get rateThanks => 'Thanks for rating your trip.';
+
+  @override
+  String get rateBannerTitle => 'Rate your last trip';
+
+  @override
+  String get rateBannerAction => 'Rate';
+
+  @override
+  String get testerMenuEmergency => 'Open P-12 Emergency';
   String get profileAnonymousName => 'Passenger';
 
   @override

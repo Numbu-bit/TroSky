@@ -8,5 +8,8 @@
   "TRIP_DETAILS_ENABLED": "true",
   "TRIP_TRACKING_ENABLED": "true",
   "WALLET_ENABLED": "true",
+  "SOS_ENABLED": "true",
+  "REPORT_ENABLED": "true",
+  "RATE_ENABLED": "true",
   "ACCOUNT_ENABLED": "true"
 }

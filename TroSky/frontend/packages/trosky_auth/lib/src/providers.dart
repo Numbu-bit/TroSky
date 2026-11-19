@@ -175,6 +175,17 @@ PaymentRepository paymentRepository(Ref ref) =>
       ),
     };
 
+/// Safety: SOS alerts + incident reports.
+@Riverpod(keepAlive: true)
+SafetyRepository safetyRepository(Ref ref) =>
+    switch (ref.watch(envProvider).apiMode) {
+      ApiMode.live => LiveSafetyRepository(ref.watch(apiClientProvider)),
+      ApiMode.mock => MockSafetyRepository(
+        tokens: () => ref.read(tokenManagerProvider),
+        latency: ref.watch(mockLatencyProvider),
+      ),
+    };
+
 @Riverpod(keepAlive: true)
 UserCache userCache(Ref ref) =>
     SharedPreferencesUserCache(SharedPreferencesAsync());

@@ -34,6 +34,10 @@ import '../passenger/account/presentation/delete_account_screen.dart';
 import '../passenger/account/presentation/personal_info_screen.dart';
 import '../passenger/account/presentation/profile_screen.dart';
 import '../passenger/account/presentation/reset_password_screen.dart';
+import '../passenger/safety/domain/safety_args.dart';
+import '../passenger/safety/presentation/rate_screen.dart';
+import '../passenger/safety/presentation/report_screen.dart';
+import '../passenger/safety/presentation/sos_screen.dart';
 import '../passenger/wallet/domain/wallet_args.dart';
 import '../passenger/wallet/presentation/top_up_screen.dart';
 import '../passenger/wallet/presentation/wallet_screen.dart';
@@ -99,6 +103,18 @@ enum AppRoute {
   /// Top up (P-18, derived): one screen to add GHS to the in-app wallet
   /// via MoMo. `extra` is a [TopUpArgs]. Gated by `WALLET_ENABLED`.
   topUp('/wallet/top-up'),
+
+  /// SOS (P-12): full-screen Emergency. `extra` may be a [SosArgs] (trip
+  /// context). Gated by `SOS_ENABLED`.
+  sosAlert('/sos/alert'),
+
+  /// Report (P-13): report an issue on a completed trip. `extra` is a
+  /// [ReportArgs]. Gated by `REPORT_ENABLED`.
+  report('/bookings/:bookingId/report'),
+
+  /// Rate (P-14): rate a completed trip. `extra` is a [RateArgs]. Gated
+  /// by `RATE_ENABLED`.
+  rate('/bookings/:bookingId/rate'),
 
   /// Personal information (P-22) — sub-page of Profile. Gated by
   /// `ACCOUNT_ENABLED`.
@@ -280,6 +296,33 @@ GoRouter router(Ref ref) {
             : AppRoute.wallet.path,
         builder: (context, state) =>
             TopUpScreen(args: state.extra! as TopUpArgs),
+      ),
+      GoRoute(
+        path: AppRoute.sosAlert.path,
+        name: AppRoute.sosAlert.name,
+        redirect: (context, state) => sosEnabled ? null : AppRoute.home.path,
+        builder: (context, state) => SosScreen(
+          args: state.extra is SosArgs
+              ? state.extra! as SosArgs
+              : const SosArgs(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoute.report.path,
+        name: AppRoute.report.name,
+        redirect: (context, state) => state.extra is ReportArgs
+            ? (reportEnabled ? null : AppRoute.trips.path)
+            : AppRoute.trips.path,
+        builder: (context, state) =>
+            ReportScreen(args: state.extra! as ReportArgs),
+      ),
+      GoRoute(
+        path: AppRoute.rate.path,
+        name: AppRoute.rate.name,
+        redirect: (context, state) => state.extra is RateArgs
+            ? (rateEnabled ? null : AppRoute.trips.path)
+            : AppRoute.trips.path,
+        builder: (context, state) => RateScreen(args: state.extra! as RateArgs),
       ),
       GoRoute(
         path: AppRoute.personalInfo.path,

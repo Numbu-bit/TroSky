@@ -130,6 +130,16 @@ class PolledBookings implements BookingRepository {
     cancelled.add(bookingId);
     return _inner.cancel(bookingId, reason: reason);
   }
+
+  @override
+  Future<Result<RatingResponse>> rate(
+    String bookingId,
+    RateBookingRequest request,
+  ) => _inner.rate(bookingId, request);
+
+  @override
+  Future<Result<RatingResponse>> getRating(String bookingId) =>
+      _inner.getRating(bookingId);
 }
 
 /// No connection, as Dio reports it.

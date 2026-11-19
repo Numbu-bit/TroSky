@@ -777,6 +777,57 @@ final class PaymentRepositoryProvider
 
 String _$paymentRepositoryHash() => r'da0e0ce027041cf68f2252ddfeb69efd6ea875f4';
 
+/// Safety: SOS alerts + incident reports.
+
+@ProviderFor(safetyRepository)
+final safetyRepositoryProvider = SafetyRepositoryProvider._();
+
+/// Safety: SOS alerts + incident reports.
+
+final class SafetyRepositoryProvider
+    extends
+        $FunctionalProvider<
+          SafetyRepository,
+          SafetyRepository,
+          SafetyRepository
+        >
+    with $Provider<SafetyRepository> {
+  /// Safety: SOS alerts + incident reports.
+  SafetyRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'safetyRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$safetyRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<SafetyRepository> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  SafetyRepository create(Ref ref) {
+    return safetyRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SafetyRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SafetyRepository>(value),
+    );
+  }
+}
+
+String _$safetyRepositoryHash() => r'ed5bf1703ca3b76a08c0791a746c6924feae9daa';
+
 @ProviderFor(userCache)
 final userCacheProvider = UserCacheProvider._();
 

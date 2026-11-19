@@ -257,6 +257,16 @@ class RecordingBookings implements BookingRepository {
     cancelled.add(bookingId);
     return _inner.cancel(bookingId, reason: reason);
   }
+
+  @override
+  Future<Result<RatingResponse>> rate(
+    String bookingId,
+    RateBookingRequest request,
+  ) => _inner.rate(bookingId, request);
+
+  @override
+  Future<Result<RatingResponse>> getRating(String bookingId) =>
+      _inner.getRating(bookingId);
 }
 
 /// The app's [ProviderContainer], to read what the screens see.

@@ -7,6 +7,7 @@ import '../dto/driver_dto.dart';
 import '../dto/paginated.dart';
 import '../dto/payment_dto.dart';
 import '../dto/route_dto.dart';
+import '../dto/safety_dto.dart';
 import '../dto/ticket_dto.dart';
 import '../dto/tracking_dto.dart';
 import '../dto/user_dto.dart';
@@ -15,6 +16,7 @@ import '../repositories/booking_repository.dart';
 import '../repositories/driver_repository.dart';
 import '../repositories/payment_repository.dart';
 import '../repositories/route_repository.dart';
+import '../repositories/safety_repository.dart';
 import '../repositories/ticket_repository.dart';
 import '../repositories/tracking_repository.dart';
 import '../repositories/user_repository.dart';
@@ -321,6 +323,24 @@ class MockBookingRepository implements BookingRepository {
     latency,
     (token) => _backend.cancelBooking(token, bookingId, reason: reason),
   );
+
+  // Step 19: rate + getRating. Mock mode returns NOT_IMPLEMENTED so the
+  // Rate UI shows an offline-style friendly line. Live is the target.
+  @override
+  Future<Result<RatingResponse>> rate(
+    String bookingId,
+    RateBookingRequest request,
+  ) async => const Err(
+    UnknownFailure(
+      code: 'NOT_IMPLEMENTED',
+      message: 'Rating a trip is not yet available in mock mode.',
+    ),
+  );
+
+  @override
+  Future<Result<RatingResponse>> getRating(String bookingId) async => const Err(
+    UnknownFailure(code: 'NOT_FOUND', message: 'No rating in mock mode.'),
+  );
 }
 
 /// [PaymentRepository] against the in-memory [MockBackend]: the wallet pays
@@ -479,6 +499,77 @@ class MockTrackingRepository implements TrackingRepository {
     UnknownFailure(
       code: 'NOT_IMPLEMENTED',
       message: 'Live tracking is not yet available in mock mode.',
+    ),
+  );
+}
+
+/// [SafetyRepository] on a [MockBackend]. Mock mode doesn't actually
+/// trigger SOS or file incidents; replies look like a real success so
+/// the P-12/P-13 UI has something to confirm against in demo mode.
+class MockSafetyRepository implements SafetyRepository {
+  MockSafetyRepository({required this.tokens, this.latency = Duration.zero});
+  final SessionTokens Function() tokens;
+  final Duration latency;
+
+  SosAlertResponse _fakeAlert({String? tripId}) => SosAlertResponse(
+    id: 'mock-sos-${DateTime.now().microsecondsSinceEpoch}',
+    tripId: tripId,
+    triggeredBy: 'mock-user',
+    status: SosAlertStatus.active,
+    createdAt: DateTime.now().toUtc(),
+  );
+
+  IncidentResponse _fakeIncident(String tripId, ReportIncidentRequest req) =>
+      IncidentResponse(
+        id: 'mock-incident-${DateTime.now().microsecondsSinceEpoch}',
+        tripId: tripId,
+        reportedBy: 'mock-user',
+        incidentType: req.incidentType,
+        severity: req.severity ?? IncidentSeverity.medium,
+        description: req.description,
+        status: IncidentStatus.reported,
+        createdAt: DateTime.now().toUtc(),
+      );
+
+  @override
+  Future<Result<SosAlertResponse>> triggerTripSos(
+    String tripId,
+    TriggerSosRequest request, {
+    required String idempotencyKey,
+  }) async {
+    if (latency > Duration.zero) await Future<void>.delayed(latency);
+    return Ok(_fakeAlert(tripId: tripId));
+  }
+
+  @override
+  Future<Result<SosAlertResponse>> triggerSos(
+    TriggerSosRequest request, {
+    required String idempotencyKey,
+  }) async {
+    if (latency > Duration.zero) await Future<void>.delayed(latency);
+    return Ok(_fakeAlert());
+  }
+
+  @override
+  Future<Result<IncidentResponse>> reportIncident(
+    String tripId,
+    ReportIncidentRequest request, {
+    required String idempotencyKey,
+  }) async {
+    if (latency > Duration.zero) await Future<void>.delayed(latency);
+    return Ok(_fakeIncident(tripId, request));
+  }
+
+  @override
+  Future<Result<IncidentResponse>> uploadIncidentPhoto(
+    String incidentId, {
+    required List<int> bytes,
+    required String filename,
+    required String contentType,
+  }) async => const Err(
+    UnknownFailure(
+      code: 'NOT_IMPLEMENTED',
+      message: 'Photo upload is not available in mock mode.',
     ),
   );
 }

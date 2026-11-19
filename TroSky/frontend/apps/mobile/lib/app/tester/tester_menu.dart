@@ -24,6 +24,7 @@ import 'package:trosky_ui/trosky_ui.dart';
 
 import '../../entry/onboarding/data/onboarding_store.dart';
 import '../../l10n/app_localizations.dart';
+import '../../passenger/safety/domain/safety_args.dart';
 import '../../passenger/wallet/domain/wallet_args.dart';
 import '../routes.dart';
 
@@ -177,6 +178,12 @@ class _TesterMenuSheetState extends ConsumerState<TesterMenuSheet> {
     }
   }
 
+  Future<void> _openSos() async {
+    final router = GoRouter.of(context);
+    Navigator.of(context).pop();
+    router.pushNamed(AppRoute.sosAlert.name, extra: const SosArgs());
+  }
+
   Future<void> _showOnboarding() async {
     final router = GoRouter.of(context);
     await ref.read(onboardingStoreProvider).reset();
@@ -267,6 +274,12 @@ class _TesterMenuSheetState extends ConsumerState<TesterMenuSheet> {
             ),
             if (_topUpSupported)
               _ActionRow(label: l10n.testerMenuTopUp, onPressed: _topUp),
+            if (sosEnabled)
+              _ActionRow(
+                label: l10n.testerMenuEmergency,
+                onPressed: _openSos,
+                destructive: true,
+              ),
             _ActionRow(
               label: l10n.testerMenuShowOnboarding,
               onPressed: _showOnboarding,
