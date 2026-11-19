@@ -2765,4 +2765,539 @@ as String,
 
 }
 
+
+/// @nodoc
+mixin _$ForgotPasswordRequest {
+
+ String get identifier;
+/// Create a copy of ForgotPasswordRequest
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ForgotPasswordRequestCopyWith<ForgotPasswordRequest> get copyWith => _$ForgotPasswordRequestCopyWithImpl<ForgotPasswordRequest>(this as ForgotPasswordRequest, _$identity);
+
+  /// Serializes this ForgotPasswordRequest to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ForgotPasswordRequest&&(identical(other.identifier, identifier) || other.identifier == identifier));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,identifier);
+
+@override
+String toString() {
+  return 'ForgotPasswordRequest(identifier: $identifier)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $ForgotPasswordRequestCopyWith<$Res>  {
+  factory $ForgotPasswordRequestCopyWith(ForgotPasswordRequest value, $Res Function(ForgotPasswordRequest) _then) = _$ForgotPasswordRequestCopyWithImpl;
+@useResult
+$Res call({
+ String identifier
+});
+
+
+
+
+}
+/// @nodoc
+class _$ForgotPasswordRequestCopyWithImpl<$Res>
+    implements $ForgotPasswordRequestCopyWith<$Res> {
+  _$ForgotPasswordRequestCopyWithImpl(this._self, this._then);
+
+  final ForgotPasswordRequest _self;
+  final $Res Function(ForgotPasswordRequest) _then;
+
+/// Create a copy of ForgotPasswordRequest
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? identifier = null,}) {
+  return _then(ForgotPasswordRequest(
+identifier: null == identifier ? _self.identifier : identifier // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [ForgotPasswordRequest].
+extension ForgotPasswordRequestPatterns on ForgotPasswordRequest {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _ForgotPasswordRequest value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _ForgotPasswordRequest() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _ForgotPasswordRequest value)  $default,){
+final _that = this;
+switch (_that) {
+case _ForgotPasswordRequest():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _ForgotPasswordRequest value)?  $default,){
+final _that = this;
+switch (_that) {
+case _ForgotPasswordRequest() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String identifier)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _ForgotPasswordRequest() when $default != null:
+return $default(_that.identifier);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String identifier)  $default,) {final _that = this;
+switch (_that) {
+case _ForgotPasswordRequest():
+return $default(_that.identifier);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String identifier)?  $default,) {final _that = this;
+switch (_that) {
+case _ForgotPasswordRequest() when $default != null:
+return $default(_that.identifier);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _ForgotPasswordRequest implements ForgotPasswordRequest {
+  const _ForgotPasswordRequest({required this.identifier});
+  factory _ForgotPasswordRequest.fromJson(Map<String, dynamic> json) => _$ForgotPasswordRequestFromJson(json);
+
+@override final  String identifier;
+
+/// Create a copy of ForgotPasswordRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$ForgotPasswordRequestCopyWith<_ForgotPasswordRequest> get copyWith => __$ForgotPasswordRequestCopyWithImpl<_ForgotPasswordRequest>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$ForgotPasswordRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ForgotPasswordRequest&&(identical(other.identifier, identifier) || other.identifier == identifier));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,identifier);
+
+@override
+String toString() {
+  return 'ForgotPasswordRequest(identifier: $identifier)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$ForgotPasswordRequestCopyWith<$Res> implements $ForgotPasswordRequestCopyWith<$Res> {
+  factory _$ForgotPasswordRequestCopyWith(_ForgotPasswordRequest value, $Res Function(_ForgotPasswordRequest) _then) = __$ForgotPasswordRequestCopyWithImpl;
+@override @useResult
+$Res call({
+ String identifier
+});
+
+
+
+
+}
+/// @nodoc
+class __$ForgotPasswordRequestCopyWithImpl<$Res>
+    implements _$ForgotPasswordRequestCopyWith<$Res> {
+  __$ForgotPasswordRequestCopyWithImpl(this._self, this._then);
+
+  final _ForgotPasswordRequest _self;
+  final $Res Function(_ForgotPasswordRequest) _then;
+
+/// Create a copy of ForgotPasswordRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? identifier = null,}) {
+  return _then(_ForgotPasswordRequest(
+identifier: null == identifier ? _self.identifier : identifier // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$ResetPasswordRequest {
+
+ String? get target; String? get code; String? get token; String get newPassword;
+/// Create a copy of ResetPasswordRequest
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ResetPasswordRequestCopyWith<ResetPasswordRequest> get copyWith => _$ResetPasswordRequestCopyWithImpl<ResetPasswordRequest>(this as ResetPasswordRequest, _$identity);
+
+  /// Serializes this ResetPasswordRequest to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ResetPasswordRequest&&(identical(other.target, target) || other.target == target)&&(identical(other.code, code) || other.code == code)&&(identical(other.token, token) || other.token == token)&&(identical(other.newPassword, newPassword) || other.newPassword == newPassword));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,target,code,token,newPassword);
+
+@override
+String toString() {
+  return 'ResetPasswordRequest(target: $target, code: $code, token: $token, newPassword: $newPassword)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $ResetPasswordRequestCopyWith<$Res>  {
+  factory $ResetPasswordRequestCopyWith(ResetPasswordRequest value, $Res Function(ResetPasswordRequest) _then) = _$ResetPasswordRequestCopyWithImpl;
+@useResult
+$Res call({
+ String? target, String? code, String? token, String newPassword
+});
+
+
+
+
+}
+/// @nodoc
+class _$ResetPasswordRequestCopyWithImpl<$Res>
+    implements $ResetPasswordRequestCopyWith<$Res> {
+  _$ResetPasswordRequestCopyWithImpl(this._self, this._then);
+
+  final ResetPasswordRequest _self;
+  final $Res Function(ResetPasswordRequest) _then;
+
+/// Create a copy of ResetPasswordRequest
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? target = freezed,Object? code = freezed,Object? token = freezed,Object? newPassword = null,}) {
+  return _then(ResetPasswordRequest(
+target: freezed == target ? _self.target : target // ignore: cast_nullable_to_non_nullable
+as String?,code: freezed == code ? _self.code : code // ignore: cast_nullable_to_non_nullable
+as String?,token: freezed == token ? _self.token : token // ignore: cast_nullable_to_non_nullable
+as String?,newPassword: null == newPassword ? _self.newPassword : newPassword // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [ResetPasswordRequest].
+extension ResetPasswordRequestPatterns on ResetPasswordRequest {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _ResetPasswordRequest value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _ResetPasswordRequest() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _ResetPasswordRequest value)  $default,){
+final _that = this;
+switch (_that) {
+case _ResetPasswordRequest():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _ResetPasswordRequest value)?  $default,){
+final _that = this;
+switch (_that) {
+case _ResetPasswordRequest() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String? target,  String? code,  String? token,  String newPassword)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _ResetPasswordRequest() when $default != null:
+return $default(_that.target,_that.code,_that.token,_that.newPassword);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String? target,  String? code,  String? token,  String newPassword)  $default,) {final _that = this;
+switch (_that) {
+case _ResetPasswordRequest():
+return $default(_that.target,_that.code,_that.token,_that.newPassword);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String? target,  String? code,  String? token,  String newPassword)?  $default,) {final _that = this;
+switch (_that) {
+case _ResetPasswordRequest() when $default != null:
+return $default(_that.target,_that.code,_that.token,_that.newPassword);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _ResetPasswordRequest implements ResetPasswordRequest {
+  const _ResetPasswordRequest({this.target, this.code, this.token, required this.newPassword});
+  factory _ResetPasswordRequest.fromJson(Map<String, dynamic> json) => _$ResetPasswordRequestFromJson(json);
+
+@override final  String? target;
+@override final  String? code;
+@override final  String? token;
+@override final  String newPassword;
+
+/// Create a copy of ResetPasswordRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$ResetPasswordRequestCopyWith<_ResetPasswordRequest> get copyWith => __$ResetPasswordRequestCopyWithImpl<_ResetPasswordRequest>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$ResetPasswordRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ResetPasswordRequest&&(identical(other.target, target) || other.target == target)&&(identical(other.code, code) || other.code == code)&&(identical(other.token, token) || other.token == token)&&(identical(other.newPassword, newPassword) || other.newPassword == newPassword));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,target,code,token,newPassword);
+
+@override
+String toString() {
+  return 'ResetPasswordRequest(target: $target, code: $code, token: $token, newPassword: $newPassword)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$ResetPasswordRequestCopyWith<$Res> implements $ResetPasswordRequestCopyWith<$Res> {
+  factory _$ResetPasswordRequestCopyWith(_ResetPasswordRequest value, $Res Function(_ResetPasswordRequest) _then) = __$ResetPasswordRequestCopyWithImpl;
+@override @useResult
+$Res call({
+ String? target, String? code, String? token, String newPassword
+});
+
+
+
+
+}
+/// @nodoc
+class __$ResetPasswordRequestCopyWithImpl<$Res>
+    implements _$ResetPasswordRequestCopyWith<$Res> {
+  __$ResetPasswordRequestCopyWithImpl(this._self, this._then);
+
+  final _ResetPasswordRequest _self;
+  final $Res Function(_ResetPasswordRequest) _then;
+
+/// Create a copy of ResetPasswordRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? target = freezed,Object? code = freezed,Object? token = freezed,Object? newPassword = null,}) {
+  return _then(_ResetPasswordRequest(
+target: freezed == target ? _self.target : target // ignore: cast_nullable_to_non_nullable
+as String?,code: freezed == code ? _self.code : code // ignore: cast_nullable_to_non_nullable
+as String?,token: freezed == token ? _self.token : token // ignore: cast_nullable_to_non_nullable
+as String?,newPassword: null == newPassword ? _self.newPassword : newPassword // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
 // dart format on

@@ -177,3 +177,29 @@ _MessageResponse _$MessageResponseFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$MessageResponseToJson(_MessageResponse instance) =>
     <String, dynamic>{'message': instance.message};
+
+_ForgotPasswordRequest _$ForgotPasswordRequestFromJson(
+  Map<String, dynamic> json,
+) => _ForgotPasswordRequest(identifier: json['identifier'] as String);
+
+Map<String, dynamic> _$ForgotPasswordRequestToJson(
+  _ForgotPasswordRequest instance,
+) => <String, dynamic>{'identifier': instance.identifier};
+
+_ResetPasswordRequest _$ResetPasswordRequestFromJson(
+  Map<String, dynamic> json,
+) => _ResetPasswordRequest(
+  target: json['target'] as String?,
+  code: json['code'] as String?,
+  token: json['token'] as String?,
+  newPassword: json['new_password'] as String,
+);
+
+Map<String, dynamic> _$ResetPasswordRequestToJson(
+  _ResetPasswordRequest instance,
+) => <String, dynamic>{
+  'target': ?instance.target,
+  'code': ?instance.code,
+  'token': ?instance.token,
+  'new_password': instance.newPassword,
+};
