@@ -48,6 +48,15 @@ class _RateLimitedAuth implements AuthRepository {
       _inner.refresh(r);
   @override
   Future<Result<void>> logout() => _inner.logout();
+
+  @override
+  Future<Result<MessageResponse>> forgotPassword(
+    ForgotPasswordRequest request,
+  ) => _inner.forgotPassword(request);
+
+  @override
+  Future<Result<MessageResponse>> resetPassword(ResetPasswordRequest request) =>
+      _inner.resetPassword(request);
 }
 
 Future<void> typeCode(WidgetTester tester, String code) async {

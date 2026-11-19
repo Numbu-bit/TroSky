@@ -169,3 +169,29 @@ abstract class MessageResponse with _$MessageResponse {
   factory MessageResponse.fromJson(Map<String, dynamic> json) =>
       _$MessageResponseFromJson(json);
 }
+
+/// `POST /auth/password/forgot`. [identifier] is a phone number or email.
+@freezed
+abstract class ForgotPasswordRequest with _$ForgotPasswordRequest {
+  const factory ForgotPasswordRequest({required String identifier}) =
+      _ForgotPasswordRequest;
+
+  factory ForgotPasswordRequest.fromJson(Map<String, dynamic> json) =>
+      _$ForgotPasswordRequestFromJson(json);
+}
+
+/// `POST /auth/password/reset`. Send either ``target + code`` (the 6-digit
+/// code forgot-password SMSes / emails) or an older long ``token``. The
+/// backend signs every session out on success.
+@freezed
+abstract class ResetPasswordRequest with _$ResetPasswordRequest {
+  const factory ResetPasswordRequest({
+    String? target,
+    String? code,
+    String? token,
+    required String newPassword,
+  }) = _ResetPasswordRequest;
+
+  factory ResetPasswordRequest.fromJson(Map<String, dynamic> json) =>
+      _$ResetPasswordRequestFromJson(json);
+}

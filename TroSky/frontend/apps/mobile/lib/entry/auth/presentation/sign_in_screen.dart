@@ -262,6 +262,11 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
               }),
             ),
             TroskyTextLink(
+              prompt: '',
+              action: l10n.signInResetPassword,
+              onPressed: () => context.pushNamed(AppRoute.resetPassword.name),
+            ),
+            TroskyTextLink(
               prompt: l10n.signInNewPrompt,
               action: l10n.signInCreateAccount,
               onPressed: () => context.goNamed(AppRoute.welcome.name),

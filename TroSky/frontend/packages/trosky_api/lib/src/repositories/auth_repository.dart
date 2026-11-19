@@ -34,6 +34,15 @@ abstract interface class AuthRepository {
 
   /// Revokes this device's session, refresh tokens included.
   Future<Result<void>> logout();
+
+  /// `POST /auth/password/forgot`. The backend answers the same whether
+  /// or not an account exists for [request.identifier] — do not leak
+  /// account existence to the UI.
+  Future<Result<MessageResponse>> forgotPassword(ForgotPasswordRequest request);
+
+  /// `POST /auth/password/reset`. The backend signs every session out
+  /// on success, so a successful reset forces the user back to sign-in.
+  Future<Result<MessageResponse>> resetPassword(ResetPasswordRequest request);
 }
 
 /// [AuthRepository] against the backend.
@@ -78,4 +87,17 @@ class LiveAuthRepository implements AuthRepository {
   @override
   Future<Result<void>> logout() =>
       apiCall(() => _dio.post<Object?>('/auth/logout'), (_) {});
+
+  @override
+  Future<Result<MessageResponse>> forgotPassword(
+    ForgotPasswordRequest request,
+  ) => _post(
+    '/auth/password/forgot',
+    request.toJson(),
+    MessageResponse.fromJson,
+  );
+
+  @override
+  Future<Result<MessageResponse>> resetPassword(ResetPasswordRequest request) =>
+      _post('/auth/password/reset', request.toJson(), MessageResponse.fromJson);
 }

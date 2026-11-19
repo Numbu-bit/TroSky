@@ -42,6 +42,36 @@ abstract class UserResponse with _$UserResponse {
       _$UserResponseFromJson(json);
 }
 
+/// `UserProfileUpdateRequest` for `PATCH /users/me`. Any field left out
+/// is kept as-is. Email + phone are not editable here; the backend has
+/// separate change-email / change-phone endpoints (gaps as of Step 20).
+@freezed
+abstract class UserProfileUpdateRequest with _$UserProfileUpdateRequest {
+  const factory UserProfileUpdateRequest({
+    String? fullName,
+    DateTime? dateOfBirth,
+    String? gender,
+    String? preferredLanguage,
+    String? avatarUrl,
+  }) = _UserProfileUpdateRequest;
+
+  factory UserProfileUpdateRequest.fromJson(Map<String, dynamic> json) =>
+      _$UserProfileUpdateRequestFromJson(json);
+}
+
+/// `AccountDeletionRequest` for `DELETE /users/me`. The backend
+/// soft-deletes (data-retention rules apply server-side).
+@freezed
+abstract class AccountDeletionRequest with _$AccountDeletionRequest {
+  const factory AccountDeletionRequest({
+    required String password,
+    String? reason,
+  }) = _AccountDeletionRequest;
+
+  factory AccountDeletionRequest.fromJson(Map<String, dynamic> json) =>
+      _$AccountDeletionRequestFromJson(json);
+}
+
 /// `FavouriteRouteCreateRequest` for `POST /users/me/favourite-routes`.
 @freezed
 abstract class FavouriteRouteCreateRequest with _$FavouriteRouteCreateRequest {
