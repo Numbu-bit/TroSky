@@ -4,6 +4,7 @@ import '../client/interceptors.dart';
 import '../dto/auth_dto.dart';
 import '../dto/booking_dto.dart';
 import '../dto/driver_dto.dart';
+import '../dto/notification_dto.dart';
 import '../dto/paginated.dart';
 import '../dto/payment_dto.dart';
 import '../dto/route_dto.dart';
@@ -163,6 +164,41 @@ class MockUserRepository implements UserRepository {
     UnknownFailure(
       code: 'NOT_IMPLEMENTED',
       message: 'Account deletion is not available in mock mode.',
+    ),
+  );
+
+  // Step 20/B: DELETE /users/me/favourite-routes/{id} +
+  // notification-preferences GET/PATCH. The mock backend doesn't track
+  // either today; returning NOT_IMPLEMENTED keeps mock mode honest and
+  // widget tests supply their own fakes.
+  @override
+  Future<Result<void>> deleteFavouriteRoute(String favouriteId) async =>
+      const Err(
+        UnknownFailure(
+          code: 'NOT_IMPLEMENTED',
+          message: 'Deleting favourites is not available in mock mode.',
+        ),
+      );
+
+  @override
+  Future<Result<NotificationPreferencesResponse>>
+  notificationPreferences() async => Ok(
+    const NotificationPreferencesResponse(
+      pushEnabled: true,
+      smsEnabled: true,
+      emailEnabled: true,
+      promotionalOptIn: false,
+    ),
+  );
+
+  @override
+  Future<Result<NotificationPreferencesResponse>> updateNotificationPreferences(
+    NotificationPreferencesUpdateRequest request,
+  ) async => const Err(
+    UnknownFailure(
+      code: 'NOT_IMPLEMENTED',
+      message:
+          'Updating notification preferences is not available in mock mode.',
     ),
   );
 }

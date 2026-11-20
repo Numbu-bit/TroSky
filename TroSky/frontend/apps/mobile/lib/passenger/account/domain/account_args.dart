@@ -3,6 +3,12 @@
 /// Maher-007 exercises change-password + delete on a throwaway account.
 const bool accountEnabled = bool.fromEnvironment('ACCOUNT_ENABLED');
 
+/// P-20 Notifications (Inbox + Preferences tabs + Home bell badge).
+const bool notificationsEnabled = bool.fromEnvironment('NOTIFICATIONS_ENABLED');
+
+/// P-26 Favourites (list + delete; add lives in Search).
+const bool favouritesEnabled = bool.fromEnvironment('FAVOURITES_ENABLED');
+
 /// Which section the user tapped on P-21. Used in the
 /// `profile_section_tapped` analytics event.
 enum ProfileSection {

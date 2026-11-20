@@ -11,5 +11,7 @@
   "SOS_ENABLED": "true",
   "REPORT_ENABLED": "true",
   "RATE_ENABLED": "true",
-  "ACCOUNT_ENABLED": "true"
+  "ACCOUNT_ENABLED": "true",
+  "NOTIFICATIONS_ENABLED": "true",
+  "FAVOURITES_ENABLED": "true"
 }

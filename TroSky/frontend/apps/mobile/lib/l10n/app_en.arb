@@ -2794,5 +2794,73 @@
   "@resetSuccess": { "description": "S-09b success snackbar." },
 
   "signInResetPassword": "Reset password",
-  "@signInResetPassword": { "description": "Sign-in link to S-09a." }
+  "@signInResetPassword": { "description": "Sign-in link to S-09a." },
+
+  "notifTitle": "Notifications",
+  "@notifTitle": { "description": "P-20 AppBar title." },
+  "notifTabInbox": "Inbox",
+  "@notifTabInbox": { "description": "P-20 tab." },
+  "notifTabPrefs": "Preferences",
+  "@notifTabPrefs": { "description": "P-20 tab." },
+  "notifEmpty": "No notifications yet.",
+  "@notifEmpty": { "description": "P-20 empty state." },
+  "notifMarkAllRead": "Mark all read",
+  "@notifMarkAllRead": { "description": "P-20 AppBar action." },
+  "notifOpeningToast": "Opening…",
+  "@notifOpeningToast": { "description": "Toast when a notification has no matching route." },
+  "notifCategoryTransactional": "Bookings & payments",
+  "@notifCategoryTransactional": { "description": "Notification category label." },
+  "notifCategorySafety": "Safety",
+  "@notifCategorySafety": { "description": "Notification category label." },
+  "notifCategoryPromotional": "Promotions",
+  "@notifCategoryPromotional": { "description": "Notification category label." },
+  "notifPrefsBannerChannelOnly": "Per-category toggles are coming. For now, choose which channels we use.",
+  "@notifPrefsBannerChannelOnly": { "description": "Preferences banner explaining the channel-level shape." },
+  "notifPrefsPushEnabled": "Push notifications",
+  "@notifPrefsPushEnabled": { "description": "Preference toggle." },
+  "notifPrefsSmsEnabled": "SMS notifications",
+  "@notifPrefsSmsEnabled": { "description": "Preference toggle." },
+  "notifPrefsEmailEnabled": "Email notifications",
+  "@notifPrefsEmailEnabled": { "description": "Preference toggle." },
+  "notifPrefsPromotionalOptIn": "Promotional messages",
+  "@notifPrefsPromotionalOptIn": { "description": "Preference toggle." },
+  "notifPrefsSaveFailed": "Couldn't save. Reverted.",
+  "@notifPrefsSaveFailed": { "description": "Toast when the toggle revert fires." },
+  "notifTimeJustNow": "Just now",
+  "@notifTimeJustNow": { "description": "Relative time: < 1 minute." },
+  "notifTimeMinutes": "{minutes}m ago",
+  "@notifTimeMinutes": {
+    "description": "Relative time: minutes.",
+    "placeholders": { "minutes": { "type": "int", "example": "2" } }
+  },
+  "notifTimeHours": "{hours}h ago",
+  "@notifTimeHours": {
+    "description": "Relative time: hours.",
+    "placeholders": { "hours": { "type": "int", "example": "3" } }
+  },
+  "notifTimeYesterday": "Yesterday",
+  "@notifTimeYesterday": { "description": "Relative time: yesterday." },
+
+  "favouritesTitle": "Favourites",
+  "@favouritesTitle": { "description": "P-26 AppBar title." },
+  "favouritesEmpty": "Save routes you take often. Add one from Search.",
+  "@favouritesEmpty": { "description": "P-26 empty state." },
+  "favouritesHowToAdd": "To add: open Search → pick a route → tap the heart.",
+  "@favouritesHowToAdd": { "description": "P-26 helper line when empty." },
+  "favouriteRow": "{origin} → {destination}",
+  "@favouriteRow": {
+    "description": "Each favourite-route row's main text.",
+    "placeholders": {
+      "origin": { "type": "String", "example": "Madina" },
+      "destination": { "type": "String", "example": "Circle" }
+    }
+  },
+  "favouriteDelete": "Delete",
+  "@favouriteDelete": { "description": "P-26 delete action." },
+  "favouriteDeleteConfirmTitle": "Remove this favourite?",
+  "@favouriteDeleteConfirmTitle": { "description": "P-26 confirm sheet." },
+  "favouriteDeleteConfirmBody": "You can add it again from Search.",
+  "@favouriteDeleteConfirmBody": { "description": "P-26 confirm sheet body." },
+  "favouriteDeleteFailed": "Couldn't remove.",
+  "@favouriteDeleteFailed": { "description": "P-26 failure." }
 }

@@ -35,6 +35,16 @@ class _FakeUserRepo implements UserRepository {
   Future<Result<UserResponse>> updateMe(
     UserProfileUpdateRequest request,
   ) async => const Err(NetworkFailure());
+  @override
+  Future<Result<void>> deleteFavouriteRoute(String favouriteId) async =>
+      const Err(NetworkFailure());
+  @override
+  Future<Result<NotificationPreferencesResponse>>
+  notificationPreferences() async => const Err(NetworkFailure());
+  @override
+  Future<Result<NotificationPreferencesResponse>> updateNotificationPreferences(
+    NotificationPreferencesUpdateRequest request,
+  ) async => const Err(NetworkFailure());
 }
 
 Widget _host(_FakeUserRepo repo) => ProviderScope(
