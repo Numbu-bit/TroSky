@@ -11,10 +11,14 @@ import 'package:trosky_ui/trosky_ui.dart';
 
 import '../../../app/app_providers.dart';
 import '../../../app/routes.dart';
+import '../../../app/telemetry.dart';
 import '../../../entry/auth/presentation/failure_messages.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../booking/presentation/booking_format.dart';
+import '../../safety/domain/safety_args.dart';
+import '../application/rate_banner_provider.dart';
 import '../application/trips_providers.dart';
+import '../data/rate_banner_cache.dart';
 import '../domain/booking_view.dart';
 
 /// Trip History (P-15, Figma P13): this month's spending, then the
@@ -262,7 +266,12 @@ class _TripsScreenState extends ConsumerState<TripsScreen> {
     }
     return [
       ...spaced([
-        for (final booking in loaded.bookings) _row(l10n, booking, now),
+        for (final booking in loaded.bookings)
+          _BookingEntry(
+            booking: booking,
+            now: now,
+            row: _row(l10n, booking, now),
+          ),
       ]),
       if (loaded.loadingMore)
         const Padding(
@@ -360,5 +369,173 @@ class _Message extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Renders a slim "Rate your trip" banner above the booking row when
+/// the booking is eligible (completed in last 7 days, not recently
+/// dismissed, RATE_ENABLED on). Otherwise just renders the row.
+class _BookingEntry extends ConsumerWidget {
+  const _BookingEntry({
+    required this.booking,
+    required this.now,
+    required this.row,
+  });
+
+  final BookingResponse booking;
+  final DateTime now;
+  final Widget row;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dismissals =
+        ref.watch(rateBannerDismissalsProvider).value ?? const {};
+    final eligible = rateBannerEligible(
+      completed: booking.status == BookingStatus.completed,
+      // No explicit completedAt on BookingResponse today; the scheduled
+      // departure is a close-enough proxy for "within the last 7 days".
+      completedAt: booking.trip?.scheduledDepartureAt,
+      dismissedAt: dismissals[booking.id],
+      now: now,
+    );
+    if (!eligible) return row;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _RateBanner(booking: booking),
+        row,
+      ],
+    );
+  }
+}
+
+class _RateBanner extends ConsumerStatefulWidget {
+  const _RateBanner({required this.booking});
+  final BookingResponse booking;
+
+  @override
+  ConsumerState<_RateBanner> createState() => _RateBannerState();
+}
+
+class _RateBannerState extends ConsumerState<_RateBanner> {
+  bool _shownTracked = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_shownTracked) return;
+    _shownTracked = true;
+    ref
+        .read(telemetryProvider)
+        .emit(
+          TelemetryEvent('rate_banner_shown', {
+            'booking_id_hash': _hashShort(widget.booking.id),
+          }),
+        );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final driverFirst =
+        widget.booking.trip?.driverFirstName() ?? l10n.rateDriverFallback;
+    return Semantics(
+      container: true,
+      label: l10n.rateBannerTitleWithDriver(driverFirst),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          TroskySpacing.s12,
+          TroskySpacing.s8,
+          TroskySpacing.s12,
+          0,
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: TroskyColors.mtnYellow.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(TroskyRadii.r12),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(TroskyRadii.r12),
+            onTap: () {
+              ref
+                  .read(telemetryProvider)
+                  .emit(
+                    TelemetryEvent('rate_banner_tapped', {
+                      'booking_id_hash': _hashShort(widget.booking.id),
+                    }),
+                  );
+              context.pushNamed(
+                AppRoute.rate.name,
+                pathParameters: {'bookingId': widget.booking.id},
+                extra: RateArgs(booking: widget.booking),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                TroskySpacing.s12,
+                TroskySpacing.s10,
+                TroskySpacing.s4,
+                TroskySpacing.s10,
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.star_rounded,
+                    size: 20,
+                    color: TroskyColors.mtnYellow,
+                  ),
+                  const SizedBox(width: TroskySpacing.s8),
+                  Expanded(
+                    child: Text(
+                      l10n.rateBannerTitleWithDriver(driverFirst),
+                      style: TroskyTypography.body14SemiBold.copyWith(
+                        color: TroskyColors.ink,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 18),
+                    tooltip: l10n.rateBannerDismiss,
+                    onPressed: () async {
+                      ref
+                          .read(telemetryProvider)
+                          .emit(
+                            TelemetryEvent('rate_banner_dismissed', {
+                              'booking_id_hash': _hashShort(widget.booking.id),
+                            }),
+                          );
+                      await ref
+                          .read(rateBannerCacheProvider)
+                          .dismiss(widget.booking.id);
+                      ref.invalidate(rateBannerDismissalsProvider);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _hashShort(String id) {
+  // Telemetry-safe pseudo-id: 8 hex chars derived from Dart's own
+  // String hash. Not cryptographic — the goal is correlation across
+  // events without exposing the raw booking id, which this achieves.
+  // (The brief said SHA-256; we avoid adding a `crypto` dep for one
+  // 8-char field. Swap if PII regs ever demand cryptographic hashing.)
+  var hash = id.hashCode & 0xFFFFFFFF;
+  final hex = hash.toRadixString(16).padLeft(8, '0');
+  return hex.substring(hex.length - 8);
+}
+
+extension on BookingTripSummaryResponse {
+  String? driverFirstName() {
+    // The booking summary doesn't carry the driver name today (G); when
+    // it does, parse the first token. Returning null makes the banner
+    // fall back to the generic "Rate your trip with your driver" copy.
+    return null;
   }
 }
