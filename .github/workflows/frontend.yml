@@ -185,10 +185,11 @@ jobs:
           }
 
       - name: Verify backup runbook present
+        working-directory: TroSky/frontend
         shell: bash
         run: |
           set -euo pipefail
-          test -s TroSky/frontend/apps/mobile/android/BACKUP.md || {
+          test -s apps/mobile/android/BACKUP.md || {
             echo "::error::apps/mobile/android/BACKUP.md is missing; C3 runbook required"
             exit 1
           }

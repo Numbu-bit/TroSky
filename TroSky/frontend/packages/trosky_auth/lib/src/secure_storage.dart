@@ -25,10 +25,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 ///   accessibility class (without `_ThisDeviceOnly`) migrates
 ///   through iCloud backups, which is the C3 ship-blocker on iOS.
 const FlutterSecureStorage troskySecureStorage = FlutterSecureStorage(
-  aOptions: AndroidOptions(
-    resetOnError: true,
-    migrateWithBackup: false,
-  ),
+  aOptions: AndroidOptions(resetOnError: true, migrateWithBackup: false),
   iOptions: IOSOptions(
     accessibility: KeychainAccessibility.first_unlock_this_device,
   ),
