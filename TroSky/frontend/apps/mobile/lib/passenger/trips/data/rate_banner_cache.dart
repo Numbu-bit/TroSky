@@ -10,11 +10,14 @@ import 'dart:math';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive/hive.dart';
+import 'package:trosky_auth/trosky_auth.dart';
 
 class RateBannerCache {
-  RateBannerCache({FlutterSecureStorage? secureStorage, Random? random})
-    : _secure = secureStorage ?? const FlutterSecureStorage(),
-      _random = random ?? Random.secure();
+  RateBannerCache({
+    FlutterSecureStorage secureStorage = troskySecureStorage,
+    Random? random,
+  }) : _secure = secureStorage,
+       _random = random ?? Random.secure();
 
   static const String boxName = 'rate_banner_v1';
   static const String secureStorageKey = 'trosky.rate_banner.hive_key';

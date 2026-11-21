@@ -1,5 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import 'secure_storage.dart';
+
 /// Where the refresh token is kept between app starts. The access token is
 /// only ever held in memory (see `TokenManager`).
 abstract interface class RefreshTokenStore {
@@ -13,7 +15,7 @@ abstract interface class RefreshTokenStore {
 /// [RefreshTokenStore] in the platform keystore: Keychain on iOS, an
 /// encrypted store backed by the Android Keystore on Android.
 class SecureRefreshTokenStore implements RefreshTokenStore {
-  const SecureRefreshTokenStore([this._storage = const FlutterSecureStorage()]);
+  const SecureRefreshTokenStore([this._storage = troskySecureStorage]);
 
   final FlutterSecureStorage _storage;
 

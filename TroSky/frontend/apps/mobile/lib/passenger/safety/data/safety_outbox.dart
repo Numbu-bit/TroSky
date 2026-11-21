@@ -22,6 +22,7 @@ import 'dart:math';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive/hive.dart';
 import 'package:trosky_api/trosky_api.dart';
+import 'package:trosky_auth/trosky_auth.dart';
 import 'package:trosky_core/trosky_core.dart';
 
 /// Which kind of safety action is queued. `incident` also carries
@@ -68,10 +69,10 @@ class SafetyOutboxEntry {
 
 class SafetyOutbox {
   SafetyOutbox({
-    FlutterSecureStorage? secureStorage,
+    FlutterSecureStorage secureStorage = troskySecureStorage,
     Random? random,
     this.maxAge = const Duration(days: 7),
-  }) : _secure = secureStorage ?? const FlutterSecureStorage(),
+  }) : _secure = secureStorage,
        _random = random ?? Random.secure();
 
   static const String boxName = 'safety_outbox_v1';
