@@ -2862,5 +2862,25 @@
   "favouriteDeleteConfirmBody": "You can add it again from Search.",
   "@favouriteDeleteConfirmBody": { "description": "P-26 confirm sheet body." },
   "favouriteDeleteFailed": "Couldn't remove.",
-  "@favouriteDeleteFailed": { "description": "P-26 failure." }
+  "@favouriteDeleteFailed": { "description": "P-26 failure." },
+
+  "homeBellSemantics": "Notifications, {unread} unread",
+  "@homeBellSemantics": {
+    "description": "Semantics label on the Home bell button.",
+    "placeholders": { "unread": { "type": "int", "example": "3" } }
+  },
+
+  "rateBannerTitleWithDriver": "Rate your trip with {driver}",
+  "@rateBannerTitleWithDriver": {
+    "description": "Trips tab banner for an unrated completed booking.",
+    "placeholders": { "driver": { "type": "String", "example": "Kofi" } }
+  },
+  "rateBannerDismiss": "Dismiss",
+  "@rateBannerDismiss": { "description": "Trips banner dismiss button semantics." },
+
+  "searchFavouriteChipSemantics": "Favourite, {label}",
+  "@searchFavouriteChipSemantics": {
+    "description": "Semantics for a favourite chip on Search.",
+    "placeholders": { "label": { "type": "String", "example": "Madina to Circle" } }
+  }
 }

@@ -133,3 +133,8 @@ TroSky is built for millions of users. Every change meets this bar before PR goe
 - Observability: breadcrumbs around risky paths for crash reporting (Sentry/Crashlytics hook).
 - Rollout: anything risky ships behind a feature flag with a documented kill-switch (via Remote Config or env flag; name it in the PR).
 - Privacy: no PII (phone numbers, names, location coordinates) in logs, telemetry, or crash breadcrumbs. Hash or drop before emit.
+
+## Env parsing (Nov 2026)
+
+Env parsers fail loud on missing or unrecognised required flags. Never
+silently default. See step21/A.

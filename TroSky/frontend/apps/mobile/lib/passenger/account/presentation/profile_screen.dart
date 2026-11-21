@@ -206,7 +206,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           title: l10n.profileRowHelpCentre,
                           onTap: () async {
                             _trackSection(ProfileSection.helpCentre);
-                            await launchUrl(Uri.parse(helpCentreUrl));
+                            await launchUrl(
+                              Uri.parse(ref.read(envProvider).helpCentreUrl),
+                            );
                           },
                         ),
                         _Row(
