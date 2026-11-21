@@ -97,6 +97,96 @@ jobs:
         working-directory: TroSky/frontend/apps/${{ matrix.app }}
         run: flutter build web --release --no-pub --dart-define-from-file=../../env/dev.example.json
 
+  signing-config-check:
+    name: Signing config check (mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify Gradle release signing wiring
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle_file=apps/mobile/android/app/build.gradle.kts
+
+          echo "::group::Assertions"
+          grep -q 'rootProject.file("key.properties")' "$gradle_file" || {
+            echo "::error file=$gradle_file::expected key.properties to be loaded via rootProject.file(\"key.properties\")"
+            exit 1
+          }
+
+          grep -q 'signingConfig = signingConfigs.findByName("release")' "$gradle_file" || {
+            echo "::error file=$gradle_file::expected release buildType to use signingConfigs.findByName(\"release\")"
+            exit 1
+          }
+
+          if grep -q 'signingConfigs.getByName("debug")' "$gradle_file"; then
+            echo "::error file=$gradle_file::release must not fall back to the debug keystore (C1)"
+            exit 1
+          fi
+
+          grep -q 'val storeApplicationId = "com.trosky.app"' "$gradle_file" || {
+            echo "::error file=$gradle_file::expected storeApplicationId = \"com.trosky.app\""
+            exit 1
+          }
+
+          grep -q 'val verifyReleaseSigningReady' "$gradle_file" || {
+            echo "::error file=$gradle_file::expected verifyReleaseSigningReady task"
+            exit 1
+          }
+          grep -q 'assembleRelease\|bundleRelease' "$gradle_file" || {
+            echo "::error file=$gradle_file::expected assembleRelease / bundleRelease wiring"
+            exit 1
+          }
+          echo "::endgroup::"
+
+          echo "Signing wiring OK."
+
+      - name: Verify key.properties is gitignored
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          gi=apps/mobile/android/.gitignore
+          grep -q '^key.properties$' "$gi" || {
+            echo "::error file=$gi::expected 'key.properties' line in android/.gitignore"
+            exit 1
+          }
+          grep -qE '^\*\*/\*\.jks$' "$gi" || {
+            echo "::error file=$gi::expected '**/*.jks' line in android/.gitignore"
+            exit 1
+          }
+
+      - name: Verify key.properties is not committed
+        working-directory: ${{ github.workspace }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-files --error-unmatch TroSky/frontend/apps/mobile/android/key.properties 2>/dev/null; then
+            echo "::error::apps/mobile/android/key.properties is tracked; it must stay gitignored"
+            exit 1
+          fi
+          if git ls-files TroSky/frontend/apps/mobile/android/ | grep -Ei '\.jks$|\.keystore$'; then
+            echo "::error::a .jks/.keystore file is tracked under android/; it must stay gitignored"
+            exit 1
+          fi
+          echo "key.properties and keystore files are not tracked."
+
+      - name: Verify signing runbook present
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f apps/mobile/android/SIGNING.md || {
+            echo "::error::apps/mobile/android/SIGNING.md is missing; C1 runbook required"
+            exit 1
+          }
+          test -f apps/mobile/android/key.properties.example || {
+            echo "::error::apps/mobile/android/key.properties.example is missing"
+            exit 1
+          }
+
   build-apk:
     name: Build APK (mobile, debug)
     runs-on: ubuntu-latest
