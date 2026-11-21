@@ -62,4 +62,56 @@ void main() {
       });
     });
   });
+
+  group('TelemetryEvent.sanitised schema (C5)', () {
+    test('unknown event name returns null', () {
+      final event = TelemetryEvent('ticket_mint_free_money', {'amount': 999});
+      expect(event.sanitised, isNull);
+    });
+
+    test('key not in event allow-list is dropped', () {
+      // ticket_opened allows {booking_status, seat_index, seat_count,
+      // is_first_open} — nothing else.
+      final event = TelemetryEvent('ticket_opened', {
+        'booking_status': 'confirmed',
+        'driver_id': 'not-allowed',
+      });
+      expect(event.sanitised, {'booking_status': 'confirmed'});
+    });
+
+    test('oversized string is dropped', () {
+      final event = TelemetryEvent('pii_edit_failed', {
+        'field': 'name',
+        'reason': 'x' * 128,
+      });
+      expect(event.sanitised, {'field': 'name'});
+    });
+
+    test('out-of-range int is dropped', () {
+      final event = TelemetryEvent('wallet_topup_submitted', {
+        'amount': 1 << 40,
+      });
+      expect(event.sanitised, isEmpty);
+    });
+
+    test('non-finite double is dropped', () {
+      final event = TelemetryEvent('wallet_topup_submitted', {
+        'amount': double.infinity,
+      });
+      expect(event.sanitised, isEmpty);
+    });
+
+    test('sanitised map is unmodifiable', () {
+      final event = TelemetryEvent('home_bell_tapped');
+      expect(event.sanitised, isNotNull);
+      expect(() => event.sanitised!['x'] = 1, throwsUnsupportedError);
+    });
+
+    test('ConsoleTelemetryService silently drops unknown events', () {
+      // Nothing to assert directly without a sink spy; the contract is
+      // "emit does not throw" and "sanitised was null for the drop".
+      const sink = ConsoleTelemetryService();
+      sink.emit(TelemetryEvent('totally_undeclared_event', {'x': 1}));
+    });
+  });
 }
