@@ -34,6 +34,8 @@ import '../passenger/account/presentation/delete_account_screen.dart';
 import '../passenger/account/presentation/personal_info_screen.dart';
 import '../passenger/account/presentation/profile_screen.dart';
 import '../passenger/account/presentation/reset_password_screen.dart';
+import '../passenger/favourites/presentation/favourites_screen.dart';
+import '../passenger/notifications/presentation/notifications_screen.dart';
 import '../passenger/safety/domain/safety_args.dart';
 import '../passenger/safety/presentation/rate_screen.dart';
 import '../passenger/safety/presentation/report_screen.dart';
@@ -351,13 +353,24 @@ GoRouter router(Ref ref) {
         builder: (context, state) =>
             NewPasswordScreen(args: state.extra! as ResetPasswordArgs),
       ),
+      route(
+        AppRoute.notifications,
+        (context, state) => notificationsEnabled
+            ? const NotificationsScreen(from: 'profile')
+            : PushedPlaceholder(
+                title: AppLocalizations.of(context).placeholderNotifications,
+              ),
+      ),
+      route(
+        AppRoute.favouriteRoutes,
+        (context, state) => favouritesEnabled
+            ? const FavouritesScreen()
+            : PushedPlaceholder(
+                title: AppLocalizations.of(context).placeholderFavouriteRoutes,
+              ),
+      ),
       for (final (pushed, title)
           in <(AppRoute, String Function(AppLocalizations))>[
-            (AppRoute.notifications, (l10n) => l10n.placeholderNotifications),
-            (
-              AppRoute.favouriteRoutes,
-              (l10n) => l10n.placeholderFavouriteRoutes,
-            ),
             (AppRoute.subscribe, (l10n) => l10n.placeholderSubscribe),
             (AppRoute.sos, (l10n) => l10n.placeholderSos),
           ])

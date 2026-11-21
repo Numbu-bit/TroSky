@@ -2103,6 +2103,8 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get testerMenuEmergency => 'Open P-12 Emergency';
+
+  @override
   String get profileAnonymousName => 'Passenger';
 
   @override
@@ -2281,4 +2283,94 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get signInResetPassword => 'Reset password';
+
+  @override
+  String get notifTitle => 'Notifications';
+
+  @override
+  String get notifTabInbox => 'Inbox';
+
+  @override
+  String get notifTabPrefs => 'Preferences';
+
+  @override
+  String get notifEmpty => 'No notifications yet.';
+
+  @override
+  String get notifMarkAllRead => 'Mark all read';
+
+  @override
+  String get notifOpeningToast => 'Opening…';
+
+  @override
+  String get notifCategoryTransactional => 'Bookings & payments';
+
+  @override
+  String get notifCategorySafety => 'Safety';
+
+  @override
+  String get notifCategoryPromotional => 'Promotions';
+
+  @override
+  String get notifPrefsBannerChannelOnly =>
+      'Per-category toggles are coming. For now, choose which channels we use.';
+
+  @override
+  String get notifPrefsPushEnabled => 'Push notifications';
+
+  @override
+  String get notifPrefsSmsEnabled => 'SMS notifications';
+
+  @override
+  String get notifPrefsEmailEnabled => 'Email notifications';
+
+  @override
+  String get notifPrefsPromotionalOptIn => 'Promotional messages';
+
+  @override
+  String get notifPrefsSaveFailed => 'Couldn\'t save. Reverted.';
+
+  @override
+  String get notifTimeJustNow => 'Just now';
+
+  @override
+  String notifTimeMinutes(int minutes) {
+    return '${minutes}m ago';
+  }
+
+  @override
+  String notifTimeHours(int hours) {
+    return '${hours}h ago';
+  }
+
+  @override
+  String get notifTimeYesterday => 'Yesterday';
+
+  @override
+  String get favouritesTitle => 'Favourites';
+
+  @override
+  String get favouritesEmpty =>
+      'Save routes you take often. Add one from Search.';
+
+  @override
+  String get favouritesHowToAdd =>
+      'To add: open Search → pick a route → tap the heart.';
+
+  @override
+  String favouriteRow(String origin, String destination) {
+    return '$origin → $destination';
+  }
+
+  @override
+  String get favouriteDelete => 'Delete';
+
+  @override
+  String get favouriteDeleteConfirmTitle => 'Remove this favourite?';
+
+  @override
+  String get favouriteDeleteConfirmBody => 'You can add it again from Search.';
+
+  @override
+  String get favouriteDeleteFailed => 'Couldn\'t remove.';
 }

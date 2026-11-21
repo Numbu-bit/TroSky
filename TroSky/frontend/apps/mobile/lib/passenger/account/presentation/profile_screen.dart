@@ -142,14 +142,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         _Row(
                           icon: Icons.notifications_outlined,
                           title: l10n.profileRowNotifications,
-                          subtitle: l10n.profileComingSoon,
-                          onTap: null,
+                          subtitle: notificationsEnabled
+                              ? null
+                              : l10n.profileComingSoon,
+                          onTap: notificationsEnabled
+                              ? () {
+                                  _trackSection(ProfileSection.notifications);
+                                  context.pushNamed(
+                                    AppRoute.notifications.name,
+                                  );
+                                }
+                              : null,
                         ),
                         _Row(
                           icon: Icons.favorite_outline,
                           title: l10n.profileRowFavourites,
-                          subtitle: l10n.profileComingSoon,
-                          onTap: null,
+                          subtitle: favouritesEnabled
+                              ? null
+                              : l10n.profileComingSoon,
+                          onTap: favouritesEnabled
+                              ? () {
+                                  _trackSection(ProfileSection.favourites);
+                                  context.pushNamed(
+                                    AppRoute.favouriteRoutes.name,
+                                  );
+                                }
+                              : null,
                         ),
                         _Row(
                           icon: Icons.language_outlined,

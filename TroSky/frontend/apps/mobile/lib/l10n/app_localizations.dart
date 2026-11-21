@@ -3701,6 +3701,7 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open P-12 Emergency'**
   String get testerMenuEmergency;
+
   /// P-21 header fallback when the user has no name.
   ///
   /// In en, this message translates to:
@@ -4048,6 +4049,168 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reset password'**
   String get signInResetPassword;
+
+  /// P-20 AppBar title.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notifTitle;
+
+  /// P-20 tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Inbox'**
+  String get notifTabInbox;
+
+  /// P-20 tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferences'**
+  String get notifTabPrefs;
+
+  /// P-20 empty state.
+  ///
+  /// In en, this message translates to:
+  /// **'No notifications yet.'**
+  String get notifEmpty;
+
+  /// P-20 AppBar action.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark all read'**
+  String get notifMarkAllRead;
+
+  /// Toast when a notification has no matching route.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening…'**
+  String get notifOpeningToast;
+
+  /// Notification category label.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookings & payments'**
+  String get notifCategoryTransactional;
+
+  /// Notification category label.
+  ///
+  /// In en, this message translates to:
+  /// **'Safety'**
+  String get notifCategorySafety;
+
+  /// Notification category label.
+  ///
+  /// In en, this message translates to:
+  /// **'Promotions'**
+  String get notifCategoryPromotional;
+
+  /// Preferences banner explaining the channel-level shape.
+  ///
+  /// In en, this message translates to:
+  /// **'Per-category toggles are coming. For now, choose which channels we use.'**
+  String get notifPrefsBannerChannelOnly;
+
+  /// Preference toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Push notifications'**
+  String get notifPrefsPushEnabled;
+
+  /// Preference toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'SMS notifications'**
+  String get notifPrefsSmsEnabled;
+
+  /// Preference toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Email notifications'**
+  String get notifPrefsEmailEnabled;
+
+  /// Preference toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Promotional messages'**
+  String get notifPrefsPromotionalOptIn;
+
+  /// Toast when the toggle revert fires.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save. Reverted.'**
+  String get notifPrefsSaveFailed;
+
+  /// Relative time: < 1 minute.
+  ///
+  /// In en, this message translates to:
+  /// **'Just now'**
+  String get notifTimeJustNow;
+
+  /// Relative time: minutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes}m ago'**
+  String notifTimeMinutes(int minutes);
+
+  /// Relative time: hours.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h ago'**
+  String notifTimeHours(int hours);
+
+  /// Relative time: yesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get notifTimeYesterday;
+
+  /// P-26 AppBar title.
+  ///
+  /// In en, this message translates to:
+  /// **'Favourites'**
+  String get favouritesTitle;
+
+  /// P-26 empty state.
+  ///
+  /// In en, this message translates to:
+  /// **'Save routes you take often. Add one from Search.'**
+  String get favouritesEmpty;
+
+  /// P-26 helper line when empty.
+  ///
+  /// In en, this message translates to:
+  /// **'To add: open Search → pick a route → tap the heart.'**
+  String get favouritesHowToAdd;
+
+  /// Each favourite-route row's main text.
+  ///
+  /// In en, this message translates to:
+  /// **'{origin} → {destination}'**
+  String favouriteRow(String origin, String destination);
+
+  /// P-26 delete action.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get favouriteDelete;
+
+  /// P-26 confirm sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this favourite?'**
+  String get favouriteDeleteConfirmTitle;
+
+  /// P-26 confirm sheet body.
+  ///
+  /// In en, this message translates to:
+  /// **'You can add it again from Search.'**
+  String get favouriteDeleteConfirmBody;
+
+  /// P-26 failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t remove.'**
+  String get favouriteDeleteFailed;
 }
 
 class _AppLocalizationsDelegate
