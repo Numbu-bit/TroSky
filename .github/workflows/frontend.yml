@@ -168,10 +168,11 @@ jobs:
           fi
 
       - name: Verify pinning decision runbook present
+        working-directory: TroSky/frontend
         shell: bash
         run: |
           set -euo pipefail
-          test -s TroSky/frontend/apps/mobile/android/PINNING.md || {
+          test -s apps/mobile/android/PINNING.md || {
             echo "::error::apps/mobile/android/PINNING.md is missing; C6 decision doc required"
             exit 1
           }
