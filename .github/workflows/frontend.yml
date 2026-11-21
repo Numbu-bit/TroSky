@@ -185,6 +185,90 @@ jobs:
             exit 1
           }
 
+  shrink-obfuscate-check:
+    name: Shrink/obfuscate config check (mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify R8 + resource shrinking wired on release
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle_file=apps/mobile/android/app/build.gradle.kts
+
+          grep -q 'isMinifyEnabled = true' "$gradle_file" || {
+            echo "::error file=$gradle_file::expected isMinifyEnabled = true on release (C2)"
+            exit 1
+          }
+          grep -q 'isShrinkResources = true' "$gradle_file" || {
+            echo "::error file=$gradle_file::expected isShrinkResources = true on release (C2)"
+            exit 1
+          }
+          grep -q 'proguardFiles(' "$gradle_file" || {
+            echo "::error file=$gradle_file::expected proguardFiles(...) call on release (C2)"
+            exit 1
+          }
+          grep -q 'proguard-android-optimize.txt' "$gradle_file" || {
+            echo "::error file=$gradle_file::expected default proguard-android-optimize.txt (C2)"
+            exit 1
+          }
+          grep -q '"proguard-rules.pro"' "$gradle_file" || {
+            echo "::error file=$gradle_file::expected 'proguard-rules.pro' in proguardFiles (C2)"
+            exit 1
+          }
+
+      - name: Verify ProGuard rules file present
+        shell: bash
+        run: |
+          set -euo pipefail
+          rules=TroSky/frontend/apps/mobile/android/app/proguard-rules.pro
+          test -s "$rules" || {
+            echo "::error::$rules missing or empty"
+            exit 1
+          }
+
+      - name: Verify store-build entry point
+        shell: bash
+        run: |
+          set -euo pipefail
+          script=TroSky/frontend/apps/mobile/tool/build_store.sh
+          test -x "$script" || {
+            echo "::error::$script missing or not executable"
+            exit 1
+          }
+          # Script must call --obfuscate and --split-debug-info to
+          # produce de-identified Dart symbols.
+          grep -q -- '--obfuscate' "$script" || {
+            echo "::error::$script must pass --obfuscate"
+            exit 1
+          }
+          grep -q -- '--split-debug-info=' "$script" || {
+            echo "::error::$script must pass --split-debug-info"
+            exit 1
+          }
+          # Prod env must not ship TESTER_MENU=true via this script.
+          grep -q 'TESTER_MENU' "$script" || {
+            echo "::error::$script must reject TESTER_MENU=true in prod"
+            exit 1
+          }
+          # Script must preserve R8 mapping alongside Dart symbols.
+          grep -q 'mapping.txt' "$script" || {
+            echo "::error::$script must preserve mapping.txt"
+            exit 1
+          }
+          bash -n "$script"
+
+      - name: Verify obfuscation runbook present
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s TroSky/frontend/apps/mobile/android/OBFUSCATION.md || {
+            echo "::error::apps/mobile/android/OBFUSCATION.md is missing; C2 runbook required"
+            exit 1
+          }
+
   build-apk:
     name: Build APK (mobile, debug)
     runs-on: ubuntu-latest

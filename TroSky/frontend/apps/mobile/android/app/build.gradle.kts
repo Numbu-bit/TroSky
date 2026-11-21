@@ -87,6 +87,19 @@ android {
             // resolves); otherwise the release build fails at task time
             // with a clear message.
             signingConfig = signingConfigs.findByName("release")
+
+            // R8 full-mode shrink + obfuscate for the Java/Kotlin code
+            // the embedding and the plugins ship. Dart tree-shake and
+            // obfuscation are driven by `flutter build … --release
+            // --obfuscate --split-debug-info=…` from tool/build_store.sh.
+            // See apps/mobile/android/OBFUSCATION.md for how the mapping
+            // and the Dart debug-info interact for stack traces.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }
