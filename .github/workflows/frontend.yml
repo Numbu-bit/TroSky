@@ -366,6 +366,100 @@ jobs:
             exit 1
           }
 
+  prod-config-check:
+    name: Prod config check (mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify DeployEnv + prod invariants in Env.parse
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          env_dart=packages/trosky_core/lib/src/env.dart
+
+          grep -q 'enum DeployEnv' "$env_dart" || {
+            echo "::error file=$env_dart::expected enum DeployEnv (C4)"
+            exit 1
+          }
+          for name in dev staging demo prod; do
+            grep -q "DeployEnv.*$name\|  $name," "$env_dart" || {
+              echo "::error file=$env_dart::expected DeployEnv.$name (C4)"
+              exit 1
+            }
+          done
+          grep -q '_placeholderApiHosts' "$env_dart" || {
+            echo "::error file=$env_dart::expected _placeholderApiHosts set"
+            exit 1
+          }
+          grep -q 'DEPLOY_ENV=prod requires API_MODE=live' "$env_dart" || {
+            echo "::error file=$env_dart::expected prod invariant: API_MODE=live"
+            exit 1
+          }
+          grep -q 'DEPLOY_ENV=prod requires an https:// API_BASE_URL' "$env_dart" || {
+            echo "::error file=$env_dart::expected prod invariant: https API_BASE_URL"
+            exit 1
+          }
+          grep -q 'DEPLOY_ENV=prod requires a wss:// WS_BASE_URL' "$env_dart" || {
+            echo "::error file=$env_dart::expected prod invariant: wss WS_BASE_URL"
+            exit 1
+          }
+          grep -q 'DEPLOY_ENV=prod forbids TESTER_MENU=true' "$env_dart" || {
+            echo "::error file=$env_dart::expected prod invariant: TESTER_MENU forbidden"
+            exit 1
+          }
+          grep -q 'testerMenuAllowed' "$env_dart" || {
+            echo "::error file=$env_dart::expected env.testerMenuAllowed getter"
+            exit 1
+          }
+
+      - name: Verify tester menu respects env.testerMenuAllowed
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          tester=apps/mobile/lib/app/tester/tester_menu.dart
+
+          grep -q 'testerMenuLive' "$tester" || {
+            echo "::error file=$tester::expected testerMenuLive helper"
+            exit 1
+          }
+          grep -q 'env.testerMenuAllowed' "$tester" || {
+            echo "::error file=$tester::expected runtime env.testerMenuAllowed check"
+            exit 1
+          }
+          grep -q 'ConsumerStatefulWidget' "$tester" || {
+            echo "::error file=$tester::TesterMenuTapCounter must watch env via Consumer*"
+            exit 1
+          }
+
+      - name: Verify env templates declare DEPLOY_ENV
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in env/dev.example.json env/staging.example.json env/prod.example.json; do
+            test -f "$f" || { echo "::error::$f missing"; exit 1; }
+            grep -q '"DEPLOY_ENV"' "$f" || {
+              echo "::error file=$f::expected DEPLOY_ENV key"
+              exit 1
+            }
+          done
+          grep -q '"DEPLOY_ENV": "dev"' env/dev.example.json
+          grep -q '"DEPLOY_ENV": "staging"' env/staging.example.json
+          grep -q '"DEPLOY_ENV": "prod"' env/prod.example.json
+
+      - name: Verify prod template has no TESTER_MENU=true
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -Eq '"TESTER_MENU"\s*:\s*"?true"?' env/prod.example.json; then
+            echo "::error file=env/prod.example.json::prod must not enable TESTER_MENU"
+            exit 1
+          fi
+
   build-apk:
     name: Build APK (mobile, debug)
     runs-on: ubuntu-latest
