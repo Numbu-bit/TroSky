@@ -159,6 +159,7 @@ jobs:
           }
 
       - name: Verify key.properties is not committed
+        working-directory: ${{ github.workspace }}
         shell: bash
         run: |
           set -euo pipefail
@@ -173,14 +174,15 @@ jobs:
           echo "key.properties and keystore files are not tracked."
 
       - name: Verify signing runbook present
+        working-directory: TroSky/frontend
         shell: bash
         run: |
           set -euo pipefail
-          test -f TroSky/frontend/apps/mobile/android/SIGNING.md || {
+          test -f apps/mobile/android/SIGNING.md || {
             echo "::error::apps/mobile/android/SIGNING.md is missing; C1 runbook required"
             exit 1
           }
-          test -f TroSky/frontend/apps/mobile/android/key.properties.example || {
+          test -f apps/mobile/android/key.properties.example || {
             echo "::error::apps/mobile/android/key.properties.example is missing"
             exit 1
           }
