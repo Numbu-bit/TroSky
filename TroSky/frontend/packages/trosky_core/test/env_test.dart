@@ -212,8 +212,7 @@ void main() {
         expect(
           () => Env.parse(
             apiBaseUrl: host,
-            wsBaseUrl:
-                'wss://${Uri.parse(host).host}${Uri.parse(host).path}',
+            wsBaseUrl: 'wss://${Uri.parse(host).host}${Uri.parse(host).path}',
             apiMode: 'live',
             deployEnv: 'prod',
           ),
