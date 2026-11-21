@@ -6,14 +6,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:trosky_api/trosky_api.dart';
-import 'package:trosky_core/trosky_core.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
 import '../../../app/app_providers.dart';
 import '../../../app/routes.dart';
 import '../../../app/telemetry.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../favourites/application/favourites_providers.dart';
 import '../../home/application/home_providers.dart';
 import '../application/search_providers.dart';
 import '../domain/journey.dart';
@@ -275,26 +273,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       onSchedule: _schedule,
                     ),
                   ),
-                  SliverToBoxAdapter(
-                    child: _FavouriteChipsRow(
-                      onTap: (FavouriteRouteResponse fav) {
-                        setState(() {
-                          _origin = StopOrigin(
-                            SearchStop(
-                              id: fav.originStopId,
-                              name: fav.originStopName,
-                            ),
-                          );
-                          _destination = SearchStop(
-                            id: fav.destinationStopId,
-                            name: fav.destinationStopName,
-                          );
-                          _fromText.text = fav.originStopName;
-                          _toText.text = fav.destinationStopName;
-                        });
-                      },
-                    ),
-                  ),
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(
                       TroskySpacing.s16,
@@ -385,18 +363,27 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       route.originStopName,
                       route.destinationStopName,
                     ),
-                onPressed: () => _fill(
-                  StopOrigin(
-                    SearchStop(
-                      id: route.originStopId,
-                      name: route.originStopName,
+                onPressed: () {
+                  ref
+                      .read(telemetryProvider)
+                      .emit(
+                        TelemetryEvent('search_favourite_chip_tapped', const {
+                          'kind': 'route',
+                        }),
+                      );
+                  _fill(
+                    StopOrigin(
+                      SearchStop(
+                        id: route.originStopId,
+                        name: route.originStopName,
+                      ),
                     ),
-                  ),
-                  SearchStop(
-                    id: route.destinationStopId,
-                    name: route.destinationStopName,
-                  ),
-                ),
+                    SearchStop(
+                      id: route.destinationStopId,
+                      name: route.destinationStopName,
+                    ),
+                  );
+                },
               ),
           ],
         ),
@@ -772,62 +759,3 @@ class PillBar extends StatelessWidget {
   }
 }
 
-/// Horizontal chip row of the user's top-3 favourites (by createdAt
-/// desc), shown on Search before the user starts typing. Tapping a
-/// chip pre-fills both origin and destination so the trip search
-/// becomes one tap. Hidden entirely when the user has no favourites.
-class _FavouriteChipsRow extends ConsumerWidget {
-  const _FavouriteChipsRow({required this.onTap});
-  final ValueChanged<FavouriteRouteResponse> onTap;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
-    final async = ref.watch(favouritesListProvider);
-    final favs = switch (async) {
-      AsyncData(value: Ok(:final value)) => value,
-      _ => const <FavouriteRouteResponse>[],
-    };
-    if (favs.isEmpty) return const SizedBox.shrink();
-    final top = (List<FavouriteRouteResponse>.of(
-      favs,
-    )..sort((a, b) => b.createdAt.compareTo(a.createdAt))).take(3).toList();
-    return SizedBox(
-      height: 44,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: TroskySpacing.s16),
-        itemCount: top.length,
-        separatorBuilder: (_, _) => const SizedBox(width: TroskySpacing.s8),
-        itemBuilder: (_, i) {
-          final fav = top[i];
-          final label = fav.label?.isNotEmpty == true
-              ? fav.label!
-              : '${fav.originStopName} → ${fav.destinationStopName}';
-          return Semantics(
-            label: l10n.searchFavouriteChipSemantics(label),
-            button: true,
-            child: ActionChip(
-              avatar: const Icon(
-                Icons.favorite,
-                size: 14,
-                color: TroskyColors.red,
-              ),
-              label: Text(label),
-              onPressed: () {
-                ref
-                    .read(telemetryProvider)
-                    .emit(
-                      TelemetryEvent('search_favourite_chip_tapped', const {
-                        'kind': 'route',
-                      }),
-                    );
-                onTap(fav);
-              },
-            ),
-          );
-        },
-      ),
-    );
-  }
-}

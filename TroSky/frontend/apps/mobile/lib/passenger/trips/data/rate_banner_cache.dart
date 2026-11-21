@@ -72,24 +72,22 @@ class RateBannerCache {
   }
 
   /// All dismissal timestamps keyed by booking id. Convenient for the
-  /// provider that renders the row list.
+  /// provider that renders the row list. Lets the storage error escape
+  /// so the provider stays in AsyncError and callers hide the banner
+  /// rather than show it on an unknown-dismissal-state list.
   Future<Map<String, DateTime>> allDismissals() async {
-    try {
-      final box = await _open();
-      final out = <String, DateTime>{};
-      for (final key in box.keys.cast<String>()) {
-        final raw = box.get(key);
-        if (raw == null) continue;
-        try {
-          out[key] = DateTime.parse(raw);
-        } on FormatException {
-          await box.delete(key);
-        }
+    final box = await _open();
+    final out = <String, DateTime>{};
+    for (final key in box.keys.cast<String>()) {
+      final raw = box.get(key);
+      if (raw == null) continue;
+      try {
+        out[key] = DateTime.parse(raw);
+      } on FormatException {
+        await box.delete(key);
       }
-      return out;
-    } on Object {
-      return const {};
     }
+    return out;
   }
 }
 

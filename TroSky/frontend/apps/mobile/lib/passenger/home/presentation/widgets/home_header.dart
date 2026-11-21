@@ -260,7 +260,9 @@ class _BellState extends ConsumerState<_Bell> with WidgetsBindingObserver {
       AsyncData(value: Ok(:final value)) => value.unreadCount,
       _ => 0,
     };
-    final label = l10n.homeBellSemantics(unread);
+    final label = unread > 0
+        ? l10n.homeBellSemantics(unread)
+        : l10n.homeNotifications;
     return Semantics(
       button: true,
       label: label,
@@ -330,7 +332,6 @@ class _UnreadBadge extends StatelessWidget {
         textScaler: TextScaler.noScaling,
         style: TroskyTypography.body12SemiBoldH133.copyWith(
           color: TroskyColors.white,
-          fontSize: 11,
           height: 1,
         ),
       ),

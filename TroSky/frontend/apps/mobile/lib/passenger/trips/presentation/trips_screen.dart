@@ -388,8 +388,12 @@ class _BookingEntry extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dismissals =
-        ref.watch(rateBannerDismissalsProvider).value ?? const {};
+    // Only render a banner once dismissal state is known: an AsyncError
+    // (e.g. Hive unavailable in tests) or AsyncLoading keeps the row
+    // alone so the booking list height stays predictable.
+    final async = ref.watch(rateBannerDismissalsProvider);
+    final dismissals = async.whenOrNull(data: (m) => m);
+    if (dismissals == null) return row;
     final eligible = rateBannerEligible(
       completed: booking.status == BookingStatus.completed,
       // No explicit completedAt on BookingResponse today; the scheduled
