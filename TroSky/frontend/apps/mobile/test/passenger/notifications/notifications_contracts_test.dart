@@ -36,7 +36,9 @@ void main() {
         }
       });
       test('${e.name} params survive sanitisation', () {
-        expect(e.sanitised.keys.toSet(), e.params.keys.toSet());
+        final out = e.sanitised;
+        expect(out, isNotNull, reason: '${e.name} missing from schema');
+        expect(out!.keys.toSet(), e.params.keys.toSet());
       });
     }
   });

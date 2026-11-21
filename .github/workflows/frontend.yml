@@ -460,6 +460,67 @@ jobs:
             exit 1
           fi
 
+  telemetry-schema-check:
+    name: Telemetry schema check (mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify telemetry schema in place
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          tf=apps/mobile/lib/app/telemetry.dart
+
+          grep -q '_telemetrySchema' "$tf" || {
+            echo "::error file=$tf::expected _telemetrySchema map (C5)"
+            exit 1
+          }
+          grep -q 'Map<String, Object?>? get sanitised' "$tf" || {
+            echo "::error file=$tf::sanitised must return nullable Map (C5)"
+            exit 1
+          }
+          grep -q '_isSafeValue' "$tf" || {
+            echo "::error file=$tf::expected _isSafeValue bounded-scalar check (C5)"
+            exit 1
+          }
+          grep -q 'Map.unmodifiable(clean)' "$tf" || {
+            echo "::error file=$tf::sanitised return must be unmodifiable (C5)"
+            exit 1
+          }
+          grep -q "'trosky.telemetry.rejected'" "$tf" || {
+            echo "::error file=$tf::debug diagnostics must emit under trosky.telemetry.rejected channel"
+            exit 1
+          }
+          grep -q 'if (payload == null) return' "$tf" || {
+            echo "::error file=$tf::ConsoleTelemetryService must drop null sanitised payloads (C5)"
+            exit 1
+          }
+
+      - name: Verify every emitted event is in the schema
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          tf=apps/mobile/lib/app/telemetry.dart
+          emitted=$(grep -rhE "TelemetryEvent\(['\"][a-z_]+['\"]" \
+            apps/mobile/lib \
+            --include='*.dart' \
+            | grep -oE "TelemetryEvent\(['\"][a-z_]+['\"]" \
+            | sed -E "s/TelemetryEvent\(['\"]([a-z_]+)['\"]/\1/" \
+            | sort -u)
+          missing=""
+          for name in $emitted; do
+            if ! grep -q "'$name':" "$tf"; then
+              missing="$missing $name"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error file=$tf::emitted events missing from _telemetrySchema:$missing"
+            exit 1
+          fi
+
   tls-hardening-check:
     name: TLS hardening check (mobile)
     runs-on: ubuntu-latest
