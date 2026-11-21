@@ -52,7 +52,9 @@ void main() {
         }
       });
       test('${e.name} sanitised does not drop declared keys', () {
-        expect(e.sanitised.keys, e.params.keys);
+        final out = e.sanitised;
+        expect(out, isNotNull, reason: '${e.name} missing from schema');
+        expect(out!.keys, e.params.keys);
       });
     }
   });
