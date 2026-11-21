@@ -97,6 +97,102 @@ jobs:
         working-directory: TroSky/frontend/apps/${{ matrix.app }}
         run: flutter build web --release --no-pub --dart-define-from-file=../../env/dev.example.json
 
+  backup-isolation-check:
+    name: Backup isolation check (mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify AndroidManifest declares allowBackup=false + rule XMLs
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest=apps/mobile/android/app/src/main/AndroidManifest.xml
+
+          grep -q 'android:allowBackup="false"' "$manifest" || {
+            echo "::error file=$manifest::expected android:allowBackup=\"false\" (C3)"
+            exit 1
+          }
+          grep -q 'android:fullBackupContent="@xml/backup_rules"' "$manifest" || {
+            echo "::error file=$manifest::expected android:fullBackupContent=\"@xml/backup_rules\" (C3)"
+            exit 1
+          }
+          grep -q 'android:dataExtractionRules="@xml/data_extraction_rules"' "$manifest" || {
+            echo "::error file=$manifest::expected android:dataExtractionRules=\"@xml/data_extraction_rules\" (C3)"
+            exit 1
+          }
+
+      - name: Verify rule XMLs exist and cover every domain
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          full=apps/mobile/android/app/src/main/res/xml/backup_rules.xml
+          dxr=apps/mobile/android/app/src/main/res/xml/data_extraction_rules.xml
+          test -s "$full" || { echo "::error::$full missing"; exit 1; }
+          test -s "$dxr" || { echo "::error::$dxr missing"; exit 1; }
+
+          for file in "$full" "$dxr"; do
+            for d in root file database sharedpref external; do
+              grep -q "domain=\"$d\"" "$file" || {
+                echo "::error file=$file::missing <exclude domain=\"$d\" …>"
+                exit 1
+              }
+            done
+          done
+
+          # The Android 12+ rules must cover both sections.
+          grep -q '<cloud-backup>' "$dxr" || {
+            echo "::error file=$dxr::missing <cloud-backup> section"
+            exit 1
+          }
+          grep -q '<device-transfer>' "$dxr" || {
+            echo "::error file=$dxr::missing <device-transfer> section"
+            exit 1
+          }
+
+      - name: Verify every FlutterSecureStorage call site uses troskySecureStorage
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          # No bare `const FlutterSecureStorage()` or `FlutterSecureStorage()`
+          # may slip in — they default to iOS accessibility `first_unlock`,
+          # which IS included in iCloud backups. Exception: the shared
+          # const itself in packages/trosky_auth/lib/src/secure_storage.dart.
+          if grep -rnE 'const\s+FlutterSecureStorage\s*\(\s*\)|[^.]FlutterSecureStorage\s*\(\s*\)' \
+              apps/mobile/lib packages \
+              --include='*.dart' \
+              | grep -v 'secure_storage.dart'; then
+            echo "::error::bare FlutterSecureStorage() construction found; use troskySecureStorage"
+            exit 1
+          fi
+
+      - name: Verify iOS Keychain accessibility is set and is _this_device
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          factory=packages/trosky_auth/lib/src/secure_storage.dart
+          test -s "$factory" || {
+            echo "::error::$factory missing"
+            exit 1
+          }
+          grep -q 'KeychainAccessibility.first_unlock_this_device' "$factory" || {
+            echo "::error file=$factory::iOS accessibility must be first_unlock_this_device (C3)"
+            exit 1
+          }
+
+      - name: Verify backup runbook present
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s TroSky/frontend/apps/mobile/android/BACKUP.md || {
+            echo "::error::apps/mobile/android/BACKUP.md is missing; C3 runbook required"
+            exit 1
+          }
+
   build-apk:
     name: Build APK (mobile, debug)
     runs-on: ubuntu-latest
