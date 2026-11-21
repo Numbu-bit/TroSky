@@ -49,7 +49,5 @@ class ResetPasswordArgs {
   final String? code;
 }
 
-/// Help centre URL. Hardcoded today — flagged as a placeholder in the
-/// PR body. Replace with a Remote-Config-driven value once the team has
-/// a real help page.
-const String helpCentreUrl = 'https://trosky.africa/help';
+// Help centre URL moved to `Env.helpCentreUrl` in step 21/A. Read it
+// with `ref.read(envProvider).helpCentreUrl` at the call site.

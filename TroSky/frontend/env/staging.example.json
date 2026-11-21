@@ -13,5 +13,6 @@
   "RATE_ENABLED": "true",
   "ACCOUNT_ENABLED": "true",
   "NOTIFICATIONS_ENABLED": "true",
-  "FAVOURITES_ENABLED": "true"
+  "FAVOURITES_ENABLED": "true",
+  "HELP_CENTRE_URL": "https://trosky.africa/help"
 }

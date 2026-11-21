@@ -49,6 +49,40 @@ void main() {
     );
   });
 
+  // Step 21/A: fail-loud only triggers in `kReleaseMode`. In the unit
+  // test harness that's false, so the dev-loop fallback still applies.
+  // The release-mode throw is exercised in CI by `flutter build apk
+  // --release` which would fail without proper defines.
+
+  group('helpCentreUrl', () {
+    test('defaults when not supplied', () {
+      final env = Env.parse(apiBaseUrl: '', wsBaseUrl: '', apiMode: '');
+      expect(env.helpCentreUrl, Env.defaultHelpCentreUrl);
+    });
+
+    test('a real https URL passes through', () {
+      final env = Env.parse(
+        apiBaseUrl: '',
+        wsBaseUrl: '',
+        apiMode: '',
+        helpCentreUrl: 'https://help.trosky.africa/custom',
+      );
+      expect(env.helpCentreUrl, 'https://help.trosky.africa/custom');
+    });
+
+    test('a malformed URL throws', () {
+      expect(
+        () => Env.parse(
+          apiBaseUrl: '',
+          wsBaseUrl: '',
+          apiMode: '',
+          helpCentreUrl: 'not-a-url',
+        ),
+        throwsArgumentError,
+      );
+    });
+  });
+
   group('map tiles', () {
     test('default to OpenStreetMap', () {
       final env = Env.parse(apiBaseUrl: '', wsBaseUrl: '', apiMode: '');

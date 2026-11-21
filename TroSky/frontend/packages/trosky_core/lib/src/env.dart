@@ -19,6 +19,11 @@ enum Feature {
 
 /// Settings passed at build time with `--dart-define-from-file`
 /// (see frontend/env/README.md).
+///
+/// Env parsing is fail-loud in release builds (step 21/A): a release
+/// APK with a required flag missing or unrecognised throws at startup
+/// rather than silently defaulting. The `flutter run` dev loop keeps
+/// its empty→mock default so tests and local work don't need flags.
 class Env {
   const Env({
     required this.apiBaseUrl,
@@ -26,15 +31,19 @@ class Env {
     required this.apiMode,
     this.mapTileUrl = osmTileUrl,
     this.features = const {},
+    this.helpCentreUrl = defaultHelpCentreUrl,
   });
 
-  /// Reads `API_BASE_URL`, `WS_BASE_URL`, `API_MODE`, `MAP_TILE_URL` and
-  /// `FEATURES`. Without an `API_MODE` the app runs on mock data.
+  /// Reads `API_BASE_URL`, `WS_BASE_URL`, `API_MODE`, `MAP_TILE_URL`,
+  /// `FEATURES`, and `HELP_CENTRE_URL`.
   factory Env.fromDefines() => Env.parse(
     apiBaseUrl: const String.fromEnvironment('API_BASE_URL'),
     wsBaseUrl: const String.fromEnvironment('WS_BASE_URL'),
     apiMode: const String.fromEnvironment('API_MODE'),
     mapTileUrl: const String.fromEnvironment('MAP_TILE_URL'),
+    helpCentreUrl: const bool.hasEnvironment('HELP_CENTRE_URL')
+        ? const String.fromEnvironment('HELP_CENTRE_URL')
+        : null,
     // An empty FEATURES turns every feature off, so "not set" differs from
     // "set to nothing".
     features: const bool.hasEnvironment('FEATURES')
@@ -43,6 +52,11 @@ class Env {
   );
 
   /// Validates raw values. Live mode needs an http(s) `API_BASE_URL`.
+  ///
+  /// Fail-loud in release (step 21/A):
+  /// - Empty or unknown `API_MODE` throws.
+  /// - Live mode with a bad `API_BASE_URL` throws (unchanged).
+  /// - A supplied but malformed `HELP_CENTRE_URL` throws.
   ///
   /// [mapTileUrl] defaults to [osmTileUrl]. [features] is a comma-separated
   /// list of [Feature] names; `null` (not set) means
@@ -53,30 +67,29 @@ class Env {
     required String apiMode,
     String mapTileUrl = '',
     String? features,
+    String? helpCentreUrl,
   }) {
     final base = apiBaseUrl.trim();
-    // An empty API_MODE with a real base URL would otherwise silently fall
-    // back to mock — so a release build whose --dart-define-from-file was
-    // dropped (or whose env file is missing/stale) would start up on the
-    // in-memory mock backend and reject every real credential as "invalid".
-    // Treat a non-empty base URL as proof the build was meant to be live.
-    final mode = switch (apiMode.trim().toLowerCase()) {
-      'mock' => ApiMode.mock,
-      '' when base.isEmpty => ApiMode.mock,
-      '' => ApiMode.live,
-      'live' => ApiMode.live,
-      _ => throw ArgumentError.value(apiMode, 'API_MODE', 'Use mock or live'),
-    };
-    // In a release APK, an empty API_MODE *and* an empty API_BASE_URL both
-    // being empty means the build pipeline forgot the dart-defines. The
-    // app has no server to talk to; fail loud instead of silently going
-    // mock (which would reject real users with "invalid credentials").
-    if (kReleaseMode && apiMode.trim().isEmpty && base.isEmpty) {
-      throw ArgumentError(
-        'Release build is missing both API_MODE and API_BASE_URL. '
+    final rawMode = apiMode.trim().toLowerCase();
+    // The brief's fail-loud rule: in a release APK, an empty or unknown
+    // API_MODE throws at startup. The dev loop (debug/profile) still
+    // falls back to mock when both the mode and the URL are empty so
+    // `flutter run` without flags still works for tests.
+    if (kReleaseMode &&
+        (rawMode.isEmpty || !_knownApiModes.contains(rawMode))) {
+      throw StateError(
+        'API_MODE is required in release builds and must be one of '
+        '${_knownApiModes.join(" | ")} (got "$apiMode"). '
         'Pass --dart-define-from-file=env/<env>.json at build time.',
       );
     }
+    final mode = switch (rawMode) {
+      'mock' => ApiMode.mock,
+      'live' => ApiMode.live,
+      '' when base.isEmpty => ApiMode.mock,
+      '' => ApiMode.live,
+      _ => throw ArgumentError.value(apiMode, 'API_MODE', 'Use mock or live'),
+    };
     if (mode == ApiMode.live) {
       final uri = Uri.tryParse(base);
       if (uri == null ||
@@ -99,7 +112,29 @@ class Env {
       features: features == null
           ? Feature.defaultsFor(mode)
           : _features(features),
+      helpCentreUrl: _helpUrl(helpCentreUrl),
     );
+  }
+
+  static const Set<String> _knownApiModes = {'mock', 'live'};
+
+  /// Default help centre URL when the env file doesn't override it.
+  /// Overridable per-env via `HELP_CENTRE_URL` in `env/<env>.json`.
+  static const String defaultHelpCentreUrl = 'https://trosky.africa/help';
+
+  static String _helpUrl(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return defaultHelpCentreUrl;
+    final uri = Uri.tryParse(raw.trim());
+    if (uri == null ||
+        !uri.hasAuthority ||
+        !(uri.isScheme('http') || uri.isScheme('https'))) {
+      throw ArgumentError.value(
+        raw,
+        'HELP_CENTRE_URL',
+        'Must be an http(s) URL.',
+      );
+    }
+    return raw.trim();
   }
 
   /// OpenStreetMap's public tiles. For development only: their usage policy
@@ -151,6 +186,10 @@ class Env {
 
   /// The features switched on in this build.
   final Set<Feature> features;
+
+  /// Help centre URL opened from Profile → Support → Help centre. Falls
+  /// back to [defaultHelpCentreUrl] when the env file doesn't override.
+  final String helpCentreUrl;
 
   bool has(Feature feature) => features.contains(feature);
 }
