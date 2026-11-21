@@ -222,20 +222,22 @@ jobs:
           }
 
       - name: Verify ProGuard rules file present
+        working-directory: TroSky/frontend
         shell: bash
         run: |
           set -euo pipefail
-          rules=TroSky/frontend/apps/mobile/android/app/proguard-rules.pro
+          rules=apps/mobile/android/app/proguard-rules.pro
           test -s "$rules" || {
             echo "::error::$rules missing or empty"
             exit 1
           }
 
       - name: Verify store-build entry point
+        working-directory: TroSky/frontend
         shell: bash
         run: |
           set -euo pipefail
-          script=TroSky/frontend/apps/mobile/tool/build_store.sh
+          script=apps/mobile/tool/build_store.sh
           test -x "$script" || {
             echo "::error::$script missing or not executable"
             exit 1
@@ -263,10 +265,11 @@ jobs:
           bash -n "$script"
 
       - name: Verify obfuscation runbook present
+        working-directory: TroSky/frontend
         shell: bash
         run: |
           set -euo pipefail
-          test -s TroSky/frontend/apps/mobile/android/OBFUSCATION.md || {
+          test -s apps/mobile/android/OBFUSCATION.md || {
             echo "::error::apps/mobile/android/OBFUSCATION.md is missing; C2 runbook required"
             exit 1
           }
