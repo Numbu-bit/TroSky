@@ -1,0 +1,21 @@
+# Template for apps/mobile/android/key.properties.
+#
+# Copy this file to `key.properties` in the same directory and fill it in
+# with the credentials of the TroSky upload keystore. `key.properties` is
+# gitignored and must never be committed. Treat `storePassword` and
+# `keyPassword` as secrets: keep them in a password manager, not in chat,
+# tickets, screenshots, or shell history.
+#
+# See apps/mobile/android/SIGNING.md for how to generate the upload
+# keystore, enroll in Play App Signing, and distinguish the upload
+# certificate from the Play app-signing certificate when wiring App Links
+# or checking an installed APK's signer.
+#
+# These properties are only read for `flutter build apk --release` and
+# `flutter build appbundle --release`. Debug builds continue to work
+# without `key.properties`.
+
+storeFile=../trosky-upload.jks
+storePassword=REPLACE_WITH_UPLOAD_KEYSTORE_PASSWORD
+keyAlias=trosky-upload
+keyPassword=REPLACE_WITH_UPLOAD_KEY_PASSWORD
