@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive/hive.dart';
 import 'package:trosky_api/trosky_api.dart';
+import 'package:trosky_auth/trosky_auth.dart';
 
 /// Encrypted on-disk cache for the signed QR tokens. Treat its contents
 /// as bearer tokens: never write them in a plaintext box, never log,
@@ -19,9 +20,11 @@ import 'package:trosky_api/trosky_api.dart';
 ///   - Each entry is a JSON string of [TicketResponse] list, keyed by
 ///     booking id.
 class TicketCache {
-  TicketCache({FlutterSecureStorage? secureStorage, Random? random})
-    : _secure = secureStorage ?? const FlutterSecureStorage(),
-      _random = random ?? Random.secure();
+  TicketCache({
+    FlutterSecureStorage secureStorage = troskySecureStorage,
+    Random? random,
+  }) : _secure = secureStorage,
+       _random = random ?? Random.secure();
 
   static const String boxName = 'tickets_v1';
   static const String secureStorageKey = 'trosky.tickets.hive_key';
