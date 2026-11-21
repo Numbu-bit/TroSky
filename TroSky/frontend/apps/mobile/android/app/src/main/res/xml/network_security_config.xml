@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android network security configuration for TroSky. C6 of the
+  21 Nov 2026 pre-launch audit.
+
+  Shipping policy:
+  - All traffic must go over TLS. Cleartext (http://, ws://) is
+    refused by the platform networking stack regardless of which
+    Dart/Kotlin plugin opens the connection.
+  - Trust the system CA store only. User-installed CAs are NOT
+    honoured — a corporate MITM proxy or a sideloaded root cannot
+    silently decrypt bearer tokens.
+  - Debug overrides apply only to debug builds (same manifest flag
+    the Flutter tool sets) and let a developer run against
+    http://10.0.2.2:8000 or http://localhost without rewriting the
+    config. Release builds ignore the overrides entirely.
+
+  Pair with android:usesCleartextTraffic="false" on the <application>
+  tag as a second belt (older Android versions read either value).
+  Certificate pinning is a separate decision — see
+  apps/mobile/android/PINNING.md.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>
