@@ -2373,4 +2373,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get favouriteDeleteFailed => 'Couldn\'t remove.';
+
+  @override
+  String homeBellSemantics(int unread) {
+    return 'Notifications, $unread unread';
+  }
+
+  @override
+  String rateBannerTitleWithDriver(String driver) {
+    return 'Rate your trip with $driver';
+  }
+
+  @override
+  String get rateBannerDismiss => 'Dismiss';
+
+  @override
+  String searchFavouriteChipSemantics(String label) {
+    return 'Favourite, $label';
+  }
 }

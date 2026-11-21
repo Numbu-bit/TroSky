@@ -4211,6 +4211,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t remove.'**
   String get favouriteDeleteFailed;
+
+  /// Semantics label on the Home bell button.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications, {unread} unread'**
+  String homeBellSemantics(int unread);
+
+  /// Trips tab banner for an unrated completed booking.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate your trip with {driver}'**
+  String rateBannerTitleWithDriver(String driver);
+
+  /// Trips banner dismiss button semantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get rateBannerDismiss;
+
+  /// Semantics for a favourite chip on Search.
+  ///
+  /// In en, this message translates to:
+  /// **'Favourite, {label}'**
+  String searchFavouriteChipSemantics(String label);
 }
 
 class _AppLocalizationsDelegate
