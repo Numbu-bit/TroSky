@@ -3,6 +3,41 @@ import 'package:flutter/foundation.dart';
 /// Which repositories the app uses: built-in mock data, or the backend.
 enum ApiMode { mock, live }
 
+/// Which deployment this build is for. Separate from [ApiMode] because
+/// some combinations (e.g. a prod build in mock mode, a dev build
+/// pointing at the live staging API) are useful locally but must be
+/// forbidden in a release APK heading for the Play Store.
+///
+/// The values are stable strings (`dev`, `staging`, `demo`, `prod`)
+/// that match the env file names under `frontend/env/` and the
+/// `--env` flag of `apps/mobile/tool/build_store.sh`.
+enum DeployEnv {
+  /// Loopback or on-device dev mode, with or without the mock backend.
+  dev,
+
+  /// Hosted staging backend (Render). May also include tester tools.
+  staging,
+
+  /// Mock-mode build shown without a live server (decision 17,
+  /// env/README.md). `com.trosky.app.demo` on Android.
+  demo,
+
+  /// Store build heading for Play / App Store. Forbids mock mode,
+  /// placeholder hosts, tester menus, and anything else that would
+  /// embarrass us if a real user ran it.
+  prod,
+}
+
+/// Known placeholder hosts that must never ship to a prod build —
+/// typically carried over from an unedited `*.example.json` env file.
+const Set<String> _placeholderApiHosts = {
+  'api.example.com',
+  'example.com',
+  'localhost',
+  '127.0.0.1',
+  '10.0.2.2',
+};
+
 /// Parts of the app that can be switched on and off per build, with
 /// `FEATURES` (see frontend/env/README.md).
 enum Feature {
@@ -29,17 +64,22 @@ class Env {
     required this.apiBaseUrl,
     required this.wsBaseUrl,
     required this.apiMode,
+    required this.deployEnv,
     this.mapTileUrl = osmTileUrl,
     this.features = const {},
     this.helpCentreUrl = defaultHelpCentreUrl,
   });
 
-  /// Reads `API_BASE_URL`, `WS_BASE_URL`, `API_MODE`, `MAP_TILE_URL`,
-  /// `FEATURES`, and `HELP_CENTRE_URL`.
+  /// Reads `API_BASE_URL`, `WS_BASE_URL`, `API_MODE`, `DEPLOY_ENV`,
+  /// `TESTER_MENU`, `MAP_TILE_URL`, `FEATURES`, and `HELP_CENTRE_URL`.
   factory Env.fromDefines() => Env.parse(
     apiBaseUrl: const String.fromEnvironment('API_BASE_URL'),
     wsBaseUrl: const String.fromEnvironment('WS_BASE_URL'),
     apiMode: const String.fromEnvironment('API_MODE'),
+    deployEnv: const String.fromEnvironment('DEPLOY_ENV'),
+    testerMenu: const bool.hasEnvironment('TESTER_MENU')
+        ? const String.fromEnvironment('TESTER_MENU')
+        : null,
     mapTileUrl: const String.fromEnvironment('MAP_TILE_URL'),
     helpCentreUrl: const bool.hasEnvironment('HELP_CENTRE_URL')
         ? const String.fromEnvironment('HELP_CENTRE_URL')
@@ -53,10 +93,14 @@ class Env {
 
   /// Validates raw values. Live mode needs an http(s) `API_BASE_URL`.
   ///
-  /// Fail-loud in release (step 21/A):
+  /// Fail-loud in release (step 21/A + C4):
   /// - Empty or unknown `API_MODE` throws.
   /// - Live mode with a bad `API_BASE_URL` throws (unchanged).
   /// - A supplied but malformed `HELP_CENTRE_URL` throws.
+  /// - Empty or unknown `DEPLOY_ENV` throws.
+  /// - `DEPLOY_ENV=prod` additionally enforces: `API_MODE=live`,
+  ///   https-only `API_BASE_URL` with a non-placeholder host, wss-only
+  ///   `WS_BASE_URL`, and `TESTER_MENU` not enabled.
   ///
   /// [mapTileUrl] defaults to [osmTileUrl]. [features] is a comma-separated
   /// list of [Feature] names; `null` (not set) means
@@ -65,16 +109,41 @@ class Env {
     required String apiBaseUrl,
     required String wsBaseUrl,
     required String apiMode,
+    String deployEnv = '',
+    String? testerMenu,
     String mapTileUrl = '',
     String? features,
     String? helpCentreUrl,
   }) {
     final base = apiBaseUrl.trim();
+    final ws = wsBaseUrl.trim();
     final rawMode = apiMode.trim().toLowerCase();
-    // The brief's fail-loud rule: in a release APK, an empty or unknown
-    // API_MODE throws at startup. The dev loop (debug/profile) still
-    // falls back to mock when both the mode and the URL are empty so
-    // `flutter run` without flags still works for tests.
+    final rawDeploy = deployEnv.trim().toLowerCase();
+
+    // DEPLOY_ENV identifies which deployment this build is for and is
+    // orthogonal to API_MODE. Dev/tests keep the implicit fallback so
+    // `flutter run` without flags still works.
+    final DeployEnv deploy;
+    if (rawDeploy.isEmpty) {
+      if (kReleaseMode) {
+        throw StateError(
+          'DEPLOY_ENV is required in release builds. '
+          'Expected one of ${DeployEnv.values.map((e) => e.name).join(" | ")}. '
+          'Pass --dart-define-from-file=env/<env>.json at build time.',
+        );
+      }
+      deploy = DeployEnv.dev;
+    } else {
+      deploy = DeployEnv.values.firstWhere(
+        (e) => e.name == rawDeploy,
+        orElse: () => throw ArgumentError.value(
+          deployEnv,
+          'DEPLOY_ENV',
+          'Expected one of ${DeployEnv.values.map((e) => e.name).join(", ")}',
+        ),
+      );
+    }
+
     if (kReleaseMode &&
         (rawMode.isEmpty || !_knownApiModes.contains(rawMode))) {
       throw StateError(
@@ -102,12 +171,70 @@ class Env {
         );
       }
     }
+
+    // DEPLOY_ENV=prod invariants. Enforced even outside kReleaseMode so
+    // a developer who mis-flags their local run as prod gets the same
+    // rejection instead of an inconsistent "almost-prod" state.
+    if (deploy == DeployEnv.prod) {
+      if (mode != ApiMode.live) {
+        throw StateError(
+          'DEPLOY_ENV=prod requires API_MODE=live (got "$apiMode").',
+        );
+      }
+      final apiUri = Uri.tryParse(base);
+      if (apiUri == null || !apiUri.isScheme('https')) {
+        throw ArgumentError.value(
+          apiBaseUrl,
+          'API_BASE_URL',
+          'DEPLOY_ENV=prod requires an https:// API_BASE_URL.',
+        );
+      }
+      if (_placeholderApiHosts.contains(apiUri.host.toLowerCase())) {
+        throw ArgumentError.value(
+          apiBaseUrl,
+          'API_BASE_URL',
+          'DEPLOY_ENV=prod rejects placeholder host "${apiUri.host}" '
+              '(likely copied from env/*.example.json).',
+        );
+      }
+      if (ws.isEmpty) {
+        throw ArgumentError.value(
+          wsBaseUrl,
+          'WS_BASE_URL',
+          'DEPLOY_ENV=prod requires a wss:// WS_BASE_URL.',
+        );
+      }
+      final wsUri = Uri.tryParse(ws);
+      if (wsUri == null || !wsUri.isScheme('wss')) {
+        throw ArgumentError.value(
+          wsBaseUrl,
+          'WS_BASE_URL',
+          'DEPLOY_ENV=prod requires a wss:// WS_BASE_URL (got "$wsBaseUrl").',
+        );
+      }
+      if (wsUri.host.isEmpty ||
+          _placeholderApiHosts.contains(wsUri.host.toLowerCase())) {
+        throw ArgumentError.value(
+          wsBaseUrl,
+          'WS_BASE_URL',
+          'DEPLOY_ENV=prod rejects placeholder WS host "${wsUri.host}".',
+        );
+      }
+      if (_isTruthy(testerMenu)) {
+        throw StateError(
+          'DEPLOY_ENV=prod forbids TESTER_MENU=true. '
+          'Remove it from the prod env file.',
+        );
+      }
+    }
+
     return Env(
       apiBaseUrl: base.endsWith('/')
           ? base.substring(0, base.length - 1)
           : base,
-      wsBaseUrl: wsBaseUrl.trim(),
+      wsBaseUrl: ws,
       apiMode: mode,
+      deployEnv: deploy,
       mapTileUrl: _tileUrl(mapTileUrl),
       features: features == null
           ? Feature.defaultsFor(mode)
@@ -116,7 +243,21 @@ class Env {
     );
   }
 
+  /// Whether the build's tester menu (if the host app wires one) is
+  /// allowed to be visible. True only when the compile-time
+  /// `TESTER_MENU` flag is on AND the build's [deployEnv] is not
+  /// [DeployEnv.prod]. Callers combine this with their own
+  /// `const bool.fromEnvironment('TESTER_MENU')` constant so the
+  /// release compiler can tree-shake tester code when the flag is off.
+  bool get testerMenuAllowed => deployEnv != DeployEnv.prod;
+
   static const Set<String> _knownApiModes = {'mock', 'live'};
+
+  static bool _isTruthy(String? raw) {
+    if (raw == null) return false;
+    final lower = raw.trim().toLowerCase();
+    return lower == 'true' || lower == '1' || lower == 'yes';
+  }
 
   /// Default help centre URL when the env file doesn't override it.
   /// Overridable per-env via `HELP_CENTRE_URL` in `env/<env>.json`.
@@ -180,6 +321,9 @@ class Env {
   final String wsBaseUrl;
 
   final ApiMode apiMode;
+
+  /// Which deployment this build is for — dev, staging, demo, prod.
+  final DeployEnv deployEnv;
 
   /// Map tiles, with `{z}`, `{x}` and `{y}` placeholders.
   final String mapTileUrl;

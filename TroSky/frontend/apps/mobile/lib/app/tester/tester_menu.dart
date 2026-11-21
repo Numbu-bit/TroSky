@@ -33,6 +33,14 @@ import '../routes.dart';
 /// the tree-shaker removes the unreferenced symbols from release builds.
 const bool testerMenuEnabled = bool.fromEnvironment('TESTER_MENU');
 
+/// Belt-and-braces for C4: the compile-time constant is the primary
+/// guard, but a build mis-tagged `TESTER_MENU=true` on a prod flavor
+/// must also be refused at runtime. True only when the compile-time
+/// flag is on AND [Env.testerMenuAllowed] is true (i.e. not a prod
+/// deploy env). Every entry point — the tap counter widget, the
+/// modal, the route construction — goes through this helper.
+bool testerMenuLive(Env env) => testerMenuEnabled && env.testerMenuAllowed;
+
 /// The tap window: 7 taps within this window opens the sheet.
 const Duration _tapWindow = Duration(seconds: 3);
 const int _tapCount = 7;
@@ -40,22 +48,25 @@ const int _tapCount = 7;
 /// Wrap any widget to turn 7 taps within 3 s into an open tester menu.
 /// Does nothing — passes `child` through unchanged — when the feature
 /// is off, so the hit test returns the underlying widget.
-class TesterMenuTapCounter extends StatefulWidget {
+class TesterMenuTapCounter extends ConsumerStatefulWidget {
   const TesterMenuTapCounter({super.key, required this.child});
 
   final Widget child;
 
   @override
-  State<TesterMenuTapCounter> createState() => _TesterMenuTapCounterState();
+  ConsumerState<TesterMenuTapCounter> createState() =>
+      _TesterMenuTapCounterState();
 }
 
-class _TesterMenuTapCounterState extends State<TesterMenuTapCounter> {
+class _TesterMenuTapCounterState extends ConsumerState<TesterMenuTapCounter> {
   final List<DateTime> _taps = [];
   bool _open = false;
 
   @override
   Widget build(BuildContext context) {
     if (!testerMenuEnabled) return widget.child;
+    final env = ref.watch(envProvider);
+    if (!env.testerMenuAllowed) return widget.child;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: _tap,
@@ -65,6 +76,8 @@ class _TesterMenuTapCounterState extends State<TesterMenuTapCounter> {
 
   void _tap() {
     if (_open) return;
+    final env = ref.read(envProvider);
+    if (!testerMenuLive(env)) return;
     final now = DateTime.now();
     _taps.removeWhere((t) => now.difference(t) > _tapWindow);
     _taps.add(now);
@@ -86,6 +99,11 @@ class _TesterMenuTapCounterState extends State<TesterMenuTapCounter> {
 /// passenger dismisses it. Does nothing when the feature is off.
 Future<void> showTesterMenu(BuildContext context) async {
   if (!testerMenuEnabled) return;
+  // Pull the env from the nearest ProviderScope so a prod-flagged
+  // build can never open the sheet even if a caller skips
+  // testerMenuLive.
+  final container = ProviderScope.containerOf(context, listen: false);
+  if (!container.read(envProvider).testerMenuAllowed) return;
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
