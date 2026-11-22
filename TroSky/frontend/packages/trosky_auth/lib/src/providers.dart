@@ -70,8 +70,22 @@ Dio apiClient(Ref ref) {
 /// requests, or answer as `--dart-define=MOCK_DRIVER=moveThenAccept` (or
 /// `decline`, `rotate` to take turns, or `none` for nobody) says. The
 /// seeded passenger has a week of bookings in every status (Trips tab).
+///
+/// H6 belt-and-braces: C4's `Env.parse` already rejects a prod build that
+/// asks for mock mode, so this provider is normally never read in a store
+/// APK. If a future wiring bug ever selects it anyway, the `StateError`
+/// here aborts at the point of damage instead of silently serving
+/// MockBackend's seed fixtures to real users.
 @Riverpod(keepAlive: true)
 MockBackend mockBackend(Ref ref) {
+  final env = ref.watch(envProvider);
+  if (env.deployEnv == DeployEnv.prod) {
+    throw StateError(
+      'MockBackend was requested in a DEPLOY_ENV=prod build; '
+      'C4 should have rejected this at Env.parse. Refusing to serve '
+      'seed fixtures to production users.',
+    );
+  }
   const script = String.fromEnvironment('MOCK_DRIVER', defaultValue: 'accept');
   return MockBackend(
     driverScript: MockDriverScript.named(script),

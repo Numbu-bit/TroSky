@@ -651,6 +651,67 @@ jobs:
             exit 1
           }
 
+  mock-isolation-check:
+    name: Mock isolation check (mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify seedPassword is labelled as synthetic
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          mb=packages/trosky_api/lib/src/mock/mock_backend.dart
+          grep -q "Synthetic fixture" "$mb" || {
+            echo "::error file=$mb::seed credentials must be labelled 'Synthetic fixture' (H6)"
+            exit 1
+          }
+          offenders=$(grep -rln 'TroSky2026' apps packages --include='*.dart' \
+              | grep -v 'mock_backend.dart' \
+              | grep -v '/test/' || true)
+          if [ -n "$offenders" ]; then
+            echo "::error::TroSky2026 fixture referenced outside mock_backend.dart or tests:"
+            echo "$offenders"
+            exit 1
+          fi
+
+      - name: Verify mockBackend provider throws in prod
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          p=packages/trosky_auth/lib/src/providers.dart
+          grep -q 'DeployEnv.prod' "$p" || {
+            echo "::error file=$p::mockBackend must check DeployEnv.prod (H6)"
+            exit 1
+          }
+          grep -q 'MockBackend was requested in a DEPLOY_ENV=prod build' "$p" || {
+            echo "::error file=$p::mockBackend must StateError on prod read (H6)"
+            exit 1
+          }
+
+      - name: Verify C4 prod invariant still rejects mock
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          e=packages/trosky_core/lib/src/env.dart
+          grep -q 'DEPLOY_ENV=prod requires API_MODE=live' "$e" || {
+            echo "::error file=$e::C4 prod-mode gate regressed; H6 relies on it"
+            exit 1
+          }
+
+      - name: Verify mock-isolation runbook present
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s packages/trosky_api/MOCK_ISOLATION.md || {
+            echo "::error::packages/trosky_api/MOCK_ISOLATION.md is missing; H6 runbook required"
+            exit 1
+          }
+
   build-apk:
     name: Build APK (mobile, debug)
     runs-on: ubuntu-latest
