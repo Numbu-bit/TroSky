@@ -4,5 +4,6 @@ library;
 
 export 'src/app_failure.dart';
 export 'src/env.dart';
+export 'src/log_redactor.dart';
 export 'src/phone.dart';
 export 'src/result.dart';
