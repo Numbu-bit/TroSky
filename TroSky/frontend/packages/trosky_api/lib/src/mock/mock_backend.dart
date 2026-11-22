@@ -62,9 +62,17 @@ class MockBackend {
   /// The code every OTP has.
   static const String otpCode = '123456';
 
-  /// The password of the seeded accounts.
+  /// Synthetic fixture: the password seeded into mock accounts for dev
+  /// and demo builds. **Not** a credential for any real TroSky account
+  /// on the production backend — that would be an H6 ship-blocker.
+  /// The real backend never provisions accounts from this string; it
+  /// lives here only so the mock repositories can accept the seeded
+  /// passenger's sign-in. Reachable only through the mockBackend
+  /// provider, which throws in DEPLOY_ENV=prod (H6 belt).
   static const String seedPassword = 'TroSky2026';
 
+  /// Synthetic fixture phone numbers for the seeded passenger / driver.
+  /// Same policy as [seedPassword] — never a real phone on production.
   static const String passengerPhone = '+233241234567';
   static const String driverPhone = '+233201234567';
 
