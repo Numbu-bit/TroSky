@@ -765,6 +765,59 @@ jobs:
             exit 1
           }
 
+  app-lock-check:
+    name: App lock check (mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify AppLockController in place
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          al=apps/mobile/lib/app/app_lock.dart
+          test -s "$al" || { echo "::error::$al missing (H3)"; exit 1; }
+          grep -q 'class AppLockController' "$al" || {
+            echo "::error file=$al::expected AppLockController"
+            exit 1
+          }
+          grep -q 'enum AppLockState' "$al" || {
+            echo "::error file=$al::expected AppLockState enum"
+            exit 1
+          }
+          for sym in enable disable maybePromptOnResume noteBackgrounding onSignOut supported; do
+            grep -q "$sym" "$al" || {
+              echo "::error file=$al::missing method/getter $sym"
+              exit 1
+            }
+          done
+          # The brief forbids persisting a reusable unlocked boolean.
+          if grep -q 'setBool.*unlocked' "$al"; then
+            echo "::error file=$al::unlocked state must never be persisted (H3)"
+            exit 1
+          fi
+
+      - name: Verify local_auth dep
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'local_auth:' apps/mobile/pubspec.yaml || {
+            echo "::error::apps/mobile/pubspec.yaml must declare local_auth (H3)"
+            exit 1
+          }
+
+      - name: Verify app-lock runbook present
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s apps/mobile/APP_LOCK.md || {
+            echo "::error::apps/mobile/APP_LOCK.md is missing (H3 runbook)"
+            exit 1
+          }
+
   build-apk:
     name: Build APK (mobile, debug)
     runs-on: ubuntu-latest
