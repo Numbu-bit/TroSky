@@ -163,10 +163,13 @@ class LiveTripTrackingService implements TripTrackingService {
         cancelOnError: true,
       );
     } on Object catch (error, stack) {
+      // H5: redact the error string so a WS URL that ever carries a
+      // ?token= query (deprecated path, see backend B1) does not leak
+      // the token through the dev log channel.
       developer.log(
         'ws_connect_failed',
         name: 'trosky.tracking',
-        error: error,
+        error: troskyRedactor.redactString(error.toString()),
         stackTrace: stack,
       );
       _switchToPolling();
