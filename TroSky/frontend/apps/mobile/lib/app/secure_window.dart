@@ -26,25 +26,43 @@ const MethodChannel _channel = MethodChannel('com.trosky.app/secure_window');
 /// [acquire] with exactly one [release]; the [TroskySecureScreen]
 /// widget does this automatically.
 class SecureWindowController extends Notifier<int> {
+  bool _disposed = false;
+
   @override
-  int build() => 0;
+  int build() {
+    ref.onDispose(() => _disposed = true);
+    return 0;
+  }
 
   /// True while any [TroskySecureScreen] is mounted. The shell watches
   /// this to cover the UI with a privacy overlay on background.
   bool get isActive => state > 0;
 
   Future<void> acquire() async {
+    if (_disposed) return;
     final previous = state;
-    state = previous + 1;
+    try {
+      state = previous + 1;
+    } on Object {
+      // Notifier can be torn down between microtask schedule and run
+      // (end-of-test teardown, hot-restart). Ignore — the window flag
+      // is best-effort and the real guard is the native cover.
+      return;
+    }
     if (previous == 0) {
       await _invoke('on');
     }
   }
 
   Future<void> release() async {
+    if (_disposed) return;
     if (state <= 0) return;
     final next = state - 1;
-    state = next;
+    try {
+      state = next;
+    } on Object {
+      return;
+    }
     if (next == 0) {
       await _invoke('off');
     }
@@ -85,23 +103,40 @@ class TroskySecureScreen extends ConsumerStatefulWidget {
 
 class _TroskySecureScreenState extends ConsumerState<TroskySecureScreen> {
   bool _acquired = false;
+  // Riverpod 3.x forbids `ref.read` during dispose — BuildContext is
+  // unsafe once a widget is deactivated. Capture the notifier handle
+  // once in initState so release() can be called safely from dispose.
+  SecureWindowController? _controller;
 
   @override
   void initState() {
     super.initState();
-    // Delay the acquire to after the first frame so the method channel
-    // call does not race with the route transition.
+    _controller = ref.read(secureWindowControllerProvider.notifier);
+    // Delay the acquire to after the first frame AND off the frame
+    // cycle, so the notifier state change doesn't throw
+    // "Tried to modify a provider while the widget tree was building".
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _acquired = true;
-      unawaited(ref.read(secureWindowControllerProvider.notifier).acquire());
+      Future<void>.microtask(() async {
+        if (!mounted) return;
+        _acquired = true;
+        await _controller?.acquire();
+      });
     });
   }
 
   @override
   void dispose() {
     if (_acquired) {
-      unawaited(ref.read(secureWindowControllerProvider.notifier).release());
+      // Release off-cycle: a route pop can dispose the screen while a
+      // rebuild of the destination route is in flight, and Riverpod
+      // 3.x refuses state writes during build. Future.microtask puts
+      // the release on the microtask queue so it runs after the pop
+      // settles.
+      final controller = _controller;
+      if (controller != null) {
+        unawaited(Future<void>.microtask(controller.release));
+      }
     }
     super.dispose();
   }
