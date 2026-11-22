@@ -600,6 +600,57 @@ jobs:
             exit 1
           }
 
+  log-redaction-check:
+    name: Log redaction check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify LogRedactor present + exported
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          lr=packages/trosky_core/lib/src/log_redactor.dart
+          test -s "$lr" || { echo "::error::$lr missing (H5)"; exit 1; }
+          grep -q 'class LogRedactor' "$lr" || {
+            echo "::error file=$lr::expected class LogRedactor"
+            exit 1
+          }
+          for name in _sensitiveHeaders _sensitiveQuery _phone _email _coord _bearer; do
+            grep -q "$name" "$lr" || {
+              echo "::error file=$lr::missing $name rule"
+              exit 1
+            }
+          done
+
+          barrel=packages/trosky_core/lib/trosky_core.dart
+          grep -q 'log_redactor.dart' "$barrel" || {
+            echo "::error file=$barrel::LogRedactor must be exported"
+            exit 1
+          }
+
+      - name: Verify tracking service redacts WS failure logs
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          tt=apps/mobile/lib/passenger/tracking/data/trip_tracking_service.dart
+          grep -q 'troskyRedactor.redactString' "$tt" || {
+            echo "::error file=$tt::ws_connect_failed error must be redacted (H5)"
+            exit 1
+          }
+
+      - name: Verify redaction runbook present
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s packages/trosky_core/LOG_REDACTION.md || {
+            echo "::error::packages/trosky_core/LOG_REDACTION.md is missing (H5 runbook)"
+            exit 1
+          }
+
   autofill-check:
     name: Autofill check (mobile)
     runs-on: ubuntu-latest
