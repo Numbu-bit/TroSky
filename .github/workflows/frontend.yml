@@ -600,6 +600,74 @@ jobs:
             exit 1
           }
 
+  autofill-check:
+    name: Autofill check (mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify autofill hints on auth screens
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          si=apps/mobile/lib/entry/auth/presentation/sign_in_screen.dart
+          dt=apps/mobile/lib/entry/auth/presentation/details_screen.dart
+          rp=apps/mobile/lib/passenger/account/presentation/reset_password_screen.dart
+
+          grep -q 'AutofillHints.username' "$si" || {
+            echo "::error file=$si::sign-in identifier must include AutofillHints.username (H2)"
+            exit 1
+          }
+          grep -q 'AutofillHints.password' "$si" || {
+            echo "::error file=$si::sign-in password field must declare AutofillHints.password"
+            exit 1
+          }
+          grep -q 'AutofillHints.newPassword' "$dt" || {
+            echo "::error file=$dt::registration must use AutofillHints.newPassword"
+            exit 1
+          }
+          grep -q 'AutofillHints.newPassword' "$rp" || {
+            echo "::error file=$rp::password reset must use AutofillHints.newPassword (H2)"
+            exit 1
+          }
+
+      - name: Verify finishAutofillContext on credential-success paths
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in \
+              apps/mobile/lib/entry/auth/presentation/sign_in_screen.dart \
+              apps/mobile/lib/entry/auth/presentation/details_screen.dart \
+              apps/mobile/lib/passenger/account/presentation/reset_password_screen.dart; do
+            grep -q 'TextInput.finishAutofillContext' "$f" || {
+              echo "::error file=$f::must call TextInput.finishAutofillContext() on credential success (H2)"
+              exit 1
+            }
+          done
+
+      - name: Verify OTP input carries oneTimeCode
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          otp=packages/trosky_ui/lib/src/components/form_fields.dart
+          grep -q 'AutofillHints.oneTimeCode' "$otp" || {
+            echo "::error file=$otp::TroskyOtpInput must declare AutofillHints.oneTimeCode (H2)"
+            exit 1
+          }
+
+      - name: Verify autofill runbook present
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s apps/mobile/AUTOFILL.md || {
+            echo "::error::apps/mobile/AUTOFILL.md is missing; H2 runbook required"
+            exit 1
+          }
+
   build-apk:
     name: Build APK (mobile, debug)
     runs-on: ubuntu-latest

@@ -6,6 +6,7 @@
 // password and signs every session out.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:trosky_api/trosky_api.dart';
@@ -181,6 +182,10 @@ class _NewPasswordScreenState extends ConsumerState<NewPasswordScreen> {
         ref
             .read(telemetryProvider)
             .emit(TelemetryEvent('password_reset_completed'));
+        // H2: tell the password manager to drop any stored password
+        // for this account so the user is prompted to save the new
+        // one on the next sign-in.
+        TextInput.finishAutofillContext();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppLocalizations.of(context).resetSuccess)),
         );
