@@ -14,6 +14,7 @@ import 'package:trosky_core/trosky_core.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
 import '../../../app/routes.dart';
+import '../../../app/secure_window.dart';
 import '../../../app/telemetry.dart';
 import '../../../l10n/app_localizations.dart';
 import '../domain/account_args.dart';
@@ -60,59 +61,63 @@ class _RequestResetScreenState extends ConsumerState<RequestResetScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return AnnotatedRegion(
-      value: TroskySystemUi.darkIcons,
-      child: Scaffold(
-        backgroundColor: TroskyColors.background,
-        appBar: AppBar(
-          title: Text(l10n.resetRequestTitle),
-          backgroundColor: TroskyColors.surface,
-          foregroundColor: TroskyColors.ink,
-          elevation: 0,
-        ),
-        body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(TroskySpacing.s16),
-            children: [
-              Text(
-                l10n.resetRequestInstruction,
-                style: TroskyTypography.body14Regular,
-              ),
-              const SizedBox(height: TroskySpacing.s12),
-              TextField(
-                controller: _identifier,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: l10n.resetIdentifierLabel,
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-              if (_sent) ...[
-                const SizedBox(height: TroskySpacing.s12),
+    return TroskySecureScreen(
+      child: AnnotatedRegion(
+        value: TroskySystemUi.darkIcons,
+        child: Scaffold(
+          backgroundColor: TroskyColors.background,
+          appBar: AppBar(
+            title: Text(l10n.resetRequestTitle),
+            backgroundColor: TroskyColors.surface,
+            foregroundColor: TroskyColors.ink,
+            elevation: 0,
+          ),
+          body: SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.all(TroskySpacing.s16),
+              children: [
                 Text(
-                  l10n.resetRequestNeutralConfirmation,
-                  style: TroskyTypography.body14Regular.copyWith(
-                    color: TroskyColors.textSecondary,
+                  l10n.resetRequestInstruction,
+                  style: TroskyTypography.body14Regular,
+                ),
+                const SizedBox(height: TroskySpacing.s12),
+                TextField(
+                  controller: _identifier,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: l10n.resetIdentifierLabel,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: TroskySpacing.s8),
-                TextButton(
-                  onPressed: () {
-                    context.pushNamed(
-                      AppRoute.resetPasswordNew.name,
-                      extra: ResetPasswordArgs(target: _identifier.text.trim()),
-                    );
-                  },
-                  child: Text(l10n.resetIHaveACode),
+                if (_sent) ...[
+                  const SizedBox(height: TroskySpacing.s12),
+                  Text(
+                    l10n.resetRequestNeutralConfirmation,
+                    style: TroskyTypography.body14Regular.copyWith(
+                      color: TroskyColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: TroskySpacing.s8),
+                  TextButton(
+                    onPressed: () {
+                      context.pushNamed(
+                        AppRoute.resetPasswordNew.name,
+                        extra: ResetPasswordArgs(
+                          target: _identifier.text.trim(),
+                        ),
+                      );
+                    },
+                    child: Text(l10n.resetIHaveACode),
+                  ),
+                ],
+                const SizedBox(height: TroskySpacing.s16),
+                TroskyButton(
+                  label: l10n.resetRequestCta,
+                  variant: TroskyButtonVariant.primary,
+                  onPressed: _submitting ? null : _submit,
                 ),
               ],
-              const SizedBox(height: TroskySpacing.s16),
-              TroskyButton(
-                label: l10n.resetRequestCta,
-                variant: TroskyButtonVariant.primary,
-                onPressed: _submitting ? null : _submit,
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -197,65 +202,67 @@ class _NewPasswordScreenState extends ConsumerState<NewPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return AnnotatedRegion(
-      value: TroskySystemUi.darkIcons,
-      child: Scaffold(
-        backgroundColor: TroskyColors.background,
-        appBar: AppBar(
-          title: Text(l10n.resetNewTitle),
-          backgroundColor: TroskyColors.surface,
-          foregroundColor: TroskyColors.ink,
-          elevation: 0,
-        ),
-        body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(TroskySpacing.s16),
-            children: [
-              TextField(
-                controller: _code,
-                keyboardType: TextInputType.number,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  labelText: l10n.resetCodeLabel,
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: TroskySpacing.s12),
-              TextField(
-                controller: _password,
-                obscureText: true,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  labelText: l10n.resetNewPasswordLabel,
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: TroskySpacing.s12),
-              TextField(
-                controller: _confirm,
-                obscureText: true,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  labelText: l10n.resetConfirmPasswordLabel,
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-              if (_failure != null) ...[
-                const SizedBox(height: TroskySpacing.s8),
-                Text(
-                  l10n.resetFailure,
-                  style: TroskyTypography.body14Regular.copyWith(
-                    color: TroskyColors.red,
+    return TroskySecureScreen(
+      child: AnnotatedRegion(
+        value: TroskySystemUi.darkIcons,
+        child: Scaffold(
+          backgroundColor: TroskyColors.background,
+          appBar: AppBar(
+            title: Text(l10n.resetNewTitle),
+            backgroundColor: TroskyColors.surface,
+            foregroundColor: TroskyColors.ink,
+            elevation: 0,
+          ),
+          body: SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.all(TroskySpacing.s16),
+              children: [
+                TextField(
+                  controller: _code,
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    labelText: l10n.resetCodeLabel,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
+                const SizedBox(height: TroskySpacing.s12),
+                TextField(
+                  controller: _password,
+                  obscureText: true,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    labelText: l10n.resetNewPasswordLabel,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: TroskySpacing.s12),
+                TextField(
+                  controller: _confirm,
+                  obscureText: true,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    labelText: l10n.resetConfirmPasswordLabel,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                if (_failure != null) ...[
+                  const SizedBox(height: TroskySpacing.s8),
+                  Text(
+                    l10n.resetFailure,
+                    style: TroskyTypography.body14Regular.copyWith(
+                      color: TroskyColors.red,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: TroskySpacing.s16),
+                TroskyButton(
+                  label: l10n.resetNewCta,
+                  variant: TroskyButtonVariant.primary,
+                  onPressed: (_valid && !_submitting) ? _submit : null,
+                ),
               ],
-              const SizedBox(height: TroskySpacing.s16),
-              TroskyButton(
-                label: l10n.resetNewCta,
-                variant: TroskyButtonVariant.primary,
-                onPressed: (_valid && !_submitting) ? _submit : null,
-              ),
-            ],
+            ),
           ),
         ),
       ),

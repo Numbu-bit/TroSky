@@ -13,6 +13,7 @@ import 'package:trosky_api/trosky_api.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
 import '../../../app/app_providers.dart';
+import '../../../app/secure_window.dart';
 import '../../../app/telemetry.dart';
 import '../../../l10n/app_localizations.dart';
 import '../application/ticket_providers.dart';
@@ -71,53 +72,55 @@ class _TicketScreenState extends ConsumerState<TicketScreen> {
     final l10n = AppLocalizations.of(context);
     final booking = widget.args.booking;
     final viewAsync = ref.watch(bookingTicketsProvider(booking.id));
-    return Scaffold(
-      backgroundColor: TroskyColors.background,
-      body: viewAsync.when(
-        loading: () => _Scaffold(
-          booking: booking,
-          child: const Center(child: CircularProgressIndicator()),
-        ),
-        error: (_, _) => _Scaffold(
-          booking: booking,
-          child: _OfflineState(
-            title: l10n.ticketOfflineTitle,
-            subline: l10n.ticketOfflineSubline,
-            retryLabel: l10n.ticketRetry,
-            onRetry: () => ref.invalidate(bookingTicketsProvider(booking.id)),
+    return TroskySecureScreen(
+      child: Scaffold(
+        backgroundColor: TroskyColors.background,
+        body: viewAsync.when(
+          loading: () => _Scaffold(
+            booking: booking,
+            child: const Center(child: CircularProgressIndicator()),
           ),
-        ),
-        data: (view) {
-          final tickets = view.tickets;
-          if (tickets.isEmpty) {
+          error: (_, _) => _Scaffold(
+            booking: booking,
+            child: _OfflineState(
+              title: l10n.ticketOfflineTitle,
+              subline: l10n.ticketOfflineSubline,
+              retryLabel: l10n.ticketRetry,
+              onRetry: () => ref.invalidate(bookingTicketsProvider(booking.id)),
+            ),
+          ),
+          data: (view) {
+            final tickets = view.tickets;
+            if (tickets.isEmpty) {
+              return _Scaffold(
+                booking: booking,
+                child: _ErrorState(message: l10n.ticketEmpty, onRetry: null),
+              );
+            }
             return _Scaffold(
               booking: booking,
-              child: _ErrorState(message: l10n.ticketEmpty, onRetry: null),
-            );
-          }
-          return _Scaffold(
-            booking: booking,
-            banner: view.staleBannerVisible ? l10n.ticketOfflineBanner : null,
-            child: Column(
-              children: [
-                if (tickets.length > 1)
-                  _PageIndicator(current: _page, total: tickets.length),
-                Expanded(
-                  child: PageView.builder(
-                    controller: _controller,
-                    itemCount: tickets.length,
-                    onPageChanged: _onPageChanged,
-                    itemBuilder: (context, i) => _TicketPage(
-                      booking: booking,
-                      ticket: tickets[i],
-                      seatIndex: i,
+              banner: view.staleBannerVisible ? l10n.ticketOfflineBanner : null,
+              child: Column(
+                children: [
+                  if (tickets.length > 1)
+                    _PageIndicator(current: _page, total: tickets.length),
+                  Expanded(
+                    child: PageView.builder(
+                      controller: _controller,
+                      itemCount: tickets.length,
+                      onPageChanged: _onPageChanged,
+                      itemBuilder: (context, i) => _TicketPage(
+                        booking: booking,
+                        ticket: tickets[i],
+                        seatIndex: i,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          );
-        },
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }

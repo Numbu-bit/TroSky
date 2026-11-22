@@ -10,6 +10,7 @@ import 'package:trosky_auth/trosky_auth.dart';
 import 'package:trosky_core/trosky_core.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
+import '../../../app/secure_window.dart';
 import '../../../app/telemetry.dart';
 import '../../../l10n/app_localizations.dart';
 
@@ -102,76 +103,78 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
     final l10n = AppLocalizations.of(context);
     final session = ref.watch(sessionControllerProvider).value;
     final user = session is SessionAuthenticated ? session.user : null;
-    return AnnotatedRegion(
-      value: TroskySystemUi.darkIcons,
-      child: Scaffold(
-        backgroundColor: TroskyColors.background,
-        appBar: AppBar(
-          title: Text(l10n.piiTitle),
-          backgroundColor: TroskyColors.surface,
-          foregroundColor: TroskyColors.ink,
-          elevation: 0,
-        ),
-        body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(TroskySpacing.s16),
-            children: [
-              TextField(
-                controller: _name,
-                maxLength: 100,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  labelText: l10n.piiNameLabel,
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: TroskySpacing.s12),
-              _ReadOnlyRow(
-                label: l10n.piiEmailLabel,
-                value: user?.email ?? l10n.piiNotSet,
-                verifiedPill: user?.email != null
-                    ? _PillLabel(
-                        verified: user!.emailVerified,
-                        yes: l10n.profileVerified,
-                        no: l10n.profileUnverified,
-                      )
-                    : null,
-                trailingNote: l10n.piiChangeViaSupport,
-              ),
-              const SizedBox(height: TroskySpacing.s8),
-              _ReadOnlyRow(
-                label: l10n.piiPhoneLabel,
-                value: user?.phoneNumber ?? l10n.piiNotSet,
-                verifiedPill: user != null
-                    ? _PillLabel(
-                        verified: user.phoneVerified,
-                        yes: l10n.profileVerified,
-                        no: l10n.profileUnverified,
-                      )
-                    : null,
-                trailingNote: l10n.piiChangeViaSupport,
-              ),
-              const SizedBox(height: TroskySpacing.s8),
-              _ReadOnlyRow(
-                label: l10n.piiAvatarLabel,
-                value: l10n.profileComingSoon,
-              ),
-              if (_failure != null) ...[
-                const SizedBox(height: TroskySpacing.s8),
-                Text(
-                  l10n.piiEditFailure,
-                  style: TroskyTypography.body14Regular.copyWith(
-                    color: TroskyColors.red,
+    return TroskySecureScreen(
+      child: AnnotatedRegion(
+        value: TroskySystemUi.darkIcons,
+        child: Scaffold(
+          backgroundColor: TroskyColors.background,
+          appBar: AppBar(
+            title: Text(l10n.piiTitle),
+            backgroundColor: TroskyColors.surface,
+            foregroundColor: TroskyColors.ink,
+            elevation: 0,
+          ),
+          body: SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.all(TroskySpacing.s16),
+              children: [
+                TextField(
+                  controller: _name,
+                  maxLength: 100,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    labelText: l10n.piiNameLabel,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
+                const SizedBox(height: TroskySpacing.s12),
+                _ReadOnlyRow(
+                  label: l10n.piiEmailLabel,
+                  value: user?.email ?? l10n.piiNotSet,
+                  verifiedPill: user?.email != null
+                      ? _PillLabel(
+                          verified: user!.emailVerified,
+                          yes: l10n.profileVerified,
+                          no: l10n.profileUnverified,
+                        )
+                      : null,
+                  trailingNote: l10n.piiChangeViaSupport,
+                ),
+                const SizedBox(height: TroskySpacing.s8),
+                _ReadOnlyRow(
+                  label: l10n.piiPhoneLabel,
+                  value: user?.phoneNumber ?? l10n.piiNotSet,
+                  verifiedPill: user != null
+                      ? _PillLabel(
+                          verified: user.phoneVerified,
+                          yes: l10n.profileVerified,
+                          no: l10n.profileUnverified,
+                        )
+                      : null,
+                  trailingNote: l10n.piiChangeViaSupport,
+                ),
+                const SizedBox(height: TroskySpacing.s8),
+                _ReadOnlyRow(
+                  label: l10n.piiAvatarLabel,
+                  value: l10n.profileComingSoon,
+                ),
+                if (_failure != null) ...[
+                  const SizedBox(height: TroskySpacing.s8),
+                  Text(
+                    l10n.piiEditFailure,
+                    style: TroskyTypography.body14Regular.copyWith(
+                      color: TroskyColors.red,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: TroskySpacing.s16),
+                TroskyButton(
+                  label: l10n.piiSave,
+                  variant: TroskyButtonVariant.primary,
+                  onPressed: (_dirty && _valid && !_submitting) ? _save : null,
+                ),
               ],
-              const SizedBox(height: TroskySpacing.s16),
-              TroskyButton(
-                label: l10n.piiSave,
-                variant: TroskyButtonVariant.primary,
-                onPressed: (_dirty && _valid && !_submitting) ? _save : null,
-              ),
-            ],
+            ),
           ),
         ),
       ),

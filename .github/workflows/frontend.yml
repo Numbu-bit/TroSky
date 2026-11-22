@@ -600,6 +600,120 @@ jobs:
             exit 1
           }
 
+  screen-protection-check:
+    name: Screen protection check (mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify secure_window + native wiring
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          sw=apps/mobile/lib/app/secure_window.dart
+          test -s "$sw" || { echo "::error::$sw missing (H1)"; exit 1; }
+          grep -q 'class SecureWindowController' "$sw" || {
+            echo "::error file=$sw::expected SecureWindowController"
+            exit 1
+          }
+          grep -q 'class TroskySecureScreen' "$sw" || {
+            echo "::error file=$sw::expected TroskySecureScreen widget"
+            exit 1
+          }
+          grep -q 'class TroskyPrivacyCover' "$sw" || {
+            echo "::error file=$sw::expected TroskyPrivacyCover widget"
+            exit 1
+          }
+          grep -q "com.trosky.app/secure_window" "$sw" || {
+            echo "::error file=$sw::channel name drift"
+            exit 1
+          }
+
+      - name: Verify Android MainActivity wires FLAG_SECURE channel
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          ma=apps/mobile/android/app/src/main/kotlin/com/trosky/app/MainActivity.kt
+          test -s "$ma"
+          grep -q 'com.trosky.app/secure_window' "$ma" || {
+            echo "::error file=$ma::channel name must match Dart"
+            exit 1
+          }
+          grep -q 'FLAG_SECURE' "$ma" || {
+            echo "::error file=$ma::expected FLAG_SECURE wiring"
+            exit 1
+          }
+          grep -q 'window.setFlags' "$ma" || {
+            echo "::error file=$ma::expected window.setFlags call"
+            exit 1
+          }
+          grep -q 'window.clearFlags' "$ma" || {
+            echo "::error file=$ma::expected window.clearFlags call"
+            exit 1
+          }
+
+      - name: Verify iOS privacy cover
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          ad=apps/mobile/ios/Runner/AppDelegate.swift
+          test -s "$ad"
+          grep -q 'applicationWillResignActive' "$ad" || {
+            echo "::error file=$ad::expected applicationWillResignActive override (H1)"
+            exit 1
+          }
+          grep -q 'applicationDidBecomeActive' "$ad" || {
+            echo "::error file=$ad::expected applicationDidBecomeActive override (H1)"
+            exit 1
+          }
+          grep -q 'attachPrivacyCover' "$ad" || {
+            echo "::error file=$ad::expected attachPrivacyCover helper"
+            exit 1
+          }
+
+      - name: Verify shell mounts TroskyPrivacyCover
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          shell=apps/mobile/lib/app/trosky_mobile_app.dart
+          grep -q 'TroskyPrivacyCover' "$shell" || {
+            echo "::error file=$shell::TroskyPrivacyCover must be mounted at the app root (H1)"
+            exit 1
+          }
+
+      - name: Verify sensitive screens are wrapped
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          screens=(
+            "apps/mobile/lib/passenger/trips/presentation/ticket_screen.dart"
+            "apps/mobile/lib/entry/auth/presentation/verify_code_screen.dart"
+            "apps/mobile/lib/passenger/account/presentation/reset_password_screen.dart"
+            "apps/mobile/lib/passenger/account/presentation/personal_info_screen.dart"
+            "apps/mobile/lib/passenger/booking/presentation/payment_screen.dart"
+          )
+          for s in "${screens[@]}"; do
+            grep -q 'TroskySecureScreen' "$s" || {
+              echo "::error file=$s::sensitive screen must wrap build in TroskySecureScreen (H1)"
+              exit 1
+            }
+          done
+
+      - name: Verify screen-protection runbook present
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s apps/mobile/android/SCREEN_PROTECTION.md || {
+            echo "::error::apps/mobile/android/SCREEN_PROTECTION.md is missing; H1 runbook required"
+            exit 1
+          }
+
   build-apk:
     name: Build APK (mobile, debug)
     runs-on: ubuntu-latest
