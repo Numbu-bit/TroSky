@@ -19,6 +19,7 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:trosky_ui/trosky_ui.dart';
 
 const MethodChannel _channel = MethodChannel('com.trosky.app/secure_window');
 
@@ -155,7 +156,7 @@ class TroskyPrivacyCover extends ConsumerStatefulWidget {
   const TroskyPrivacyCover({
     super.key,
     required this.child,
-    this.coverColor = const Color(0xFF0A1A2B),
+    this.coverColor = TroskyColors.navy,
   });
 
   final Widget child;
