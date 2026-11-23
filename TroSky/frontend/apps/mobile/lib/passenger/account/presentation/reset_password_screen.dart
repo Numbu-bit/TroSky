@@ -230,6 +230,7 @@ class _NewPasswordScreenState extends ConsumerState<NewPasswordScreen> {
                 controller: _password,
                 obscureText: true,
                 onChanged: (_) => setState(() {}),
+                autofillHints: const [AutofillHints.newPassword],
                 decoration: InputDecoration(
                   labelText: l10n.resetNewPasswordLabel,
                   border: const OutlineInputBorder(),
@@ -240,6 +241,7 @@ class _NewPasswordScreenState extends ConsumerState<NewPasswordScreen> {
                 controller: _confirm,
                 obscureText: true,
                 onChanged: (_) => setState(() {}),
+                autofillHints: const [AutofillHints.newPassword],
                 decoration: InputDecoration(
                   labelText: l10n.resetConfirmPasswordLabel,
                   border: const OutlineInputBorder(),
