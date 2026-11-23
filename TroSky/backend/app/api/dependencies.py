@@ -36,9 +36,11 @@ from app.api.admin_dependencies import (
 from app.api.auth_dependencies import (
     AuthServiceDep,
     CurrentPrincipal,
+    OptionalPrincipal,
     UserServiceDep,
     get_auth_service,
     get_current_principal,
+    get_optional_principal,
     get_user_service,
     resolve_principal,
 )
@@ -118,6 +120,7 @@ __all__ = [
     "MalwareScannerDep",
     "NotificationServiceDep",
     "OptionalIdempotencyKey",
+    "OptionalPrincipal",
     "Pagination",
     "PaginationParams",
     "PaymentServiceDep",
@@ -140,6 +143,7 @@ __all__ = [
     "get_booking_service",
     "get_complaint_service",
     "get_current_principal",
+    "get_optional_principal",
     "get_driver_service",
     "get_email_provider_dep",
     "get_fleet_service",

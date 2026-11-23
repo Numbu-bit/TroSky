@@ -133,10 +133,10 @@ class BookingWatchController extends _$BookingWatchController {
 
   /// `POST /bookings/{id}/cancel`. When the server says it already ended,
   /// the booking is read again to show how.
-  Future<Result<BookingResponse>> cancel() async {
+  Future<Result<BookingResponse>> cancel({CancelReason? reason}) async {
     final result = await ref
         .read(bookingRepositoryProvider)
-        .cancel(state.booking.id);
+        .cancel(state.booking.id, reason: reason);
     if (!ref.mounted) return result;
     switch (result) {
       case Ok(:final value):

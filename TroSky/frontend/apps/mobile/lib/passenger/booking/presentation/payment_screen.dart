@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:trosky_api/trosky_api.dart';
-import 'package:trosky_core/trosky_core.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
 import '../../../app/app_providers.dart';
@@ -15,9 +14,11 @@ import '../../../l10n/app_localizations.dart';
 import '../../search/presentation/trip_view.dart';
 import '../../search/search_prefill.dart';
 import '../../seats/application/seat_providers.dart';
+import '../../shared/cancel_booking_sheet.dart';
 import '../../trips/application/trips_providers.dart';
 import '../application/booking_watch.dart';
 import '../application/pay_controller.dart';
+import '../../../app/secure_window.dart';
 import '../domain/pay_method.dart';
 import '../domain/payment_args.dart';
 import 'booking_format.dart';
@@ -182,35 +183,36 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       case LeaveChoice.keep:
         _home();
       case LeaveChoice.release:
-        await _cancel(released: true);
+        await _askCancel(released: true);
       case null:
         break;
     }
   }
 
-  Future<void> _cancel({bool released = false}) async {
+  /// Every passenger-initiated cancel from this screen (bottom "Cancel"
+  /// button, and the "Release seats" branch of the leave sheet) opens
+  /// the shared P-16 cancel sheet. The sheet calls the backend and
+  /// handles its own in-sheet errors; here we just react to the outcome.
+  Future<void> _cancel() => _askCancel();
+
+  Future<void> _askCancel({bool released = false}) async {
     final l10n = AppLocalizations.of(context);
-    setState(() {
-      _cancelling = true;
-      _error = null;
-    });
-    final result = await ref.read(_watch.notifier).cancel();
+    setState(() => _cancelling = true);
+    final outcome = await showCancelBookingSheet(
+      context,
+      booking: ref.read(_watch).booking,
+      confirmLabel: released ? l10n.paymentReleaseConfirm : null,
+    );
     if (!mounted) return;
     setState(() => _cancelling = false);
-    switch (result) {
-      case Ok() when released:
-        _say(l10n.paymentReleased);
-        _close(PaymentOutcome.released);
-      case Ok():
-        _say(l10n.paymentCancelled);
-        _close(PaymentOutcome.cancelled);
-      case Err(:final failure) when failure.code == 'INVALID_STATE_TRANSITION':
-        // It ended on the server meanwhile; the booking was read again and
-        // the screen shows how.
-        break;
-      case Err(:final failure):
-        setState(() => _error = failureMessage(context, failure));
+    if (outcome == null) return;
+    if (outcome.requested) {
+      // The trip had started: the backend logged a review request and
+      // the booking stays as it was. The screen keeps itself open.
+      return;
     }
+    _say(released ? l10n.paymentReleased : l10n.paymentCancelled);
+    _close(released ? PaymentOutcome.released : PaymentOutcome.cancelled);
   }
 
   /// Search again from the same stops, starting over from Home.
@@ -338,91 +340,93 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           ),
           _ => null,
         };
-    return PopScope(
-      canPop:
-          widget.args.restored &&
-          !busy &&
-          !(pay.stage == PayStage.failed && !pay.holdOver),
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && !_closed && !busy) _back();
-      },
-      child: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: TroskySystemUi.lightIcons,
-        child: Scaffold(
-          backgroundColor: TroskyColors.background,
-          body: Column(
-            children: [
-              TroskyPageHeader(
-                title: l10n.paymentTitle,
-                subtitle: l10n.paymentSubtitle,
-                backLabel: l10n.backLabel,
-                onBack: busy ? null : _back,
-              ),
-              Expanded(
-                child: NotificationListener<ScrollMetricsNotification>(
-                  onNotification: _checkFit,
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(
-                      TroskySpacing.s18,
-                      TroskySpacing.s16,
-                      TroskySpacing.s18,
-                      _listBottomPadding,
-                    ),
-                    children: [
-                      if (stage == PaymentStage.accepted &&
-                          watch.acceptedHere &&
-                          !paying)
-                        ..._banner(
-                          l10n.paymentAccepted,
-                          TroskyStatusTone.success,
-                        ),
-                      if (stage == PaymentStage.moved && !paying)
-                        ..._banner(
-                          watch.moveReason == MoveReason.declined
-                              ? l10n.paymentMovedDeclined
-                              : l10n.paymentMovedUnanswered,
-                          TroskyStatusTone.info,
-                        ),
-                      _card(l10n, watch),
-                      if (paying)
-                        _payStage(l10n, watch, pay)
-                      else
-                        ...switch (stage) {
-                          PaymentStage.waiting ||
-                          PaymentStage.moved => _waiting(l10n, watch),
-                          PaymentStage.accepted => [
-                            const SizedBox(height: TroskySpacing.s16),
-                            _payWith(l10n, watch, pay),
-                          ],
-                          PaymentStage.notAccepted => _notAccepted(l10n),
-                          PaymentStage.holdExpired ||
-                          PaymentStage.cancelled => const [],
-                        },
-                      if (watch.offline &&
-                          (stage == PaymentStage.waiting ||
-                              stage == PaymentStage.moved)) ...[
-                        const SizedBox(height: TroskySpacing.s16),
-                        PaymentOfflineNote(l10n.paymentOffline),
-                      ],
-                      if (error != null) ...[
-                        const SizedBox(height: TroskySpacing.s12),
-                        Semantics(
-                          liveRegion: true,
-                          child: Text(
-                            error,
-                            textAlign: TextAlign.center,
-                            style: TroskyTypography.body13Regular.copyWith(
-                              color: TroskyColors.red,
+    return TroskySecureScreen(
+      child: PopScope(
+        canPop:
+            widget.args.restored &&
+            !busy &&
+            !(pay.stage == PayStage.failed && !pay.holdOver),
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop && !_closed && !busy) _back();
+        },
+        child: AnnotatedRegion<SystemUiOverlayStyle>(
+          value: TroskySystemUi.lightIcons,
+          child: Scaffold(
+            backgroundColor: TroskyColors.background,
+            body: Column(
+              children: [
+                TroskyPageHeader(
+                  title: l10n.paymentTitle,
+                  subtitle: l10n.paymentSubtitle,
+                  backLabel: l10n.backLabel,
+                  onBack: busy ? null : _back,
+                ),
+                Expanded(
+                  child: NotificationListener<ScrollMetricsNotification>(
+                    onNotification: _checkFit,
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(
+                        TroskySpacing.s18,
+                        TroskySpacing.s16,
+                        TroskySpacing.s18,
+                        _listBottomPadding,
+                      ),
+                      children: [
+                        if (stage == PaymentStage.accepted &&
+                            watch.acceptedHere &&
+                            !paying)
+                          ..._banner(
+                            l10n.paymentAccepted,
+                            TroskyStatusTone.success,
+                          ),
+                        if (stage == PaymentStage.moved && !paying)
+                          ..._banner(
+                            watch.moveReason == MoveReason.declined
+                                ? l10n.paymentMovedDeclined
+                                : l10n.paymentMovedUnanswered,
+                            TroskyStatusTone.info,
+                          ),
+                        _card(l10n, watch),
+                        if (paying)
+                          _payStage(l10n, watch, pay)
+                        else
+                          ...switch (stage) {
+                            PaymentStage.waiting ||
+                            PaymentStage.moved => _waiting(l10n, watch),
+                            PaymentStage.accepted => [
+                              const SizedBox(height: TroskySpacing.s16),
+                              _payWith(l10n, watch, pay),
+                            ],
+                            PaymentStage.notAccepted => _notAccepted(l10n),
+                            PaymentStage.holdExpired ||
+                            PaymentStage.cancelled => const [],
+                          },
+                        if (watch.offline &&
+                            (stage == PaymentStage.waiting ||
+                                stage == PaymentStage.moved)) ...[
+                          const SizedBox(height: TroskySpacing.s16),
+                          PaymentOfflineNote(l10n.paymentOffline),
+                        ],
+                        if (error != null) ...[
+                          const SizedBox(height: TroskySpacing.s12),
+                          Semantics(
+                            liveRegion: true,
+                            child: Text(
+                              error,
+                              textAlign: TextAlign.center,
+                              style: TroskyTypography.body13Regular.copyWith(
+                                color: TroskyColors.red,
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
-              ),
-              _bottom(l10n, watch, pay),
-            ],
+                _bottom(l10n, watch, pay),
+              ],
+            ),
           ),
         ),
       ),

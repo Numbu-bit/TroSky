@@ -97,6 +97,732 @@ jobs:
         working-directory: TroSky/frontend/apps/${{ matrix.app }}
         run: flutter build web --release --no-pub --dart-define-from-file=../../env/dev.example.json
 
+  signing-config-check:
+    name: Signing config check (mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify Gradle release signing wiring
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle_file=apps/mobile/android/app/build.gradle.kts
+
+          echo "::group::Assertions"
+          grep -q 'rootProject.file("key.properties")' "$gradle_file" || {
+            echo "::error file=$gradle_file::expected key.properties to be loaded via rootProject.file(\"key.properties\")"
+            exit 1
+          }
+
+          grep -q 'signingConfig = signingConfigs.findByName("release")' "$gradle_file" || {
+            echo "::error file=$gradle_file::expected release buildType to use signingConfigs.findByName(\"release\")"
+            exit 1
+          }
+
+          if grep -q 'signingConfigs.getByName("debug")' "$gradle_file"; then
+            echo "::error file=$gradle_file::release must not fall back to the debug keystore (C1)"
+            exit 1
+          fi
+
+          grep -q 'val storeApplicationId = "com.trosky.app"' "$gradle_file" || {
+            echo "::error file=$gradle_file::expected storeApplicationId = \"com.trosky.app\""
+            exit 1
+          }
+
+          grep -q 'val verifyReleaseSigningReady' "$gradle_file" || {
+            echo "::error file=$gradle_file::expected verifyReleaseSigningReady task"
+            exit 1
+          }
+          grep -q 'assembleRelease\|bundleRelease' "$gradle_file" || {
+            echo "::error file=$gradle_file::expected assembleRelease / bundleRelease wiring"
+            exit 1
+          }
+          echo "::endgroup::"
+
+          echo "Signing wiring OK."
+
+      - name: Verify key.properties is gitignored
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          gi=apps/mobile/android/.gitignore
+          grep -q '^key.properties$' "$gi" || {
+            echo "::error file=$gi::expected 'key.properties' line in android/.gitignore"
+            exit 1
+          }
+          grep -qE '^\*\*/\*\.jks$' "$gi" || {
+            echo "::error file=$gi::expected '**/*.jks' line in android/.gitignore"
+            exit 1
+          }
+
+      - name: Verify key.properties is not committed
+        working-directory: ${{ github.workspace }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-files --error-unmatch TroSky/frontend/apps/mobile/android/key.properties 2>/dev/null; then
+            echo "::error::apps/mobile/android/key.properties is tracked; it must stay gitignored"
+            exit 1
+          fi
+          if git ls-files TroSky/frontend/apps/mobile/android/ | grep -Ei '\.jks$|\.keystore$'; then
+            echo "::error::a .jks/.keystore file is tracked under android/; it must stay gitignored"
+            exit 1
+          fi
+          echo "key.properties and keystore files are not tracked."
+
+      - name: Verify signing runbook present
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f apps/mobile/android/SIGNING.md || {
+            echo "::error::apps/mobile/android/SIGNING.md is missing; C1 runbook required"
+            exit 1
+          }
+          test -f apps/mobile/android/key.properties.example || {
+            echo "::error::apps/mobile/android/key.properties.example is missing"
+            exit 1
+          }
+
+  shrink-obfuscate-check:
+    name: Shrink/obfuscate config check (mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify R8 + resource shrinking wired on release
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle_file=apps/mobile/android/app/build.gradle.kts
+
+          grep -q 'isMinifyEnabled = true' "$gradle_file" || {
+            echo "::error file=$gradle_file::expected isMinifyEnabled = true on release (C2)"
+            exit 1
+          }
+          grep -q 'isShrinkResources = true' "$gradle_file" || {
+            echo "::error file=$gradle_file::expected isShrinkResources = true on release (C2)"
+            exit 1
+          }
+          grep -q 'proguardFiles(' "$gradle_file" || {
+            echo "::error file=$gradle_file::expected proguardFiles(...) call on release (C2)"
+            exit 1
+          }
+          grep -q 'proguard-android-optimize.txt' "$gradle_file" || {
+            echo "::error file=$gradle_file::expected default proguard-android-optimize.txt (C2)"
+            exit 1
+          }
+          grep -q '"proguard-rules.pro"' "$gradle_file" || {
+            echo "::error file=$gradle_file::expected 'proguard-rules.pro' in proguardFiles (C2)"
+            exit 1
+          }
+
+      - name: Verify ProGuard rules file present
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          rules=apps/mobile/android/app/proguard-rules.pro
+          test -s "$rules" || {
+            echo "::error::$rules missing or empty"
+            exit 1
+          }
+
+      - name: Verify store-build entry point
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          script=apps/mobile/tool/build_store.sh
+          test -x "$script" || {
+            echo "::error::$script missing or not executable"
+            exit 1
+          }
+          # Script must call --obfuscate and --split-debug-info to
+          # produce de-identified Dart symbols.
+          grep -q -- '--obfuscate' "$script" || {
+            echo "::error::$script must pass --obfuscate"
+            exit 1
+          }
+          grep -q -- '--split-debug-info=' "$script" || {
+            echo "::error::$script must pass --split-debug-info"
+            exit 1
+          }
+          # Prod env must not ship TESTER_MENU=true via this script.
+          grep -q 'TESTER_MENU' "$script" || {
+            echo "::error::$script must reject TESTER_MENU=true in prod"
+            exit 1
+          }
+          # Script must preserve R8 mapping alongside Dart symbols.
+          grep -q 'mapping.txt' "$script" || {
+            echo "::error::$script must preserve mapping.txt"
+            exit 1
+          }
+          bash -n "$script"
+
+      - name: Verify obfuscation runbook present
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s apps/mobile/android/OBFUSCATION.md || {
+            echo "::error::apps/mobile/android/OBFUSCATION.md is missing; C2 runbook required"
+            exit 1
+          }
+
+  backup-isolation-check:
+    name: Backup isolation check (mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify AndroidManifest declares allowBackup=false + rule XMLs
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest=apps/mobile/android/app/src/main/AndroidManifest.xml
+
+          grep -q 'android:allowBackup="false"' "$manifest" || {
+            echo "::error file=$manifest::expected android:allowBackup=\"false\" (C3)"
+            exit 1
+          }
+          grep -q 'android:fullBackupContent="@xml/backup_rules"' "$manifest" || {
+            echo "::error file=$manifest::expected android:fullBackupContent=\"@xml/backup_rules\" (C3)"
+            exit 1
+          }
+          grep -q 'android:dataExtractionRules="@xml/data_extraction_rules"' "$manifest" || {
+            echo "::error file=$manifest::expected android:dataExtractionRules=\"@xml/data_extraction_rules\" (C3)"
+            exit 1
+          }
+
+      - name: Verify rule XMLs exist and cover every domain
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          full=apps/mobile/android/app/src/main/res/xml/backup_rules.xml
+          dxr=apps/mobile/android/app/src/main/res/xml/data_extraction_rules.xml
+          test -s "$full" || { echo "::error::$full missing"; exit 1; }
+          test -s "$dxr" || { echo "::error::$dxr missing"; exit 1; }
+
+          for file in "$full" "$dxr"; do
+            for d in root file database sharedpref external; do
+              grep -q "domain=\"$d\"" "$file" || {
+                echo "::error file=$file::missing <exclude domain=\"$d\" …>"
+                exit 1
+              }
+            done
+          done
+
+          grep -q '<cloud-backup>' "$dxr" || {
+            echo "::error file=$dxr::missing <cloud-backup> section"
+            exit 1
+          }
+          grep -q '<device-transfer>' "$dxr" || {
+            echo "::error file=$dxr::missing <device-transfer> section"
+            exit 1
+          }
+
+      - name: Verify every FlutterSecureStorage call site uses troskySecureStorage
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -rnE 'const\s+FlutterSecureStorage\s*\(\s*\)|[^.]FlutterSecureStorage\s*\(\s*\)' \
+              apps/mobile/lib packages \
+              --include='*.dart' \
+              | grep -v 'secure_storage.dart'; then
+            echo "::error::bare FlutterSecureStorage() construction found; use troskySecureStorage"
+            exit 1
+          fi
+
+      - name: Verify iOS Keychain accessibility is set and is _this_device
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          factory=packages/trosky_auth/lib/src/secure_storage.dart
+          test -s "$factory" || {
+            echo "::error::$factory missing"
+            exit 1
+          }
+          grep -q 'KeychainAccessibility.first_unlock_this_device' "$factory" || {
+            echo "::error file=$factory::iOS accessibility must be first_unlock_this_device (C3)"
+            exit 1
+          }
+
+      - name: Verify backup runbook present
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s apps/mobile/android/BACKUP.md || {
+            echo "::error::apps/mobile/android/BACKUP.md is missing; C3 runbook required"
+            exit 1
+          }
+
+  prod-config-check:
+    name: Prod config check (mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify DeployEnv + prod invariants in Env.parse
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          env_dart=packages/trosky_core/lib/src/env.dart
+
+          grep -q 'enum DeployEnv' "$env_dart" || {
+            echo "::error file=$env_dart::expected enum DeployEnv (C4)"
+            exit 1
+          }
+          for name in dev staging demo prod; do
+            grep -q "DeployEnv.*$name\|  $name," "$env_dart" || {
+              echo "::error file=$env_dart::expected DeployEnv.$name (C4)"
+              exit 1
+            }
+          done
+          grep -q '_placeholderApiHosts' "$env_dart" || {
+            echo "::error file=$env_dart::expected _placeholderApiHosts set"
+            exit 1
+          }
+          grep -q 'DEPLOY_ENV=prod requires API_MODE=live' "$env_dart" || {
+            echo "::error file=$env_dart::expected prod invariant: API_MODE=live"
+            exit 1
+          }
+          grep -q 'DEPLOY_ENV=prod requires an https:// API_BASE_URL' "$env_dart" || {
+            echo "::error file=$env_dart::expected prod invariant: https API_BASE_URL"
+            exit 1
+          }
+          grep -q 'DEPLOY_ENV=prod requires a wss:// WS_BASE_URL' "$env_dart" || {
+            echo "::error file=$env_dart::expected prod invariant: wss WS_BASE_URL"
+            exit 1
+          }
+          grep -q 'DEPLOY_ENV=prod forbids TESTER_MENU=true' "$env_dart" || {
+            echo "::error file=$env_dart::expected prod invariant: TESTER_MENU forbidden"
+            exit 1
+          }
+          grep -q 'testerMenuAllowed' "$env_dart" || {
+            echo "::error file=$env_dart::expected env.testerMenuAllowed getter"
+            exit 1
+          }
+
+      - name: Verify tester menu respects env.testerMenuAllowed
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          tester=apps/mobile/lib/app/tester/tester_menu.dart
+
+          grep -q 'testerMenuLive' "$tester" || {
+            echo "::error file=$tester::expected testerMenuLive helper"
+            exit 1
+          }
+          grep -q 'env.testerMenuAllowed' "$tester" || {
+            echo "::error file=$tester::expected runtime env.testerMenuAllowed check"
+            exit 1
+          }
+          grep -q 'ConsumerStatefulWidget' "$tester" || {
+            echo "::error file=$tester::TesterMenuTapCounter must watch env via Consumer*"
+            exit 1
+          }
+
+      - name: Verify env templates declare DEPLOY_ENV
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in env/dev.example.json env/staging.example.json env/prod.example.json; do
+            test -f "$f" || { echo "::error::$f missing"; exit 1; }
+            grep -q '"DEPLOY_ENV"' "$f" || {
+              echo "::error file=$f::expected DEPLOY_ENV key"
+              exit 1
+            }
+          done
+          grep -q '"DEPLOY_ENV": "dev"' env/dev.example.json
+          grep -q '"DEPLOY_ENV": "staging"' env/staging.example.json
+          grep -q '"DEPLOY_ENV": "prod"' env/prod.example.json
+
+      - name: Verify prod template has no TESTER_MENU=true
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -Eq '"TESTER_MENU"\s*:\s*"?true"?' env/prod.example.json; then
+            echo "::error file=env/prod.example.json::prod must not enable TESTER_MENU"
+            exit 1
+          fi
+
+  telemetry-schema-check:
+    name: Telemetry schema check (mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify telemetry schema in place
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          tf=apps/mobile/lib/app/telemetry.dart
+
+          grep -q '_telemetrySchema' "$tf" || {
+            echo "::error file=$tf::expected _telemetrySchema map (C5)"
+            exit 1
+          }
+          grep -q 'Map<String, Object?>? get sanitised' "$tf" || {
+            echo "::error file=$tf::sanitised must return nullable Map (C5)"
+            exit 1
+          }
+          grep -q '_isSafeValue' "$tf" || {
+            echo "::error file=$tf::expected _isSafeValue bounded-scalar check (C5)"
+            exit 1
+          }
+          grep -q 'Map.unmodifiable(clean)' "$tf" || {
+            echo "::error file=$tf::sanitised return must be unmodifiable (C5)"
+            exit 1
+          }
+          grep -q "'trosky.telemetry.rejected'" "$tf" || {
+            echo "::error file=$tf::debug diagnostics must emit under trosky.telemetry.rejected channel"
+            exit 1
+          }
+          grep -q 'if (payload == null) return' "$tf" || {
+            echo "::error file=$tf::ConsoleTelemetryService must drop null sanitised payloads (C5)"
+            exit 1
+          }
+
+      - name: Verify every emitted event is in the schema
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          tf=apps/mobile/lib/app/telemetry.dart
+          emitted=$(grep -rhE "TelemetryEvent\(['\"][a-z_]+['\"]" \
+            apps/mobile/lib \
+            --include='*.dart' \
+            | grep -oE "TelemetryEvent\(['\"][a-z_]+['\"]" \
+            | sed -E "s/TelemetryEvent\(['\"]([a-z_]+)['\"]/\1/" \
+            | sort -u)
+          missing=""
+          for name in $emitted; do
+            if ! grep -q "'$name':" "$tf"; then
+              missing="$missing $name"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error file=$tf::emitted events missing from _telemetrySchema:$missing"
+            exit 1
+          fi
+
+  tls-hardening-check:
+    name: TLS hardening check (mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify AndroidManifest declares cleartext-off + NSC
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest=apps/mobile/android/app/src/main/AndroidManifest.xml
+
+          grep -q 'android:usesCleartextTraffic="false"' "$manifest" || {
+            echo "::error file=$manifest::usesCleartextTraffic must be false (C6)"
+            exit 1
+          }
+          grep -q 'android:networkSecurityConfig="@xml/network_security_config"' "$manifest" || {
+            echo "::error file=$manifest::must reference @xml/network_security_config (C6)"
+            exit 1
+          }
+
+      - name: Verify network_security_config.xml contents
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          nsc=apps/mobile/android/app/src/main/res/xml/network_security_config.xml
+          test -s "$nsc" || { echo "::error::$nsc missing"; exit 1; }
+
+          grep -q '<base-config cleartextTrafficPermitted="false">' "$nsc" || {
+            echo "::error file=$nsc::base-config must be cleartextTrafficPermitted=false (C6)"
+            exit 1
+          }
+          base_block=$(awk '/<base-config/,/<\/base-config>/' "$nsc")
+          echo "$base_block" | grep -q 'src="system"' || {
+            echo "::error file=$nsc::base-config must trust system CAs"
+            exit 1
+          }
+          if echo "$base_block" | grep -q 'src="user"'; then
+            echo "::error file=$nsc::base-config must NOT trust user CAs (C6)"
+            exit 1
+          fi
+
+      - name: Verify Dio client has no trust bypass
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -rnE "badCertificateCallback|allowBadCertificates|setTrustedCertificatesBytes" \
+              packages apps --include='*.dart' \
+              | grep -v '/test/' \
+              | grep -v '/\.g\.dart'; then
+            echo "::error::found possible TLS bypass in production code (C6)"
+            exit 1
+          fi
+
+      - name: Verify iOS Info.plist has no ATS bypass
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          plist=apps/mobile/ios/Runner/Info.plist
+          test -s "$plist" || { echo "::error::$plist missing"; exit 1; }
+          if grep -q "NSAllowsArbitraryLoads" "$plist"; then
+            echo "::error file=$plist::NSAllowsArbitraryLoads must not be present (C6)"
+            exit 1
+          fi
+
+      - name: Verify pinning decision runbook present
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s apps/mobile/android/PINNING.md || {
+            echo "::error::apps/mobile/android/PINNING.md is missing; C6 decision doc required"
+            exit 1
+          }
+
+  log-redaction-check:
+    name: Log redaction check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify LogRedactor present + exported
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          lr=packages/trosky_core/lib/src/log_redactor.dart
+          test -s "$lr" || { echo "::error::$lr missing (H5)"; exit 1; }
+          grep -q 'class LogRedactor' "$lr" || {
+            echo "::error file=$lr::expected class LogRedactor"
+            exit 1
+          }
+          for name in _sensitiveHeaders _sensitiveQuery _phone _email _coord _bearer; do
+            grep -q "$name" "$lr" || {
+              echo "::error file=$lr::missing $name rule"
+              exit 1
+            }
+          done
+
+          barrel=packages/trosky_core/lib/trosky_core.dart
+          grep -q 'log_redactor.dart' "$barrel" || {
+            echo "::error file=$barrel::LogRedactor must be exported"
+            exit 1
+          }
+
+      - name: Verify tracking service redacts WS failure logs
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          tt=apps/mobile/lib/passenger/tracking/data/trip_tracking_service.dart
+          grep -q 'troskyRedactor.redactString' "$tt" || {
+            echo "::error file=$tt::ws_connect_failed error must be redacted (H5)"
+            exit 1
+          }
+
+      - name: Verify redaction runbook present
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s packages/trosky_core/LOG_REDACTION.md || {
+            echo "::error::packages/trosky_core/LOG_REDACTION.md is missing (H5 runbook)"
+            exit 1
+          }
+
+  mock-isolation-check:
+    name: Mock isolation check (mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify seedPassword is labelled as synthetic
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          mb=packages/trosky_api/lib/src/mock/mock_backend.dart
+          grep -q "Synthetic fixture" "$mb" || {
+            echo "::error file=$mb::seed credentials must be labelled 'Synthetic fixture' (H6)"
+            exit 1
+          }
+          offenders=$(grep -rln 'TroSky2026' apps packages --include='*.dart' \
+              | grep -v 'mock_backend.dart' \
+              | grep -v '/test/' || true)
+          if [ -n "$offenders" ]; then
+            echo "::error::TroSky2026 fixture referenced outside mock_backend.dart or tests:"
+            echo "$offenders"
+            exit 1
+          fi
+
+      - name: Verify mockBackend provider throws in prod
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          p=packages/trosky_auth/lib/src/providers.dart
+          grep -q 'DeployEnv.prod' "$p" || {
+            echo "::error file=$p::mockBackend must check DeployEnv.prod (H6)"
+            exit 1
+          }
+          grep -q 'MockBackend was requested in a DEPLOY_ENV=prod build' "$p" || {
+            echo "::error file=$p::mockBackend must StateError on prod read (H6)"
+            exit 1
+          }
+
+      - name: Verify C4 prod invariant still rejects mock
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          e=packages/trosky_core/lib/src/env.dart
+          grep -q 'DEPLOY_ENV=prod requires API_MODE=live' "$e" || {
+            echo "::error file=$e::C4 prod-mode gate regressed; H6 relies on it"
+            exit 1
+          }
+
+      - name: Verify mock-isolation runbook present
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s packages/trosky_api/MOCK_ISOLATION.md || {
+            echo "::error::packages/trosky_api/MOCK_ISOLATION.md is missing; H6 runbook required"
+            exit 1
+          }
+
+  ws-transport-check:
+    name: WebSocket transport check (mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify no new raw-bearer WS URLs are added
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          offenders=$(grep -rln 'wss://\|/ws/' apps packages --include='*.dart' \
+              | grep -v '/test/' \
+              | grep -v '/\.g\.dart' \
+              | xargs -I{} grep -l 'token=' {} \
+              | grep -v 'trip_tracking_service.dart' \
+              || true)
+          if [ -n "$offenders" ]; then
+            echo "::error::new WS URL with raw ?token= query (H4 B5 blocks all new call sites):"
+            echo "$offenders"
+            exit 1
+          fi
+
+      - name: Verify B5 is filed in backend-requests
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '### B5 — WebSocket auth via header or ticket' docs/backend-requests.md || {
+            echo "::error::docs/backend-requests.md must carry the H4 → B5 ask"
+            exit 1
+          }
+
+      - name: Verify WS transport runbook present
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s apps/mobile/WS_CREDENTIAL_TRANSPORT.md || {
+            echo "::error::apps/mobile/WS_CREDENTIAL_TRANSPORT.md missing (H4 runbook)"
+            exit 1
+          }
+
+  autofill-check:
+    name: Autofill check (mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify autofill hints on auth screens
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          si=apps/mobile/lib/entry/auth/presentation/sign_in_screen.dart
+          dt=apps/mobile/lib/entry/auth/presentation/details_screen.dart
+          rp=apps/mobile/lib/passenger/account/presentation/reset_password_screen.dart
+
+          grep -q 'AutofillHints.username' "$si" || {
+            echo "::error file=$si::sign-in identifier must include AutofillHints.username (H2)"
+            exit 1
+          }
+          grep -q 'AutofillHints.password' "$si" || {
+            echo "::error file=$si::sign-in password field must declare AutofillHints.password"
+            exit 1
+          }
+          grep -q 'AutofillHints.newPassword' "$dt" || {
+            echo "::error file=$dt::registration must use AutofillHints.newPassword"
+            exit 1
+          }
+          grep -q 'AutofillHints.newPassword' "$rp" || {
+            echo "::error file=$rp::password reset must use AutofillHints.newPassword (H2)"
+            exit 1
+          }
+
+      - name: Verify finishAutofillContext on credential-success paths
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in \
+              apps/mobile/lib/entry/auth/presentation/sign_in_screen.dart \
+              apps/mobile/lib/entry/auth/presentation/details_screen.dart \
+              apps/mobile/lib/passenger/account/presentation/reset_password_screen.dart; do
+            grep -q 'TextInput.finishAutofillContext' "$f" || {
+              echo "::error file=$f::must call TextInput.finishAutofillContext() on credential success (H2)"
+              exit 1
+            }
+          done
+
+      - name: Verify OTP input carries oneTimeCode
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          otp=packages/trosky_ui/lib/src/components/form_fields.dart
+          grep -q 'AutofillHints.oneTimeCode' "$otp" || {
+            echo "::error file=$otp::TroskyOtpInput must declare AutofillHints.oneTimeCode (H2)"
+            exit 1
+          }
+
+      - name: Verify autofill runbook present
+        working-directory: TroSky/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s apps/mobile/AUTOFILL.md || {
+            echo "::error::apps/mobile/AUTOFILL.md is missing; H2 runbook required"
+            exit 1
+          }
+
   build-apk:
     name: Build APK (mobile, debug)
     runs-on: ubuntu-latest
@@ -117,4 +843,8 @@ jobs:
       - run: flutter pub get
       - name: flutter build apk --debug
         working-directory: TroSky/frontend/apps/mobile
-        run: flutter build apk --debug --no-pub --dart-define-from-file=../../env/dev.example.json
+        run: |
+          flutter build apk --debug --no-pub \
+            --dart-define-from-file=../../env/dev.example.json \
+            --dart-define=GIT_COMMIT=$(git -C "$GITHUB_WORKSPACE" rev-parse --short HEAD) \
+            --dart-define=BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)

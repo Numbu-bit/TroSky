@@ -21,8 +21,28 @@ import '../passenger/search/search_prefill.dart';
 import '../passenger/seats/domain/seat_selection_args.dart';
 import '../passenger/seats/presentation/seat_selection_screen.dart';
 import '../passenger/shell/passenger_shell.dart';
+import '../passenger/tracking/domain/track_trip_args.dart';
+import '../passenger/tracking/presentation/track_trip_screen.dart';
+import '../passenger/trips/domain/ticket_args.dart';
+import '../passenger/trips/domain/trip_details_args.dart';
 import '../passenger/trips/presentation/booking_details_screen.dart';
+import '../passenger/trips/presentation/ticket_screen.dart';
+import '../passenger/trips/presentation/trip_details_screen.dart';
 import '../passenger/trips/presentation/trips_screen.dart';
+import '../passenger/account/domain/account_args.dart';
+import '../passenger/account/presentation/delete_account_screen.dart';
+import '../passenger/account/presentation/personal_info_screen.dart';
+import '../passenger/account/presentation/profile_screen.dart';
+import '../passenger/account/presentation/reset_password_screen.dart';
+import '../passenger/favourites/presentation/favourites_screen.dart';
+import '../passenger/notifications/presentation/notifications_screen.dart';
+import '../passenger/safety/domain/safety_args.dart';
+import '../passenger/safety/presentation/rate_screen.dart';
+import '../passenger/safety/presentation/report_screen.dart';
+import '../passenger/safety/presentation/sos_screen.dart';
+import '../passenger/wallet/domain/wallet_args.dart';
+import '../passenger/wallet/presentation/top_up_screen.dart';
+import '../passenger/wallet/presentation/wallet_screen.dart';
 import 'placeholder_screen.dart';
 
 part 'routes.g.dart';
@@ -68,6 +88,51 @@ enum AppRoute {
   /// Booking details (P-16), from Trips; `extra` may be the
   /// [BookingResponse] as listed.
   bookingDetails('/bookings/:bookingId'),
+
+  /// Ticket / Boarding Pass (P-10): one QR per seat, swipeable;
+  /// `extra` is a [TicketArgs]. Gated by `TICKET_QR_ENABLED`.
+  ticket('/bookings/:bookingId/ticket'),
+
+  /// Trip details (P-04, derived): the whole trip around a booking
+  /// (route, stops, vehicle, driver, seats). `extra` is a
+  /// [TripDetailsArgs]. Gated by `TRIP_DETAILS_ENABLED`.
+  tripDetails('/bookings/:bookingId/trip-details'),
+
+  /// Live tracking (P-11): full-screen map + bottom card. `extra` is a
+  /// [TrackTripArgs]. Gated by `TRIP_TRACKING_ENABLED`.
+  trackTrip('/bookings/:bookingId/track'),
+
+  /// Top up (P-18, derived): one screen to add GHS to the in-app wallet
+  /// via MoMo. `extra` is a [TopUpArgs]. Gated by `WALLET_ENABLED`.
+  topUp('/wallet/top-up'),
+
+  /// SOS (P-12): full-screen Emergency. `extra` may be a [SosArgs] (trip
+  /// context). Gated by `SOS_ENABLED`.
+  sosAlert('/sos/alert'),
+
+  /// Report (P-13): report an issue on a completed trip. `extra` is a
+  /// [ReportArgs]. Gated by `REPORT_ENABLED`.
+  report('/bookings/:bookingId/report'),
+
+  /// Rate (P-14): rate a completed trip. `extra` is a [RateArgs]. Gated
+  /// by `RATE_ENABLED`.
+  rate('/bookings/:bookingId/rate'),
+
+  /// Personal information (P-22) — sub-page of Profile. Gated by
+  /// `ACCOUNT_ENABLED`.
+  personalInfo('/profile/personal-info'),
+
+  /// Delete account (P-25) — type-to-confirm + password. Gated by
+  /// `ACCOUNT_ENABLED`.
+  deleteAccount('/profile/delete'),
+
+  /// Reset password step A (S-09a): enter the identifier the code goes
+  /// to. Public; no `ACCOUNT_ENABLED` gate.
+  resetPassword('/reset-password'),
+
+  /// Reset password step B (S-09b): enter code + new password. `extra`
+  /// is a [ResetPasswordArgs].
+  resetPasswordNew('/reset-password/new'),
   notifications('/notifications'),
   favouriteRoutes('/favourite-routes'),
   subscribe('/subscribe'),
@@ -139,8 +204,9 @@ GoRouter router(Ref ref) {
             routes: [
               route(
                 AppRoute.wallet,
-                (context, state) =>
-                    PlaceholderScreen(routeName: AppRoute.wallet.name),
+                (context, state) => walletEnabled
+                    ? const WalletScreen()
+                    : PlaceholderScreen(routeName: AppRoute.wallet.name),
               ),
             ],
           ),
@@ -148,8 +214,9 @@ GoRouter router(Ref ref) {
             routes: [
               route(
                 AppRoute.profile,
-                (context, state) =>
-                    SignedInPlaceholder(routeName: AppRoute.profile.name),
+                (context, state) => accountEnabled
+                    ? const ProfileScreen()
+                    : SignedInPlaceholder(routeName: AppRoute.profile.name),
               ),
             ],
           ),
@@ -199,13 +266,111 @@ GoRouter router(Ref ref) {
               : null,
         ),
       ),
+      GoRoute(
+        path: AppRoute.ticket.path,
+        name: AppRoute.ticket.name,
+        redirect: (context, state) =>
+            state.extra is TicketArgs ? null : AppRoute.trips.path,
+        builder: (context, state) =>
+            TicketScreen(args: state.extra! as TicketArgs),
+      ),
+      GoRoute(
+        path: AppRoute.tripDetails.path,
+        name: AppRoute.tripDetails.name,
+        redirect: (context, state) =>
+            state.extra is TripDetailsArgs ? null : AppRoute.trips.path,
+        builder: (context, state) =>
+            TripDetailsScreen(args: state.extra! as TripDetailsArgs),
+      ),
+      GoRoute(
+        path: AppRoute.trackTrip.path,
+        name: AppRoute.trackTrip.name,
+        redirect: (context, state) =>
+            state.extra is TrackTripArgs ? null : AppRoute.trips.path,
+        builder: (context, state) =>
+            TrackTripScreen(args: state.extra! as TrackTripArgs),
+      ),
+      GoRoute(
+        path: AppRoute.topUp.path,
+        name: AppRoute.topUp.name,
+        redirect: (context, state) => state.extra is TopUpArgs
+            ? (walletEnabled ? null : AppRoute.wallet.path)
+            : AppRoute.wallet.path,
+        builder: (context, state) =>
+            TopUpScreen(args: state.extra! as TopUpArgs),
+      ),
+      GoRoute(
+        path: AppRoute.sosAlert.path,
+        name: AppRoute.sosAlert.name,
+        redirect: (context, state) => sosEnabled ? null : AppRoute.home.path,
+        builder: (context, state) => SosScreen(
+          args: state.extra is SosArgs
+              ? state.extra! as SosArgs
+              : const SosArgs(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoute.report.path,
+        name: AppRoute.report.name,
+        redirect: (context, state) => state.extra is ReportArgs
+            ? (reportEnabled ? null : AppRoute.trips.path)
+            : AppRoute.trips.path,
+        builder: (context, state) =>
+            ReportScreen(args: state.extra! as ReportArgs),
+      ),
+      GoRoute(
+        path: AppRoute.rate.path,
+        name: AppRoute.rate.name,
+        redirect: (context, state) => state.extra is RateArgs
+            ? (rateEnabled ? null : AppRoute.trips.path)
+            : AppRoute.trips.path,
+        builder: (context, state) => RateScreen(args: state.extra! as RateArgs),
+      ),
+      GoRoute(
+        path: AppRoute.personalInfo.path,
+        name: AppRoute.personalInfo.name,
+        redirect: (context, state) =>
+            accountEnabled ? null : AppRoute.profile.path,
+        builder: (context, state) => const PersonalInfoScreen(),
+      ),
+      GoRoute(
+        path: AppRoute.deleteAccount.path,
+        name: AppRoute.deleteAccount.name,
+        redirect: (context, state) =>
+            accountEnabled ? null : AppRoute.profile.path,
+        builder: (context, state) => const DeleteAccountScreen(),
+      ),
+      route(
+        AppRoute.resetPassword,
+        (context, state) => const RequestResetScreen(),
+      ),
+      GoRoute(
+        path: AppRoute.resetPasswordNew.path,
+        name: AppRoute.resetPasswordNew.name,
+        redirect: (context, state) => state.extra is ResetPasswordArgs
+            ? null
+            : AppRoute.resetPassword.path,
+        builder: (context, state) =>
+            NewPasswordScreen(args: state.extra! as ResetPasswordArgs),
+      ),
+      route(
+        AppRoute.notifications,
+        (context, state) => notificationsEnabled
+            ? const NotificationsScreen(from: 'profile')
+            : PushedPlaceholder(
+                title: AppLocalizations.of(context).placeholderNotifications,
+              ),
+      ),
+      route(
+        AppRoute.favouriteRoutes,
+        (context, state) => favouritesEnabled
+            ? const FavouritesScreen()
+            : PushedPlaceholder(
+                title: AppLocalizations.of(context).placeholderFavouriteRoutes,
+              ),
+      ),
       for (final (pushed, title)
           in <(AppRoute, String Function(AppLocalizations))>[
-            (AppRoute.notifications, (l10n) => l10n.placeholderNotifications),
-            (
-              AppRoute.favouriteRoutes,
-              (l10n) => l10n.placeholderFavouriteRoutes,
-            ),
             (AppRoute.subscribe, (l10n) => l10n.placeholderSubscribe),
             (AppRoute.sos, (l10n) => l10n.placeholderSos),
           ])

@@ -6,6 +6,58 @@ part of 'tracking_dto.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+_LiveLocationResponse _$LiveLocationResponseFromJson(
+  Map<String, dynamic> json,
+) => _LiveLocationResponse(
+  tripId: json['trip_id'] as String,
+  latitude: (json['latitude'] as num).toDouble(),
+  longitude: (json['longitude'] as num).toDouble(),
+  speedKmh: decimalOrNull(json['speed_kmh']),
+  headingDegrees: decimalOrNull(json['heading_degrees']),
+  recordedAt: DateTime.parse(json['recorded_at'] as String),
+  isStale: json['is_stale'] as bool,
+  tripStatus: $enumDecodeNullable(_$TripStatusEnumMap, json['trip_status']),
+  liveFarePerSeat: decimalOrNull(json['live_fare_per_seat']),
+  ridersCount: (json['riders_count'] as num?)?.toInt(),
+);
+
+Map<String, dynamic> _$LiveLocationResponseToJson(
+  _LiveLocationResponse instance,
+) => <String, dynamic>{
+  'trip_id': instance.tripId,
+  'latitude': instance.latitude,
+  'longitude': instance.longitude,
+  'speed_kmh': ?instance.speedKmh,
+  'heading_degrees': ?instance.headingDegrees,
+  'recorded_at': instance.recordedAt.toIso8601String(),
+  'is_stale': instance.isStale,
+  'trip_status': ?_$TripStatusEnumMap[instance.tripStatus],
+  'live_fare_per_seat': ?instance.liveFarePerSeat,
+  'riders_count': ?instance.ridersCount,
+};
+
+const _$TripStatusEnumMap = {
+  TripStatus.scheduled: 'scheduled',
+  TripStatus.boarding: 'boarding',
+  TripStatus.inProgress: 'in_progress',
+  TripStatus.paused: 'paused',
+  TripStatus.completed: 'completed',
+  TripStatus.cancelled: 'cancelled',
+};
+
+_EtaResponse _$EtaResponseFromJson(Map<String, dynamic> json) => _EtaResponse(
+  distanceKm: decimalString(json['distance_km']),
+  durationMinutes: (json['duration_minutes'] as num).toInt(),
+  etaAt: DateTime.parse(json['eta_at'] as String),
+);
+
+Map<String, dynamic> _$EtaResponseToJson(_EtaResponse instance) =>
+    <String, dynamic>{
+      'distance_km': instance.distanceKm,
+      'duration_minutes': instance.durationMinutes,
+      'eta_at': instance.etaAt.toIso8601String(),
+    };
+
 _NearbyVehicleResponse _$NearbyVehicleResponseFromJson(
   Map<String, dynamic> json,
 ) => _NearbyVehicleResponse(

@@ -13,7 +13,8 @@
 | B1 | Lockout, code attempt limit, sign-out on token reuse | **Done**, re-tested live 10 Oct (all three pass) | Safeguard writes kept on failure (`keep_writes_on_failure`) |
 | B2 | Register on a fresh database | **Done** (not re-tested on an empty database) | `scripts.seed_reference_data` after `alembic upgrade head` (compose, image entrypoint, k8s job) |
 | B3 | An expired seat hold keeps its seats until the sweeper runs | **Done** (0.22.1, 11 Oct; merged 20 Oct) | `app/repositories/seat_holds.py`: a hold past `expires_at` is free at once |
-| B4 | A search with an unknown stop answers 500 | **New** (29 Oct) | See B4 below |
+| B4 | A search with an unknown stop answers 500 | **Promoted to G38** (15 Nov) | See G38 below |
+| B5 | WebSocket auth via header or ticket, not `?token=` | **New** (22 Nov) | See B5 below |
 | CI | Backend workflow never ran (the backend changelog calls this "B3") | **Done** | `.github/workflows/backend.yml` at the repository root |
 | D1 | Demo data | **Done** (in use; replaces the frontend's `tool/seed_local_trips.dart`) | `make seed-demo` / `python -m scripts.seed_demo_data` |
 | D2 | GPS simulator | **Done** (in use) | `make simulate-gps` / `python -m scripts.simulate_gps` |
@@ -37,6 +38,8 @@
 | G34 | Booking acceptance details | **New** (21 Oct) | See G34 below |
 | G35 | Cancels and refunds a passenger can see | **New** (28 Oct) | See G35 below |
 | G36 | Payments that can't be retried | **New** (29 Oct) | See G36 below |
+| G37 | Cancel-reason flow on bookings | **New** (15 Nov) | See G37 below |
+| G38 | Unknown bus stop returns 500 instead of 404 | **New** (15 Nov) | See G38 below (promoted from B4) |
 | E1 | Boarding | **Decided**: the driver scans the passenger's ticket | As built |
 | E2 | Driver trips | **Decided**: scheduled by admins and fleet owners; Go Online/Offline is availability only, no ride requests | As built |
 | E3 | Subscriptions (G14) | **Decided**: out of the MVP | — |
@@ -97,18 +100,7 @@ On a fresh database, `POST /auth/register` fails with `500 INTERNAL_SERVER_ERROR
 
 ### B4: a search with an unknown stop answers 500
 
-**Seen on 29 Oct 2026** on the local stack (backend 0.22.8 plus #53): the app's recent searches still
-held stop IDs from staging, and `GET /trips/search` with one of them answered
-`500 INTERNAL_SERVER_ERROR`. The log shows `ForeignKeyViolationError` on `search_events`
-(`fk_search_events_origin_stop_id_stops`): the search is recorded for the demand funnel before anyone
-checks that the stops exist.
-
-**Suggested fix:** answer 404 `NOT_FOUND` (or 422) for an `origin_stop_id` or `destination_stop_id`
-that isn't a stop, before recording the search; or record it without the stop IDs.
-
-**Frontend impact:** small. The app shows "Something went wrong. Try again." and choosing the stops
-again works. It can happen to anyone whose saved searches or favourites point at a stop that was
-removed.
+→ Promoted to **G38** below on 15 Nov 2026 so the frontend inventory can link to a G-numbered gap. The report under G38 is the live one; this stub is kept so existing links to B4 don't go to a dead id.
 
 ## P0: blocks the driver app and password reset
 
@@ -354,3 +346,65 @@ decision 30).
    Suggested: `?booking_id=`, or `payment_channel` on `BookingResponse` (G35, 2).
 4. **The payer's number isn't on `PaymentResponse`.** Reopened, P-08 says "your MTN MoMo number"
    instead of the number. Suggested: `payer_number_masked`.
+
+### G37 — Cancel-reason flow on bookings
+
+**Needed by:** the uniform cancel sheet across Payment, Back-release and Trips (Step 15 Part C). Today the app asks "why?" on P-16's cancel sheet but has nowhere to send the answer, and the booking afterwards shows no record of who cancelled or why.
+
+1. **The cancel endpoint accepts a reason.** `POST /bookings/{id}/cancel` body gains `reason`: a known enum where we have one (`found_another_ride`, `plans_changed`, `departure_time`, `driver_took_too_long`, `price`, `wrong_stops`, `other`), with a free-text `reason_note` (<= 200 chars) when `reason == "other"`. `reason` required for a passenger cancel; left out for `cancelled_by == "trosky"` (an autopilot or admin cancel).
+2. **The booking records who cancelled and why.** On the `bookings` row: `cancel_reason` (the enum, nullable), `cancel_reason_note` (string, nullable), `cancelled_by` (enum: `user` | `trosky` | `admin`), `cancelled_at` (datetime). The migration back-fills existing cancelled rows with `cancelled_by = "trosky"` and `cancel_reason = null` so the app's display branch handles missing values.
+3. **Every booking-details response returns them.** `BookingResponse` carries `cancel_reason`, `cancel_reason_note`, `cancelled_by`, `cancelled_at` (all nullable; non-null only when `status` is one of `cancelled`, `refund_pending`, `refunded`). `GET /bookings`, `GET /bookings/{id}`, and the `BookingResponse` nested on payments / ticket responses all include them.
+4. **Frontend impact:** the three cancel sheets (Payment "Cancel request", Back → Release seats, Trip details → Cancel) stop having their own in-memory copies of the reason, send it to the backend, and Booking details shows "Cancelled by you · Found another ride" or "Cancelled by TroSky · Driver did not accept" below the status chip.
+
+### G38 — Unknown bus stop returns 500 instead of 404
+
+**Needed by:** the frontend's error branching on Search, Search Results and Seat Selection. A passenger whose saved search or favourite points at a stop that was removed sees "Something went wrong. Try again." with no way for the app to re-choose the stops automatically. Promoted from B4 on 15 Nov 2026 so `frontend-inventory.md` can link to a G-numbered gap instead of a bug id.
+
+**Expected:** `GET /trips/search`, `GET /trips/{id}/seats` and every endpoint that takes a `stop_id`, `origin_stop_id` or `destination_stop_id` must answer `404 NOT_FOUND` with a typed error code (`STOP_NOT_FOUND`, or a 422 `VALIDATION_ERROR` with `details.field = "origin_stop_id"`) when the id isn't a stop. The app can then branch: clear the recent search, drop the favourite, prompt the user to pick again.
+
+**Observed (seen 29 Oct 2026, local stack, backend 0.22.8 + #53):**
+
+One-line repro:
+
+```sh
+curl -sS -i "https://trosky-api.onrender.com/api/v1/trips/search?origin_stop_id=00000000-0000-0000-0000-000000000000&destination_stop_id=00000000-0000-0000-0000-000000000001&travel_date=2026-11-16"
+```
+
+Response: `HTTP/1.1 500 INTERNAL_SERVER_ERROR`, body `{"error":{"code":"INTERNAL_ERROR",...}}`. The server log shows `sqlalchemy.exc.IntegrityError` → `asyncpg.exceptions.ForeignKeyViolationError` on `search_events` (`fk_search_events_origin_stop_id_stops`): the search is recorded for the demand funnel before anyone checks that the stops exist.
+
+**Suggested fix:** validate `origin_stop_id` / `destination_stop_id` exist in `stops` before writing the `search_events` row (or write the row without stop IDs when they don't exist), and return `404 STOP_NOT_FOUND` with `details.stop_id` so the app knows which id to drop.
+
+**Frontend impact:** small today (handled as a generic "try again"), gets cleaner the moment the typed error lands — the app can self-heal saved searches and favourites that point at removed stops.
+
+### B5 — WebSocket auth via header or ticket, not `?token=`
+
+**Needed by:** the passenger live-tracking screen (`trip_tracking_service.dart`), which opens `wss://…/ws/trips/{id}/track?token=<access_token>` to receive vehicle position updates during a trip. H4 of the 21 Nov 2026 pre-launch audit.
+
+**The problem.** The access token travels in the URL query. Every proxy, CDN edge, application access log and crash-report breadcrumb along the way captures the full URL including the query. The user's refresh token is Keystore-/Keychain-backed and never on the wire, but the short-lived access token is still enough to impersonate the user for its lifetime (currently 15 minutes). The frontend `CLAUDE.md` documents this contract (`?token=`) — the backend ships it; the frontend obeys.
+
+**Expected behaviour.** One of (owner picks the shape the backend can support):
+
+1. **Native header auth.** Accept `Sec-WebSocket-Protocol: bearer.<access_token>` from Flutter's `web_socket_channel` (the `protocols` parameter; Dart `dart:io` HttpClient sends it as a header on the upgrade). This is the cleanest for Flutter mobile; only one round trip.
+2. **Short-lived ticket.** The client calls `POST /auth/ws/ticket` (authenticated with the normal `Authorization: Bearer …`) and receives a one-time, single-use, 60-second ticket that it then passes as the `?ticket=<opaque>` query. The ticket is burned on first socket accept and never logged.
+3. **Both.** Native header for mobile, ticket for browser (Fleet web can't set custom WS headers).
+
+Whichever path the backend ships, the frontend must be able to use it without an interim mixed state that still writes the raw bearer somewhere the attacker can read.
+
+**Scope of the backend change.**
+
+- `app/api/v1/ws/trips.py` (or wherever the tracker socket lives): accept the new auth, keep the old `?token=` for a one-release deprecation window, log a deprecation warning when it's used.
+- Tests: a WS accept with a valid header / ticket passes; a replay of the same ticket fails; a header with a rotated access token still works.
+- `backend/CHANGELOG.md` and `docs/backend-sync.md` so the frontend can pin the cutover.
+
+**Frontend plan (follow-up, after backend B5 lands).**
+
+- `trip_tracking_service.dart` switches to the agreed transport.
+- The frontend `CLAUDE.md` contract line "The WebSocket takes `?token=`" is deleted.
+- H5's `LogRedactor.redactUri` already masks `token`, `access_token`, `refresh_token` query params — so even if we end up on the ticket path, a crash breadcrumb cannot leak the ticket value.
+
+**Rejected designs.**
+
+- **Long-lived bearer in `Sec-WebSocket-Protocol`.** The header is less logged than query, but still sometimes captured. Would not meaningfully reduce the exposure; use a short-lived ticket or a rotated access token instead.
+- **Per-trip signed URL embedded in the booking response.** Pre-signing a URL that lets anyone who can read the booking open the WS leaks the trip to the manifest's recipients.
+
+**Frontend impact today.** Blocked: the frontend cannot ship the migration without the backend endpoint. H4 PR documents the gap and pins the client-side guardrail so no additional caller adds a raw bearer to a WS URL.

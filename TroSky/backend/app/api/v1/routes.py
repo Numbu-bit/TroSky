@@ -12,6 +12,8 @@ from datetime import date, time
 from fastapi import APIRouter, Query
 
 from app.api.dependencies import (
+    DbSession,
+    OptionalPrincipal,
     Pagination,
     RouteServiceDep,
     StorageProviderDep,
@@ -22,6 +24,8 @@ from app.api.v1.views import avatar_url
 from app.core.exceptions import ValidationAppError
 from app.models.routes import Stop
 from app.models.vehicles import VehicleType
+from app.repositories.booking_repository import BookingRepository
+from app.repositories.route_repository import RouteRepository
 from app.schemas.common import PaginatedResponse
 from app.schemas.route import (
     NearbyStopResponse,
@@ -263,8 +267,12 @@ async def get_trip(
     trips: TripServiceDep,
     search: TripSearchServiceDep,
     storage: StorageProviderDep,
+    db: DbSession,
+    principal: OptionalPrincipal,
 ) -> TripDetailResponse:
-    """A trip with its route, vehicle, driver and how full it is."""
+    """A trip with its route, vehicle, driver and how full it is. Public
+    except for the driver phone number, which is only emitted for callers
+    who have a confirmed/completed booking on this trip."""
     trip = await trips.get_trip(trip_id)
     details = await search.trip_details(trip_id)
     summary = details.summary
@@ -279,13 +287,26 @@ async def get_trip(
     driver = None
     if summary.driver_id is not None:
         profile = details.driver_profile
+        phone = None
+        if (
+            details.driver_phone_number is not None
+            and principal is not None
+            and await BookingRepository(db).user_has_boarding_booking(
+                user_id=principal.user_id, trip_id=trip_id
+            )
+        ):
+            phone = details.driver_phone_number
         driver = TripDriverResponse(
             id=summary.driver_id,
             full_name=summary.driver_name,
             avatar_url=await avatar_url(profile, storage) if profile is not None else None,
             average_rating=details.driver_average_rating,
             rating_count=details.driver_rating_count,
+            phone_number=phone,
+            verification_status=details.driver_verification_status,
         )
+    route_stops = await RouteRepository(db).list_route_stops_with_stop(trip.route_id)
+    stops = [_stop_response(stop) for _, stop in route_stops]
     return TripDetailResponse(
         **TripResponse.model_validate(trip).model_dump(),
         route_name=summary.route_name,
@@ -298,6 +319,7 @@ async def get_trip(
         riders_count=summary.seats_taken,
         seats_total=summary.seats_total,
         available_seats=summary.available_seats,
+        stops=stops,
     )
 
 

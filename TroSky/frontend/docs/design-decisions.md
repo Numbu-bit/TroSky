@@ -371,7 +371,7 @@ last saved details.") although the phone was online.
 3. **When an ask fails** (no connection, or Render's proxy answering 502/503), the app looks up
    the server's host name. If that fails too, the phone has no internet: requests go ahead and
    fail as before, and the offline start says "You're offline". Otherwise the server is still
-   starting: the app asks again every 3 s, with the bar up.
+   starting: the app asks again every 10 s, with the bar up.
 4. **After 2 minutes without an answer** requests go ahead anyway. An offline start then says
    "The server isn't answering. Showing your last saved details." with Retry, not "You're offline".
 5. Mock mode has no server and never shows the bar.
@@ -518,3 +518,39 @@ logo is P9's SVG drawn with the body font (Arial isn't bundled). Goldens:
 `design/P-07/derived/{pay-with-momo,method-sheet,method-sheet-add-number}.png`,
 `design/P-08/derived/{approve,no-prompt-sheet}.png`,
 `design/P-09/derived/{success,failed,timed-out}.png`.
+
+## 33. Ticket (P-10) encrypted cache + offline mode (Step 16)
+
+Project owner, 16 Nov 2026.
+
+1. **Cache.** The Ticket screen keeps a per-booking list of `TicketResponse` on disk so it opens
+   offline for any trip the passenger has already loaded while online. Storage: a Hive box named
+   `tickets_v1`, AES-encrypted with a 32-byte key kept in `flutter_secure_storage` under
+   `trosky.tickets.hive_key`. The key is generated on first access and never leaves secure
+   storage. Rotating the key invalidates every cached ticket at once.
+2. **TTL.** Entries whose `expires_at` is in the past are evicted on every read and on app start.
+   A trip's last ticket keeps the whole booking's cache; once every ticket has expired the entry
+   drops.
+3. **Refresh model.** The repository returns the cache immediately when present and kicks a
+   background refresh. On refresh success, the cache is replaced and listeners re-render. On
+   refresh failure with cache, the cache stays visible and a dismissable "Showing last synced
+   ticket" banner appears above the content. On no-cache + no-network, the TicketScreen renders
+   a full-screen "Can't load ticket · Reconnect to sync · Try again" state.
+4. **Sign-out wipe.** Sign out (manual, tester-menu "Sign out & clear data", or token-forced)
+   wipes `tickets_v1` and deletes the secure-storage key. Even if the device backup later
+   restores the box file, the rotated key means its contents are unreadable.
+5. **Save / Share.** Each ticket page is a `RepaintBoundary`; Save / Share both go through the
+   platform share sheet with a PNG rendered at `pixelRatio: 3` (survives WhatsApp
+   recompression). No blanket Photos permission on Android 13+. The rendered image shows the QR
+   plus route / seat / time / fare / `ticket_reference`; the raw `qr_token` is NEVER rendered
+   as text, NEVER written to logs, NEVER emitted in telemetry.
+6. **Feature flag.** `TICKET_QR_ENABLED`, read via `const bool.fromEnvironment`, same model as
+   `TESTER_MENU`. Defaults per env after this PR: staging `true`, demo `true`, prod `false`
+   (prod flips after a day of staging soak). **Kill-switch:** set the dart-define to `false`
+   on the next build and reinstall; the whole Ticket flow (screen, button in Booking details)
+   tree-shakes out.
+7. **Analytics.** Five events through the `TelemetryService` (console stub for now, swap for
+   PostHog / Amplitude when wired): `ticket_opened {booking_status}`, `ticket_swiped
+   {from, to}`, `ticket_saved {seat_index}`, `ticket_shared {seat_index}`, `ticket_fetch_failed
+   {reason}` where reason is `network | timeout | server_5xx | server_4xx | decode`.
+   Payload sanitiser drops any key matching `/token|phone|name|email|lat|lng|coord|address/i`.

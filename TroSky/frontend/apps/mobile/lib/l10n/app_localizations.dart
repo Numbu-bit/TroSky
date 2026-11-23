@@ -1384,6 +1384,30 @@ abstract class AppLocalizations {
   /// **'Try another time'**
   String get resultsTryAnotherTime;
 
+  /// Search Results late in the day: today's trips are all past, tomorrow's load underneath.
+  ///
+  /// In en, this message translates to:
+  /// **'No more trips today'**
+  String get resultsNoMoreToday;
+
+  /// Subline under the 'No more trips today' headline.
+  ///
+  /// In en, this message translates to:
+  /// **'Showing tomorrow\'s first trips instead'**
+  String get resultsNoMoreTodaySubline;
+
+  /// Chip above tomorrow's first trips when today has none left. 'date' is a short weekday + day + month in the device locale.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow · {date}'**
+  String resultsTomorrowChip(String date);
+
+  /// Screen-reader label for the Tomorrow date chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow\'s trips, {date}'**
+  String resultsTomorrowSemantics(String date);
+
   /// Minibus filter left nothing.
   ///
   /// In en, this message translates to:
@@ -2132,17 +2156,35 @@ abstract class AppLocalizations {
   /// **'Departure time doesn\'t suit me'**
   String get cancelReasonTime;
 
-  /// Cancel reason: the passenger writes their own.
+  /// Cancel reason.
   ///
   /// In en, this message translates to:
   /// **'Other'**
   String get cancelReasonOther;
 
-  /// Hint in the cancel sheet's text field for "Other".
+  /// Booking details, status line before the reason.
   ///
   /// In en, this message translates to:
-  /// **'Tell us more'**
-  String get cancelReasonHint;
+  /// **'Cancelled by you'**
+  String get bookingCancelledByYou;
+
+  /// Booking details, status line before the reason when TroSky cancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled by TroSky'**
+  String get bookingCancelledByTroSky;
+
+  /// Booking details status line with a reason, e.g. 'Cancelled by you · Change of plans'.
+  ///
+  /// In en, this message translates to:
+  /// **'{by} · {reason}'**
+  String bookingCancelledLine(String by, String reason);
+
+  /// Booking details line for an expired (unpaid) booking.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired · Not paid in time'**
+  String get bookingExpiredLine;
 
   /// Cancel sheet refund box for a paid booking (the design names the wallet; the backend refunds the way it was paid).
   ///
@@ -2491,6 +2533,1708 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your MTN MoMo balance was too low.'**
   String get payFailedMomoFunds;
+
+  /// Hidden tester menu title (staging and demo builds).
+  ///
+  /// In en, this message translates to:
+  /// **'Tester menu'**
+  String get testerMenuTitle;
+
+  /// Subline in the tester menu header, describing where the 7-tap trigger lives.
+  ///
+  /// In en, this message translates to:
+  /// **'Triggered from Home · tap greeting 7×'**
+  String get testerMenuTriggerNote;
+
+  /// Tester menu section header for the read-only build info block.
+  ///
+  /// In en, this message translates to:
+  /// **'Build info'**
+  String get testerMenuBuildInfo;
+
+  /// Tester menu build-info row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit'**
+  String get testerMenuCommit;
+
+  /// Tester menu build-info row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Built'**
+  String get testerMenuBuilt;
+
+  /// Tester menu build-info row label.
+  ///
+  /// In en, this message translates to:
+  /// **'API'**
+  String get testerMenuApiBase;
+
+  /// Tester menu build-info row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode'**
+  String get testerMenuMode;
+
+  /// Tester menu build-info row label.
+  ///
+  /// In en, this message translates to:
+  /// **'App version'**
+  String get testerMenuAppVersion;
+
+  /// Tester menu build-info mode value.
+  ///
+  /// In en, this message translates to:
+  /// **'mock'**
+  String get testerMenuModeMock;
+
+  /// Tester menu build-info mode value for live API (always staging in the hidden menu).
+  ///
+  /// In en, this message translates to:
+  /// **'staging'**
+  String get testerMenuModeLive;
+
+  /// Tester menu build-info value when GIT_COMMIT or BUILD_DATE weren't passed at build time.
+  ///
+  /// In en, this message translates to:
+  /// **'unset'**
+  String get testerMenuNotSet;
+
+  /// Tester menu action button.
+  ///
+  /// In en, this message translates to:
+  /// **'Wake server'**
+  String get testerMenuWakeServer;
+
+  /// Toast after a successful Wake server tap.
+  ///
+  /// In en, this message translates to:
+  /// **'Server is awake'**
+  String get testerMenuWakeOk;
+
+  /// Toast after a failed Wake server tap.
+  ///
+  /// In en, this message translates to:
+  /// **'Server didn\'t answer'**
+  String get testerMenuWakeFail;
+
+  /// Toast when Wake server runs in a mock-mode build.
+  ///
+  /// In en, this message translates to:
+  /// **'This is a mock build; no server to wake'**
+  String get testerMenuWakeMockMode;
+
+  /// Tester menu action button.
+  ///
+  /// In en, this message translates to:
+  /// **'Top up my wallet ₵100'**
+  String get testerMenuTopUp;
+
+  /// Toast after a successful wallet top-up.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallet topped up. New balance: ₵{balance}'**
+  String testerMenuTopUpOk(String balance);
+
+  /// Toast when the wallet-top-up endpoint returns 404.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallet top-up not supported by this backend (PR #53 not deployed).'**
+  String get testerMenuTopUpMissing;
+
+  /// Toast when the wallet-top-up endpoint errored.
+  ///
+  /// In en, this message translates to:
+  /// **'Top-up failed: {message}'**
+  String testerMenuTopUpError(String message);
+
+  /// Toast when Top up is tapped without a signed-in session.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in first to top up your wallet'**
+  String get testerMenuTopUpSignIn;
+
+  /// Tester menu action button.
+  ///
+  /// In en, this message translates to:
+  /// **'Show onboarding again'**
+  String get testerMenuShowOnboarding;
+
+  /// Tester menu action button (destructive).
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out & clear data'**
+  String get testerMenuSignOut;
+
+  /// Overline above the route headline on the Ticket screen.
+  ///
+  /// In en, this message translates to:
+  /// **'BOARDING PASS'**
+  String get ticketBoardingPass;
+
+  /// Route headline on the Ticket screen (P-10).
+  ///
+  /// In en, this message translates to:
+  /// **'{from} → {to}'**
+  String ticketRouteHeadline(String from, String to);
+
+  /// Subline under the QR.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan this code when boarding'**
+  String get ticketScanSubline;
+
+  /// Ticket status pill label.
+  ///
+  /// In en, this message translates to:
+  /// **'Not yet valid'**
+  String get ticketPillNotYetValid;
+
+  /// Ticket status pill label.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to Board'**
+  String get ticketPillReadyToBoard;
+
+  /// Ticket status pill once validated.
+  ///
+  /// In en, this message translates to:
+  /// **'Used · {time}'**
+  String ticketPillUsed(String time);
+
+  /// Ticket status pill label.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get ticketPillExpired;
+
+  /// Ticket status pill label for revoked tickets.
+  ///
+  /// In en, this message translates to:
+  /// **'Not valid'**
+  String get ticketPillNotValid;
+
+  /// Three-column strip label.
+  ///
+  /// In en, this message translates to:
+  /// **'Seat'**
+  String get ticketSeat;
+
+  /// Three-column strip label.
+  ///
+  /// In en, this message translates to:
+  /// **'Departs'**
+  String get ticketDeparts;
+
+  /// Three-column strip label.
+  ///
+  /// In en, this message translates to:
+  /// **'Fare'**
+  String get ticketFare;
+
+  /// Payment pill on the passenger card.
+  ///
+  /// In en, this message translates to:
+  /// **'PAID'**
+  String get ticketPaid;
+
+  /// Passenger verification sub-line (P-10).
+  ///
+  /// In en, this message translates to:
+  /// **'Verified · Ghana Card'**
+  String get ticketVerifiedGhanaCard;
+
+  /// Expander button under the QR.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t scan? Show code'**
+  String get ticketCantScan;
+
+  /// Ticket page indicator for bookings with more than 3 seats.
+  ///
+  /// In en, this message translates to:
+  /// **'{current} / {total}'**
+  String ticketCountOf(int current, int total);
+
+  /// Semantics label on the QR image.
+  ///
+  /// In en, this message translates to:
+  /// **'Boarding QR for {route} at {time}, seat {seat}'**
+  String ticketSemanticLabel(String route, String time, String seat);
+
+  /// Semantics label on the ticket page dots.
+  ///
+  /// In en, this message translates to:
+  /// **'Ticket {current} of {total}'**
+  String ticketPageDotsLabel(int current, int total);
+
+  /// Retry button on the ticket error state.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get ticketRetry;
+
+  /// Save-to-photos button on the Ticket screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Save to Photos'**
+  String get ticketSave;
+
+  /// Share button on the Ticket screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get ticketShare;
+
+  /// Full-screen offline state title: no cache, no network.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t load ticket'**
+  String get ticketOfflineTitle;
+
+  /// Full-screen offline state subline.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect to sync'**
+  String get ticketOfflineSubline;
+
+  /// Top banner when the ticket is loaded from cache after a failed refresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Showing last synced ticket'**
+  String get ticketOfflineBanner;
+
+  /// Error state when the tickets fetch failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t load your ticket. Pull down to retry.'**
+  String get ticketError;
+
+  /// State for bookings with no tickets issued yet (e.g. awaiting acceptance).
+  ///
+  /// In en, this message translates to:
+  /// **'No ticket yet. It appears after the booking is confirmed.'**
+  String get ticketEmpty;
+
+  /// Primary action on booking details that opens the Ticket screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Show ticket'**
+  String get bookingShowTicket;
+
+  /// Link on booking details that opens the P-04 Trip Details screen.
+  ///
+  /// In en, this message translates to:
+  /// **'View trip details'**
+  String get bookingViewTripDetails;
+
+  /// App-bar title on P-04.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip details'**
+  String get tripDetailsTitle;
+
+  /// Trip status pill.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming'**
+  String get tripDetailsStatusUpcoming;
+
+  /// Trip status pill.
+  ///
+  /// In en, this message translates to:
+  /// **'On the way'**
+  String get tripDetailsStatusOnTheWay;
+
+  /// Trip status pill.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrived'**
+  String get tripDetailsStatusArrived;
+
+  /// Trip status pill.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get tripDetailsStatusCancelled;
+
+  /// Section header on P-04.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule'**
+  String get tripDetailsSchedule;
+
+  /// Section header on P-04.
+  ///
+  /// In en, this message translates to:
+  /// **'Stops'**
+  String get tripDetailsStops;
+
+  /// Section header on P-04.
+  ///
+  /// In en, this message translates to:
+  /// **'Vehicle'**
+  String get tripDetailsVehicle;
+
+  /// Section header on P-04.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver'**
+  String get tripDetailsDriver;
+
+  /// Section header on P-04.
+  ///
+  /// In en, this message translates to:
+  /// **'Your seats'**
+  String get tripDetailsYourSeats;
+
+  /// Schedule row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Departs'**
+  String get tripDetailsDeparts;
+
+  /// Schedule row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrives'**
+  String get tripDetailsArrives;
+
+  /// Schedule row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration'**
+  String get tripDetailsDuration;
+
+  /// Vehicle row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Plate'**
+  String get tripDetailsPlate;
+
+  /// Driver rating with count, e.g. '4.8 (112)'.
+  ///
+  /// In en, this message translates to:
+  /// **'{rating} ({count})'**
+  String tripDetailsDriverRating(String rating, int count);
+
+  /// Driver row when average_rating is null.
+  ///
+  /// In en, this message translates to:
+  /// **'Not rated yet'**
+  String get tripDetailsDriverUnrated;
+
+  /// Shown in place of Call/Message when driver_phone is missing.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver contact unavailable'**
+  String get tripDetailsDriverContactUnavailable;
+
+  /// Semantics label on the call icon button.
+  ///
+  /// In en, this message translates to:
+  /// **'Call driver'**
+  String get tripDetailsCallDriver;
+
+  /// Semantics label on the message icon button.
+  ///
+  /// In en, this message translates to:
+  /// **'Message driver'**
+  String get tripDetailsMessageDriver;
+
+  /// Primary CTA; step17/B wires the real screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Track trip'**
+  String get tripDetailsTrackTrip;
+
+  /// Snackbar for the Track trip stub.
+  ///
+  /// In en, this message translates to:
+  /// **'Live tracking coming in the next release'**
+  String get tripDetailsTrackComingSoon;
+
+  /// Secondary ghost CTA on P-04.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel booking'**
+  String get tripDetailsCancelBooking;
+
+  /// Shown when the trip id 404s.
+  ///
+  /// In en, this message translates to:
+  /// **'This booking wasn\'t found.'**
+  String get tripDetailsNotFound;
+
+  /// Shown when offline with no cached booking to fall back on.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t load trip details — reconnect'**
+  String get tripDetailsOffline;
+
+  /// Generic error state.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Please try again.'**
+  String get tripDetailsServerError;
+
+  /// One row of the Your seats card.
+  ///
+  /// In en, this message translates to:
+  /// **'Seat {seat} · {name}'**
+  String tripDetailsSeatRow(String seat, String name);
+
+  /// Chip next to the passenger's boarding stop in the Stops card.
+  ///
+  /// In en, this message translates to:
+  /// **'Boarding here'**
+  String get tripDetailsStopBoardingTag;
+
+  /// Chip next to the passenger's alighting stop in the Stops card.
+  ///
+  /// In en, this message translates to:
+  /// **'Getting off'**
+  String get tripDetailsStopAlightingTag;
+
+  /// Pill under the driver's name when verification_status == verified.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified'**
+  String get tripDetailsDriverVerified;
+
+  /// Pill under the driver's name when verification_status == pending.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification pending'**
+  String get tripDetailsDriverVerificationPending;
+
+  /// Screen-reader label for the Verified pill.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver verification status: Verified'**
+  String get tripDetailsDriverVerifiedSemantics;
+
+  /// Screen-reader label for the Verification-pending pill.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver verification pending'**
+  String get tripDetailsDriverVerificationPendingSemantics;
+
+  /// Screen-reader label on each stop row of the Stops card.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop {current} of {total}, {name}, {kind}'**
+  String tripDetailsStopSemantics(
+    int current,
+    int total,
+    String name,
+    String kind,
+  );
+
+  /// Stop kind announced by the screen reader.
+  ///
+  /// In en, this message translates to:
+  /// **'boarding'**
+  String get tripDetailsStopBoardingSemantic;
+
+  /// Stop kind announced by the screen reader.
+  ///
+  /// In en, this message translates to:
+  /// **'regular'**
+  String get tripDetailsStopRegularSemantic;
+
+  /// P-11 amber chip when the trip hasn't started.
+  ///
+  /// In en, this message translates to:
+  /// **'Boarding at origin'**
+  String get trackTripStatusBoardingAtOrigin;
+
+  /// P-11 amber chip when the trip is on the way.
+  ///
+  /// In en, this message translates to:
+  /// **'Arriving in ~{minutes} min'**
+  String trackTripStatusArrivingIn(int minutes);
+
+  /// P-11 amber chip when within 100 m.
+  ///
+  /// In en, this message translates to:
+  /// **'At your stop'**
+  String get trackTripStatusAtYourStop;
+
+  /// P-11 amber chip once the trip finishes.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip completed'**
+  String get trackTripStatusCompleted;
+
+  /// Clock-time half of the amber chip.
+  ///
+  /// In en, this message translates to:
+  /// **'ETA {time}'**
+  String trackTripEta(String time);
+
+  /// Pin label on the destination stop.
+  ///
+  /// In en, this message translates to:
+  /// **'DESTINATION'**
+  String get trackTripDestination;
+
+  /// P-11 info tile label.
+  ///
+  /// In en, this message translates to:
+  /// **'Live fare'**
+  String get trackTripLiveFare;
+
+  /// P-11 info tile label.
+  ///
+  /// In en, this message translates to:
+  /// **'Riders'**
+  String get trackTripRiders;
+
+  /// P-11 info tile label.
+  ///
+  /// In en, this message translates to:
+  /// **'Seat'**
+  String get trackTripSeat;
+
+  /// Ghost CTA at the bottom of P-11.
+  ///
+  /// In en, this message translates to:
+  /// **'Share Trip'**
+  String get trackTripShare;
+
+  /// Red CTA at the bottom of P-11.
+  ///
+  /// In en, this message translates to:
+  /// **'SOS'**
+  String get trackTripSos;
+
+  /// Semantics label on the recentre FAB.
+  ///
+  /// In en, this message translates to:
+  /// **'Recentre map'**
+  String get trackTripRecenter;
+
+  /// Riders tile value.
+  ///
+  /// In en, this message translates to:
+  /// **'{current} / {total}'**
+  String trackTripRidersOf(int current, int total);
+
+  /// Seat tile value.
+  ///
+  /// In en, this message translates to:
+  /// **'#{seat}'**
+  String trackTripSeatValue(String seat);
+
+  /// Text template for Share Trip (no coords, no token).
+  ///
+  /// In en, this message translates to:
+  /// **'Tracking my trotro: {route} · ETA {time} · Seat {seat} · {plate}'**
+  String trackTripShareText(
+    String route,
+    String time,
+    String seat,
+    String plate,
+  );
+
+  /// Thin banner when the WS dropped and the service fell back to polling.
+  ///
+  /// In en, this message translates to:
+  /// **'Realtime offline, polling every 5 s'**
+  String get trackTripFallbackBanner;
+
+  /// Title of the SOS placeholder sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Emergency'**
+  String get trackTripSosTitle;
+
+  /// Body copy of the SOS placeholder sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Full emergency features land in Step 19. If you are in danger, call 191 (Ghana Police).'**
+  String get trackTripSosBody;
+
+  /// Call-191 tertiary button in the SOS sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Call 191'**
+  String get trackTripSosCall;
+
+  /// Semantics summary for the map.
+  ///
+  /// In en, this message translates to:
+  /// **'Live tracking map, bus is {minutes} minutes away'**
+  String trackTripSemanticsMap(int minutes);
+
+  /// P-17 header.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallet'**
+  String get walletTitle;
+
+  /// P-17 card title.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment Methods'**
+  String get walletPaymentMethodsTitle;
+
+  /// P-17 card title.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent Transactions'**
+  String get walletRecentTransactions;
+
+  /// P-17 expand link.
+  ///
+  /// In en, this message translates to:
+  /// **'See all'**
+  String get walletSeeAll;
+
+  /// P-17 collapse link.
+  ///
+  /// In en, this message translates to:
+  /// **'See less'**
+  String get walletSeeLess;
+
+  /// P-17 add link.
+  ///
+  /// In en, this message translates to:
+  /// **'+ Add method'**
+  String get walletAddMethod;
+
+  /// Add-method sheet title.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a payment method'**
+  String get walletAddMethodTitle;
+
+  /// Default-method pill.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get walletDefault;
+
+  /// Method sheet action.
+  ///
+  /// In en, this message translates to:
+  /// **'Set as default'**
+  String get walletSetAsDefault;
+
+  /// Method sheet destructive action.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get walletRemoveMethod;
+
+  /// Disabled picker row hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming soon'**
+  String get walletComingSoon;
+
+  /// Brand name.
+  ///
+  /// In en, this message translates to:
+  /// **'MTN MoMo'**
+  String get walletBrandMtnMomo;
+
+  /// Brand name.
+  ///
+  /// In en, this message translates to:
+  /// **'Telecel Cash'**
+  String get walletBrandTelecelCash;
+
+  /// Brand name.
+  ///
+  /// In en, this message translates to:
+  /// **'AirtelTigo Money'**
+  String get walletBrandAirteltigo;
+
+  /// Brand name.
+  ///
+  /// In en, this message translates to:
+  /// **'Visa Debit'**
+  String get walletBrandVisa;
+
+  /// Brand name (in-app wallet).
+  ///
+  /// In en, this message translates to:
+  /// **'Wallet'**
+  String get walletBrandWallet;
+
+  /// Empty methods state.
+  ///
+  /// In en, this message translates to:
+  /// **'You have no saved payment methods.'**
+  String get walletNoPaymentMethods;
+
+  /// First-time user transactions empty state.
+  ///
+  /// In en, this message translates to:
+  /// **'No transactions yet. Top up to get started.'**
+  String get walletTransactionsEmpty;
+
+  /// Filter chip.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get walletFilterAll;
+
+  /// Filter chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Top-ups'**
+  String get walletFilterTopUps;
+
+  /// Filter chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Trips'**
+  String get walletFilterTrips;
+
+  /// Filter chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Refunds'**
+  String get walletFilterRefunds;
+
+  /// Filter empty state.
+  ///
+  /// In en, this message translates to:
+  /// **'No transactions match this filter.'**
+  String get walletNoMatches;
+
+  /// Card error message.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load.'**
+  String get walletErrorLoad;
+
+  /// Retry action.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get walletRetry;
+
+  /// Accessibility fragment for a payment method.
+  ///
+  /// In en, this message translates to:
+  /// **'ending in {last4}'**
+  String walletEndingIn(String last4);
+
+  /// Add MoMo form title.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your MoMo number'**
+  String get walletMomoFormTitle;
+
+  /// Phone field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone number'**
+  String get walletMomoFormPhoneLabel;
+
+  /// Transaction kind label.
+  ///
+  /// In en, this message translates to:
+  /// **'Top up'**
+  String get walletKindTopUp;
+
+  /// Transaction kind label.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip'**
+  String get walletKindTrip;
+
+  /// Transaction kind label.
+  ///
+  /// In en, this message translates to:
+  /// **'Refund'**
+  String get walletKindRefund;
+
+  /// Transaction kind label.
+  ///
+  /// In en, this message translates to:
+  /// **'Earning'**
+  String get walletKindEarning;
+
+  /// Transaction kind label.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdrawal'**
+  String get walletKindWithdrawal;
+
+  /// Transaction kind label.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjustment'**
+  String get walletKindAdjustment;
+
+  /// Reference id label on the detail sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Reference'**
+  String get walletTxnReference;
+
+  /// Link into trip details.
+  ///
+  /// In en, this message translates to:
+  /// **'View trip'**
+  String get walletViewTrip;
+
+  /// P-18 AppBar title.
+  ///
+  /// In en, this message translates to:
+  /// **'Top up'**
+  String get walletTopUpTitle;
+
+  /// P-18 section title.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get walletTopUpAmount;
+
+  /// P-18 custom amount field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom amount'**
+  String get walletTopUpCustomAmount;
+
+  /// Invalid amount error.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an amount between ₵1 and ₵1,000.'**
+  String get walletTopUpAmountError;
+
+  /// Fallback amount text on the CTA label while the input is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'₵0.00'**
+  String get walletTopUpAmountFallback;
+
+  /// P-18 primary button.
+  ///
+  /// In en, this message translates to:
+  /// **'Top up {amount}'**
+  String walletTopUpCta(String amount);
+
+  /// P-18 pending status row.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for MoMo confirmation…'**
+  String get walletTopUpWaiting;
+
+  /// P-18 success snackbar.
+  ///
+  /// In en, this message translates to:
+  /// **'Top up of {amount} succeeded.'**
+  String walletTopUpSuccess(String amount);
+
+  /// P-18 inline failure message.
+  ///
+  /// In en, this message translates to:
+  /// **'Top up failed. Try again.'**
+  String get walletTopUpFailure;
+
+  /// P-18 retry CTA.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get walletTopUpRetry;
+
+  /// P-12 header.
+  ///
+  /// In en, this message translates to:
+  /// **'Emergency'**
+  String get sosTitle;
+
+  /// Semantics label on the SOS hold button.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold to send SOS, 3 second hold'**
+  String get sosHoldSemantics;
+
+  /// Instruction under the hold button.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold for 3 seconds'**
+  String get sosHoldInstruction;
+
+  /// Status while the SOS request is in flight.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending alert…'**
+  String get sosSending;
+
+  /// Failure line on the SOS screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send the alert.'**
+  String get sosSendFailed;
+
+  /// Retry action after a failed SOS send.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get sosRetry;
+
+  /// Label above the reason chips.
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s happening?'**
+  String get sosReasonLabel;
+
+  /// SOS reason chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver danger'**
+  String get sosReasonDriverDanger;
+
+  /// SOS reason chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Accident'**
+  String get sosReasonAccident;
+
+  /// SOS reason chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Medical'**
+  String get sosReasonMedical;
+
+  /// SOS reason chip; default.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get sosReasonOther;
+
+  /// Tertiary button to dial Ghana Police emergency line.
+  ///
+  /// In en, this message translates to:
+  /// **'Call 191'**
+  String get sosCall191;
+
+  /// P-12 confirmation title.
+  ///
+  /// In en, this message translates to:
+  /// **'Help is on the way'**
+  String get sosConfirmationTitle;
+
+  /// P-12 confirmation body.
+  ///
+  /// In en, this message translates to:
+  /// **'Your emergency contacts have been notified.'**
+  String get sosConfirmationBody;
+
+  /// Note on confirmation when coords weren't attached.
+  ///
+  /// In en, this message translates to:
+  /// **'Location not shared'**
+  String get sosLocationNotShared;
+
+  /// Ghost button to close the SOS confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'m safe now'**
+  String get sosMarkSafe;
+
+  /// P-13 header.
+  ///
+  /// In en, this message translates to:
+  /// **'Report an issue'**
+  String get reportTitle;
+
+  /// Small label above the category list, showing which booking.
+  ///
+  /// In en, this message translates to:
+  /// **'About booking {reference}'**
+  String reportBookingContext(String reference);
+
+  /// Label above the category chips.
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s the issue?'**
+  String get reportCategoryLabel;
+
+  /// Report category chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Accident'**
+  String get reportCategoryAccident;
+
+  /// Report category chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Breakdown'**
+  String get reportCategoryBreakdown;
+
+  /// Report category chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Delay'**
+  String get reportCategoryDelay;
+
+  /// Report category chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Safety concern'**
+  String get reportCategorySafety;
+
+  /// Report category chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Passenger issue'**
+  String get reportCategoryPassenger;
+
+  /// Report category chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Road hazard'**
+  String get reportCategoryRoadHazard;
+
+  /// Report category chip; default.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get reportCategoryOther;
+
+  /// Label above the description text field.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe what happened'**
+  String get reportDescriptionLabel;
+
+  /// Hint in the description field.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell us what happened (at least 10 characters).'**
+  String get reportDescriptionHint;
+
+  /// P-13 primary button.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit report'**
+  String get reportSubmit;
+
+  /// P-13 inline failure line.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t submit. Please try again.'**
+  String get reportSubmitFailure;
+
+  /// Snackbar after a successful report.
+  ///
+  /// In en, this message translates to:
+  /// **'Report submitted. We\'ll review within 48 hours.'**
+  String get reportSuccess;
+
+  /// P-14 header.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate your trip'**
+  String get rateTitle;
+
+  /// Fallback when the driver's name isn't known.
+  ///
+  /// In en, this message translates to:
+  /// **'Your driver'**
+  String get rateDriverFallback;
+
+  /// Fallback for the route line.
+  ///
+  /// In en, this message translates to:
+  /// **'Your trip'**
+  String get rateRouteFallback;
+
+  /// Accessibility label for the current star count.
+  ///
+  /// In en, this message translates to:
+  /// **'{stars} of 5 stars'**
+  String rateStarsSemantic(int stars);
+
+  /// Tooltip on each star in the picker.
+  ///
+  /// In en, this message translates to:
+  /// **'{star} stars'**
+  String rateStarTooltip(int star);
+
+  /// P-14 comment field hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a comment (optional)'**
+  String get rateCommentHint;
+
+  /// P-14 primary button.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit rating'**
+  String get rateSubmit;
+
+  /// P-14 inline failure line.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t submit. Please try again.'**
+  String get rateSubmitFailure;
+
+  /// Snackbar after a successful rating.
+  ///
+  /// In en, this message translates to:
+  /// **'Thanks for rating your trip.'**
+  String get rateThanks;
+
+  /// Trips tab banner title for an unrated completed booking.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate your last trip'**
+  String get rateBannerTitle;
+
+  /// Trips tab banner CTA.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate'**
+  String get rateBannerAction;
+
+  /// Tester menu action to open the SOS screen off-trip.
+  ///
+  /// In en, this message translates to:
+  /// **'Open P-12 Emergency'**
+  String get testerMenuEmergency;
+
+  /// P-21 header fallback when the user has no name.
+  ///
+  /// In en, this message translates to:
+  /// **'Passenger'**
+  String get profileAnonymousName;
+
+  /// Pill on a verified email or phone.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified'**
+  String get profileVerified;
+
+  /// Pill on an unverified email or phone.
+  ///
+  /// In en, this message translates to:
+  /// **'Unverified'**
+  String get profileUnverified;
+
+  /// P-21 section header.
+  ///
+  /// In en, this message translates to:
+  /// **'ACCOUNT'**
+  String get profileSectionAccount;
+
+  /// P-21 section header.
+  ///
+  /// In en, this message translates to:
+  /// **'PREFERENCES'**
+  String get profileSectionPreferences;
+
+  /// P-21 section header.
+  ///
+  /// In en, this message translates to:
+  /// **'PAYMENTS'**
+  String get profileSectionPayments;
+
+  /// P-21 section header.
+  ///
+  /// In en, this message translates to:
+  /// **'SUPPORT'**
+  String get profileSectionSupport;
+
+  /// P-21 row to P-22.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal information'**
+  String get profileRowPersonalInfo;
+
+  /// P-21 row to P-23 (coming soon).
+  ///
+  /// In en, this message translates to:
+  /// **'Change password'**
+  String get profileRowChangePassword;
+
+  /// P-21 row to P-24 (coming soon).
+  ///
+  /// In en, this message translates to:
+  /// **'Change email'**
+  String get profileRowChangeEmail;
+
+  /// P-21 row.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get profileRowNotifications;
+
+  /// P-21 row.
+  ///
+  /// In en, this message translates to:
+  /// **'Favourite routes'**
+  String get profileRowFavourites;
+
+  /// P-21 row.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get profileRowLanguage;
+
+  /// P-21 row (deep-links to Wallet).
+  ///
+  /// In en, this message translates to:
+  /// **'Payment methods'**
+  String get profileRowPaymentMethods;
+
+  /// P-21 row (deep-links to Wallet).
+  ///
+  /// In en, this message translates to:
+  /// **'Transactions'**
+  String get profileRowTransactions;
+
+  /// P-21 row.
+  ///
+  /// In en, this message translates to:
+  /// **'Help centre'**
+  String get profileRowHelpCentre;
+
+  /// P-21 row.
+  ///
+  /// In en, this message translates to:
+  /// **'Report a problem'**
+  String get profileRowReportProblem;
+
+  /// P-21 row.
+  ///
+  /// In en, this message translates to:
+  /// **'About TroSky'**
+  String get profileRowAbout;
+
+  /// Subtitle on unwired P-21 rows.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming soon'**
+  String get profileComingSoon;
+
+  /// P-21 danger-zone sign-out button.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get profileSignOut;
+
+  /// Sign-out confirmation cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get profileSignOutCancel;
+
+  /// Sign-out confirmation title.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out of TroSky?'**
+  String get profileSignOutConfirmTitle;
+
+  /// Sign-out confirmation body.
+  ///
+  /// In en, this message translates to:
+  /// **'You can sign back in any time with your phone or email.'**
+  String get profileSignOutConfirmBody;
+
+  /// P-21 danger-zone delete button.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get profileDeleteAccount;
+
+  /// P-22 AppBar title.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal information'**
+  String get piiTitle;
+
+  /// P-22 name field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Full name'**
+  String get piiNameLabel;
+
+  /// P-22 email read-only label.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get piiEmailLabel;
+
+  /// P-22 phone read-only label.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone'**
+  String get piiPhoneLabel;
+
+  /// P-22 avatar read-only label.
+  ///
+  /// In en, this message translates to:
+  /// **'Avatar'**
+  String get piiAvatarLabel;
+
+  /// P-22 empty-field value.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get piiNotSet;
+
+  /// P-22 note on read-only email/phone.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact support to change this.'**
+  String get piiChangeViaSupport;
+
+  /// P-22 primary button.
+  ///
+  /// In en, this message translates to:
+  /// **'Save changes'**
+  String get piiSave;
+
+  /// P-22 success snackbar.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved.'**
+  String get piiEditSaved;
+
+  /// P-22 inline failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save. Please try again.'**
+  String get piiEditFailure;
+
+  /// P-25 AppBar title.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get deleteAccountTitle;
+
+  /// P-25 big red headline.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleting your account is permanent.'**
+  String get deleteAccountWarning;
+
+  /// P-25 explainer.
+  ///
+  /// In en, this message translates to:
+  /// **'This signs you out everywhere and removes your profile from TroSky. Data-retention rules may keep anonymised trip records for accounting.'**
+  String get deleteAccountBody;
+
+  /// P-25 scope section title.
+  ///
+  /// In en, this message translates to:
+  /// **'What gets deleted:'**
+  String get deleteAccountScopeTitle;
+
+  /// P-25 bullet list of deleted data.
+  ///
+  /// In en, this message translates to:
+  /// **'• Your profile, name and contact details.\n• Saved payment methods.\n• Favourite routes and preferences.\n• Local tickets and cached data.'**
+  String get deleteAccountScopeBullets;
+
+  /// P-25 instruction.
+  ///
+  /// In en, this message translates to:
+  /// **'To confirm, type DELETE below and enter your password.'**
+  String get deleteAccountConfirmInstruction;
+
+  /// P-25 type-to-confirm label.
+  ///
+  /// In en, this message translates to:
+  /// **'Type DELETE'**
+  String get deleteAccountConfirmLabel;
+
+  /// P-25 password label.
+  ///
+  /// In en, this message translates to:
+  /// **'Current password'**
+  String get deleteAccountPasswordLabel;
+
+  /// P-25 destructive CTA.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete my account'**
+  String get deleteAccountCta;
+
+  /// P-25 inline failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t delete. Please try again.'**
+  String get deleteAccountFailure;
+
+  /// S-09a title.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset password'**
+  String get resetRequestTitle;
+
+  /// S-09a instruction.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your phone number or email. If an account exists, we\'ll send a 6-digit code.'**
+  String get resetRequestInstruction;
+
+  /// S-09a identifier field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone or email'**
+  String get resetIdentifierLabel;
+
+  /// S-09a primary button.
+  ///
+  /// In en, this message translates to:
+  /// **'Send code'**
+  String get resetRequestCta;
+
+  /// S-09a neutral confirmation (same text for known + unknown).
+  ///
+  /// In en, this message translates to:
+  /// **'If an account exists for this, we\'ve sent a code with instructions.'**
+  String get resetRequestNeutralConfirmation;
+
+  /// S-09a link to S-09b.
+  ///
+  /// In en, this message translates to:
+  /// **'I have a code →'**
+  String get resetIHaveACode;
+
+  /// S-09b title.
+  ///
+  /// In en, this message translates to:
+  /// **'New password'**
+  String get resetNewTitle;
+
+  /// S-09b code field label.
+  ///
+  /// In en, this message translates to:
+  /// **'6-digit code'**
+  String get resetCodeLabel;
+
+  /// S-09b new password field label.
+  ///
+  /// In en, this message translates to:
+  /// **'New password'**
+  String get resetNewPasswordLabel;
+
+  /// S-09b confirm password field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm new password'**
+  String get resetConfirmPasswordLabel;
+
+  /// S-09b primary button.
+  ///
+  /// In en, this message translates to:
+  /// **'Set new password'**
+  String get resetNewCta;
+
+  /// S-09b inline failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reset. Check the code and try again.'**
+  String get resetFailure;
+
+  /// S-09b success snackbar.
+  ///
+  /// In en, this message translates to:
+  /// **'Password changed. Please sign in again.'**
+  String get resetSuccess;
+
+  /// Sign-in link to S-09a.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset password'**
+  String get signInResetPassword;
+
+  /// P-20 AppBar title.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notifTitle;
+
+  /// P-20 tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Inbox'**
+  String get notifTabInbox;
+
+  /// P-20 tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferences'**
+  String get notifTabPrefs;
+
+  /// P-20 empty state.
+  ///
+  /// In en, this message translates to:
+  /// **'No notifications yet.'**
+  String get notifEmpty;
+
+  /// P-20 AppBar action.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark all read'**
+  String get notifMarkAllRead;
+
+  /// Toast when a notification has no matching route.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening…'**
+  String get notifOpeningToast;
+
+  /// Notification category label.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookings & payments'**
+  String get notifCategoryTransactional;
+
+  /// Notification category label.
+  ///
+  /// In en, this message translates to:
+  /// **'Safety'**
+  String get notifCategorySafety;
+
+  /// Notification category label.
+  ///
+  /// In en, this message translates to:
+  /// **'Promotions'**
+  String get notifCategoryPromotional;
+
+  /// Preferences banner explaining the channel-level shape.
+  ///
+  /// In en, this message translates to:
+  /// **'Per-category toggles are coming. For now, choose which channels we use.'**
+  String get notifPrefsBannerChannelOnly;
+
+  /// Preference toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Push notifications'**
+  String get notifPrefsPushEnabled;
+
+  /// Preference toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'SMS notifications'**
+  String get notifPrefsSmsEnabled;
+
+  /// Preference toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Email notifications'**
+  String get notifPrefsEmailEnabled;
+
+  /// Preference toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Promotional messages'**
+  String get notifPrefsPromotionalOptIn;
+
+  /// Toast when the toggle revert fires.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save. Reverted.'**
+  String get notifPrefsSaveFailed;
+
+  /// Relative time: < 1 minute.
+  ///
+  /// In en, this message translates to:
+  /// **'Just now'**
+  String get notifTimeJustNow;
+
+  /// Relative time: minutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes}m ago'**
+  String notifTimeMinutes(int minutes);
+
+  /// Relative time: hours.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h ago'**
+  String notifTimeHours(int hours);
+
+  /// Relative time: yesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get notifTimeYesterday;
+
+  /// P-26 AppBar title.
+  ///
+  /// In en, this message translates to:
+  /// **'Favourites'**
+  String get favouritesTitle;
+
+  /// P-26 empty state.
+  ///
+  /// In en, this message translates to:
+  /// **'Save routes you take often. Add one from Search.'**
+  String get favouritesEmpty;
+
+  /// P-26 helper line when empty.
+  ///
+  /// In en, this message translates to:
+  /// **'To add: open Search → pick a route → tap the heart.'**
+  String get favouritesHowToAdd;
+
+  /// Each favourite-route row's main text.
+  ///
+  /// In en, this message translates to:
+  /// **'{origin} → {destination}'**
+  String favouriteRow(String origin, String destination);
+
+  /// P-26 delete action.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get favouriteDelete;
+
+  /// P-26 confirm sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this favourite?'**
+  String get favouriteDeleteConfirmTitle;
+
+  /// P-26 confirm sheet body.
+  ///
+  /// In en, this message translates to:
+  /// **'You can add it again from Search.'**
+  String get favouriteDeleteConfirmBody;
+
+  /// P-26 failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t remove.'**
+  String get favouriteDeleteFailed;
+
+  /// Semantics label on the Home bell button.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications, {unread} unread'**
+  String homeBellSemantics(int unread);
+
+  /// Trips tab banner for an unrated completed booking.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate your trip with {driver}'**
+  String rateBannerTitleWithDriver(String driver);
+
+  /// Trips banner dismiss button semantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get rateBannerDismiss;
+
+  /// Semantics for a favourite chip on Search.
+  ///
+  /// In en, this message translates to:
+  /// **'Favourite, {label}'**
+  String searchFavouriteChipSemantics(String label);
 }
 
 class _AppLocalizationsDelegate

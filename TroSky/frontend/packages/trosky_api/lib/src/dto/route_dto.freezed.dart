@@ -1528,7 +1528,13 @@ as int?,
 mixin _$TripDriverResponse {
 
  String get id; String? get fullName; String? get avatarUrl;/// 1-5, null until rated.
-@JsonKey(fromJson: decimalOrNull) double? get averageRating; int get ratingCount;
+@JsonKey(fromJson: decimalOrNull) double? get averageRating; int get ratingCount;/// E.164. Populated only when the caller has a confirmed/completed
+/// booking on this trip (backend gates it in the schema builder);
+/// null everywhere else. Bearer-like — never log, never render as
+/// visible text, never emit in telemetry.
+ String? get phoneNumber;/// Defaults to [VerificationStatus.unverified] on an older backend
+/// that doesn't send the field.
+@JsonKey(unknownEnumValue: VerificationStatus.unverified) VerificationStatus get verificationStatus;
 /// Create a copy of TripDriverResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1541,16 +1547,16 @@ $TripDriverResponseCopyWith<TripDriverResponse> get copyWith => _$TripDriverResp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is TripDriverResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.averageRating, averageRating) || other.averageRating == averageRating)&&(identical(other.ratingCount, ratingCount) || other.ratingCount == ratingCount));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TripDriverResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.averageRating, averageRating) || other.averageRating == averageRating)&&(identical(other.ratingCount, ratingCount) || other.ratingCount == ratingCount)&&(identical(other.phoneNumber, phoneNumber) || other.phoneNumber == phoneNumber)&&(identical(other.verificationStatus, verificationStatus) || other.verificationStatus == verificationStatus));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,fullName,avatarUrl,averageRating,ratingCount);
+int get hashCode => Object.hash(runtimeType,id,fullName,avatarUrl,averageRating,ratingCount,phoneNumber,verificationStatus);
 
 @override
 String toString() {
-  return 'TripDriverResponse(id: $id, fullName: $fullName, avatarUrl: $avatarUrl, averageRating: $averageRating, ratingCount: $ratingCount)';
+  return 'TripDriverResponse(id: $id, fullName: $fullName, avatarUrl: $avatarUrl, averageRating: $averageRating, ratingCount: $ratingCount, phoneNumber: $phoneNumber, verificationStatus: $verificationStatus)';
 }
 
 
@@ -1561,7 +1567,7 @@ abstract mixin class $TripDriverResponseCopyWith<$Res>  {
   factory $TripDriverResponseCopyWith(TripDriverResponse value, $Res Function(TripDriverResponse) _then) = _$TripDriverResponseCopyWithImpl;
 @useResult
 $Res call({
- String id, String? fullName, String? avatarUrl,@JsonKey(fromJson: decimalOrNull) double? averageRating, int ratingCount
+ String id, String? fullName, String? avatarUrl,@JsonKey(fromJson: decimalOrNull) double? averageRating, int ratingCount, String? phoneNumber,@JsonKey(unknownEnumValue: VerificationStatus.unverified) VerificationStatus verificationStatus
 });
 
 
@@ -1578,14 +1584,16 @@ class _$TripDriverResponseCopyWithImpl<$Res>
 
 /// Create a copy of TripDriverResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? fullName = freezed,Object? avatarUrl = freezed,Object? averageRating = freezed,Object? ratingCount = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? fullName = freezed,Object? avatarUrl = freezed,Object? averageRating = freezed,Object? ratingCount = null,Object? phoneNumber = freezed,Object? verificationStatus = null,}) {
   return _then(TripDriverResponse(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,fullName: freezed == fullName ? _self.fullName : fullName // ignore: cast_nullable_to_non_nullable
 as String?,avatarUrl: freezed == avatarUrl ? _self.avatarUrl : avatarUrl // ignore: cast_nullable_to_non_nullable
 as String?,averageRating: freezed == averageRating ? _self.averageRating : averageRating // ignore: cast_nullable_to_non_nullable
 as double?,ratingCount: null == ratingCount ? _self.ratingCount : ratingCount // ignore: cast_nullable_to_non_nullable
-as int,
+as int,phoneNumber: freezed == phoneNumber ? _self.phoneNumber : phoneNumber // ignore: cast_nullable_to_non_nullable
+as String?,verificationStatus: null == verificationStatus ? _self.verificationStatus : verificationStatus // ignore: cast_nullable_to_non_nullable
+as VerificationStatus,
   ));
 }
 
@@ -1670,10 +1678,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String? fullName,  String? avatarUrl, @JsonKey(fromJson: decimalOrNull)  double? averageRating,  int ratingCount)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String? fullName,  String? avatarUrl, @JsonKey(fromJson: decimalOrNull)  double? averageRating,  int ratingCount,  String? phoneNumber, @JsonKey(unknownEnumValue: VerificationStatus.unverified)  VerificationStatus verificationStatus)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _TripDriverResponse() when $default != null:
-return $default(_that.id,_that.fullName,_that.avatarUrl,_that.averageRating,_that.ratingCount);case _:
+return $default(_that.id,_that.fullName,_that.avatarUrl,_that.averageRating,_that.ratingCount,_that.phoneNumber,_that.verificationStatus);case _:
   return orElse();
 
 }
@@ -1691,10 +1699,10 @@ return $default(_that.id,_that.fullName,_that.avatarUrl,_that.averageRating,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String? fullName,  String? avatarUrl, @JsonKey(fromJson: decimalOrNull)  double? averageRating,  int ratingCount)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String? fullName,  String? avatarUrl, @JsonKey(fromJson: decimalOrNull)  double? averageRating,  int ratingCount,  String? phoneNumber, @JsonKey(unknownEnumValue: VerificationStatus.unverified)  VerificationStatus verificationStatus)  $default,) {final _that = this;
 switch (_that) {
 case _TripDriverResponse():
-return $default(_that.id,_that.fullName,_that.avatarUrl,_that.averageRating,_that.ratingCount);case _:
+return $default(_that.id,_that.fullName,_that.avatarUrl,_that.averageRating,_that.ratingCount,_that.phoneNumber,_that.verificationStatus);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1711,10 +1719,10 @@ return $default(_that.id,_that.fullName,_that.avatarUrl,_that.averageRating,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String? fullName,  String? avatarUrl, @JsonKey(fromJson: decimalOrNull)  double? averageRating,  int ratingCount)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String? fullName,  String? avatarUrl, @JsonKey(fromJson: decimalOrNull)  double? averageRating,  int ratingCount,  String? phoneNumber, @JsonKey(unknownEnumValue: VerificationStatus.unverified)  VerificationStatus verificationStatus)?  $default,) {final _that = this;
 switch (_that) {
 case _TripDriverResponse() when $default != null:
-return $default(_that.id,_that.fullName,_that.avatarUrl,_that.averageRating,_that.ratingCount);case _:
+return $default(_that.id,_that.fullName,_that.avatarUrl,_that.averageRating,_that.ratingCount,_that.phoneNumber,_that.verificationStatus);case _:
   return null;
 
 }
@@ -1726,7 +1734,7 @@ return $default(_that.id,_that.fullName,_that.avatarUrl,_that.averageRating,_tha
 @JsonSerializable()
 
 class _TripDriverResponse implements TripDriverResponse {
-  const _TripDriverResponse({required this.id, this.fullName, this.avatarUrl, @JsonKey(fromJson: decimalOrNull) this.averageRating, required this.ratingCount});
+  const _TripDriverResponse({required this.id, this.fullName, this.avatarUrl, @JsonKey(fromJson: decimalOrNull) this.averageRating, required this.ratingCount, this.phoneNumber, @JsonKey(unknownEnumValue: VerificationStatus.unverified) this.verificationStatus = VerificationStatus.unverified});
   factory _TripDriverResponse.fromJson(Map<String, dynamic> json) => _$TripDriverResponseFromJson(json);
 
 @override final  String id;
@@ -1735,6 +1743,14 @@ class _TripDriverResponse implements TripDriverResponse {
 /// 1-5, null until rated.
 @override@JsonKey(fromJson: decimalOrNull) final  double? averageRating;
 @override final  int ratingCount;
+/// E.164. Populated only when the caller has a confirmed/completed
+/// booking on this trip (backend gates it in the schema builder);
+/// null everywhere else. Bearer-like — never log, never render as
+/// visible text, never emit in telemetry.
+@override final  String? phoneNumber;
+/// Defaults to [VerificationStatus.unverified] on an older backend
+/// that doesn't send the field.
+@override@JsonKey(unknownEnumValue: VerificationStatus.unverified) final  VerificationStatus verificationStatus;
 
 /// Create a copy of TripDriverResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -1749,16 +1765,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TripDriverResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.averageRating, averageRating) || other.averageRating == averageRating)&&(identical(other.ratingCount, ratingCount) || other.ratingCount == ratingCount));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TripDriverResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.averageRating, averageRating) || other.averageRating == averageRating)&&(identical(other.ratingCount, ratingCount) || other.ratingCount == ratingCount)&&(identical(other.phoneNumber, phoneNumber) || other.phoneNumber == phoneNumber)&&(identical(other.verificationStatus, verificationStatus) || other.verificationStatus == verificationStatus));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,fullName,avatarUrl,averageRating,ratingCount);
+int get hashCode => Object.hash(runtimeType,id,fullName,avatarUrl,averageRating,ratingCount,phoneNumber,verificationStatus);
 
 @override
 String toString() {
-  return 'TripDriverResponse(id: $id, fullName: $fullName, avatarUrl: $avatarUrl, averageRating: $averageRating, ratingCount: $ratingCount)';
+  return 'TripDriverResponse(id: $id, fullName: $fullName, avatarUrl: $avatarUrl, averageRating: $averageRating, ratingCount: $ratingCount, phoneNumber: $phoneNumber, verificationStatus: $verificationStatus)';
 }
 
 
@@ -1769,7 +1785,7 @@ abstract mixin class _$TripDriverResponseCopyWith<$Res> implements $TripDriverRe
   factory _$TripDriverResponseCopyWith(_TripDriverResponse value, $Res Function(_TripDriverResponse) _then) = __$TripDriverResponseCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String? fullName, String? avatarUrl,@JsonKey(fromJson: decimalOrNull) double? averageRating, int ratingCount
+ String id, String? fullName, String? avatarUrl,@JsonKey(fromJson: decimalOrNull) double? averageRating, int ratingCount, String? phoneNumber,@JsonKey(unknownEnumValue: VerificationStatus.unverified) VerificationStatus verificationStatus
 });
 
 
@@ -1786,14 +1802,16 @@ class __$TripDriverResponseCopyWithImpl<$Res>
 
 /// Create a copy of TripDriverResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? fullName = freezed,Object? avatarUrl = freezed,Object? averageRating = freezed,Object? ratingCount = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? fullName = freezed,Object? avatarUrl = freezed,Object? averageRating = freezed,Object? ratingCount = null,Object? phoneNumber = freezed,Object? verificationStatus = null,}) {
   return _then(_TripDriverResponse(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,fullName: freezed == fullName ? _self.fullName : fullName // ignore: cast_nullable_to_non_nullable
 as String?,avatarUrl: freezed == avatarUrl ? _self.avatarUrl : avatarUrl // ignore: cast_nullable_to_non_nullable
 as String?,averageRating: freezed == averageRating ? _self.averageRating : averageRating // ignore: cast_nullable_to_non_nullable
 as double?,ratingCount: null == ratingCount ? _self.ratingCount : ratingCount // ignore: cast_nullable_to_non_nullable
-as int,
+as int,phoneNumber: freezed == phoneNumber ? _self.phoneNumber : phoneNumber // ignore: cast_nullable_to_non_nullable
+as String?,verificationStatus: null == verificationStatus ? _self.verificationStatus : verificationStatus // ignore: cast_nullable_to_non_nullable
+as VerificationStatus,
   ));
 }
 
@@ -1805,7 +1823,9 @@ as int,
 mixin _$TripDetailResponse {
 
  String get id; String get routeId; DateTime get scheduledDepartureAt;/// At the end of the route.
- DateTime? get scheduledArrivalAt; DateTime? get actualDepartureAt; DateTime? get actualArrivalAt;@JsonKey(unknownEnumValue: TripStatus.scheduled) TripStatus get status;@JsonKey(fromJson: decimalString) String get fareAmount; String get routeName; String get originStopId; String get originStopName; String get destinationStopId; String get destinationStopName; TripVehicleResponse? get vehicle; TripDriverResponse? get driver; int get ridersCount; int get seatsTotal; int get availableSeats;
+ DateTime? get scheduledArrivalAt; DateTime? get actualDepartureAt; DateTime? get actualArrivalAt;@JsonKey(unknownEnumValue: TripStatus.scheduled) TripStatus get status;@JsonKey(fromJson: decimalString) String get fareAmount; String get routeName; String get originStopId; String get originStopName; String get destinationStopId; String get destinationStopName; TripVehicleResponse? get vehicle; TripDriverResponse? get driver; int get ridersCount; int get seatsTotal; int get availableSeats;/// The route's ordered stops, origin first, destination last; order
+/// is the array position (backend 0.14.0+, else an empty list).
+ List<StopResponse> get stops;
 /// Create a copy of TripDetailResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1818,16 +1838,16 @@ $TripDetailResponseCopyWith<TripDetailResponse> get copyWith => _$TripDetailResp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is TripDetailResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.routeId, routeId) || other.routeId == routeId)&&(identical(other.scheduledDepartureAt, scheduledDepartureAt) || other.scheduledDepartureAt == scheduledDepartureAt)&&(identical(other.scheduledArrivalAt, scheduledArrivalAt) || other.scheduledArrivalAt == scheduledArrivalAt)&&(identical(other.actualDepartureAt, actualDepartureAt) || other.actualDepartureAt == actualDepartureAt)&&(identical(other.actualArrivalAt, actualArrivalAt) || other.actualArrivalAt == actualArrivalAt)&&(identical(other.status, status) || other.status == status)&&(identical(other.fareAmount, fareAmount) || other.fareAmount == fareAmount)&&(identical(other.routeName, routeName) || other.routeName == routeName)&&(identical(other.originStopId, originStopId) || other.originStopId == originStopId)&&(identical(other.originStopName, originStopName) || other.originStopName == originStopName)&&(identical(other.destinationStopId, destinationStopId) || other.destinationStopId == destinationStopId)&&(identical(other.destinationStopName, destinationStopName) || other.destinationStopName == destinationStopName)&&(identical(other.vehicle, vehicle) || other.vehicle == vehicle)&&(identical(other.driver, driver) || other.driver == driver)&&(identical(other.ridersCount, ridersCount) || other.ridersCount == ridersCount)&&(identical(other.seatsTotal, seatsTotal) || other.seatsTotal == seatsTotal)&&(identical(other.availableSeats, availableSeats) || other.availableSeats == availableSeats));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TripDetailResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.routeId, routeId) || other.routeId == routeId)&&(identical(other.scheduledDepartureAt, scheduledDepartureAt) || other.scheduledDepartureAt == scheduledDepartureAt)&&(identical(other.scheduledArrivalAt, scheduledArrivalAt) || other.scheduledArrivalAt == scheduledArrivalAt)&&(identical(other.actualDepartureAt, actualDepartureAt) || other.actualDepartureAt == actualDepartureAt)&&(identical(other.actualArrivalAt, actualArrivalAt) || other.actualArrivalAt == actualArrivalAt)&&(identical(other.status, status) || other.status == status)&&(identical(other.fareAmount, fareAmount) || other.fareAmount == fareAmount)&&(identical(other.routeName, routeName) || other.routeName == routeName)&&(identical(other.originStopId, originStopId) || other.originStopId == originStopId)&&(identical(other.originStopName, originStopName) || other.originStopName == originStopName)&&(identical(other.destinationStopId, destinationStopId) || other.destinationStopId == destinationStopId)&&(identical(other.destinationStopName, destinationStopName) || other.destinationStopName == destinationStopName)&&(identical(other.vehicle, vehicle) || other.vehicle == vehicle)&&(identical(other.driver, driver) || other.driver == driver)&&(identical(other.ridersCount, ridersCount) || other.ridersCount == ridersCount)&&(identical(other.seatsTotal, seatsTotal) || other.seatsTotal == seatsTotal)&&(identical(other.availableSeats, availableSeats) || other.availableSeats == availableSeats)&&const DeepCollectionEquality().equals(other.stops, stops));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,routeId,scheduledDepartureAt,scheduledArrivalAt,actualDepartureAt,actualArrivalAt,status,fareAmount,routeName,originStopId,originStopName,destinationStopId,destinationStopName,vehicle,driver,ridersCount,seatsTotal,availableSeats);
+int get hashCode => Object.hashAll([runtimeType,id,routeId,scheduledDepartureAt,scheduledArrivalAt,actualDepartureAt,actualArrivalAt,status,fareAmount,routeName,originStopId,originStopName,destinationStopId,destinationStopName,vehicle,driver,ridersCount,seatsTotal,availableSeats,const DeepCollectionEquality().hash(stops)]);
 
 @override
 String toString() {
-  return 'TripDetailResponse(id: $id, routeId: $routeId, scheduledDepartureAt: $scheduledDepartureAt, scheduledArrivalAt: $scheduledArrivalAt, actualDepartureAt: $actualDepartureAt, actualArrivalAt: $actualArrivalAt, status: $status, fareAmount: $fareAmount, routeName: $routeName, originStopId: $originStopId, originStopName: $originStopName, destinationStopId: $destinationStopId, destinationStopName: $destinationStopName, vehicle: $vehicle, driver: $driver, ridersCount: $ridersCount, seatsTotal: $seatsTotal, availableSeats: $availableSeats)';
+  return 'TripDetailResponse(id: $id, routeId: $routeId, scheduledDepartureAt: $scheduledDepartureAt, scheduledArrivalAt: $scheduledArrivalAt, actualDepartureAt: $actualDepartureAt, actualArrivalAt: $actualArrivalAt, status: $status, fareAmount: $fareAmount, routeName: $routeName, originStopId: $originStopId, originStopName: $originStopName, destinationStopId: $destinationStopId, destinationStopName: $destinationStopName, vehicle: $vehicle, driver: $driver, ridersCount: $ridersCount, seatsTotal: $seatsTotal, availableSeats: $availableSeats, stops: $stops)';
 }
 
 
@@ -1838,7 +1858,7 @@ abstract mixin class $TripDetailResponseCopyWith<$Res>  {
   factory $TripDetailResponseCopyWith(TripDetailResponse value, $Res Function(TripDetailResponse) _then) = _$TripDetailResponseCopyWithImpl;
 @useResult
 $Res call({
- String id, String routeId, DateTime scheduledDepartureAt, DateTime? scheduledArrivalAt, DateTime? actualDepartureAt, DateTime? actualArrivalAt,@JsonKey(unknownEnumValue: TripStatus.scheduled) TripStatus status,@JsonKey(fromJson: decimalString) String fareAmount, String routeName, String originStopId, String originStopName, String destinationStopId, String destinationStopName, TripVehicleResponse? vehicle, TripDriverResponse? driver, int ridersCount, int seatsTotal, int availableSeats
+ String id, String routeId, DateTime scheduledDepartureAt, DateTime? scheduledArrivalAt, DateTime? actualDepartureAt, DateTime? actualArrivalAt,@JsonKey(unknownEnumValue: TripStatus.scheduled) TripStatus status,@JsonKey(fromJson: decimalString) String fareAmount, String routeName, String originStopId, String originStopName, String destinationStopId, String destinationStopName, TripVehicleResponse? vehicle, TripDriverResponse? driver, int ridersCount, int seatsTotal, int availableSeats, List<StopResponse> stops
 });
 
 
@@ -1855,7 +1875,7 @@ class _$TripDetailResponseCopyWithImpl<$Res>
 
 /// Create a copy of TripDetailResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? routeId = null,Object? scheduledDepartureAt = null,Object? scheduledArrivalAt = freezed,Object? actualDepartureAt = freezed,Object? actualArrivalAt = freezed,Object? status = null,Object? fareAmount = null,Object? routeName = null,Object? originStopId = null,Object? originStopName = null,Object? destinationStopId = null,Object? destinationStopName = null,Object? vehicle = freezed,Object? driver = freezed,Object? ridersCount = null,Object? seatsTotal = null,Object? availableSeats = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? routeId = null,Object? scheduledDepartureAt = null,Object? scheduledArrivalAt = freezed,Object? actualDepartureAt = freezed,Object? actualArrivalAt = freezed,Object? status = null,Object? fareAmount = null,Object? routeName = null,Object? originStopId = null,Object? originStopName = null,Object? destinationStopId = null,Object? destinationStopName = null,Object? vehicle = freezed,Object? driver = freezed,Object? ridersCount = null,Object? seatsTotal = null,Object? availableSeats = null,Object? stops = null,}) {
   return _then(TripDetailResponse(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,routeId: null == routeId ? _self.routeId : routeId // ignore: cast_nullable_to_non_nullable
@@ -1875,7 +1895,8 @@ as TripVehicleResponse?,driver: freezed == driver ? _self.driver : driver // ign
 as TripDriverResponse?,ridersCount: null == ridersCount ? _self.ridersCount : ridersCount // ignore: cast_nullable_to_non_nullable
 as int,seatsTotal: null == seatsTotal ? _self.seatsTotal : seatsTotal // ignore: cast_nullable_to_non_nullable
 as int,availableSeats: null == availableSeats ? _self.availableSeats : availableSeats // ignore: cast_nullable_to_non_nullable
-as int,
+as int,stops: null == stops ? _self.stops : stops // ignore: cast_nullable_to_non_nullable
+as List<StopResponse>,
   ));
 }
 /// Create a copy of TripDetailResponse
@@ -1984,10 +2005,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String routeId,  DateTime scheduledDepartureAt,  DateTime? scheduledArrivalAt,  DateTime? actualDepartureAt,  DateTime? actualArrivalAt, @JsonKey(unknownEnumValue: TripStatus.scheduled)  TripStatus status, @JsonKey(fromJson: decimalString)  String fareAmount,  String routeName,  String originStopId,  String originStopName,  String destinationStopId,  String destinationStopName,  TripVehicleResponse? vehicle,  TripDriverResponse? driver,  int ridersCount,  int seatsTotal,  int availableSeats)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String routeId,  DateTime scheduledDepartureAt,  DateTime? scheduledArrivalAt,  DateTime? actualDepartureAt,  DateTime? actualArrivalAt, @JsonKey(unknownEnumValue: TripStatus.scheduled)  TripStatus status, @JsonKey(fromJson: decimalString)  String fareAmount,  String routeName,  String originStopId,  String originStopName,  String destinationStopId,  String destinationStopName,  TripVehicleResponse? vehicle,  TripDriverResponse? driver,  int ridersCount,  int seatsTotal,  int availableSeats,  List<StopResponse> stops)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _TripDetailResponse() when $default != null:
-return $default(_that.id,_that.routeId,_that.scheduledDepartureAt,_that.scheduledArrivalAt,_that.actualDepartureAt,_that.actualArrivalAt,_that.status,_that.fareAmount,_that.routeName,_that.originStopId,_that.originStopName,_that.destinationStopId,_that.destinationStopName,_that.vehicle,_that.driver,_that.ridersCount,_that.seatsTotal,_that.availableSeats);case _:
+return $default(_that.id,_that.routeId,_that.scheduledDepartureAt,_that.scheduledArrivalAt,_that.actualDepartureAt,_that.actualArrivalAt,_that.status,_that.fareAmount,_that.routeName,_that.originStopId,_that.originStopName,_that.destinationStopId,_that.destinationStopName,_that.vehicle,_that.driver,_that.ridersCount,_that.seatsTotal,_that.availableSeats,_that.stops);case _:
   return orElse();
 
 }
@@ -2005,10 +2026,10 @@ return $default(_that.id,_that.routeId,_that.scheduledDepartureAt,_that.schedule
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String routeId,  DateTime scheduledDepartureAt,  DateTime? scheduledArrivalAt,  DateTime? actualDepartureAt,  DateTime? actualArrivalAt, @JsonKey(unknownEnumValue: TripStatus.scheduled)  TripStatus status, @JsonKey(fromJson: decimalString)  String fareAmount,  String routeName,  String originStopId,  String originStopName,  String destinationStopId,  String destinationStopName,  TripVehicleResponse? vehicle,  TripDriverResponse? driver,  int ridersCount,  int seatsTotal,  int availableSeats)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String routeId,  DateTime scheduledDepartureAt,  DateTime? scheduledArrivalAt,  DateTime? actualDepartureAt,  DateTime? actualArrivalAt, @JsonKey(unknownEnumValue: TripStatus.scheduled)  TripStatus status, @JsonKey(fromJson: decimalString)  String fareAmount,  String routeName,  String originStopId,  String originStopName,  String destinationStopId,  String destinationStopName,  TripVehicleResponse? vehicle,  TripDriverResponse? driver,  int ridersCount,  int seatsTotal,  int availableSeats,  List<StopResponse> stops)  $default,) {final _that = this;
 switch (_that) {
 case _TripDetailResponse():
-return $default(_that.id,_that.routeId,_that.scheduledDepartureAt,_that.scheduledArrivalAt,_that.actualDepartureAt,_that.actualArrivalAt,_that.status,_that.fareAmount,_that.routeName,_that.originStopId,_that.originStopName,_that.destinationStopId,_that.destinationStopName,_that.vehicle,_that.driver,_that.ridersCount,_that.seatsTotal,_that.availableSeats);case _:
+return $default(_that.id,_that.routeId,_that.scheduledDepartureAt,_that.scheduledArrivalAt,_that.actualDepartureAt,_that.actualArrivalAt,_that.status,_that.fareAmount,_that.routeName,_that.originStopId,_that.originStopName,_that.destinationStopId,_that.destinationStopName,_that.vehicle,_that.driver,_that.ridersCount,_that.seatsTotal,_that.availableSeats,_that.stops);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -2025,10 +2046,10 @@ return $default(_that.id,_that.routeId,_that.scheduledDepartureAt,_that.schedule
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String routeId,  DateTime scheduledDepartureAt,  DateTime? scheduledArrivalAt,  DateTime? actualDepartureAt,  DateTime? actualArrivalAt, @JsonKey(unknownEnumValue: TripStatus.scheduled)  TripStatus status, @JsonKey(fromJson: decimalString)  String fareAmount,  String routeName,  String originStopId,  String originStopName,  String destinationStopId,  String destinationStopName,  TripVehicleResponse? vehicle,  TripDriverResponse? driver,  int ridersCount,  int seatsTotal,  int availableSeats)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String routeId,  DateTime scheduledDepartureAt,  DateTime? scheduledArrivalAt,  DateTime? actualDepartureAt,  DateTime? actualArrivalAt, @JsonKey(unknownEnumValue: TripStatus.scheduled)  TripStatus status, @JsonKey(fromJson: decimalString)  String fareAmount,  String routeName,  String originStopId,  String originStopName,  String destinationStopId,  String destinationStopName,  TripVehicleResponse? vehicle,  TripDriverResponse? driver,  int ridersCount,  int seatsTotal,  int availableSeats,  List<StopResponse> stops)?  $default,) {final _that = this;
 switch (_that) {
 case _TripDetailResponse() when $default != null:
-return $default(_that.id,_that.routeId,_that.scheduledDepartureAt,_that.scheduledArrivalAt,_that.actualDepartureAt,_that.actualArrivalAt,_that.status,_that.fareAmount,_that.routeName,_that.originStopId,_that.originStopName,_that.destinationStopId,_that.destinationStopName,_that.vehicle,_that.driver,_that.ridersCount,_that.seatsTotal,_that.availableSeats);case _:
+return $default(_that.id,_that.routeId,_that.scheduledDepartureAt,_that.scheduledArrivalAt,_that.actualDepartureAt,_that.actualArrivalAt,_that.status,_that.fareAmount,_that.routeName,_that.originStopId,_that.originStopName,_that.destinationStopId,_that.destinationStopName,_that.vehicle,_that.driver,_that.ridersCount,_that.seatsTotal,_that.availableSeats,_that.stops);case _:
   return null;
 
 }
@@ -2040,7 +2061,7 @@ return $default(_that.id,_that.routeId,_that.scheduledDepartureAt,_that.schedule
 @JsonSerializable()
 
 class _TripDetailResponse implements TripDetailResponse {
-  const _TripDetailResponse({required this.id, required this.routeId, required this.scheduledDepartureAt, this.scheduledArrivalAt, this.actualDepartureAt, this.actualArrivalAt, @JsonKey(unknownEnumValue: TripStatus.scheduled) required this.status, @JsonKey(fromJson: decimalString) required this.fareAmount, required this.routeName, required this.originStopId, required this.originStopName, required this.destinationStopId, required this.destinationStopName, this.vehicle, this.driver, required this.ridersCount, required this.seatsTotal, required this.availableSeats});
+  const _TripDetailResponse({required this.id, required this.routeId, required this.scheduledDepartureAt, this.scheduledArrivalAt, this.actualDepartureAt, this.actualArrivalAt, @JsonKey(unknownEnumValue: TripStatus.scheduled) required this.status, @JsonKey(fromJson: decimalString) required this.fareAmount, required this.routeName, required this.originStopId, required this.originStopName, required this.destinationStopId, required this.destinationStopName, this.vehicle, this.driver, required this.ridersCount, required this.seatsTotal, required this.availableSeats,  List<StopResponse> stops = const <StopResponse>[]}): _stops = stops;
   factory _TripDetailResponse.fromJson(Map<String, dynamic> json) => _$TripDetailResponseFromJson(json);
 
 @override final  String id;
@@ -2062,6 +2083,17 @@ class _TripDetailResponse implements TripDetailResponse {
 @override final  int ridersCount;
 @override final  int seatsTotal;
 @override final  int availableSeats;
+/// The route's ordered stops, origin first, destination last; order
+/// is the array position (backend 0.14.0+, else an empty list).
+ final  List<StopResponse> _stops;
+/// The route's ordered stops, origin first, destination last; order
+/// is the array position (backend 0.14.0+, else an empty list).
+@override@JsonKey() List<StopResponse> get stops {
+  if (_stops is EqualUnmodifiableListView) return _stops;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_stops);
+}
+
 
 /// Create a copy of TripDetailResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -2076,16 +2108,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TripDetailResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.routeId, routeId) || other.routeId == routeId)&&(identical(other.scheduledDepartureAt, scheduledDepartureAt) || other.scheduledDepartureAt == scheduledDepartureAt)&&(identical(other.scheduledArrivalAt, scheduledArrivalAt) || other.scheduledArrivalAt == scheduledArrivalAt)&&(identical(other.actualDepartureAt, actualDepartureAt) || other.actualDepartureAt == actualDepartureAt)&&(identical(other.actualArrivalAt, actualArrivalAt) || other.actualArrivalAt == actualArrivalAt)&&(identical(other.status, status) || other.status == status)&&(identical(other.fareAmount, fareAmount) || other.fareAmount == fareAmount)&&(identical(other.routeName, routeName) || other.routeName == routeName)&&(identical(other.originStopId, originStopId) || other.originStopId == originStopId)&&(identical(other.originStopName, originStopName) || other.originStopName == originStopName)&&(identical(other.destinationStopId, destinationStopId) || other.destinationStopId == destinationStopId)&&(identical(other.destinationStopName, destinationStopName) || other.destinationStopName == destinationStopName)&&(identical(other.vehicle, vehicle) || other.vehicle == vehicle)&&(identical(other.driver, driver) || other.driver == driver)&&(identical(other.ridersCount, ridersCount) || other.ridersCount == ridersCount)&&(identical(other.seatsTotal, seatsTotal) || other.seatsTotal == seatsTotal)&&(identical(other.availableSeats, availableSeats) || other.availableSeats == availableSeats));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TripDetailResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.routeId, routeId) || other.routeId == routeId)&&(identical(other.scheduledDepartureAt, scheduledDepartureAt) || other.scheduledDepartureAt == scheduledDepartureAt)&&(identical(other.scheduledArrivalAt, scheduledArrivalAt) || other.scheduledArrivalAt == scheduledArrivalAt)&&(identical(other.actualDepartureAt, actualDepartureAt) || other.actualDepartureAt == actualDepartureAt)&&(identical(other.actualArrivalAt, actualArrivalAt) || other.actualArrivalAt == actualArrivalAt)&&(identical(other.status, status) || other.status == status)&&(identical(other.fareAmount, fareAmount) || other.fareAmount == fareAmount)&&(identical(other.routeName, routeName) || other.routeName == routeName)&&(identical(other.originStopId, originStopId) || other.originStopId == originStopId)&&(identical(other.originStopName, originStopName) || other.originStopName == originStopName)&&(identical(other.destinationStopId, destinationStopId) || other.destinationStopId == destinationStopId)&&(identical(other.destinationStopName, destinationStopName) || other.destinationStopName == destinationStopName)&&(identical(other.vehicle, vehicle) || other.vehicle == vehicle)&&(identical(other.driver, driver) || other.driver == driver)&&(identical(other.ridersCount, ridersCount) || other.ridersCount == ridersCount)&&(identical(other.seatsTotal, seatsTotal) || other.seatsTotal == seatsTotal)&&(identical(other.availableSeats, availableSeats) || other.availableSeats == availableSeats)&&const DeepCollectionEquality().equals(other._stops, _stops));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,routeId,scheduledDepartureAt,scheduledArrivalAt,actualDepartureAt,actualArrivalAt,status,fareAmount,routeName,originStopId,originStopName,destinationStopId,destinationStopName,vehicle,driver,ridersCount,seatsTotal,availableSeats);
+int get hashCode => Object.hashAll([runtimeType,id,routeId,scheduledDepartureAt,scheduledArrivalAt,actualDepartureAt,actualArrivalAt,status,fareAmount,routeName,originStopId,originStopName,destinationStopId,destinationStopName,vehicle,driver,ridersCount,seatsTotal,availableSeats,const DeepCollectionEquality().hash(_stops)]);
 
 @override
 String toString() {
-  return 'TripDetailResponse(id: $id, routeId: $routeId, scheduledDepartureAt: $scheduledDepartureAt, scheduledArrivalAt: $scheduledArrivalAt, actualDepartureAt: $actualDepartureAt, actualArrivalAt: $actualArrivalAt, status: $status, fareAmount: $fareAmount, routeName: $routeName, originStopId: $originStopId, originStopName: $originStopName, destinationStopId: $destinationStopId, destinationStopName: $destinationStopName, vehicle: $vehicle, driver: $driver, ridersCount: $ridersCount, seatsTotal: $seatsTotal, availableSeats: $availableSeats)';
+  return 'TripDetailResponse(id: $id, routeId: $routeId, scheduledDepartureAt: $scheduledDepartureAt, scheduledArrivalAt: $scheduledArrivalAt, actualDepartureAt: $actualDepartureAt, actualArrivalAt: $actualArrivalAt, status: $status, fareAmount: $fareAmount, routeName: $routeName, originStopId: $originStopId, originStopName: $originStopName, destinationStopId: $destinationStopId, destinationStopName: $destinationStopName, vehicle: $vehicle, driver: $driver, ridersCount: $ridersCount, seatsTotal: $seatsTotal, availableSeats: $availableSeats, stops: $stops)';
 }
 
 
@@ -2096,7 +2128,7 @@ abstract mixin class _$TripDetailResponseCopyWith<$Res> implements $TripDetailRe
   factory _$TripDetailResponseCopyWith(_TripDetailResponse value, $Res Function(_TripDetailResponse) _then) = __$TripDetailResponseCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String routeId, DateTime scheduledDepartureAt, DateTime? scheduledArrivalAt, DateTime? actualDepartureAt, DateTime? actualArrivalAt,@JsonKey(unknownEnumValue: TripStatus.scheduled) TripStatus status,@JsonKey(fromJson: decimalString) String fareAmount, String routeName, String originStopId, String originStopName, String destinationStopId, String destinationStopName, TripVehicleResponse? vehicle, TripDriverResponse? driver, int ridersCount, int seatsTotal, int availableSeats
+ String id, String routeId, DateTime scheduledDepartureAt, DateTime? scheduledArrivalAt, DateTime? actualDepartureAt, DateTime? actualArrivalAt,@JsonKey(unknownEnumValue: TripStatus.scheduled) TripStatus status,@JsonKey(fromJson: decimalString) String fareAmount, String routeName, String originStopId, String originStopName, String destinationStopId, String destinationStopName, TripVehicleResponse? vehicle, TripDriverResponse? driver, int ridersCount, int seatsTotal, int availableSeats, List<StopResponse> stops
 });
 
 
@@ -2113,7 +2145,7 @@ class __$TripDetailResponseCopyWithImpl<$Res>
 
 /// Create a copy of TripDetailResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? routeId = null,Object? scheduledDepartureAt = null,Object? scheduledArrivalAt = freezed,Object? actualDepartureAt = freezed,Object? actualArrivalAt = freezed,Object? status = null,Object? fareAmount = null,Object? routeName = null,Object? originStopId = null,Object? originStopName = null,Object? destinationStopId = null,Object? destinationStopName = null,Object? vehicle = freezed,Object? driver = freezed,Object? ridersCount = null,Object? seatsTotal = null,Object? availableSeats = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? routeId = null,Object? scheduledDepartureAt = null,Object? scheduledArrivalAt = freezed,Object? actualDepartureAt = freezed,Object? actualArrivalAt = freezed,Object? status = null,Object? fareAmount = null,Object? routeName = null,Object? originStopId = null,Object? originStopName = null,Object? destinationStopId = null,Object? destinationStopName = null,Object? vehicle = freezed,Object? driver = freezed,Object? ridersCount = null,Object? seatsTotal = null,Object? availableSeats = null,Object? stops = null,}) {
   return _then(_TripDetailResponse(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,routeId: null == routeId ? _self.routeId : routeId // ignore: cast_nullable_to_non_nullable
@@ -2133,7 +2165,8 @@ as TripVehicleResponse?,driver: freezed == driver ? _self.driver : driver // ign
 as TripDriverResponse?,ridersCount: null == ridersCount ? _self.ridersCount : ridersCount // ignore: cast_nullable_to_non_nullable
 as int,seatsTotal: null == seatsTotal ? _self.seatsTotal : seatsTotal // ignore: cast_nullable_to_non_nullable
 as int,availableSeats: null == availableSeats ? _self.availableSeats : availableSeats // ignore: cast_nullable_to_non_nullable
-as int,
+as int,stops: null == stops ? _self._stops : stops // ignore: cast_nullable_to_non_nullable
+as List<StopResponse>,
   ));
 }
 

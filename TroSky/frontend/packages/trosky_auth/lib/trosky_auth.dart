@@ -5,6 +5,7 @@ library;
 export 'src/app_mode.dart';
 export 'src/post_sign_in.dart';
 export 'src/providers.dart';
+export 'src/secure_storage.dart';
 export 'src/session.dart';
 export 'src/token_manager.dart';
 export 'src/token_storage.dart';

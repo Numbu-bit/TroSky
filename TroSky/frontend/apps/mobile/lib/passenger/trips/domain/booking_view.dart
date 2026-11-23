@@ -3,6 +3,7 @@ import 'package:trosky_ui/trosky_ui.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../booking/presentation/booking_format.dart';
+import '../../shared/cancel_booking_sheet.dart';
 
 /// What a booking's status shows on Trip History (P-15) and Booking
 /// details (P-16): the chip, and what the passenger can do.
@@ -66,6 +67,12 @@ enum BookingChip {
   /// does it, as designed.
   bool get canCancel =>
       this == pendingPayment || this == paidUpcoming || this == paidUnderWay;
+
+  /// "Show ticket" (P-10): the booking has at least one issued ticket.
+  /// Tickets are issued on confirmation and stay viewable until
+  /// completion; cancelled / expired / pending don't carry one.
+  bool get canShowTicket =>
+      this == paidUpcoming || this == paidUnderWay || this == completed;
 }
 
 /// The refund line on Booking details, if the booking has one.
@@ -79,3 +86,24 @@ String? refundLine(AppLocalizations l10n, BookingResponse booking) =>
       ),
       _ => null,
     };
+
+/// One-line summary on Booking details for a cancelled or expired
+/// booking (G37). Degrades gracefully when the backend hasn't returned
+/// `cancelled_by` / `cancel_reason` yet: the left half ("Cancelled by
+/// you") shows alone, no placeholder dot, no "unknown". Returns null
+/// for statuses where there's nothing to say.
+String? cancellationLine(AppLocalizations l10n, BookingResponse booking) {
+  if (booking.status == BookingStatus.expired) return l10n.bookingExpiredLine;
+  final by = booking.cancelledBy ?? cancelledByFromStatus(booking.status);
+  if (by == null) return null;
+  final left = switch (by) {
+    CancelledBy.user => l10n.bookingCancelledByYou,
+    CancelledBy.trosky => l10n.bookingCancelledByTroSky,
+    // `system` for a non-expired booking is unlikely; fall through to
+    // the TroSky wording rather than invent a new label.
+    CancelledBy.system => l10n.bookingCancelledByTroSky,
+  };
+  final reason = booking.cancelReason;
+  if (reason == null) return left;
+  return l10n.bookingCancelledLine(left, cancelReasonLabel(l10n, reason));
+}

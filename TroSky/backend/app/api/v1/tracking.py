@@ -67,6 +67,8 @@ async def get_trip_location(
         heading_degrees=live.heading_degrees,
         recorded_at=live.recorded_at,
         is_stale=live.is_stale,
+        live_fare_per_seat=live.live_fare_per_seat,
+        riders_count=live.riders_count,
     )
 
 

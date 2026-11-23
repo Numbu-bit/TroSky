@@ -4,6 +4,7 @@ import 'package:trosky_core/trosky_core.dart';
 import '../client/api_client.dart';
 import '../dto/booking_dto.dart';
 import '../dto/paginated.dart';
+import '../dto/safety_dto.dart';
 
 /// `/bookings` (backend/app/api/v1/bookings.py).
 abstract interface class BookingRepository {
@@ -45,7 +46,27 @@ abstract interface class BookingRepository {
   /// approves the refund, back the way it was paid). Once the trip has
   /// started, the request waits for an admin and the booking comes back
   /// unchanged. 409 `INVALID_STATE_TRANSITION` when it already ended.
-  Future<Result<BookingResponse>> cancel(String bookingId, {String? reason});
+  ///
+  /// `reason` is serialised as the enum's snake_case name (G37); the
+  /// backend accepts it on the existing `reason` string field.
+  // TODO(G37): also send `reason_note` for `other` once the backend
+  // accepts it (today the request model is extra="forbid", so an unknown
+  // field would 422).
+  Future<Result<BookingResponse>> cancel(
+    String bookingId, {
+    CancelReason? reason,
+  });
+
+  /// `POST /bookings/{booking_id}/rating` — rate a completed trip.
+  /// 409 if already rated (ratings are not editable).
+  Future<Result<RatingResponse>> rate(
+    String bookingId,
+    RateBookingRequest request,
+  );
+
+  /// `GET /bookings/{booking_id}/rating` — null when the passenger hasn't
+  /// rated yet. 404 at the HTTP layer surfaces as `NotFoundFailure`.
+  Future<Result<RatingResponse>> getRating(String bookingId);
 }
 
 /// [BookingRepository] against the backend.
@@ -103,18 +124,42 @@ class LiveBookingRepository implements BookingRepository {
   );
 
   @override
-  Future<Result<BookingResponse>> cancel(String bookingId, {String? reason}) =>
-      apiCall(
-        () => _dio.post<Object?>(
-          '/bookings/$bookingId/cancel',
-          data: {'reason': ?reason},
-        ),
-        (data) => BookingResponse.fromJson(jsonObject(data)),
-      );
+  Future<Result<BookingResponse>> cancel(
+    String bookingId, {
+    CancelReason? reason,
+  }) => apiCall(
+    () => _dio.post<Object?>(
+      '/bookings/$bookingId/cancel',
+      data: {if (reason != null) 'reason': cancelReasonName(reason)},
+    ),
+    (data) => BookingResponse.fromJson(jsonObject(data)),
+  );
+
+  @override
+  Future<Result<RatingResponse>> rate(
+    String bookingId,
+    RateBookingRequest request,
+  ) => apiCall(
+    () => _dio.post<Object?>(
+      '/bookings/$bookingId/rating',
+      data: request.toJson(),
+    ),
+    (data) => RatingResponse.fromJson(jsonObject(data)),
+  );
+
+  @override
+  Future<Result<RatingResponse>> getRating(String bookingId) => apiCall(
+    () => _dio.get<Object?>('/bookings/$bookingId/rating'),
+    (data) => RatingResponse.fromJson(jsonObject(data)),
+  );
 }
 
+/// The backend's string for [reason] ("change_of_plans"), matching the
+/// snake_case `@JsonEnum` serialisation on [CancelReason].
+String cancelReasonName(CancelReason reason) => _snake(reason.name);
+
 /// The backend's name for [status] ("payment_pending").
-String bookingStatusName(BookingStatus status) => status.name.replaceAllMapped(
-  RegExp('[A-Z]'),
-  (m) => '_${m[0]!.toLowerCase()}',
-);
+String bookingStatusName(BookingStatus status) => _snake(status.name);
+
+String _snake(String camel) =>
+    camel.replaceAllMapped(RegExp('[A-Z]'), (m) => '_${m[0]!.toLowerCase()}');

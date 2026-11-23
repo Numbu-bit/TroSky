@@ -43,12 +43,12 @@ class FareBreakdown:
     why they are paying what they are paying."""
 
     __slots__ = (
-        "segment_km",
+        "per_seat_fare",
         "route_km",
+        "segment_km",
+        "shared",
         "solo_fare",
         "total_passenger_km",
-        "per_seat_fare",
-        "shared",
     )
 
     def __init__(
@@ -76,6 +76,16 @@ class FareService:
     def _quantize(self, amount: Decimal) -> Decimal:
         exponent = Decimal(1).scaleb(-self._settings.payments_default_currency_minor_unit)
         return amount.quantize(exponent, rounding=ROUND_HALF_UP)
+
+    def live_fare_per_seat(self, *, full_route_fare: Decimal, riders_count: int) -> Decimal:
+        """Split the full-route fare evenly across the confirmed/boarded
+        riders, with a lower bound at ``FARE_MINIMUM_AMOUNT``. Served on
+        the tracking endpoint so passengers see how much the next seat
+        fills bring the price down. ``riders_count`` of 0 returns the
+        full fare (nobody has committed yet, so a hypothetical first
+        seat pays everything)."""
+        split = full_route_fare if riders_count <= 0 else full_route_fare / Decimal(riders_count)
+        return self._quantize(max(split, self._settings.FARE_MINIMUM_AMOUNT))
 
     def platform_fee(self, fare_amount: Decimal, seat_count: int) -> Decimal:
         """TroSky's cut, charged on top of the operator's fare.

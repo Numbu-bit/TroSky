@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:trosky_auth/trosky_auth.dart';
@@ -97,6 +98,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
         // Signed in: the next step (a route or a modal sheet) takes over,
         // so the button stops spinning.
         setState(() => _busy = false);
+        // H2: commit the autofill context so iOS/Android password
+        // managers offer to save the identifier + password pair.
+        TextInput.finishAutofillContext();
         final failure = await goAfterSignIn(context, ref);
         if (failure != null && mounted) {
           setState(() => _formError = failureMessage(context, failure));
@@ -208,7 +212,14 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                 errorText: _identifierError,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
-                autofillHints: const [AutofillHints.email],
+                // H2: `username` is what most password managers key on
+                // for the primary identifier; `email` helps iOS Keychain
+                // suggest a saved email. Both together let a manager
+                // match a saved TroSky credential by either.
+                autofillHints: const [
+                  AutofillHints.username,
+                  AutofillHints.email,
+                ],
               ),
             ],
           )
@@ -260,6 +271,11 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                 _clearErrors();
                 _codeMode = true;
               }),
+            ),
+            TroskyTextLink(
+              prompt: '',
+              action: l10n.signInResetPassword,
+              onPressed: () => context.pushNamed(AppRoute.resetPassword.name),
             ),
             TroskyTextLink(
               prompt: l10n.signInNewPrompt,

@@ -1013,6 +1013,34 @@
   "@resultsTryAnotherTime": {
     "description": "Button under the empty results: pick a date and time."
   },
+  "resultsNoMoreToday": "No more trips today",
+  "@resultsNoMoreToday": {
+    "description": "Search Results late in the day: today's trips are all past, tomorrow's load underneath."
+  },
+  "resultsNoMoreTodaySubline": "Showing tomorrow's first trips instead",
+  "@resultsNoMoreTodaySubline": {
+    "description": "Subline under the 'No more trips today' headline."
+  },
+  "resultsTomorrowChip": "Tomorrow · {date}",
+  "@resultsTomorrowChip": {
+    "description": "Chip above tomorrow's first trips when today has none left. 'date' is a short weekday + day + month in the device locale.",
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "Mon 16 Nov"
+      }
+    }
+  },
+  "resultsTomorrowSemantics": "Tomorrow's trips, {date}",
+  "@resultsTomorrowSemantics": {
+    "description": "Screen-reader label for the Tomorrow date chip.",
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "Mon 16 Nov"
+      }
+    }
+  },
   "resultsNoMinibus": "No minibuses among these trips.",
   "@resultsNoMinibus": {
     "description": "Minibus filter left nothing."
@@ -1707,11 +1735,27 @@
   },
   "cancelReasonOther": "Other",
   "@cancelReasonOther": {
-    "description": "Cancel reason: the passenger writes their own."
+    "description": "Cancel reason."
   },
-  "cancelReasonHint": "Tell us more",
-  "@cancelReasonHint": {
-    "description": "Hint in the cancel sheet's text field for \"Other\"."
+  "bookingCancelledByYou": "Cancelled by you",
+  "@bookingCancelledByYou": {
+    "description": "Booking details, status line before the reason."
+  },
+  "bookingCancelledByTroSky": "Cancelled by TroSky",
+  "@bookingCancelledByTroSky": {
+    "description": "Booking details, status line before the reason when TroSky cancelled."
+  },
+  "bookingCancelledLine": "{by} · {reason}",
+  "@bookingCancelledLine": {
+    "description": "Booking details status line with a reason, e.g. 'Cancelled by you · Change of plans'.",
+    "placeholders": {
+      "by": { "type": "String", "example": "Cancelled by you" },
+      "reason": { "type": "String", "example": "Change of plans" }
+    }
+  },
+  "bookingExpiredLine": "Expired · Not paid in time",
+  "@bookingExpiredLine": {
+    "description": "Booking details line for an expired (unpaid) booking."
   },
   "cancelRefundTitle": "Refund: {amount}",
   "@cancelRefundTitle": {
@@ -2044,5 +2088,799 @@
   "payFailedMomoFunds": "Your MTN MoMo balance was too low.",
   "@payFailedMomoFunds": {
     "description": "Payment result (P-09): MTN reports not enough funds."
+  },
+  "testerMenuTitle": "Tester menu",
+  "@testerMenuTitle": {
+    "description": "Hidden tester menu title (staging and demo builds)."
+  },
+  "testerMenuTriggerNote": "Triggered from Home · tap greeting 7×",
+  "@testerMenuTriggerNote": {
+    "description": "Subline in the tester menu header, describing where the 7-tap trigger lives."
+  },
+  "testerMenuBuildInfo": "Build info",
+  "@testerMenuBuildInfo": {
+    "description": "Tester menu section header for the read-only build info block."
+  },
+  "testerMenuCommit": "Commit",
+  "@testerMenuCommit": {
+    "description": "Tester menu build-info row label."
+  },
+  "testerMenuBuilt": "Built",
+  "@testerMenuBuilt": {
+    "description": "Tester menu build-info row label."
+  },
+  "testerMenuApiBase": "API",
+  "@testerMenuApiBase": {
+    "description": "Tester menu build-info row label."
+  },
+  "testerMenuMode": "Mode",
+  "@testerMenuMode": {
+    "description": "Tester menu build-info row label."
+  },
+  "testerMenuAppVersion": "App version",
+  "@testerMenuAppVersion": {
+    "description": "Tester menu build-info row label."
+  },
+  "testerMenuModeMock": "mock",
+  "@testerMenuModeMock": {
+    "description": "Tester menu build-info mode value."
+  },
+  "testerMenuModeLive": "staging",
+  "@testerMenuModeLive": {
+    "description": "Tester menu build-info mode value for live API (always staging in the hidden menu)."
+  },
+  "testerMenuNotSet": "unset",
+  "@testerMenuNotSet": {
+    "description": "Tester menu build-info value when GIT_COMMIT or BUILD_DATE weren't passed at build time."
+  },
+  "testerMenuWakeServer": "Wake server",
+  "@testerMenuWakeServer": {
+    "description": "Tester menu action button."
+  },
+  "testerMenuWakeOk": "Server is awake",
+  "@testerMenuWakeOk": {
+    "description": "Toast after a successful Wake server tap."
+  },
+  "testerMenuWakeFail": "Server didn't answer",
+  "@testerMenuWakeFail": {
+    "description": "Toast after a failed Wake server tap."
+  },
+  "testerMenuWakeMockMode": "This is a mock build; no server to wake",
+  "@testerMenuWakeMockMode": {
+    "description": "Toast when Wake server runs in a mock-mode build."
+  },
+  "testerMenuTopUp": "Top up my wallet ₵100",
+  "@testerMenuTopUp": {
+    "description": "Tester menu action button."
+  },
+  "testerMenuTopUpOk": "Wallet topped up. New balance: ₵{balance}",
+  "@testerMenuTopUpOk": {
+    "description": "Toast after a successful wallet top-up.",
+    "placeholders": {
+      "balance": { "type": "String", "example": "250.00" }
+    }
+  },
+  "testerMenuTopUpMissing": "Wallet top-up not supported by this backend (PR #53 not deployed).",
+  "@testerMenuTopUpMissing": {
+    "description": "Toast when the wallet-top-up endpoint returns 404."
+  },
+  "testerMenuTopUpError": "Top-up failed: {message}",
+  "@testerMenuTopUpError": {
+    "description": "Toast when the wallet-top-up endpoint errored.",
+    "placeholders": {
+      "message": { "type": "String", "example": "Network error" }
+    }
+  },
+  "testerMenuTopUpSignIn": "Sign in first to top up your wallet",
+  "@testerMenuTopUpSignIn": {
+    "description": "Toast when Top up is tapped without a signed-in session."
+  },
+  "testerMenuShowOnboarding": "Show onboarding again",
+  "@testerMenuShowOnboarding": {
+    "description": "Tester menu action button."
+  },
+  "testerMenuSignOut": "Sign out & clear data",
+  "@testerMenuSignOut": {
+    "description": "Tester menu action button (destructive)."
+  },
+  "ticketBoardingPass": "BOARDING PASS",
+  "@ticketBoardingPass": {
+    "description": "Overline above the route headline on the Ticket screen."
+  },
+  "ticketRouteHeadline": "{from} → {to}",
+  "@ticketRouteHeadline": {
+    "description": "Route headline on the Ticket screen (P-10).",
+    "placeholders": {
+      "from": { "type": "String", "example": "Madina" },
+      "to": { "type": "String", "example": "Circle" }
+    }
+  },
+  "ticketScanSubline": "Scan this code when boarding",
+  "@ticketScanSubline": { "description": "Subline under the QR." },
+  "ticketPillNotYetValid": "Not yet valid",
+  "@ticketPillNotYetValid": { "description": "Ticket status pill label." },
+  "ticketPillReadyToBoard": "Ready to Board",
+  "@ticketPillReadyToBoard": { "description": "Ticket status pill label." },
+  "ticketPillUsed": "Used · {time}",
+  "@ticketPillUsed": {
+    "description": "Ticket status pill once validated.",
+    "placeholders": {
+      "time": { "type": "String", "example": "08:42" }
+    }
+  },
+  "ticketPillExpired": "Expired",
+  "@ticketPillExpired": { "description": "Ticket status pill label." },
+  "ticketPillNotValid": "Not valid",
+  "@ticketPillNotValid": { "description": "Ticket status pill label for revoked tickets." },
+  "ticketSeat": "Seat",
+  "@ticketSeat": { "description": "Three-column strip label." },
+  "ticketDeparts": "Departs",
+  "@ticketDeparts": { "description": "Three-column strip label." },
+  "ticketFare": "Fare",
+  "@ticketFare": { "description": "Three-column strip label." },
+  "ticketPaid": "PAID",
+  "@ticketPaid": { "description": "Payment pill on the passenger card." },
+  "ticketVerifiedGhanaCard": "Verified · Ghana Card",
+  "@ticketVerifiedGhanaCard": {
+    "description": "Passenger verification sub-line (P-10)."
+  },
+  "ticketCantScan": "Can't scan? Show code",
+  "@ticketCantScan": {
+    "description": "Expander button under the QR."
+  },
+  "ticketCountOf": "{current} / {total}",
+  "@ticketCountOf": {
+    "description": "Ticket page indicator for bookings with more than 3 seats.",
+    "placeholders": {
+      "current": { "type": "int", "example": "2" },
+      "total": { "type": "int", "example": "3" }
+    }
+  },
+  "ticketSemanticLabel": "Boarding QR for {route} at {time}, seat {seat}",
+  "@ticketSemanticLabel": {
+    "description": "Semantics label on the QR image.",
+    "placeholders": {
+      "route": { "type": "String", "example": "Madina → Circle" },
+      "time": { "type": "String", "example": "08:30" },
+      "seat": { "type": "String", "example": "4B" }
+    }
+  },
+  "ticketPageDotsLabel": "Ticket {current} of {total}",
+  "@ticketPageDotsLabel": {
+    "description": "Semantics label on the ticket page dots.",
+    "placeholders": {
+      "current": { "type": "int", "example": "1" },
+      "total": { "type": "int", "example": "2" }
+    }
+  },
+  "ticketRetry": "Retry",
+  "@ticketRetry": { "description": "Retry button on the ticket error state." },
+  "ticketSave": "Save to Photos",
+  "@ticketSave": { "description": "Save-to-photos button on the Ticket screen." },
+  "ticketShare": "Share",
+  "@ticketShare": { "description": "Share button on the Ticket screen." },
+  "ticketOfflineTitle": "Can't load ticket",
+  "@ticketOfflineTitle": {
+    "description": "Full-screen offline state title: no cache, no network."
+  },
+  "ticketOfflineSubline": "Reconnect to sync",
+  "@ticketOfflineSubline": {
+    "description": "Full-screen offline state subline."
+  },
+  "ticketOfflineBanner": "Showing last synced ticket",
+  "@ticketOfflineBanner": {
+    "description": "Top banner when the ticket is loaded from cache after a failed refresh."
+  },
+  "ticketError": "Can't load your ticket. Pull down to retry.",
+  "@ticketError": {
+    "description": "Error state when the tickets fetch failed."
+  },
+  "ticketEmpty": "No ticket yet. It appears after the booking is confirmed.",
+  "@ticketEmpty": {
+    "description": "State for bookings with no tickets issued yet (e.g. awaiting acceptance)."
+  },
+  "bookingShowTicket": "Show ticket",
+  "@bookingShowTicket": {
+    "description": "Primary action on booking details that opens the Ticket screen."
+  },
+  "bookingViewTripDetails": "View trip details",
+  "@bookingViewTripDetails": {
+    "description": "Link on booking details that opens the P-04 Trip Details screen."
+  },
+  "tripDetailsTitle": "Trip details",
+  "@tripDetailsTitle": { "description": "App-bar title on P-04." },
+  "tripDetailsStatusUpcoming": "Upcoming",
+  "tripDetailsStatusOnTheWay": "On the way",
+  "tripDetailsStatusArrived": "Arrived",
+  "tripDetailsStatusCancelled": "Cancelled",
+  "@tripDetailsStatusUpcoming": { "description": "Trip status pill." },
+  "@tripDetailsStatusOnTheWay": { "description": "Trip status pill." },
+  "@tripDetailsStatusArrived": { "description": "Trip status pill." },
+  "@tripDetailsStatusCancelled": { "description": "Trip status pill." },
+  "tripDetailsSchedule": "Schedule",
+  "tripDetailsStops": "Stops",
+  "tripDetailsVehicle": "Vehicle",
+  "tripDetailsDriver": "Driver",
+  "tripDetailsYourSeats": "Your seats",
+  "@tripDetailsSchedule": { "description": "Section header on P-04." },
+  "@tripDetailsStops": { "description": "Section header on P-04." },
+  "@tripDetailsVehicle": { "description": "Section header on P-04." },
+  "@tripDetailsDriver": { "description": "Section header on P-04." },
+  "@tripDetailsYourSeats": { "description": "Section header on P-04." },
+  "tripDetailsDeparts": "Departs",
+  "tripDetailsArrives": "Arrives",
+  "tripDetailsDuration": "Duration",
+  "@tripDetailsDeparts": { "description": "Schedule row label." },
+  "@tripDetailsArrives": { "description": "Schedule row label." },
+  "@tripDetailsDuration": { "description": "Schedule row label." },
+  "tripDetailsPlate": "Plate",
+  "@tripDetailsPlate": { "description": "Vehicle row label." },
+  "tripDetailsDriverRating": "{rating} ({count})",
+  "@tripDetailsDriverRating": {
+    "description": "Driver rating with count, e.g. '4.8 (112)'.",
+    "placeholders": {
+      "rating": { "type": "String", "example": "4.8" },
+      "count": { "type": "int", "example": "112" }
+    }
+  },
+  "tripDetailsDriverUnrated": "Not rated yet",
+  "@tripDetailsDriverUnrated": {
+    "description": "Driver row when average_rating is null."
+  },
+  "tripDetailsDriverContactUnavailable": "Driver contact unavailable",
+  "@tripDetailsDriverContactUnavailable": {
+    "description": "Shown in place of Call/Message when driver_phone is missing."
+  },
+  "tripDetailsCallDriver": "Call driver",
+  "tripDetailsMessageDriver": "Message driver",
+  "@tripDetailsCallDriver": { "description": "Semantics label on the call icon button." },
+  "@tripDetailsMessageDriver": { "description": "Semantics label on the message icon button." },
+  "tripDetailsTrackTrip": "Track trip",
+  "@tripDetailsTrackTrip": { "description": "Primary CTA; step17/B wires the real screen." },
+  "tripDetailsTrackComingSoon": "Live tracking coming in the next release",
+  "@tripDetailsTrackComingSoon": {
+    "description": "Snackbar for the Track trip stub."
+  },
+  "tripDetailsCancelBooking": "Cancel booking",
+  "@tripDetailsCancelBooking": { "description": "Secondary ghost CTA on P-04." },
+  "tripDetailsNotFound": "This booking wasn't found.",
+  "@tripDetailsNotFound": { "description": "Shown when the trip id 404s." },
+  "tripDetailsOffline": "Can't load trip details — reconnect",
+  "@tripDetailsOffline": {
+    "description": "Shown when offline with no cached booking to fall back on."
+  },
+  "tripDetailsServerError": "Something went wrong. Please try again.",
+  "@tripDetailsServerError": {
+    "description": "Generic error state."
+  },
+  "tripDetailsSeatRow": "Seat {seat} · {name}",
+  "@tripDetailsSeatRow": {
+    "description": "One row of the Your seats card.",
+    "placeholders": {
+      "seat": { "type": "String", "example": "4B" },
+      "name": { "type": "String", "example": "Kofi Mensah" }
+    }
+  },
+  "tripDetailsStopBoardingTag": "Boarding here",
+  "@tripDetailsStopBoardingTag": {
+    "description": "Chip next to the passenger's boarding stop in the Stops card."
+  },
+  "tripDetailsStopAlightingTag": "Getting off",
+  "@tripDetailsStopAlightingTag": {
+    "description": "Chip next to the passenger's alighting stop in the Stops card."
+  },
+  "tripDetailsDriverVerified": "Verified",
+  "@tripDetailsDriverVerified": {
+    "description": "Pill under the driver's name when verification_status == verified."
+  },
+  "tripDetailsDriverVerificationPending": "Verification pending",
+  "@tripDetailsDriverVerificationPending": {
+    "description": "Pill under the driver's name when verification_status == pending."
+  },
+  "tripDetailsDriverVerifiedSemantics": "Driver verification status: Verified",
+  "@tripDetailsDriverVerifiedSemantics": {
+    "description": "Screen-reader label for the Verified pill."
+  },
+  "tripDetailsDriverVerificationPendingSemantics": "Driver verification pending",
+  "@tripDetailsDriverVerificationPendingSemantics": {
+    "description": "Screen-reader label for the Verification-pending pill."
+  },
+  "tripDetailsStopSemantics": "Stop {current} of {total}, {name}, {kind}",
+  "@tripDetailsStopSemantics": {
+    "description": "Screen-reader label on each stop row of the Stops card.",
+    "placeholders": {
+      "current": { "type": "int", "example": "2" },
+      "total": { "type": "int", "example": "5" },
+      "name": { "type": "String", "example": "Accra Legon" },
+      "kind": { "type": "String", "example": "boarding" }
+    }
+  },
+  "tripDetailsStopBoardingSemantic": "boarding",
+  "@tripDetailsStopBoardingSemantic": { "description": "Stop kind announced by the screen reader." },
+  "tripDetailsStopRegularSemantic": "regular",
+  "@tripDetailsStopRegularSemantic": { "description": "Stop kind announced by the screen reader." },
+  "trackTripStatusBoardingAtOrigin": "Boarding at origin",
+  "@trackTripStatusBoardingAtOrigin": { "description": "P-11 amber chip when the trip hasn't started." },
+  "trackTripStatusArrivingIn": "Arriving in ~{minutes} min",
+  "@trackTripStatusArrivingIn": {
+    "description": "P-11 amber chip when the trip is on the way.",
+    "placeholders": {
+      "minutes": { "type": "int", "example": "24" }
+    }
+  },
+  "trackTripStatusAtYourStop": "At your stop",
+  "@trackTripStatusAtYourStop": { "description": "P-11 amber chip when within 100 m." },
+  "trackTripStatusCompleted": "Trip completed",
+  "@trackTripStatusCompleted": { "description": "P-11 amber chip once the trip finishes." },
+  "trackTripEta": "ETA {time}",
+  "@trackTripEta": {
+    "description": "Clock-time half of the amber chip.",
+    "placeholders": {
+      "time": { "type": "String", "example": "08:05" }
+    }
+  },
+  "trackTripDestination": "DESTINATION",
+  "@trackTripDestination": { "description": "Pin label on the destination stop." },
+  "trackTripLiveFare": "Live fare",
+  "trackTripRiders": "Riders",
+  "trackTripSeat": "Seat",
+  "@trackTripLiveFare": { "description": "P-11 info tile label." },
+  "@trackTripRiders": { "description": "P-11 info tile label." },
+  "@trackTripSeat": { "description": "P-11 info tile label." },
+  "trackTripShare": "Share Trip",
+  "@trackTripShare": { "description": "Ghost CTA at the bottom of P-11." },
+  "trackTripSos": "SOS",
+  "@trackTripSos": { "description": "Red CTA at the bottom of P-11." },
+  "trackTripRecenter": "Recentre map",
+  "@trackTripRecenter": { "description": "Semantics label on the recentre FAB." },
+  "trackTripRidersOf": "{current} / {total}",
+  "@trackTripRidersOf": {
+    "description": "Riders tile value.",
+    "placeholders": {
+      "current": { "type": "int", "example": "7" },
+      "total": { "type": "int", "example": "14" }
+    }
+  },
+  "trackTripSeatValue": "#{seat}",
+  "@trackTripSeatValue": {
+    "description": "Seat tile value.",
+    "placeholders": {
+      "seat": { "type": "String", "example": "4" }
+    }
+  },
+  "trackTripShareText": "Tracking my trotro: {route} · ETA {time} · Seat {seat} · {plate}",
+  "@trackTripShareText": {
+    "description": "Text template for Share Trip (no coords, no token).",
+    "placeholders": {
+      "route": { "type": "String", "example": "Madina → Circle" },
+      "time": { "type": "String", "example": "08:05" },
+      "seat": { "type": "String", "example": "4" },
+      "plate": { "type": "String", "example": "GR-4821" }
+    }
+  },
+  "trackTripFallbackBanner": "Realtime offline, polling every 5 s",
+  "@trackTripFallbackBanner": {
+    "description": "Thin banner when the WS dropped and the service fell back to polling."
+  },
+  "trackTripSosTitle": "Emergency",
+  "trackTripSosBody": "Full emergency features land in Step 19. If you are in danger, call 191 (Ghana Police).",
+  "trackTripSosCall": "Call 191",
+  "@trackTripSosTitle": { "description": "Title of the SOS placeholder sheet." },
+  "@trackTripSosBody": { "description": "Body copy of the SOS placeholder sheet." },
+  "@trackTripSosCall": { "description": "Call-191 tertiary button in the SOS sheet." },
+  "trackTripSemanticsMap": "Live tracking map, bus is {minutes} minutes away",
+  "@trackTripSemanticsMap": {
+    "description": "Semantics summary for the map.",
+    "placeholders": {
+      "minutes": { "type": "int", "example": "24" }
+    }
+  },
+
+  "walletTitle": "Wallet",
+  "@walletTitle": { "description": "P-17 header." },
+  "walletPaymentMethodsTitle": "Payment Methods",
+  "@walletPaymentMethodsTitle": { "description": "P-17 card title." },
+  "walletRecentTransactions": "Recent Transactions",
+  "@walletRecentTransactions": { "description": "P-17 card title." },
+  "walletSeeAll": "See all",
+  "@walletSeeAll": { "description": "P-17 expand link." },
+  "walletSeeLess": "See less",
+  "@walletSeeLess": { "description": "P-17 collapse link." },
+  "walletAddMethod": "+ Add method",
+  "@walletAddMethod": { "description": "P-17 add link." },
+  "walletAddMethodTitle": "Add a payment method",
+  "@walletAddMethodTitle": { "description": "Add-method sheet title." },
+  "walletDefault": "Default",
+  "@walletDefault": { "description": "Default-method pill." },
+  "walletSetAsDefault": "Set as default",
+  "@walletSetAsDefault": { "description": "Method sheet action." },
+  "walletRemoveMethod": "Remove",
+  "@walletRemoveMethod": { "description": "Method sheet destructive action." },
+  "walletComingSoon": "Coming soon",
+  "@walletComingSoon": { "description": "Disabled picker row hint." },
+  "walletBrandMtnMomo": "MTN MoMo",
+  "@walletBrandMtnMomo": { "description": "Brand name." },
+  "walletBrandTelecelCash": "Telecel Cash",
+  "@walletBrandTelecelCash": { "description": "Brand name." },
+  "walletBrandAirteltigo": "AirtelTigo Money",
+  "@walletBrandAirteltigo": { "description": "Brand name." },
+  "walletBrandVisa": "Visa Debit",
+  "@walletBrandVisa": { "description": "Brand name." },
+  "walletBrandWallet": "Wallet",
+  "@walletBrandWallet": { "description": "Brand name (in-app wallet)." },
+  "walletNoPaymentMethods": "You have no saved payment methods.",
+  "@walletNoPaymentMethods": { "description": "Empty methods state." },
+  "walletTransactionsEmpty": "No transactions yet. Top up to get started.",
+  "@walletTransactionsEmpty": { "description": "First-time user transactions empty state." },
+  "walletFilterAll": "All",
+  "@walletFilterAll": { "description": "Filter chip." },
+  "walletFilterTopUps": "Top-ups",
+  "@walletFilterTopUps": { "description": "Filter chip." },
+  "walletFilterTrips": "Trips",
+  "@walletFilterTrips": { "description": "Filter chip." },
+  "walletFilterRefunds": "Refunds",
+  "@walletFilterRefunds": { "description": "Filter chip." },
+  "walletNoMatches": "No transactions match this filter.",
+  "@walletNoMatches": { "description": "Filter empty state." },
+  "walletErrorLoad": "Couldn't load.",
+  "@walletErrorLoad": { "description": "Card error message." },
+  "walletRetry": "Retry",
+  "@walletRetry": { "description": "Retry action." },
+  "walletEndingIn": "ending in {last4}",
+  "@walletEndingIn": {
+    "description": "Accessibility fragment for a payment method.",
+    "placeholders": { "last4": { "type": "String", "example": "8821" } }
+  },
+  "walletMomoFormTitle": "Enter your MoMo number",
+  "@walletMomoFormTitle": { "description": "Add MoMo form title." },
+  "walletMomoFormPhoneLabel": "Phone number",
+  "@walletMomoFormPhoneLabel": { "description": "Phone field label." },
+  "walletKindTopUp": "Top up",
+  "@walletKindTopUp": { "description": "Transaction kind label." },
+  "walletKindTrip": "Trip",
+  "@walletKindTrip": { "description": "Transaction kind label." },
+  "walletKindRefund": "Refund",
+  "@walletKindRefund": { "description": "Transaction kind label." },
+  "walletKindEarning": "Earning",
+  "@walletKindEarning": { "description": "Transaction kind label." },
+  "walletKindWithdrawal": "Withdrawal",
+  "@walletKindWithdrawal": { "description": "Transaction kind label." },
+  "walletKindAdjustment": "Adjustment",
+  "@walletKindAdjustment": { "description": "Transaction kind label." },
+  "walletTxnReference": "Reference",
+  "@walletTxnReference": { "description": "Reference id label on the detail sheet." },
+  "walletViewTrip": "View trip",
+  "@walletViewTrip": { "description": "Link into trip details." },
+  "walletTopUpTitle": "Top up",
+  "@walletTopUpTitle": { "description": "P-18 AppBar title." },
+  "walletTopUpAmount": "Amount",
+  "@walletTopUpAmount": { "description": "P-18 section title." },
+  "walletTopUpCustomAmount": "Custom amount",
+  "@walletTopUpCustomAmount": { "description": "P-18 custom amount field label." },
+  "walletTopUpAmountError": "Enter an amount between ₵1 and ₵1,000.",
+  "@walletTopUpAmountError": { "description": "Invalid amount error." },
+  "walletTopUpAmountFallback": "₵0.00",
+  "@walletTopUpAmountFallback": { "description": "Fallback amount text on the CTA label while the input is empty." },
+  "walletTopUpCta": "Top up {amount}",
+  "@walletTopUpCta": {
+    "description": "P-18 primary button.",
+    "placeholders": { "amount": { "type": "String", "example": "₵100.00" } }
+  },
+  "walletTopUpWaiting": "Waiting for MoMo confirmation…",
+  "@walletTopUpWaiting": { "description": "P-18 pending status row." },
+  "walletTopUpSuccess": "Top up of {amount} succeeded.",
+  "@walletTopUpSuccess": {
+    "description": "P-18 success snackbar.",
+    "placeholders": { "amount": { "type": "String", "example": "100.00" } }
+  },
+  "walletTopUpFailure": "Top up failed. Try again.",
+  "@walletTopUpFailure": { "description": "P-18 inline failure message." },
+  "walletTopUpRetry": "Retry",
+  "@walletTopUpRetry": { "description": "P-18 retry CTA." },
+
+  "sosTitle": "Emergency",
+  "@sosTitle": { "description": "P-12 header." },
+  "sosHoldSemantics": "Hold to send SOS, 3 second hold",
+  "@sosHoldSemantics": { "description": "Semantics label on the SOS hold button." },
+  "sosHoldInstruction": "Hold for 3 seconds",
+  "@sosHoldInstruction": { "description": "Instruction under the hold button." },
+  "sosSending": "Sending alert…",
+  "@sosSending": { "description": "Status while the SOS request is in flight." },
+  "sosSendFailed": "Couldn't send the alert.",
+  "@sosSendFailed": { "description": "Failure line on the SOS screen." },
+  "sosRetry": "Retry",
+  "@sosRetry": { "description": "Retry action after a failed SOS send." },
+  "sosReasonLabel": "What's happening?",
+  "@sosReasonLabel": { "description": "Label above the reason chips." },
+  "sosReasonDriverDanger": "Driver danger",
+  "@sosReasonDriverDanger": { "description": "SOS reason chip." },
+  "sosReasonAccident": "Accident",
+  "@sosReasonAccident": { "description": "SOS reason chip." },
+  "sosReasonMedical": "Medical",
+  "@sosReasonMedical": { "description": "SOS reason chip." },
+  "sosReasonOther": "Other",
+  "@sosReasonOther": { "description": "SOS reason chip; default." },
+  "sosCall191": "Call 191",
+  "@sosCall191": { "description": "Tertiary button to dial Ghana Police emergency line." },
+  "sosConfirmationTitle": "Help is on the way",
+  "@sosConfirmationTitle": { "description": "P-12 confirmation title." },
+  "sosConfirmationBody": "Your emergency contacts have been notified.",
+  "@sosConfirmationBody": { "description": "P-12 confirmation body." },
+  "sosLocationNotShared": "Location not shared",
+  "@sosLocationNotShared": { "description": "Note on confirmation when coords weren't attached." },
+  "sosMarkSafe": "I'm safe now",
+  "@sosMarkSafe": { "description": "Ghost button to close the SOS confirmation." },
+
+  "reportTitle": "Report an issue",
+  "@reportTitle": { "description": "P-13 header." },
+  "reportBookingContext": "About booking {reference}",
+  "@reportBookingContext": {
+    "description": "Small label above the category list, showing which booking.",
+    "placeholders": { "reference": { "type": "String", "example": "TRK-ABC123" } }
+  },
+  "reportCategoryLabel": "What's the issue?",
+  "@reportCategoryLabel": { "description": "Label above the category chips." },
+  "reportCategoryAccident": "Accident",
+  "@reportCategoryAccident": { "description": "Report category chip." },
+  "reportCategoryBreakdown": "Breakdown",
+  "@reportCategoryBreakdown": { "description": "Report category chip." },
+  "reportCategoryDelay": "Delay",
+  "@reportCategoryDelay": { "description": "Report category chip." },
+  "reportCategorySafety": "Safety concern",
+  "@reportCategorySafety": { "description": "Report category chip." },
+  "reportCategoryPassenger": "Passenger issue",
+  "@reportCategoryPassenger": { "description": "Report category chip." },
+  "reportCategoryRoadHazard": "Road hazard",
+  "@reportCategoryRoadHazard": { "description": "Report category chip." },
+  "reportCategoryOther": "Other",
+  "@reportCategoryOther": { "description": "Report category chip; default." },
+  "reportDescriptionLabel": "Describe what happened",
+  "@reportDescriptionLabel": { "description": "Label above the description text field." },
+  "reportDescriptionHint": "Tell us what happened (at least 10 characters).",
+  "@reportDescriptionHint": { "description": "Hint in the description field." },
+  "reportSubmit": "Submit report",
+  "@reportSubmit": { "description": "P-13 primary button." },
+  "reportSubmitFailure": "Couldn't submit. Please try again.",
+  "@reportSubmitFailure": { "description": "P-13 inline failure line." },
+  "reportSuccess": "Report submitted. We'll review within 48 hours.",
+  "@reportSuccess": { "description": "Snackbar after a successful report." },
+
+  "rateTitle": "Rate your trip",
+  "@rateTitle": { "description": "P-14 header." },
+  "rateDriverFallback": "Your driver",
+  "@rateDriverFallback": { "description": "Fallback when the driver's name isn't known." },
+  "rateRouteFallback": "Your trip",
+  "@rateRouteFallback": { "description": "Fallback for the route line." },
+  "rateStarsSemantic": "{stars} of 5 stars",
+  "@rateStarsSemantic": {
+    "description": "Accessibility label for the current star count.",
+    "placeholders": { "stars": { "type": "int", "example": "3" } }
+  },
+  "rateStarTooltip": "{star} stars",
+  "@rateStarTooltip": {
+    "description": "Tooltip on each star in the picker.",
+    "placeholders": { "star": { "type": "int", "example": "4" } }
+  },
+  "rateCommentHint": "Add a comment (optional)",
+  "@rateCommentHint": { "description": "P-14 comment field hint." },
+  "rateSubmit": "Submit rating",
+  "@rateSubmit": { "description": "P-14 primary button." },
+  "rateSubmitFailure": "Couldn't submit. Please try again.",
+  "@rateSubmitFailure": { "description": "P-14 inline failure line." },
+  "rateThanks": "Thanks for rating your trip.",
+  "@rateThanks": { "description": "Snackbar after a successful rating." },
+  "rateBannerTitle": "Rate your last trip",
+  "@rateBannerTitle": { "description": "Trips tab banner title for an unrated completed booking." },
+  "rateBannerAction": "Rate",
+  "@rateBannerAction": { "description": "Trips tab banner CTA." },
+  "testerMenuEmergency": "Open P-12 Emergency",
+  "@testerMenuEmergency": { "description": "Tester menu action to open the SOS screen off-trip." },
+  "profileAnonymousName": "Passenger",
+  "@profileAnonymousName": { "description": "P-21 header fallback when the user has no name." },
+  "profileVerified": "Verified",
+  "@profileVerified": { "description": "Pill on a verified email or phone." },
+  "profileUnverified": "Unverified",
+  "@profileUnverified": { "description": "Pill on an unverified email or phone." },
+  "profileSectionAccount": "ACCOUNT",
+  "@profileSectionAccount": { "description": "P-21 section header." },
+  "profileSectionPreferences": "PREFERENCES",
+  "@profileSectionPreferences": { "description": "P-21 section header." },
+  "profileSectionPayments": "PAYMENTS",
+  "@profileSectionPayments": { "description": "P-21 section header." },
+  "profileSectionSupport": "SUPPORT",
+  "@profileSectionSupport": { "description": "P-21 section header." },
+  "profileRowPersonalInfo": "Personal information",
+  "@profileRowPersonalInfo": { "description": "P-21 row to P-22." },
+  "profileRowChangePassword": "Change password",
+  "@profileRowChangePassword": { "description": "P-21 row to P-23 (coming soon)." },
+  "profileRowChangeEmail": "Change email",
+  "@profileRowChangeEmail": { "description": "P-21 row to P-24 (coming soon)." },
+  "profileRowNotifications": "Notifications",
+  "@profileRowNotifications": { "description": "P-21 row." },
+  "profileRowFavourites": "Favourite routes",
+  "@profileRowFavourites": { "description": "P-21 row." },
+  "profileRowLanguage": "Language",
+  "@profileRowLanguage": { "description": "P-21 row." },
+  "profileRowPaymentMethods": "Payment methods",
+  "@profileRowPaymentMethods": { "description": "P-21 row (deep-links to Wallet)." },
+  "profileRowTransactions": "Transactions",
+  "@profileRowTransactions": { "description": "P-21 row (deep-links to Wallet)." },
+  "profileRowHelpCentre": "Help centre",
+  "@profileRowHelpCentre": { "description": "P-21 row." },
+  "profileRowReportProblem": "Report a problem",
+  "@profileRowReportProblem": { "description": "P-21 row." },
+  "profileRowAbout": "About TroSky",
+  "@profileRowAbout": { "description": "P-21 row." },
+  "profileComingSoon": "Coming soon",
+  "@profileComingSoon": { "description": "Subtitle on unwired P-21 rows." },
+  "profileSignOut": "Sign out",
+  "@profileSignOut": { "description": "P-21 danger-zone sign-out button." },
+  "profileSignOutCancel": "Cancel",
+  "@profileSignOutCancel": { "description": "Sign-out confirmation cancel." },
+  "profileSignOutConfirmTitle": "Sign out of TroSky?",
+  "@profileSignOutConfirmTitle": { "description": "Sign-out confirmation title." },
+  "profileSignOutConfirmBody": "You can sign back in any time with your phone or email.",
+  "@profileSignOutConfirmBody": { "description": "Sign-out confirmation body." },
+  "profileDeleteAccount": "Delete account",
+  "@profileDeleteAccount": { "description": "P-21 danger-zone delete button." },
+
+  "piiTitle": "Personal information",
+  "@piiTitle": { "description": "P-22 AppBar title." },
+  "piiNameLabel": "Full name",
+  "@piiNameLabel": { "description": "P-22 name field label." },
+  "piiEmailLabel": "Email",
+  "@piiEmailLabel": { "description": "P-22 email read-only label." },
+  "piiPhoneLabel": "Phone",
+  "@piiPhoneLabel": { "description": "P-22 phone read-only label." },
+  "piiAvatarLabel": "Avatar",
+  "@piiAvatarLabel": { "description": "P-22 avatar read-only label." },
+  "piiNotSet": "Not set",
+  "@piiNotSet": { "description": "P-22 empty-field value." },
+  "piiChangeViaSupport": "Contact support to change this.",
+  "@piiChangeViaSupport": { "description": "P-22 note on read-only email/phone." },
+  "piiSave": "Save changes",
+  "@piiSave": { "description": "P-22 primary button." },
+  "piiEditSaved": "Saved.",
+  "@piiEditSaved": { "description": "P-22 success snackbar." },
+  "piiEditFailure": "Couldn't save. Please try again.",
+  "@piiEditFailure": { "description": "P-22 inline failure." },
+
+  "deleteAccountTitle": "Delete account",
+  "@deleteAccountTitle": { "description": "P-25 AppBar title." },
+  "deleteAccountWarning": "Deleting your account is permanent.",
+  "@deleteAccountWarning": { "description": "P-25 big red headline." },
+  "deleteAccountBody": "This signs you out everywhere and removes your profile from TroSky. Data-retention rules may keep anonymised trip records for accounting.",
+  "@deleteAccountBody": { "description": "P-25 explainer." },
+  "deleteAccountScopeTitle": "What gets deleted:",
+  "@deleteAccountScopeTitle": { "description": "P-25 scope section title." },
+  "deleteAccountScopeBullets": "• Your profile, name and contact details.\n• Saved payment methods.\n• Favourite routes and preferences.\n• Local tickets and cached data.",
+  "@deleteAccountScopeBullets": { "description": "P-25 bullet list of deleted data." },
+  "deleteAccountConfirmInstruction": "To confirm, type DELETE below and enter your password.",
+  "@deleteAccountConfirmInstruction": { "description": "P-25 instruction." },
+  "deleteAccountConfirmLabel": "Type DELETE",
+  "@deleteAccountConfirmLabel": { "description": "P-25 type-to-confirm label." },
+  "deleteAccountPasswordLabel": "Current password",
+  "@deleteAccountPasswordLabel": { "description": "P-25 password label." },
+  "deleteAccountCta": "Delete my account",
+  "@deleteAccountCta": { "description": "P-25 destructive CTA." },
+  "deleteAccountFailure": "Couldn't delete. Please try again.",
+  "@deleteAccountFailure": { "description": "P-25 inline failure." },
+
+  "resetRequestTitle": "Reset password",
+  "@resetRequestTitle": { "description": "S-09a title." },
+  "resetRequestInstruction": "Enter your phone number or email. If an account exists, we'll send a 6-digit code.",
+  "@resetRequestInstruction": { "description": "S-09a instruction." },
+  "resetIdentifierLabel": "Phone or email",
+  "@resetIdentifierLabel": { "description": "S-09a identifier field label." },
+  "resetRequestCta": "Send code",
+  "@resetRequestCta": { "description": "S-09a primary button." },
+  "resetRequestNeutralConfirmation": "If an account exists for this, we've sent a code with instructions.",
+  "@resetRequestNeutralConfirmation": { "description": "S-09a neutral confirmation (same text for known + unknown)." },
+  "resetIHaveACode": "I have a code →",
+  "@resetIHaveACode": { "description": "S-09a link to S-09b." },
+  "resetNewTitle": "New password",
+  "@resetNewTitle": { "description": "S-09b title." },
+  "resetCodeLabel": "6-digit code",
+  "@resetCodeLabel": { "description": "S-09b code field label." },
+  "resetNewPasswordLabel": "New password",
+  "@resetNewPasswordLabel": { "description": "S-09b new password field label." },
+  "resetConfirmPasswordLabel": "Confirm new password",
+  "@resetConfirmPasswordLabel": { "description": "S-09b confirm password field label." },
+  "resetNewCta": "Set new password",
+  "@resetNewCta": { "description": "S-09b primary button." },
+  "resetFailure": "Couldn't reset. Check the code and try again.",
+  "@resetFailure": { "description": "S-09b inline failure." },
+  "resetSuccess": "Password changed. Please sign in again.",
+  "@resetSuccess": { "description": "S-09b success snackbar." },
+
+  "signInResetPassword": "Reset password",
+  "@signInResetPassword": { "description": "Sign-in link to S-09a." },
+
+  "notifTitle": "Notifications",
+  "@notifTitle": { "description": "P-20 AppBar title." },
+  "notifTabInbox": "Inbox",
+  "@notifTabInbox": { "description": "P-20 tab." },
+  "notifTabPrefs": "Preferences",
+  "@notifTabPrefs": { "description": "P-20 tab." },
+  "notifEmpty": "No notifications yet.",
+  "@notifEmpty": { "description": "P-20 empty state." },
+  "notifMarkAllRead": "Mark all read",
+  "@notifMarkAllRead": { "description": "P-20 AppBar action." },
+  "notifOpeningToast": "Opening…",
+  "@notifOpeningToast": { "description": "Toast when a notification has no matching route." },
+  "notifCategoryTransactional": "Bookings & payments",
+  "@notifCategoryTransactional": { "description": "Notification category label." },
+  "notifCategorySafety": "Safety",
+  "@notifCategorySafety": { "description": "Notification category label." },
+  "notifCategoryPromotional": "Promotions",
+  "@notifCategoryPromotional": { "description": "Notification category label." },
+  "notifPrefsBannerChannelOnly": "Per-category toggles are coming. For now, choose which channels we use.",
+  "@notifPrefsBannerChannelOnly": { "description": "Preferences banner explaining the channel-level shape." },
+  "notifPrefsPushEnabled": "Push notifications",
+  "@notifPrefsPushEnabled": { "description": "Preference toggle." },
+  "notifPrefsSmsEnabled": "SMS notifications",
+  "@notifPrefsSmsEnabled": { "description": "Preference toggle." },
+  "notifPrefsEmailEnabled": "Email notifications",
+  "@notifPrefsEmailEnabled": { "description": "Preference toggle." },
+  "notifPrefsPromotionalOptIn": "Promotional messages",
+  "@notifPrefsPromotionalOptIn": { "description": "Preference toggle." },
+  "notifPrefsSaveFailed": "Couldn't save. Reverted.",
+  "@notifPrefsSaveFailed": { "description": "Toast when the toggle revert fires." },
+  "notifTimeJustNow": "Just now",
+  "@notifTimeJustNow": { "description": "Relative time: < 1 minute." },
+  "notifTimeMinutes": "{minutes}m ago",
+  "@notifTimeMinutes": {
+    "description": "Relative time: minutes.",
+    "placeholders": { "minutes": { "type": "int", "example": "2" } }
+  },
+  "notifTimeHours": "{hours}h ago",
+  "@notifTimeHours": {
+    "description": "Relative time: hours.",
+    "placeholders": { "hours": { "type": "int", "example": "3" } }
+  },
+  "notifTimeYesterday": "Yesterday",
+  "@notifTimeYesterday": { "description": "Relative time: yesterday." },
+
+  "favouritesTitle": "Favourites",
+  "@favouritesTitle": { "description": "P-26 AppBar title." },
+  "favouritesEmpty": "Save routes you take often. Add one from Search.",
+  "@favouritesEmpty": { "description": "P-26 empty state." },
+  "favouritesHowToAdd": "To add: open Search → pick a route → tap the heart.",
+  "@favouritesHowToAdd": { "description": "P-26 helper line when empty." },
+  "favouriteRow": "{origin} → {destination}",
+  "@favouriteRow": {
+    "description": "Each favourite-route row's main text.",
+    "placeholders": {
+      "origin": { "type": "String", "example": "Madina" },
+      "destination": { "type": "String", "example": "Circle" }
+    }
+  },
+  "favouriteDelete": "Delete",
+  "@favouriteDelete": { "description": "P-26 delete action." },
+  "favouriteDeleteConfirmTitle": "Remove this favourite?",
+  "@favouriteDeleteConfirmTitle": { "description": "P-26 confirm sheet." },
+  "favouriteDeleteConfirmBody": "You can add it again from Search.",
+  "@favouriteDeleteConfirmBody": { "description": "P-26 confirm sheet body." },
+  "favouriteDeleteFailed": "Couldn't remove.",
+  "@favouriteDeleteFailed": { "description": "P-26 failure." },
+
+  "homeBellSemantics": "Notifications, {unread} unread",
+  "@homeBellSemantics": {
+    "description": "Semantics label on the Home bell button.",
+    "placeholders": { "unread": { "type": "int", "example": "3" } }
+  },
+
+  "rateBannerTitleWithDriver": "Rate your trip with {driver}",
+  "@rateBannerTitleWithDriver": {
+    "description": "Trips tab banner for an unrated completed booking.",
+    "placeholders": { "driver": { "type": "String", "example": "Kofi" } }
+  },
+  "rateBannerDismiss": "Dismiss",
+  "@rateBannerDismiss": { "description": "Trips banner dismiss button semantics." },
+
+  "searchFavouriteChipSemantics": "Favourite, {label}",
+  "@searchFavouriteChipSemantics": {
+    "description": "Semantics for a favourite chip on Search.",
+    "placeholders": { "label": { "type": "String", "example": "Madina to Circle" } }
   }
 }

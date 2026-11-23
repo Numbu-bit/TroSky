@@ -1,0 +1,53 @@
+/// Compile-time flag for the whole Account group (P-21/P-22/P-25 and
+/// S-09). Staging + demo true (`env/staging.json`); prod false until
+/// Maher-007 exercises change-password + delete on a throwaway account.
+const bool accountEnabled = bool.fromEnvironment('ACCOUNT_ENABLED');
+
+/// P-20 Notifications (Inbox + Preferences tabs + Home bell badge).
+const bool notificationsEnabled = bool.fromEnvironment('NOTIFICATIONS_ENABLED');
+
+/// P-26 Favourites (list + delete; add lives in Search).
+const bool favouritesEnabled = bool.fromEnvironment('FAVOURITES_ENABLED');
+
+/// Which section the user tapped on P-21. Used in the
+/// `profile_section_tapped` analytics event.
+enum ProfileSection {
+  personalInfo,
+  changePassword,
+  changeEmail,
+  notifications,
+  favourites,
+  language,
+  paymentMethods,
+  transactions,
+  helpCentre,
+  reportProblem,
+  about,
+}
+
+String profileSectionName(ProfileSection s) => switch (s) {
+  ProfileSection.personalInfo => 'personal_info',
+  ProfileSection.changePassword => 'change_password',
+  ProfileSection.changeEmail => 'change_email',
+  ProfileSection.notifications => 'notifications',
+  ProfileSection.favourites => 'favourites',
+  ProfileSection.language => 'language',
+  ProfileSection.paymentMethods => 'payment_methods',
+  ProfileSection.transactions => 'transactions',
+  ProfileSection.helpCentre => 'help_centre',
+  ProfileSection.reportProblem => 'report_problem',
+  ProfileSection.about => 'about',
+};
+
+/// Where the user came from on S-09.
+enum ResetPasswordEntry { signIn, deepLink }
+
+/// Opens S-09b. [target] is the phone/email the code was sent to.
+class ResetPasswordArgs {
+  const ResetPasswordArgs({required this.target, this.code});
+  final String target;
+  final String? code;
+}
+
+// Help centre URL moved to `Env.helpCentreUrl` in step 21/A. Read it
+// with `ref.read(envProvider).helpCentreUrl` at the call site.

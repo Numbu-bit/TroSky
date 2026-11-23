@@ -9,9 +9,11 @@ from typing import Literal
 
 from pydantic import Field
 
+from app.models.drivers import VerificationStatus
 from app.models.trips import AssignmentResponse, TripStatus
 from app.models.vehicles import SeatType, SeatZone, VehicleType
 from app.schemas.common import ApiModel, RequestModel
+from app.schemas.route import StopResponse
 
 
 class TripCreateRequest(RequestModel):
@@ -121,6 +123,25 @@ class TripDriverResponse(ApiModel):
     avatar_url: str | None
     average_rating: Decimal | None = Field(default=None, description="1-5, null until rated.")
     rating_count: int
+    # Access-gated: non-null only when the caller has a confirmed/completed
+    # booking on this trip (see ``BookingRepository.user_has_boarding_booking``
+    # and the trip-detail endpoint). OpenAPI example stays ``null`` so the
+    # schema docs don't leak a shape that suggests broad exposure.
+    phone_number: str | None = Field(
+        default=None,
+        description=(
+            "Driver's E.164 phone number. Non-null only for callers with a "
+            "confirmed/completed booking on this trip; null otherwise."
+        ),
+        examples=[None],
+    )
+    verification_status: VerificationStatus = Field(
+        default=VerificationStatus.UNVERIFIED,
+        description=(
+            "Passenger-facing driver verification. Simple four-state enum, "
+            "independent of the admin-only approval lifecycle."
+        ),
+    )
 
 
 class TripDetailResponse(TripResponse):
@@ -137,6 +158,13 @@ class TripDetailResponse(TripResponse):
     riders_count: int = Field(..., description="Seats taken (paid or awaiting payment).")
     seats_total: int
     available_seats: int
+    stops: list[StopResponse] = Field(
+        default_factory=list,
+        description=(
+            "The route's ordered stops, origin first, destination last. "
+            "Inlined so clients don't need a second /routes/{id} fetch."
+        ),
+    )
 
 
 class TripShareLinkResponse(ApiModel):

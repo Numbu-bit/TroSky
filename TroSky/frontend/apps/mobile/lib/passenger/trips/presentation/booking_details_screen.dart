@@ -16,7 +16,9 @@ import '../../search/presentation/trip_view.dart';
 import '../../seats/application/seat_providers.dart';
 import '../application/trips_providers.dart';
 import '../domain/booking_view.dart';
-import 'cancel_booking_sheet.dart';
+import '../../shared/cancel_booking_sheet.dart';
+import '../domain/ticket_args.dart';
+import '../domain/trip_details_args.dart';
 
 /// Booking details (P-16): the trip, vehicle and driver, seats and fare,
 /// with the status chip in the header and the actions its status allows.
@@ -65,6 +67,15 @@ class _BookingDetailsScreenState extends ConsumerState<BookingDetailsScreen> {
       extra: PaymentArgs(booking: booking, restored: true),
     );
     if (mounted) refreshBookings(ref, booking.id);
+  }
+
+  /// Ticket (P-10): the boarding pass, one QR per booked seat.
+  void _showTicket(BookingResponse booking) {
+    context.pushNamed(
+      AppRoute.ticket.name,
+      pathParameters: {'bookingId': booking.id},
+      extra: TicketArgs(booking: booking),
+    );
   }
 
   Future<void> _cancel(BookingDetails details) async {
@@ -223,6 +234,21 @@ class _BookingDetailsScreenState extends ConsumerState<BookingDetailsScreen> {
                 ? null
                 : l10n.bookingArrival(clockTime(arrives)),
           ),
+          if (cancellationLine(l10n, booking) case final line?) ...[
+            const SizedBox(height: TroskySpacing.s8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: TroskySpacing.s4),
+              child: Semantics(
+                liveRegion: true,
+                child: Text(
+                  line,
+                  style: TroskyTypography.body13Medium.copyWith(
+                    color: TroskyColors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: TroskySpacing.s14),
           _VehicleCard(
             booking: booking,
@@ -235,8 +261,26 @@ class _BookingDetailsScreenState extends ConsumerState<BookingDetailsScreen> {
             const SizedBox(height: TroskySpacing.s14),
             TroskyRefundNote(text: refund),
           ],
+          if (tripDetailsEnabled) ...[
+            const SizedBox(height: TroskySpacing.s12),
+            TroskyTextLink(
+              prompt: '',
+              action: l10n.bookingViewTripDetails,
+              onPressed: () => _openTripDetails(booking),
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  /// Opens P-04 (Trip details) with the booking we already have. Gated
+  /// by `TRIP_DETAILS_ENABLED`.
+  void _openTripDetails(BookingResponse booking) {
+    context.pushNamed(
+      AppRoute.tripDetails.name,
+      pathParameters: {'bookingId': booking.id},
+      extra: TripDetailsArgs(booking: booking, source: TripDetailsSource.trips),
     );
   }
 
@@ -247,10 +291,13 @@ class _BookingDetailsScreenState extends ConsumerState<BookingDetailsScreen> {
     BookingChip chip,
   ) {
     final booking = shown.booking;
+    final showTicket = ticketQrEnabled && chip.canShowTicket;
     final main = chip.canPay
         ? l10n.bookingPayNow
         : chip.canViewStatus
         ? l10n.bookingViewStatus
+        : showTicket
+        ? l10n.bookingShowTicket
         : null;
     if (main == null && !chip.canCancel) return const SizedBox.shrink();
     return DecoratedBox(
@@ -274,7 +321,10 @@ class _BookingDetailsScreenState extends ConsumerState<BookingDetailsScreen> {
                 TroskyButton(
                   label: main,
                   variant: TroskyButtonVariant.primary,
-                  onPressed: () => _payment(booking),
+                  onPressed: () =>
+                      showTicket && !chip.canPay && !chip.canViewStatus
+                      ? _showTicket(booking)
+                      : _payment(booking),
                 ),
               if (chip.canCancel)
                 TroskyTextLink(

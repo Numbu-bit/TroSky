@@ -746,6 +746,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get resultsTryAnotherTime => 'Try another time';
 
   @override
+  String get resultsNoMoreToday => 'No more trips today';
+
+  @override
+  String get resultsNoMoreTodaySubline =>
+      'Showing tomorrow\'s first trips instead';
+
+  @override
+  String resultsTomorrowChip(String date) {
+    return 'Tomorrow · $date';
+  }
+
+  @override
+  String resultsTomorrowSemantics(String date) {
+    return 'Tomorrow\'s trips, $date';
+  }
+
+  @override
   String get resultsNoMinibus => 'No minibuses among these trips.';
 
   @override
@@ -1214,7 +1231,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cancelReasonOther => 'Other';
 
   @override
-  String get cancelReasonHint => 'Tell us more';
+  String get bookingCancelledByYou => 'Cancelled by you';
+
+  @override
+  String get bookingCancelledByTroSky => 'Cancelled by TroSky';
+
+  @override
+  String bookingCancelledLine(String by, String reason) {
+    return '$by · $reason';
+  }
+
+  @override
+  String get bookingExpiredLine => 'Expired · Not paid in time';
 
   @override
   String cancelRefundTitle(String amount) {
@@ -1429,4 +1457,938 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get payFailedMomoFunds => 'Your MTN MoMo balance was too low.';
+
+  @override
+  String get testerMenuTitle => 'Tester menu';
+
+  @override
+  String get testerMenuTriggerNote => 'Triggered from Home · tap greeting 7×';
+
+  @override
+  String get testerMenuBuildInfo => 'Build info';
+
+  @override
+  String get testerMenuCommit => 'Commit';
+
+  @override
+  String get testerMenuBuilt => 'Built';
+
+  @override
+  String get testerMenuApiBase => 'API';
+
+  @override
+  String get testerMenuMode => 'Mode';
+
+  @override
+  String get testerMenuAppVersion => 'App version';
+
+  @override
+  String get testerMenuModeMock => 'mock';
+
+  @override
+  String get testerMenuModeLive => 'staging';
+
+  @override
+  String get testerMenuNotSet => 'unset';
+
+  @override
+  String get testerMenuWakeServer => 'Wake server';
+
+  @override
+  String get testerMenuWakeOk => 'Server is awake';
+
+  @override
+  String get testerMenuWakeFail => 'Server didn\'t answer';
+
+  @override
+  String get testerMenuWakeMockMode =>
+      'This is a mock build; no server to wake';
+
+  @override
+  String get testerMenuTopUp => 'Top up my wallet ₵100';
+
+  @override
+  String testerMenuTopUpOk(String balance) {
+    return 'Wallet topped up. New balance: ₵$balance';
+  }
+
+  @override
+  String get testerMenuTopUpMissing =>
+      'Wallet top-up not supported by this backend (PR #53 not deployed).';
+
+  @override
+  String testerMenuTopUpError(String message) {
+    return 'Top-up failed: $message';
+  }
+
+  @override
+  String get testerMenuTopUpSignIn => 'Sign in first to top up your wallet';
+
+  @override
+  String get testerMenuShowOnboarding => 'Show onboarding again';
+
+  @override
+  String get testerMenuSignOut => 'Sign out & clear data';
+
+  @override
+  String get ticketBoardingPass => 'BOARDING PASS';
+
+  @override
+  String ticketRouteHeadline(String from, String to) {
+    return '$from → $to';
+  }
+
+  @override
+  String get ticketScanSubline => 'Scan this code when boarding';
+
+  @override
+  String get ticketPillNotYetValid => 'Not yet valid';
+
+  @override
+  String get ticketPillReadyToBoard => 'Ready to Board';
+
+  @override
+  String ticketPillUsed(String time) {
+    return 'Used · $time';
+  }
+
+  @override
+  String get ticketPillExpired => 'Expired';
+
+  @override
+  String get ticketPillNotValid => 'Not valid';
+
+  @override
+  String get ticketSeat => 'Seat';
+
+  @override
+  String get ticketDeparts => 'Departs';
+
+  @override
+  String get ticketFare => 'Fare';
+
+  @override
+  String get ticketPaid => 'PAID';
+
+  @override
+  String get ticketVerifiedGhanaCard => 'Verified · Ghana Card';
+
+  @override
+  String get ticketCantScan => 'Can\'t scan? Show code';
+
+  @override
+  String ticketCountOf(int current, int total) {
+    return '$current / $total';
+  }
+
+  @override
+  String ticketSemanticLabel(String route, String time, String seat) {
+    return 'Boarding QR for $route at $time, seat $seat';
+  }
+
+  @override
+  String ticketPageDotsLabel(int current, int total) {
+    return 'Ticket $current of $total';
+  }
+
+  @override
+  String get ticketRetry => 'Retry';
+
+  @override
+  String get ticketSave => 'Save to Photos';
+
+  @override
+  String get ticketShare => 'Share';
+
+  @override
+  String get ticketOfflineTitle => 'Can\'t load ticket';
+
+  @override
+  String get ticketOfflineSubline => 'Reconnect to sync';
+
+  @override
+  String get ticketOfflineBanner => 'Showing last synced ticket';
+
+  @override
+  String get ticketError => 'Can\'t load your ticket. Pull down to retry.';
+
+  @override
+  String get ticketEmpty =>
+      'No ticket yet. It appears after the booking is confirmed.';
+
+  @override
+  String get bookingShowTicket => 'Show ticket';
+
+  @override
+  String get bookingViewTripDetails => 'View trip details';
+
+  @override
+  String get tripDetailsTitle => 'Trip details';
+
+  @override
+  String get tripDetailsStatusUpcoming => 'Upcoming';
+
+  @override
+  String get tripDetailsStatusOnTheWay => 'On the way';
+
+  @override
+  String get tripDetailsStatusArrived => 'Arrived';
+
+  @override
+  String get tripDetailsStatusCancelled => 'Cancelled';
+
+  @override
+  String get tripDetailsSchedule => 'Schedule';
+
+  @override
+  String get tripDetailsStops => 'Stops';
+
+  @override
+  String get tripDetailsVehicle => 'Vehicle';
+
+  @override
+  String get tripDetailsDriver => 'Driver';
+
+  @override
+  String get tripDetailsYourSeats => 'Your seats';
+
+  @override
+  String get tripDetailsDeparts => 'Departs';
+
+  @override
+  String get tripDetailsArrives => 'Arrives';
+
+  @override
+  String get tripDetailsDuration => 'Duration';
+
+  @override
+  String get tripDetailsPlate => 'Plate';
+
+  @override
+  String tripDetailsDriverRating(String rating, int count) {
+    return '$rating ($count)';
+  }
+
+  @override
+  String get tripDetailsDriverUnrated => 'Not rated yet';
+
+  @override
+  String get tripDetailsDriverContactUnavailable =>
+      'Driver contact unavailable';
+
+  @override
+  String get tripDetailsCallDriver => 'Call driver';
+
+  @override
+  String get tripDetailsMessageDriver => 'Message driver';
+
+  @override
+  String get tripDetailsTrackTrip => 'Track trip';
+
+  @override
+  String get tripDetailsTrackComingSoon =>
+      'Live tracking coming in the next release';
+
+  @override
+  String get tripDetailsCancelBooking => 'Cancel booking';
+
+  @override
+  String get tripDetailsNotFound => 'This booking wasn\'t found.';
+
+  @override
+  String get tripDetailsOffline => 'Can\'t load trip details — reconnect';
+
+  @override
+  String get tripDetailsServerError =>
+      'Something went wrong. Please try again.';
+
+  @override
+  String tripDetailsSeatRow(String seat, String name) {
+    return 'Seat $seat · $name';
+  }
+
+  @override
+  String get tripDetailsStopBoardingTag => 'Boarding here';
+
+  @override
+  String get tripDetailsStopAlightingTag => 'Getting off';
+
+  @override
+  String get tripDetailsDriverVerified => 'Verified';
+
+  @override
+  String get tripDetailsDriverVerificationPending => 'Verification pending';
+
+  @override
+  String get tripDetailsDriverVerifiedSemantics =>
+      'Driver verification status: Verified';
+
+  @override
+  String get tripDetailsDriverVerificationPendingSemantics =>
+      'Driver verification pending';
+
+  @override
+  String tripDetailsStopSemantics(
+    int current,
+    int total,
+    String name,
+    String kind,
+  ) {
+    return 'Stop $current of $total, $name, $kind';
+  }
+
+  @override
+  String get tripDetailsStopBoardingSemantic => 'boarding';
+
+  @override
+  String get tripDetailsStopRegularSemantic => 'regular';
+
+  @override
+  String get trackTripStatusBoardingAtOrigin => 'Boarding at origin';
+
+  @override
+  String trackTripStatusArrivingIn(int minutes) {
+    return 'Arriving in ~$minutes min';
+  }
+
+  @override
+  String get trackTripStatusAtYourStop => 'At your stop';
+
+  @override
+  String get trackTripStatusCompleted => 'Trip completed';
+
+  @override
+  String trackTripEta(String time) {
+    return 'ETA $time';
+  }
+
+  @override
+  String get trackTripDestination => 'DESTINATION';
+
+  @override
+  String get trackTripLiveFare => 'Live fare';
+
+  @override
+  String get trackTripRiders => 'Riders';
+
+  @override
+  String get trackTripSeat => 'Seat';
+
+  @override
+  String get trackTripShare => 'Share Trip';
+
+  @override
+  String get trackTripSos => 'SOS';
+
+  @override
+  String get trackTripRecenter => 'Recentre map';
+
+  @override
+  String trackTripRidersOf(int current, int total) {
+    return '$current / $total';
+  }
+
+  @override
+  String trackTripSeatValue(String seat) {
+    return '#$seat';
+  }
+
+  @override
+  String trackTripShareText(
+    String route,
+    String time,
+    String seat,
+    String plate,
+  ) {
+    return 'Tracking my trotro: $route · ETA $time · Seat $seat · $plate';
+  }
+
+  @override
+  String get trackTripFallbackBanner => 'Realtime offline, polling every 5 s';
+
+  @override
+  String get trackTripSosTitle => 'Emergency';
+
+  @override
+  String get trackTripSosBody =>
+      'Full emergency features land in Step 19. If you are in danger, call 191 (Ghana Police).';
+
+  @override
+  String get trackTripSosCall => 'Call 191';
+
+  @override
+  String trackTripSemanticsMap(int minutes) {
+    return 'Live tracking map, bus is $minutes minutes away';
+  }
+
+  @override
+  String get walletTitle => 'Wallet';
+
+  @override
+  String get walletPaymentMethodsTitle => 'Payment Methods';
+
+  @override
+  String get walletRecentTransactions => 'Recent Transactions';
+
+  @override
+  String get walletSeeAll => 'See all';
+
+  @override
+  String get walletSeeLess => 'See less';
+
+  @override
+  String get walletAddMethod => '+ Add method';
+
+  @override
+  String get walletAddMethodTitle => 'Add a payment method';
+
+  @override
+  String get walletDefault => 'Default';
+
+  @override
+  String get walletSetAsDefault => 'Set as default';
+
+  @override
+  String get walletRemoveMethod => 'Remove';
+
+  @override
+  String get walletComingSoon => 'Coming soon';
+
+  @override
+  String get walletBrandMtnMomo => 'MTN MoMo';
+
+  @override
+  String get walletBrandTelecelCash => 'Telecel Cash';
+
+  @override
+  String get walletBrandAirteltigo => 'AirtelTigo Money';
+
+  @override
+  String get walletBrandVisa => 'Visa Debit';
+
+  @override
+  String get walletBrandWallet => 'Wallet';
+
+  @override
+  String get walletNoPaymentMethods => 'You have no saved payment methods.';
+
+  @override
+  String get walletTransactionsEmpty =>
+      'No transactions yet. Top up to get started.';
+
+  @override
+  String get walletFilterAll => 'All';
+
+  @override
+  String get walletFilterTopUps => 'Top-ups';
+
+  @override
+  String get walletFilterTrips => 'Trips';
+
+  @override
+  String get walletFilterRefunds => 'Refunds';
+
+  @override
+  String get walletNoMatches => 'No transactions match this filter.';
+
+  @override
+  String get walletErrorLoad => 'Couldn\'t load.';
+
+  @override
+  String get walletRetry => 'Retry';
+
+  @override
+  String walletEndingIn(String last4) {
+    return 'ending in $last4';
+  }
+
+  @override
+  String get walletMomoFormTitle => 'Enter your MoMo number';
+
+  @override
+  String get walletMomoFormPhoneLabel => 'Phone number';
+
+  @override
+  String get walletKindTopUp => 'Top up';
+
+  @override
+  String get walletKindTrip => 'Trip';
+
+  @override
+  String get walletKindRefund => 'Refund';
+
+  @override
+  String get walletKindEarning => 'Earning';
+
+  @override
+  String get walletKindWithdrawal => 'Withdrawal';
+
+  @override
+  String get walletKindAdjustment => 'Adjustment';
+
+  @override
+  String get walletTxnReference => 'Reference';
+
+  @override
+  String get walletViewTrip => 'View trip';
+
+  @override
+  String get walletTopUpTitle => 'Top up';
+
+  @override
+  String get walletTopUpAmount => 'Amount';
+
+  @override
+  String get walletTopUpCustomAmount => 'Custom amount';
+
+  @override
+  String get walletTopUpAmountError => 'Enter an amount between ₵1 and ₵1,000.';
+
+  @override
+  String get walletTopUpAmountFallback => '₵0.00';
+
+  @override
+  String walletTopUpCta(String amount) {
+    return 'Top up $amount';
+  }
+
+  @override
+  String get walletTopUpWaiting => 'Waiting for MoMo confirmation…';
+
+  @override
+  String walletTopUpSuccess(String amount) {
+    return 'Top up of $amount succeeded.';
+  }
+
+  @override
+  String get walletTopUpFailure => 'Top up failed. Try again.';
+
+  @override
+  String get walletTopUpRetry => 'Retry';
+
+  @override
+  String get sosTitle => 'Emergency';
+
+  @override
+  String get sosHoldSemantics => 'Hold to send SOS, 3 second hold';
+
+  @override
+  String get sosHoldInstruction => 'Hold for 3 seconds';
+
+  @override
+  String get sosSending => 'Sending alert…';
+
+  @override
+  String get sosSendFailed => 'Couldn\'t send the alert.';
+
+  @override
+  String get sosRetry => 'Retry';
+
+  @override
+  String get sosReasonLabel => 'What\'s happening?';
+
+  @override
+  String get sosReasonDriverDanger => 'Driver danger';
+
+  @override
+  String get sosReasonAccident => 'Accident';
+
+  @override
+  String get sosReasonMedical => 'Medical';
+
+  @override
+  String get sosReasonOther => 'Other';
+
+  @override
+  String get sosCall191 => 'Call 191';
+
+  @override
+  String get sosConfirmationTitle => 'Help is on the way';
+
+  @override
+  String get sosConfirmationBody =>
+      'Your emergency contacts have been notified.';
+
+  @override
+  String get sosLocationNotShared => 'Location not shared';
+
+  @override
+  String get sosMarkSafe => 'I\'m safe now';
+
+  @override
+  String get reportTitle => 'Report an issue';
+
+  @override
+  String reportBookingContext(String reference) {
+    return 'About booking $reference';
+  }
+
+  @override
+  String get reportCategoryLabel => 'What\'s the issue?';
+
+  @override
+  String get reportCategoryAccident => 'Accident';
+
+  @override
+  String get reportCategoryBreakdown => 'Breakdown';
+
+  @override
+  String get reportCategoryDelay => 'Delay';
+
+  @override
+  String get reportCategorySafety => 'Safety concern';
+
+  @override
+  String get reportCategoryPassenger => 'Passenger issue';
+
+  @override
+  String get reportCategoryRoadHazard => 'Road hazard';
+
+  @override
+  String get reportCategoryOther => 'Other';
+
+  @override
+  String get reportDescriptionLabel => 'Describe what happened';
+
+  @override
+  String get reportDescriptionHint =>
+      'Tell us what happened (at least 10 characters).';
+
+  @override
+  String get reportSubmit => 'Submit report';
+
+  @override
+  String get reportSubmitFailure => 'Couldn\'t submit. Please try again.';
+
+  @override
+  String get reportSuccess =>
+      'Report submitted. We\'ll review within 48 hours.';
+
+  @override
+  String get rateTitle => 'Rate your trip';
+
+  @override
+  String get rateDriverFallback => 'Your driver';
+
+  @override
+  String get rateRouteFallback => 'Your trip';
+
+  @override
+  String rateStarsSemantic(int stars) {
+    return '$stars of 5 stars';
+  }
+
+  @override
+  String rateStarTooltip(int star) {
+    return '$star stars';
+  }
+
+  @override
+  String get rateCommentHint => 'Add a comment (optional)';
+
+  @override
+  String get rateSubmit => 'Submit rating';
+
+  @override
+  String get rateSubmitFailure => 'Couldn\'t submit. Please try again.';
+
+  @override
+  String get rateThanks => 'Thanks for rating your trip.';
+
+  @override
+  String get rateBannerTitle => 'Rate your last trip';
+
+  @override
+  String get rateBannerAction => 'Rate';
+
+  @override
+  String get testerMenuEmergency => 'Open P-12 Emergency';
+
+  @override
+  String get profileAnonymousName => 'Passenger';
+
+  @override
+  String get profileVerified => 'Verified';
+
+  @override
+  String get profileUnverified => 'Unverified';
+
+  @override
+  String get profileSectionAccount => 'ACCOUNT';
+
+  @override
+  String get profileSectionPreferences => 'PREFERENCES';
+
+  @override
+  String get profileSectionPayments => 'PAYMENTS';
+
+  @override
+  String get profileSectionSupport => 'SUPPORT';
+
+  @override
+  String get profileRowPersonalInfo => 'Personal information';
+
+  @override
+  String get profileRowChangePassword => 'Change password';
+
+  @override
+  String get profileRowChangeEmail => 'Change email';
+
+  @override
+  String get profileRowNotifications => 'Notifications';
+
+  @override
+  String get profileRowFavourites => 'Favourite routes';
+
+  @override
+  String get profileRowLanguage => 'Language';
+
+  @override
+  String get profileRowPaymentMethods => 'Payment methods';
+
+  @override
+  String get profileRowTransactions => 'Transactions';
+
+  @override
+  String get profileRowHelpCentre => 'Help centre';
+
+  @override
+  String get profileRowReportProblem => 'Report a problem';
+
+  @override
+  String get profileRowAbout => 'About TroSky';
+
+  @override
+  String get profileComingSoon => 'Coming soon';
+
+  @override
+  String get profileSignOut => 'Sign out';
+
+  @override
+  String get profileSignOutCancel => 'Cancel';
+
+  @override
+  String get profileSignOutConfirmTitle => 'Sign out of TroSky?';
+
+  @override
+  String get profileSignOutConfirmBody =>
+      'You can sign back in any time with your phone or email.';
+
+  @override
+  String get profileDeleteAccount => 'Delete account';
+
+  @override
+  String get piiTitle => 'Personal information';
+
+  @override
+  String get piiNameLabel => 'Full name';
+
+  @override
+  String get piiEmailLabel => 'Email';
+
+  @override
+  String get piiPhoneLabel => 'Phone';
+
+  @override
+  String get piiAvatarLabel => 'Avatar';
+
+  @override
+  String get piiNotSet => 'Not set';
+
+  @override
+  String get piiChangeViaSupport => 'Contact support to change this.';
+
+  @override
+  String get piiSave => 'Save changes';
+
+  @override
+  String get piiEditSaved => 'Saved.';
+
+  @override
+  String get piiEditFailure => 'Couldn\'t save. Please try again.';
+
+  @override
+  String get deleteAccountTitle => 'Delete account';
+
+  @override
+  String get deleteAccountWarning => 'Deleting your account is permanent.';
+
+  @override
+  String get deleteAccountBody =>
+      'This signs you out everywhere and removes your profile from TroSky. Data-retention rules may keep anonymised trip records for accounting.';
+
+  @override
+  String get deleteAccountScopeTitle => 'What gets deleted:';
+
+  @override
+  String get deleteAccountScopeBullets =>
+      '• Your profile, name and contact details.\n• Saved payment methods.\n• Favourite routes and preferences.\n• Local tickets and cached data.';
+
+  @override
+  String get deleteAccountConfirmInstruction =>
+      'To confirm, type DELETE below and enter your password.';
+
+  @override
+  String get deleteAccountConfirmLabel => 'Type DELETE';
+
+  @override
+  String get deleteAccountPasswordLabel => 'Current password';
+
+  @override
+  String get deleteAccountCta => 'Delete my account';
+
+  @override
+  String get deleteAccountFailure => 'Couldn\'t delete. Please try again.';
+
+  @override
+  String get resetRequestTitle => 'Reset password';
+
+  @override
+  String get resetRequestInstruction =>
+      'Enter your phone number or email. If an account exists, we\'ll send a 6-digit code.';
+
+  @override
+  String get resetIdentifierLabel => 'Phone or email';
+
+  @override
+  String get resetRequestCta => 'Send code';
+
+  @override
+  String get resetRequestNeutralConfirmation =>
+      'If an account exists for this, we\'ve sent a code with instructions.';
+
+  @override
+  String get resetIHaveACode => 'I have a code →';
+
+  @override
+  String get resetNewTitle => 'New password';
+
+  @override
+  String get resetCodeLabel => '6-digit code';
+
+  @override
+  String get resetNewPasswordLabel => 'New password';
+
+  @override
+  String get resetConfirmPasswordLabel => 'Confirm new password';
+
+  @override
+  String get resetNewCta => 'Set new password';
+
+  @override
+  String get resetFailure => 'Couldn\'t reset. Check the code and try again.';
+
+  @override
+  String get resetSuccess => 'Password changed. Please sign in again.';
+
+  @override
+  String get signInResetPassword => 'Reset password';
+
+  @override
+  String get notifTitle => 'Notifications';
+
+  @override
+  String get notifTabInbox => 'Inbox';
+
+  @override
+  String get notifTabPrefs => 'Preferences';
+
+  @override
+  String get notifEmpty => 'No notifications yet.';
+
+  @override
+  String get notifMarkAllRead => 'Mark all read';
+
+  @override
+  String get notifOpeningToast => 'Opening…';
+
+  @override
+  String get notifCategoryTransactional => 'Bookings & payments';
+
+  @override
+  String get notifCategorySafety => 'Safety';
+
+  @override
+  String get notifCategoryPromotional => 'Promotions';
+
+  @override
+  String get notifPrefsBannerChannelOnly =>
+      'Per-category toggles are coming. For now, choose which channels we use.';
+
+  @override
+  String get notifPrefsPushEnabled => 'Push notifications';
+
+  @override
+  String get notifPrefsSmsEnabled => 'SMS notifications';
+
+  @override
+  String get notifPrefsEmailEnabled => 'Email notifications';
+
+  @override
+  String get notifPrefsPromotionalOptIn => 'Promotional messages';
+
+  @override
+  String get notifPrefsSaveFailed => 'Couldn\'t save. Reverted.';
+
+  @override
+  String get notifTimeJustNow => 'Just now';
+
+  @override
+  String notifTimeMinutes(int minutes) {
+    return '${minutes}m ago';
+  }
+
+  @override
+  String notifTimeHours(int hours) {
+    return '${hours}h ago';
+  }
+
+  @override
+  String get notifTimeYesterday => 'Yesterday';
+
+  @override
+  String get favouritesTitle => 'Favourites';
+
+  @override
+  String get favouritesEmpty =>
+      'Save routes you take often. Add one from Search.';
+
+  @override
+  String get favouritesHowToAdd =>
+      'To add: open Search → pick a route → tap the heart.';
+
+  @override
+  String favouriteRow(String origin, String destination) {
+    return '$origin → $destination';
+  }
+
+  @override
+  String get favouriteDelete => 'Delete';
+
+  @override
+  String get favouriteDeleteConfirmTitle => 'Remove this favourite?';
+
+  @override
+  String get favouriteDeleteConfirmBody => 'You can add it again from Search.';
+
+  @override
+  String get favouriteDeleteFailed => 'Couldn\'t remove.';
+
+  @override
+  String homeBellSemantics(int unread) {
+    return 'Notifications, $unread unread';
+  }
+
+  @override
+  String rateBannerTitleWithDriver(String driver) {
+    return 'Rate your trip with $driver';
+  }
+
+  @override
+  String get rateBannerDismiss => 'Dismiss';
+
+  @override
+  String searchFavouriteChipSemantics(String label) {
+    return 'Favourite, $label';
+  }
 }

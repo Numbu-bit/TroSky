@@ -8,6 +8,7 @@ import 'package:trosky_auth/trosky_auth.dart';
 import 'package:trosky_core/trosky_core.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
+import '../../helpers/fakes.dart';
 import '../home/home_helpers.dart';
 import 'search_helpers.dart';
 
@@ -405,13 +406,65 @@ void main() {
       expect(routes.queries.map((q) => q.offset), [0, 0]);
     });
 
-    testWidgets('empty: try another time', (tester) async {
+    testWidgets('empty on a future date: try another time (no tomorrow '
+        'fallback)', (tester) async {
       final world = morning();
       await openLiveResults(tester, world, ScriptedTrips(world.backend, []));
+      // Schedule for 3 Oct, so the search is not for today.
+      await tapPill(tester, 'Schedule');
+      await tester.tap(find.text('3'));
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      // The time picker opens next; keep the default.
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
       expect(find.text('No vehicles on this route right now'), findsOneWidget);
+      expect(find.text('No more trips today'), findsNothing);
       await tester.tap(find.text('Try another time'));
       await tester.pumpAndSettle();
       expect(find.byType(DatePickerDialog), findsOneWidget);
+    });
+
+    testWidgets('late evening with no trips left today: shows "No more trips '
+        "today\" and loads tomorrow's first trips underneath", (tester) async {
+      final world = TestWorld()..now = DateTime(2026, 10, 1, 22, 30);
+      final tomorrow = DateTime.utc(2026, 10, 2);
+      final routes = _ByDateTrips(
+        world.backend,
+        byDate: {
+          tomorrow: [
+            liveTrip(
+              id: 'tmr-1',
+              plate: 'TMR-1',
+              departs: DateTime(2026, 10, 2, 5, 15),
+            ),
+            liveTrip(
+              id: 'tmr-2',
+              plate: 'TMR-2',
+              departs: DateTime(2026, 10, 2, 5, 45),
+            ),
+          ],
+        },
+      );
+      await openLiveResults(tester, world, routes);
+
+      expect(find.text('No more trips today'), findsOneWidget);
+      expect(
+        find.text("Showing tomorrow's first trips instead"),
+        findsOneWidget,
+      );
+      expect(find.text('Tomorrow · Fri 2 Oct'), findsOneWidget);
+      expect(
+        find.bySemanticsLabel("Tomorrow's trips, Fri 2 Oct"),
+        findsOneWidget,
+      );
+      expect(find.text('Try another time'), findsNothing);
+      expect(_plates(tester), ['TMR-1', 'TMR-2']);
+      // Two searches went out: today (empty) and tomorrow.
+      expect(routes.queries.map((TripSearchQuery q) => q.travelDate).toList(), [
+        DateTime.utc(2026, 10, 1),
+        tomorrow,
+      ]);
     });
 
     testWidgets('an error, then Retry', (tester) async {
@@ -647,6 +700,15 @@ class _OfflineAuth implements AuthRepository {
       _inner.otpLogin(r);
   @override
   Future<Result<void>> logout() => _inner.logout();
+
+  @override
+  Future<Result<MessageResponse>> forgotPassword(
+    ForgotPasswordRequest request,
+  ) => _inner.forgotPassword(request);
+
+  @override
+  Future<Result<MessageResponse>> resetPassword(ResetPasswordRequest request) =>
+      _inner.resetPassword(request);
 }
 
 /// Favourites on the phone are empty (an old list); saving goes to the
@@ -667,6 +729,54 @@ class _ForgetfulFavourites implements UserRepository {
   Future<Result<FavouriteRouteResponse>> addFavouriteRoute(
     FavouriteRouteCreateRequest request,
   ) => _inner.addFavouriteRoute(request);
+
+  @override
+  Future<Result<UserResponse>> updateMe(UserProfileUpdateRequest request) =>
+      _inner.updateMe(request);
+
+  @override
+  Future<Result<MessageResponse>> deleteAccount(
+    AccountDeletionRequest request,
+  ) => _inner.deleteAccount(request);
+
+  @override
+  Future<Result<void>> deleteFavouriteRoute(String favouriteId) =>
+      _inner.deleteFavouriteRoute(favouriteId);
+
+  @override
+  Future<Result<NotificationPreferencesResponse>> notificationPreferences() =>
+      _inner.notificationPreferences();
+
+  @override
+  Future<Result<NotificationPreferencesResponse>> updateNotificationPreferences(
+    NotificationPreferencesUpdateRequest request,
+  ) => _inner.updateNotificationPreferences(request);
+}
+
+/// A search whose results depend on the query's `travelDate`. Any date
+/// not in [byDate] returns an empty page.
+class _ByDateTrips extends ScriptedTrips {
+  _ByDateTrips(MockBackend backend, {required this.byDate})
+    : super(backend, const []);
+
+  final Map<DateTime, List<TripSearchResultResponse>> byDate;
+
+  @override
+  Future<Result<Paginated<TripSearchResultResponse>>> searchTrips(
+    TripSearchQuery query,
+  ) async {
+    queries.add(query);
+    final items =
+        byDate[query.travelDate] ?? const <TripSearchResultResponse>[];
+    return Ok(
+      Paginated(
+        items: items.skip(query.offset).take(query.limit).toList(),
+        total: items.length,
+        limit: query.limit,
+        offset: query.offset,
+      ),
+    );
+  }
 }
 
 /// A search that answers only when [release]d.

@@ -88,7 +88,33 @@ async def get_current_principal(
     return principal
 
 
+async def get_optional_principal(
+    request: Request,
+    db: DbSession,
+) -> Principal | None:
+    """Like ``get_current_principal``, but returns ``None`` instead of
+    raising when no bearer token is present. For endpoints that remain
+    public but gate individual response fields on who's asking
+    (``GET /trips/{id}`` driver phone, etc.).
+
+    Reads the Authorization header manually rather than depending on
+    ``HTTPBearer`` so that FastAPI does NOT advertise the operation as
+    requiring auth in the OpenAPI spec (that would move the endpoint
+    out of the published "public" list and confuse Swagger's Authorize
+    flow)."""
+    header = request.headers.get("authorization")
+    if not header:
+        return None
+    scheme, _, token = header.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        return None
+    principal = await resolve_principal(db, token)
+    request.state.principal = principal
+    return principal
+
+
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
+OptionalPrincipal = Annotated[Principal | None, Depends(get_optional_principal)]
 
 
 def get_auth_service(

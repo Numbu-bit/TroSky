@@ -8,6 +8,7 @@ import '../dto/driver_dto.dart';
 import '../dto/paginated.dart';
 import '../dto/payment_dto.dart';
 import '../dto/route_dto.dart';
+import '../dto/ticket_dto.dart';
 import '../dto/tracking_dto.dart';
 import '../dto/user_dto.dart';
 import '../repositories/booking_repository.dart';
@@ -61,9 +62,17 @@ class MockBackend {
   /// The code every OTP has.
   static const String otpCode = '123456';
 
-  /// The password of the seeded accounts.
+  /// Synthetic fixture: the password seeded into mock accounts for dev
+  /// and demo builds. **Not** a credential for any real TroSky account
+  /// on the production backend — that would be an H6 ship-blocker.
+  /// The real backend never provisions accounts from this string; it
+  /// lives here only so the mock repositories can accept the seeded
+  /// passenger's sign-in. Reachable only through the mockBackend
+  /// provider, which throws in DEPLOY_ENV=prod (H6 belt).
   static const String seedPassword = 'TroSky2026';
 
+  /// Synthetic fixture phone numbers for the seeded passenger / driver.
+  /// Same policy as [seedPassword] — never a real phone on production.
   static const String passengerPhone = '+233241234567';
   static const String driverPhone = '+233201234567';
 
@@ -1554,6 +1563,34 @@ class MockBackend {
     );
   }
 
+  /// `POST /wallet/topups` (mock): credits the wallet at once and
+  /// returns a `successful` payment, like a wallet-to-wallet transfer.
+  /// Good enough for the tester menu to prove the balance refresh.
+  Result<PaymentResponse> createWalletTopup(
+    String? accessToken,
+    WalletTopupRequest request,
+  ) {
+    final auth = _authenticate(accessToken);
+    if (auth case Err(:final failure)) return Err(failure);
+    final userId = auth.valueOrNull!.userId;
+    final amount = double.tryParse(request.amount) ?? 0;
+    _wallets[userId] = (_wallets[userId] ?? 0) + amount;
+    final now = _now().toUtc();
+    return Ok(
+      PaymentResponse(
+        id: _uuid(),
+        bookingId: null,
+        purpose: PaymentPurpose.walletTopup,
+        channel: request.channel ?? PaymentChannel.mtnMomo,
+        amount: request.amount,
+        refundedAmount: '0.00',
+        currency: 'GHS',
+        status: PaymentStatus.successful,
+        createdAt: now,
+      ),
+    );
+  }
+
   /// `GET /users/me/payment-methods`, the default first.
   Result<List<PaymentMethodResponse>> listPaymentMethods(String? accessToken) {
     final auth = _authenticate(accessToken);
@@ -1658,7 +1695,7 @@ class MockBackend {
   Result<BookingResponse> cancelBooking(
     String? accessToken,
     String bookingId, {
-    String? reason,
+    CancelReason? reason,
   }) {
     final auth = _authenticate(accessToken);
     if (auth case Err(:final failure)) return Err(failure);
@@ -1688,6 +1725,9 @@ class MockBackend {
           ? BookingStatus.refundPending
           : BookingStatus.cancelled;
     }
+    booking.cancelReason = reason;
+    booking.cancelledBy = CancelledBy.user;
+    booking.cancelledAt = _now().toUtc();
     return Ok(booking.toResponse(_now().toUtc()));
   }
 
@@ -2513,6 +2553,58 @@ class MockBackend {
     final n = (++_counter).toRadixString(16).padLeft(12, '0');
     return '00000000-0000-4000-8000-$n';
   }
+
+  /// `GET /bookings/{id}/tickets`: one issued ticket per booked seat. The
+  /// mock issues them once a booking is confirmed or completed; otherwise
+  /// the list is empty, as the live backend does.
+  Result<List<TicketResponse>> listTicketsForBooking(
+    String? accessToken,
+    String bookingId,
+  ) {
+    final auth = _authenticate(accessToken);
+    if (auth case Err(:final failure)) return Err(failure);
+    final booking = _bookings[bookingId];
+    if (booking == null || booking.userId != auth.valueOrNull!.userId) {
+      return _error(404, 'BOOKING_NOT_FOUND', 'That booking does not exist.');
+    }
+    const issuedStatuses = {BookingStatus.confirmed, BookingStatus.completed};
+    if (!issuedStatuses.contains(booking.status)) {
+      return const Ok([]);
+    }
+    final issuedAt = booking.createdAt.toUtc();
+    final expiresAt = booking.trip.result.scheduledDepartureAt.toUtc().add(
+      const Duration(hours: 4),
+    );
+    final tickets = <TicketResponse>[];
+    for (var i = 0; i < booking.passengers.length; i++) {
+      final passenger = booking.passengers[i];
+      final reference =
+          'TRO-${booking.reference}-${(i + 1).toString().padLeft(2, '0')}';
+      final id = _uuid();
+      // Mock bearer: enough bytes to look real, never shared outside the
+      // in-memory backend.
+      final qrToken = 'mock.$id.$reference.${booking.number}';
+      tickets.add(
+        TicketResponse(
+          id: id,
+          ticketReference: reference,
+          bookingId: booking.id,
+          bookingPassengerId: passenger.id,
+          tripId: booking.trip.result.tripId,
+          status: booking.status == BookingStatus.completed
+              ? TicketStatus.validated
+              : TicketStatus.issued,
+          issuedAt: issuedAt,
+          expiresAt: expiresAt,
+          validatedAt: booking.status == BookingStatus.completed
+              ? booking.trip.result.scheduledDepartureAt.toUtc()
+              : null,
+          qrToken: qrToken,
+        ),
+      );
+    }
+    return Ok(tickets);
+  }
 }
 
 const double _metersPerDegree = 111320;
@@ -2735,6 +2827,13 @@ class _MockBooking {
   /// booking stays as it was (no passenger endpoint shows the request).
   bool cancellationRequested = false;
 
+  /// G37 (anticipated): what the passenger or TroSky picked, and when it
+  /// ended. The live backend doesn't yet send these; the mock does so
+  /// the app's display can be tested end to end.
+  CancelReason? cancelReason;
+  CancelledBy? cancelledBy;
+  DateTime? cancelledAt;
+
   /// The deadline shown at [now]: [expiresAt], or the current turn of a
   /// [rolling] one.
   DateTime deadlineAt(DateTime now) {
@@ -2778,6 +2877,9 @@ class _MockBooking {
     alightingStopName: MockBackend.stops.values
         .firstWhere((s) => s.id == destinationStopId, orElse: () => trip.alight)
         .name,
+    cancelReason: cancelReason,
+    cancelledBy: cancelledBy,
+    cancelledAt: cancelledAt,
   );
 }
 

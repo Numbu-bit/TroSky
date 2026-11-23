@@ -10,6 +10,7 @@ import 'package:trosky_ui/trosky_ui.dart';
 
 import '../../../app/app_providers.dart';
 import '../../../app/routes.dart';
+import '../../../app/telemetry.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../home/application/home_providers.dart';
 import '../application/search_providers.dart';
@@ -362,18 +363,27 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       route.originStopName,
                       route.destinationStopName,
                     ),
-                onPressed: () => _fill(
-                  StopOrigin(
-                    SearchStop(
-                      id: route.originStopId,
-                      name: route.originStopName,
+                onPressed: () {
+                  ref
+                      .read(telemetryProvider)
+                      .emit(
+                        TelemetryEvent('search_favourite_chip_tapped', const {
+                          'kind': 'route',
+                        }),
+                      );
+                  _fill(
+                    StopOrigin(
+                      SearchStop(
+                        id: route.originStopId,
+                        name: route.originStopName,
+                      ),
                     ),
-                  ),
-                  SearchStop(
-                    id: route.destinationStopId,
-                    name: route.destinationStopName,
-                  ),
-                ),
+                    SearchStop(
+                      id: route.destinationStopId,
+                      name: route.destinationStopName,
+                    ),
+                  );
+                },
               ),
           ],
         ),

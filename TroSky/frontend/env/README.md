@@ -9,6 +9,9 @@ Each app reads these compile-time defines:
 | `API_MODE` | `mock` (built-in data) or `live` (the backend) | `mock` |
 | `MAP_TILE_URL` | Map tiles, with `{z}`, `{x}` and `{y}` | OpenStreetMap's public tiles |
 | `FEATURES` | Comma-separated features to switch on, e.g. `subscriptions`. Empty switches all off | `subscriptions` in mock mode, none in live mode |
+| `TESTER_MENU` | `true` wires the hidden tester menu (7 taps on the Home greeting). Set on staging and demo only; absent on real release builds | unset |
+| `GIT_COMMIT` | Short SHA shown in the tester menu's Build info. Pass `--dart-define=GIT_COMMIT=$(git rev-parse --short HEAD)` at build time | unset |
+| `BUILD_DATE` | ISO-8601 UTC timestamp shown in the tester menu's Build info. Pass `--dart-define=BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)` at build time | unset |
 
 **OpenStreetMap's public tiles are for development only.** Their tile usage
 policy doesn't allow an app's production traffic, so staging and prod need a

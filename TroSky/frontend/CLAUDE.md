@@ -82,10 +82,10 @@ The backend is built by a different developer and changes over time. Before any 
 4. Update the inventory status and `backend-gaps.md`.
 5. Report the files changed, any deviations from the design, gaps found, and questions.
 
-## Working rules (project owner, 29 Oct 2026)
-- **Don't wait for reviewers.** Every change goes: PR (Maher-007 as reviewer, for information only) → CI
-  green → tested on the owner's phone → merged by Claude (merge commit, branch deleted). Never push
-  directly to main, and never disable branch protection.
+## Working rules (project owner, 15 Nov 2026)
+- **Mark ready and stop.** Every change goes: PR (Maher-007 as reviewer, for information only) → CI
+  green → tested on the owner's phone → mark the PR ready for review and stop. The owner reviews and
+  merges. Never push directly to main, and never disable branch protection.
 - **Tester APKs** in `Desktop\TroSky staging APK\` are always built from main. A PR's test build gets a
   `-prNN` suffix and is deleted after the test, and the owner's phone always gets the main build back.
 - **Record every phone test** with `adb shell screenrecord` into
@@ -119,3 +119,22 @@ findings.
 - Docs-only PRs still run `release-reviewer` before merging, but only
   `code-reviewer` on the diff (no `security-reviewer`) since there is no
   code to secure.
+
+## Production bar (Nov 2026)
+
+TroSky is built for millions of users. Every change meets this bar before PR goes ready:
+
+- Analytics: every user-visible action emits a named event through the existing telemetry provider. Event name + payload keys listed in the PR.
+- Accessibility: semantics labels on every interactive widget; 48dp minimum tap target; text contrast meets WCAG AA; respects MediaQuery.disableAnimations.
+- Localization: zero hardcoded user-visible strings in Dart. All copy via app_en.arb (future locales: tw, ha, fr).
+- States: every network-touching widget renders loading / empty / offline / error states explicitly. No bare spinners that can hang forever.
+- Performance: 60 fps on a Pixel 4a (low-end reference). First usable frame of any new screen under 800 ms on that device. Memory ceiling per screen documented in design-decisions.md.
+- Resilience: every network call uses retry-with-backoff and honours server rate-limit headers (429, Retry-After).
+- Observability: breadcrumbs around risky paths for crash reporting (Sentry/Crashlytics hook).
+- Rollout: anything risky ships behind a feature flag with a documented kill-switch (via Remote Config or env flag; name it in the PR).
+- Privacy: no PII (phone numbers, names, location coordinates) in logs, telemetry, or crash breadcrumbs. Hash or drop before emit.
+
+## Env parsing (Nov 2026)
+
+Env parsers fail loud on missing or unrecognised required flags. Never
+silently default. See step21/A.

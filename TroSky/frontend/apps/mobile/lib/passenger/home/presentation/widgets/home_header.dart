@@ -5,11 +5,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:trosky_api/trosky_api.dart';
 import 'package:trosky_auth/trosky_auth.dart';
+import 'package:trosky_core/trosky_core.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
 import '../../../../app/app_providers.dart';
 import '../../../../app/routes.dart';
+import '../../../../app/telemetry.dart';
+import '../../../../app/tester/tester_menu.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../notifications/application/notifications_providers.dart';
 import '../../application/home_providers.dart';
 import '../greeting.dart';
 
@@ -72,12 +76,24 @@ class _HomeHeaderState extends ConsumerState<HomeHeader> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        greetingFor(l10n, now),
-                        style: TroskyTypography.body12Regular.copyWith(
-                          color: TroskyColors.whiteA55,
-                        ),
-                      ),
+                      // The whole class reference is behind the const
+                      // flag so release builds tree-shake it too — not
+                      // just its internals.
+                      testerMenuEnabled
+                          ? TesterMenuTapCounter(
+                              child: Text(
+                                greetingFor(l10n, now),
+                                style: TroskyTypography.body12Regular.copyWith(
+                                  color: TroskyColors.whiteA55,
+                                ),
+                              ),
+                            )
+                          : Text(
+                              greetingFor(l10n, now),
+                              style: TroskyTypography.body12Regular.copyWith(
+                                color: TroskyColors.whiteA55,
+                              ),
+                            ),
                       const SizedBox(height: TroskySpacing.s2),
                       Semantics(
                         header: true,
@@ -205,45 +221,118 @@ String placeName(NearbyStopResponse stop) {
 }
 
 /// The bell: a 36 px disc at 12 % white with 🔔, inside a 48 px touch area.
-class _Bell extends StatelessWidget {
+/// Carries a red badge with the unread notification count when `> 0`.
+/// Refreshes on app foreground and after every inbox mark-read.
+class _Bell extends ConsumerStatefulWidget {
   const _Bell({required this.label, required this.onPressed});
 
   final String label;
   final VoidCallback onPressed;
 
   @override
+  ConsumerState<_Bell> createState() => _BellState();
+}
+
+class _BellState extends ConsumerState<_Bell> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.invalidate(unreadCountProvider);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final unread = switch (ref.watch(unreadCountProvider)) {
+      AsyncData(value: Ok(:final value)) => value.unreadCount,
+      _ => 0,
+    };
+    final label = unread > 0
+        ? l10n.homeBellSemantics(unread)
+        : l10n.homeNotifications;
     return Semantics(
       button: true,
       label: label,
-      onTap: onPressed,
+      onTap: widget.onPressed,
       excludeSemantics: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: onPressed,
-        // The touch area reaches 6 px past the disc, into the header's
-        // padding, so the disc stays where the design puts it.
+        onTap: () {
+          ref.read(telemetryProvider).emit(TelemetryEvent('home_bell_tapped'));
+          widget.onPressed();
+        },
         child: Transform.translate(
           offset: const Offset(6, 0),
           child: SizedBox.square(
             dimension: 48,
             child: Center(
-              child: Container(
-                width: 36,
-                height: 36,
-                alignment: Alignment.center,
-                decoration: const BoxDecoration(
-                  color: TroskyColors.whiteA12,
-                  shape: BoxShape.circle,
-                ),
-                child: const Text(
-                  '🔔',
-                  textScaler: TextScaler.noScaling,
-                  style: TroskyTypography.body16Regular,
-                ),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(
+                      color: TroskyColors.whiteA12,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Text(
+                      '🔔',
+                      textScaler: TextScaler.noScaling,
+                      style: TroskyTypography.body16Regular,
+                    ),
+                  ),
+                  if (unread > 0)
+                    Positioned(
+                      top: -2,
+                      right: -4,
+                      child: _UnreadBadge(count: unread),
+                    ),
+                ],
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _UnreadBadge extends StatelessWidget {
+  const _UnreadBadge({required this.count});
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = count > 99 ? '99+' : '$count';
+    return Container(
+      constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: TroskyColors.red,
+        borderRadius: BorderRadius.circular(9),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        label,
+        textScaler: TextScaler.noScaling,
+        style: TroskyTypography.body12SemiBoldH133.copyWith(
+          color: TroskyColors.white,
+          height: 1,
         ),
       ),
     );

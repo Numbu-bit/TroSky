@@ -93,6 +93,22 @@ Map<String, dynamic> _$PayBookingRequestToJson(_PayBookingRequest instance) =>
       'payer_phone_number': ?instance.payerPhoneNumber,
     };
 
+_WalletTopupRequest _$WalletTopupRequestFromJson(Map<String, dynamic> json) =>
+    _WalletTopupRequest(
+      amount: json['amount'] as String,
+      paymentMethodId: json['payment_method_id'] as String?,
+      channel: $enumDecodeNullable(_$PaymentChannelEnumMap, json['channel']),
+      payerPhoneNumber: json['payer_phone_number'] as String?,
+    );
+
+Map<String, dynamic> _$WalletTopupRequestToJson(_WalletTopupRequest instance) =>
+    <String, dynamic>{
+      'amount': instance.amount,
+      'payment_method_id': ?instance.paymentMethodId,
+      'channel': ?_$PaymentChannelEnumMap[instance.channel],
+      'payer_phone_number': ?instance.payerPhoneNumber,
+    };
+
 _WalletResponse _$WalletResponseFromJson(Map<String, dynamic> json) =>
     _WalletResponse(
       balance: decimalString(json['balance']),
@@ -147,4 +163,66 @@ Map<String, dynamic> _$PaymentMethodCreateRequestToJson(
   'phone_number': instance.phoneNumber,
   'label': ?instance.label,
   'is_default': instance.isDefault,
+};
+
+_PaymentMethodUpdateRequest _$PaymentMethodUpdateRequestFromJson(
+  Map<String, dynamic> json,
+) => _PaymentMethodUpdateRequest(
+  label: json['label'] as String?,
+  isDefault: json['is_default'] as bool?,
+);
+
+Map<String, dynamic> _$PaymentMethodUpdateRequestToJson(
+  _PaymentMethodUpdateRequest instance,
+) => <String, dynamic>{
+  'label': ?instance.label,
+  'is_default': ?instance.isDefault,
+};
+
+_WalletTransactionResponse _$WalletTransactionResponseFromJson(
+  Map<String, dynamic> json,
+) => _WalletTransactionResponse(
+  id: json['id'] as String,
+  entryType: $enumDecode(
+    _$WalletEntryTypeEnumMap,
+    json['entry_type'],
+    unknownValue: WalletEntryType.debit,
+  ),
+  amount: decimalString(json['amount']),
+  balanceAfter: decimalString(json['balance_after']),
+  referenceType: $enumDecode(
+    _$WalletReferenceTypeEnumMap,
+    json['reference_type'],
+    unknownValue: WalletReferenceType.adminAdjustment,
+  ),
+  referenceId: json['reference_id'] as String?,
+  description: json['description'] as String,
+  createdAt: DateTime.parse(json['created_at'] as String),
+);
+
+Map<String, dynamic> _$WalletTransactionResponseToJson(
+  _WalletTransactionResponse instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'entry_type': _$WalletEntryTypeEnumMap[instance.entryType]!,
+  'amount': instance.amount,
+  'balance_after': instance.balanceAfter,
+  'reference_type': _$WalletReferenceTypeEnumMap[instance.referenceType]!,
+  'reference_id': ?instance.referenceId,
+  'description': instance.description,
+  'created_at': instance.createdAt.toIso8601String(),
+};
+
+const _$WalletEntryTypeEnumMap = {
+  WalletEntryType.credit: 'credit',
+  WalletEntryType.debit: 'debit',
+};
+
+const _$WalletReferenceTypeEnumMap = {
+  WalletReferenceType.bookingPayment: 'booking_payment',
+  WalletReferenceType.walletTopup: 'wallet_topup',
+  WalletReferenceType.refund: 'refund',
+  WalletReferenceType.adminAdjustment: 'admin_adjustment',
+  WalletReferenceType.tripEarning: 'trip_earning',
+  WalletReferenceType.withdrawal: 'withdrawal',
 };

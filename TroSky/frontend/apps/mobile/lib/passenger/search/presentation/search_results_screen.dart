@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:trosky_api/trosky_api.dart';
 import 'package:trosky_auth/trosky_auth.dart';
 import 'package:trosky_core/trosky_core.dart';
@@ -383,6 +384,9 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
         ),
       ]);
     }
+    if (loaded.trips.isEmpty && _searchIsForToday()) {
+      return _emptyTodayWithTomorrow(l10n, padding);
+    }
     if (loaded.trips.isEmpty) {
       return list([
         _Message(
@@ -442,6 +446,123 @@ class _SearchResultsScreenState extends ConsumerState<SearchResultsScreen> {
         ),
     ]);
   }
+
+  /// The current search is for today (either "now" or a scheduled time
+  /// whose local date is today). Tomorrow fallback only fires then.
+  bool _searchIsForToday() {
+    final now = ref.read(clockProvider)().toLocal();
+    final at = (_search.when.at ?? now).toLocal();
+    return at.year == now.year && at.month == now.month && at.day == now.day;
+  }
+
+  /// Today's results came back empty: show "No more trips today" and
+  /// automatically load tomorrow's first trips underneath.
+  Widget _emptyTodayWithTomorrow(AppLocalizations l10n, EdgeInsets padding) {
+    final tomorrow = tomorrowMidnightLocal(ref.read(clockProvider)());
+    final tomorrowRequest = ResultsRequest(
+      _search.copyWith(when: SearchWhen.at(tomorrow)),
+      sort: _sort,
+      minibusOnly: _minibusOnly,
+    );
+    final tomorrowResults = ref.watch(
+      tripResultsControllerProvider(tomorrowRequest),
+    );
+    final tomorrowTrips =
+        tomorrowResults.value?.trips ?? const <TripSearchResultResponse>[];
+    final shortDate = DateFormat('EEE d MMM', l10n.localeName).format(tomorrow);
+    return ListView(
+      controller: _scroll,
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: padding,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: TroskySpacing.s10,
+            vertical: TroskySpacing.s20,
+          ),
+          child: Column(
+            children: [
+              Semantics(
+                liveRegion: true,
+                child: Text(
+                  l10n.resultsNoMoreToday,
+                  textAlign: TextAlign.center,
+                  style: TroskyTypography.heading15Bold.copyWith(
+                    color: TroskyColors.textPrimary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: TroskySpacing.s8),
+              Text(
+                l10n.resultsNoMoreTodaySubline,
+                textAlign: TextAlign.center,
+                style: TroskyTypography.body12Regular.copyWith(
+                  color: TroskyColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: TroskySpacing.s10),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Semantics(
+              label: l10n.resultsTomorrowSemantics(shortDate),
+              container: true,
+              child: ExcludeSemantics(
+                child: TroskyChip(
+                  label: l10n.resultsTomorrowChip(shortDate),
+                  color: TroskyChipColor.gray,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: TroskySpacing.s10),
+        if (tomorrowResults.isLoading && !tomorrowResults.hasValue) ...const [
+          _SkeletonCard(),
+          SizedBox(height: TroskySpacing.s10),
+          _SkeletonCard(),
+        ] else if (tomorrowTrips.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: TroskySpacing.s10,
+              vertical: TroskySpacing.s12,
+            ),
+            child: Text(
+              l10n.resultsEmpty,
+              style: TroskyTypography.body12Regular.copyWith(
+                color: TroskyColors.textSecondary,
+              ),
+            ),
+          )
+        else
+          for (final (i, trip) in tomorrowTrips.indexed) ...[
+            if (i > 0) const SizedBox(height: TroskySpacing.s10),
+            tripCard(
+              l10n,
+              trip,
+              bestMatch: false,
+              onPressed: () => _open(trip),
+            ),
+          ],
+      ],
+    );
+  }
+}
+
+/// Local midnight of the day after [now], in the device's local time zone
+/// (Africa/Accra on staging, which is UTC+0 year-round; the computation
+/// stays correct in other zones since it uses `DateTime` constructor's
+/// local-time semantics).
+DateTime tomorrowMidnightLocal(DateTime now) {
+  final local = now.toLocal();
+  return DateTime(
+    local.year,
+    local.month,
+    local.day,
+  ).add(const Duration(days: 1));
 }
 
 /// A message in place of the results, with one action.

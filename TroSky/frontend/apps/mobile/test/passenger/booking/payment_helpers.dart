@@ -123,10 +123,23 @@ class PolledBookings implements BookingRepository {
   }
 
   @override
-  Future<Result<BookingResponse>> cancel(String bookingId, {String? reason}) {
+  Future<Result<BookingResponse>> cancel(
+    String bookingId, {
+    CancelReason? reason,
+  }) {
     cancelled.add(bookingId);
     return _inner.cancel(bookingId, reason: reason);
   }
+
+  @override
+  Future<Result<RatingResponse>> rate(
+    String bookingId,
+    RateBookingRequest request,
+  ) => _inner.rate(bookingId, request);
+
+  @override
+  Future<Result<RatingResponse>> getRating(String bookingId) =>
+      _inner.getRating(bookingId);
 }
 
 /// No connection, as Dio reports it.
@@ -223,10 +236,37 @@ class RecordedPayments implements PaymentRepository {
   Future<Result<WalletResponse>> wallet() => _inner.wallet();
 
   @override
+  Future<Result<PaymentResponse>> topUpWallet(
+    WalletTopupRequest request, {
+    required String idempotencyKey,
+  }) => _inner.topUpWallet(request, idempotencyKey: idempotencyKey);
+
+  @override
   Future<Result<List<PaymentMethodResponse>>> methods() => _inner.methods();
 
   @override
   Future<Result<PaymentMethodResponse>> addMethod(
     PaymentMethodCreateRequest request,
   ) => _inner.addMethod(request);
+
+  @override
+  Future<Result<PaymentMethodResponse>> updateMethod(
+    String methodId,
+    PaymentMethodUpdateRequest request,
+  ) => _inner.updateMethod(methodId, request);
+
+  @override
+  Future<Result<void>> deleteMethod(String methodId) =>
+      _inner.deleteMethod(methodId);
+
+  @override
+  Future<Result<Paginated<WalletTransactionResponse>>> transactions({
+    WalletReferenceType? referenceType,
+    int limit = 20,
+    int offset = 0,
+  }) => _inner.transactions(
+    referenceType: referenceType,
+    limit: limit,
+    offset: offset,
+  );
 }

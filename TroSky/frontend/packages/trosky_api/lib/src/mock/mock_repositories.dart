@@ -4,9 +4,12 @@ import '../client/interceptors.dart';
 import '../dto/auth_dto.dart';
 import '../dto/booking_dto.dart';
 import '../dto/driver_dto.dart';
+import '../dto/notification_dto.dart';
 import '../dto/paginated.dart';
 import '../dto/payment_dto.dart';
 import '../dto/route_dto.dart';
+import '../dto/safety_dto.dart';
+import '../dto/ticket_dto.dart';
 import '../dto/tracking_dto.dart';
 import '../dto/user_dto.dart';
 import '../repositories/auth_repository.dart';
@@ -14,6 +17,8 @@ import '../repositories/booking_repository.dart';
 import '../repositories/driver_repository.dart';
 import '../repositories/payment_repository.dart';
 import '../repositories/route_repository.dart';
+import '../repositories/safety_repository.dart';
+import '../repositories/ticket_repository.dart';
 import '../repositories/tracking_repository.dart';
 import '../repositories/user_repository.dart';
 import 'mock_backend.dart';
@@ -84,6 +89,29 @@ class MockAuthRepository implements AuthRepository {
   @override
   Future<Result<void>> logout() =>
       _authenticated(_tokens(), latency, _backend.logout);
+
+  // Step 20: password reset. Mock mode returns a generic success so the
+  // UI can be exercised without touching the live backend; replace with
+  // _backend methods when mock seed data gets a reset flow.
+  @override
+  Future<Result<MessageResponse>> forgotPassword(
+    ForgotPasswordRequest request,
+  ) async {
+    if (latency > Duration.zero) await Future<void>.delayed(latency);
+    return const Ok(
+      MessageResponse(
+        message: 'If an account exists, a reset code has been sent.',
+      ),
+    );
+  }
+
+  @override
+  Future<Result<MessageResponse>> resetPassword(
+    ResetPasswordRequest request,
+  ) async {
+    if (latency > Duration.zero) await Future<void>.delayed(latency);
+    return const Ok(MessageResponse(message: 'Password reset successfully.'));
+  }
 }
 
 /// [UserRepository] on a [MockBackend] (`API_MODE=mock`).
@@ -113,6 +141,65 @@ class MockUserRepository implements UserRepository {
     _tokens(),
     latency,
     (token) => _backend.addFavouriteRoute(token, request),
+  );
+
+  // Step 20: PATCH /users/me + DELETE /users/me. The mock backend doesn't
+  // track profile edits or deletion; these return a NOT_IMPLEMENTED error
+  // so the Profile UI shows an offline-style line in mock mode. Live is
+  // the target.
+  @override
+  Future<Result<UserResponse>> updateMe(
+    UserProfileUpdateRequest request,
+  ) async => const Err(
+    UnknownFailure(
+      code: 'NOT_IMPLEMENTED',
+      message: 'Profile editing is not available in mock mode.',
+    ),
+  );
+
+  @override
+  Future<Result<MessageResponse>> deleteAccount(
+    AccountDeletionRequest request,
+  ) async => const Err(
+    UnknownFailure(
+      code: 'NOT_IMPLEMENTED',
+      message: 'Account deletion is not available in mock mode.',
+    ),
+  );
+
+  // Step 20/B: DELETE /users/me/favourite-routes/{id} +
+  // notification-preferences GET/PATCH. The mock backend doesn't track
+  // either today; returning NOT_IMPLEMENTED keeps mock mode honest and
+  // widget tests supply their own fakes.
+  @override
+  Future<Result<void>> deleteFavouriteRoute(String favouriteId) async =>
+      const Err(
+        UnknownFailure(
+          code: 'NOT_IMPLEMENTED',
+          message: 'Deleting favourites is not available in mock mode.',
+        ),
+      );
+
+  @override
+  Future<Result<NotificationPreferencesResponse>>
+  notificationPreferences() async => Ok(
+    const NotificationPreferencesResponse(
+      pushEnabled: true,
+      smsEnabled: true,
+      emailEnabled: true,
+      promotionalOptIn: false,
+    ),
+  );
+
+  @override
+  Future<Result<NotificationPreferencesResponse>> updateNotificationPreferences(
+    NotificationPreferencesUpdateRequest request,
+  ) async => const Err(
+    UnknownFailure(
+      code: 'NOT_IMPLEMENTED',
+      message:
+          'Updating notification preferences is not available in mock mode.',
+    ),
   );
 }
 
@@ -264,12 +351,32 @@ class MockBookingRepository implements BookingRepository {
   );
 
   @override
-  Future<Result<BookingResponse>> cancel(String bookingId, {String? reason}) =>
-      _authenticated(
-        _tokens(),
-        latency,
-        (token) => _backend.cancelBooking(token, bookingId, reason: reason),
-      );
+  Future<Result<BookingResponse>> cancel(
+    String bookingId, {
+    CancelReason? reason,
+  }) => _authenticated(
+    _tokens(),
+    latency,
+    (token) => _backend.cancelBooking(token, bookingId, reason: reason),
+  );
+
+  // Step 19: rate + getRating. Mock mode returns NOT_IMPLEMENTED so the
+  // Rate UI shows an offline-style friendly line. Live is the target.
+  @override
+  Future<Result<RatingResponse>> rate(
+    String bookingId,
+    RateBookingRequest request,
+  ) async => const Err(
+    UnknownFailure(
+      code: 'NOT_IMPLEMENTED',
+      message: 'Rating a trip is not yet available in mock mode.',
+    ),
+  );
+
+  @override
+  Future<Result<RatingResponse>> getRating(String bookingId) async => const Err(
+    UnknownFailure(code: 'NOT_FOUND', message: 'No rating in mock mode.'),
+  );
 }
 
 /// [PaymentRepository] against the in-memory [MockBackend]: the wallet pays
@@ -320,6 +427,16 @@ class MockPaymentRepository implements PaymentRepository {
   );
 
   @override
+  Future<Result<PaymentResponse>> topUpWallet(
+    WalletTopupRequest request, {
+    required String idempotencyKey,
+  }) => _authenticated(
+    _tokens(),
+    latency,
+    (token) => _backend.createWalletTopup(token, request),
+  );
+
+  @override
   Future<Result<WalletResponse>> wallet() =>
       _authenticated(_tokens(), latency, _backend.getWallet);
 
@@ -335,6 +452,39 @@ class MockPaymentRepository implements PaymentRepository {
     latency,
     (token) => _backend.addPaymentMethod(token, request),
   );
+
+  // Step 18 added these three. Mock mode shows the empty/no-op state; the
+  // live app is the target. Widget tests use their own repository fakes.
+  @override
+  Future<Result<PaymentMethodResponse>> updateMethod(
+    String methodId,
+    PaymentMethodUpdateRequest request,
+  ) async => const Err(
+    UnknownFailure(
+      code: 'NOT_IMPLEMENTED',
+      message: 'Managing saved methods is not yet available in mock mode.',
+    ),
+  );
+
+  @override
+  Future<Result<void>> deleteMethod(String methodId) async => const Err(
+    UnknownFailure(
+      code: 'NOT_IMPLEMENTED',
+      message: 'Managing saved methods is not yet available in mock mode.',
+    ),
+  );
+
+  @override
+  Future<Result<Paginated<WalletTransactionResponse>>> transactions({
+    WalletReferenceType? referenceType,
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    if (latency > Duration.zero) await Future<void>.delayed(latency);
+    return Ok(
+      Paginated(items: const [], total: 0, limit: limit, offset: offset),
+    );
+  }
 }
 
 /// [TrackingRepository] on a [MockBackend] (`API_MODE=mock`): invented
@@ -367,4 +517,116 @@ class MockTrackingRepository implements TrackingRepository {
       limit: limit,
     ),
   );
+
+  @override
+  Future<Result<LiveLocationResponse>> tripLocation(String tripId) async =>
+      const Err(
+        UnknownFailure(
+          code: 'NOT_IMPLEMENTED',
+          message: 'Live tracking is not yet available in mock mode.',
+        ),
+      );
+
+  @override
+  Future<Result<EtaResponse>> tripEta(
+    String tripId, {
+    String? destinationStopId,
+  }) async => const Err(
+    UnknownFailure(
+      code: 'NOT_IMPLEMENTED',
+      message: 'Live tracking is not yet available in mock mode.',
+    ),
+  );
+}
+
+/// [SafetyRepository] on a [MockBackend]. Mock mode doesn't actually
+/// trigger SOS or file incidents; replies look like a real success so
+/// the P-12/P-13 UI has something to confirm against in demo mode.
+class MockSafetyRepository implements SafetyRepository {
+  MockSafetyRepository({required this.tokens, this.latency = Duration.zero});
+  final SessionTokens Function() tokens;
+  final Duration latency;
+
+  SosAlertResponse _fakeAlert({String? tripId}) => SosAlertResponse(
+    id: 'mock-sos-${DateTime.now().microsecondsSinceEpoch}',
+    tripId: tripId,
+    triggeredBy: 'mock-user',
+    status: SosAlertStatus.active,
+    createdAt: DateTime.now().toUtc(),
+  );
+
+  IncidentResponse _fakeIncident(String tripId, ReportIncidentRequest req) =>
+      IncidentResponse(
+        id: 'mock-incident-${DateTime.now().microsecondsSinceEpoch}',
+        tripId: tripId,
+        reportedBy: 'mock-user',
+        incidentType: req.incidentType,
+        severity: req.severity ?? IncidentSeverity.medium,
+        description: req.description,
+        status: IncidentStatus.reported,
+        createdAt: DateTime.now().toUtc(),
+      );
+
+  @override
+  Future<Result<SosAlertResponse>> triggerTripSos(
+    String tripId,
+    TriggerSosRequest request, {
+    required String idempotencyKey,
+  }) async {
+    if (latency > Duration.zero) await Future<void>.delayed(latency);
+    return Ok(_fakeAlert(tripId: tripId));
+  }
+
+  @override
+  Future<Result<SosAlertResponse>> triggerSos(
+    TriggerSosRequest request, {
+    required String idempotencyKey,
+  }) async {
+    if (latency > Duration.zero) await Future<void>.delayed(latency);
+    return Ok(_fakeAlert());
+  }
+
+  @override
+  Future<Result<IncidentResponse>> reportIncident(
+    String tripId,
+    ReportIncidentRequest request, {
+    required String idempotencyKey,
+  }) async {
+    if (latency > Duration.zero) await Future<void>.delayed(latency);
+    return Ok(_fakeIncident(tripId, request));
+  }
+
+  @override
+  Future<Result<IncidentResponse>> uploadIncidentPhoto(
+    String incidentId, {
+    required List<int> bytes,
+    required String filename,
+    required String contentType,
+  }) async => const Err(
+    UnknownFailure(
+      code: 'NOT_IMPLEMENTED',
+      message: 'Photo upload is not available in mock mode.',
+    ),
+  );
+}
+
+/// [TicketRepository] on a [MockBackend].
+class MockTicketRepository implements TicketRepository {
+  MockTicketRepository(
+    this._backend, {
+    required this._tokens,
+    this.latency = Duration.zero,
+  });
+
+  final MockBackend _backend;
+  final SessionTokens Function() _tokens;
+  final Duration latency;
+
+  @override
+  Future<Result<List<TicketResponse>>> listForBooking(String bookingId) =>
+      _authenticated(
+        _tokens(),
+        latency,
+        (token) => _backend.listTicketsForBooking(token, bookingId),
+      );
 }

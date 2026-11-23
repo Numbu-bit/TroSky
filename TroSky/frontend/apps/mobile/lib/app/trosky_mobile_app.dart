@@ -7,7 +7,9 @@ import 'package:trosky_auth/trosky_auth.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
 import '../l10n/app_localizations.dart';
+import '../passenger/trips/application/ticket_providers.dart';
 import 'routes.dart';
+import 'secure_window.dart';
 import 'server_wake_bar.dart';
 
 class TroskyMobileApp extends ConsumerStatefulWidget {
@@ -39,6 +41,20 @@ class _TroskyMobileAppState extends ConsumerState<TroskyMobileApp> {
 
   @override
   Widget build(BuildContext context) {
+    // Sensitive ticket cache: wipe + rotate the encryption key as soon
+    // as the session transitions to unauthenticated. Covers manual sign
+    // out, tester-menu "Sign out & clear data", and token-forced
+    // invalidation.
+    ref.listen<AsyncValue<SessionState>>(sessionControllerProvider, (
+      prev,
+      next,
+    ) {
+      final wasSignedIn = prev?.value is SessionAuthenticated;
+      final nowSignedOut = next.value is SessionUnauthenticated;
+      if (wasSignedIn && nowSignedOut) {
+        unawaited(ref.read(ticketCacheProvider).wipeAndRotate());
+      }
+    });
     return MaterialApp.router(
       title: 'TroSky',
       debugShowCheckedModeBanner: false,
@@ -51,7 +67,7 @@ class _TroskyMobileAppState extends ConsumerState<TroskyMobileApp> {
       // its bar is on top, under dark icons.
       builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
         value: TroskySystemUi.darkIcons,
-        child: ServerWakeBar(child: child!),
+        child: TroskyPrivacyCover(child: ServerWakeBar(child: child!)),
       ),
     );
   }

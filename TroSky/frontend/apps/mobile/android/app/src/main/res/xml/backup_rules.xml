@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Legacy full-backup-content rules for Android 6 (API 23) through
+  Android 11 (API 30). Consulted by Auto Backup to Google Drive when
+  android:allowBackup is true. We ship android:allowBackup="false", so
+  this file is a belt-and-braces guard: it still applies on any OEM
+  path that honors the content rules even when auto-backup is off.
+
+  Rule: exclude every app-local data domain. Nothing that TroSky
+  writes to this device may land in a Google backup. See C3 of the
+  21 Nov 2026 pre-launch audit.
+-->
+<full-backup-content>
+    <exclude domain="root" path="."/>
+    <exclude domain="file" path="."/>
+    <exclude domain="database" path="."/>
+    <exclude domain="sharedpref" path="."/>
+    <exclude domain="external" path="."/>
+    <exclude domain="device_protected_root" path="."/>
+    <exclude domain="device_protected_file" path="."/>
+    <exclude domain="device_protected_database" path="."/>
+    <exclude domain="device_protected_sharedpref" path="."/>
+</full-backup-content>
