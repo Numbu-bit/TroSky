@@ -9,6 +9,7 @@ import 'package:trosky_core/trosky_core.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
 import '../../../app/routes.dart';
+import '../../../app/secure_window.dart';
 import '../../../l10n/app_localizations.dart';
 import '../domain/auth_inputs.dart';
 import 'failure_messages.dart';
@@ -157,87 +158,89 @@ class _VerifyCodeScreenState extends ConsumerState<VerifyCodeScreen> {
     final l10n = AppLocalizations.of(context);
     final masked = maskTarget(_request.target);
     final byEmail = _request.target.contains('@');
-    return AuthLayout(
-      actionKey: _actionKey,
-      header: TroskyAuthHeader(
-        title: l10n.codeTitle,
-        subtitle: byEmail
-            ? l10n.codeSentByEmail(masked)
-            : l10n.codeSentByText(masked),
-        onBack: () => context.pop(),
-        backLabel: l10n.backLabel,
-      ),
-      children: [
-        TroskyOtpInput(
-          controller: _code,
-          label: l10n.codeFieldLabel,
-          hasError: _error != null && !_noAccount,
-          enabled: !_busy,
-          onCompleted: (_) => _verify(),
+    return TroskySecureScreen(
+      child: AuthLayout(
+        actionKey: _actionKey,
+        header: TroskyAuthHeader(
+          title: l10n.codeTitle,
+          subtitle: byEmail
+              ? l10n.codeSentByEmail(masked)
+              : l10n.codeSentByText(masked),
+          onBack: () => context.pop(),
+          backLabel: l10n.backLabel,
         ),
-        if (_error != null)
-          FormError(
-            _error!,
-            action: _noAccount
-                ? TroskyTextLink(
-                    prompt: '',
-                    action: l10n.signInCreateAccount,
-                    onPressed: () => context.goNamed(AppRoute.welcome.name),
-                  )
-                : null,
-          )
-        else if (_notice != null)
-          Semantics(
-            liveRegion: true,
-            child: Text(
-              _notice!,
-              textAlign: TextAlign.center,
-              style: TroskyTypography.body13Regular.copyWith(
-                color: TroskyColors.textSecondary,
-              ),
-            ),
+        children: [
+          TroskyOtpInput(
+            controller: _code,
+            label: l10n.codeFieldLabel,
+            hasError: _error != null && !_noAccount,
+            enabled: !_busy,
+            onCompleted: (_) => _verify(),
           ),
-        ListenableBuilder(
-          listenable: _code,
-          builder: (context, _) => TroskyButton(
-            key: _actionKey,
-            label: l10n.codeVerify,
-            variant: TroskyButtonVariant.primary,
-            loading: _busy,
-            onPressed: _code.text.length == 6 ? _verify : null,
-          ),
-        ),
-        if (_wait > 0)
-          Semantics(
-            liveRegion: false,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 48),
-              child: Center(
-                child: Text(
-                  l10n.codeResendIn(_wait),
-                  style: TroskyTypography.body13Regular.copyWith(
-                    color: TroskyColors.textSecondary,
-                  ),
+          if (_error != null)
+            FormError(
+              _error!,
+              action: _noAccount
+                  ? TroskyTextLink(
+                      prompt: '',
+                      action: l10n.signInCreateAccount,
+                      onPressed: () => context.goNamed(AppRoute.welcome.name),
+                    )
+                  : null,
+            )
+          else if (_notice != null)
+            Semantics(
+              liveRegion: true,
+              child: Text(
+                _notice!,
+                textAlign: TextAlign.center,
+                style: TroskyTypography.body13Regular.copyWith(
+                  color: TroskyColors.textSecondary,
                 ),
               ),
             ),
-          )
-        else ...[
-          TroskyTextLink(
-            prompt: l10n.codeResendPrompt,
-            action: l10n.codeResend,
-            onPressed: _sending ? null : _resend,
-          ),
-          if (_request.purpose == CodePurpose.signIn)
-            Text(
-              l10n.codeNoAccountHint,
-              textAlign: TextAlign.center,
-              style: TroskyTypography.body12Regular.copyWith(
-                color: TroskyColors.textSecondary,
-              ),
+          ListenableBuilder(
+            listenable: _code,
+            builder: (context, _) => TroskyButton(
+              key: _actionKey,
+              label: l10n.codeVerify,
+              variant: TroskyButtonVariant.primary,
+              loading: _busy,
+              onPressed: _code.text.length == 6 ? _verify : null,
             ),
+          ),
+          if (_wait > 0)
+            Semantics(
+              liveRegion: false,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: Center(
+                  child: Text(
+                    l10n.codeResendIn(_wait),
+                    style: TroskyTypography.body13Regular.copyWith(
+                      color: TroskyColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ),
+            )
+          else ...[
+            TroskyTextLink(
+              prompt: l10n.codeResendPrompt,
+              action: l10n.codeResend,
+              onPressed: _sending ? null : _resend,
+            ),
+            if (_request.purpose == CodePurpose.signIn)
+              Text(
+                l10n.codeNoAccountHint,
+                textAlign: TextAlign.center,
+                style: TroskyTypography.body12Regular.copyWith(
+                  color: TroskyColors.textSecondary,
+                ),
+              ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
