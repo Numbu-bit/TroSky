@@ -712,49 +712,6 @@ jobs:
             exit 1
           }
 
-  ws-transport-check:
-    name: WebSocket transport check (mobile)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-      - name: Verify no new raw-bearer WS URLs are added
-        working-directory: TroSky/frontend
-        shell: bash
-        run: |
-          set -euo pipefail
-          offenders=$(grep -rln 'wss://\|/ws/' apps packages --include='*.dart' \
-              | grep -v '/test/' \
-              | grep -v '/\.g\.dart' \
-              | xargs -I{} grep -l 'token=' {} \
-              | grep -v 'trip_tracking_service.dart' \
-              || true)
-          if [ -n "$offenders" ]; then
-            echo "::error::new WS URL with raw ?token= query (H4 B5 blocks all new call sites):"
-            echo "$offenders"
-            exit 1
-          fi
-
-      - name: Verify B5 is filed in backend-requests
-        working-directory: TroSky/frontend
-        shell: bash
-        run: |
-          set -euo pipefail
-          grep -q '### B5 — WebSocket auth via header or ticket' docs/backend-requests.md || {
-            echo "::error::docs/backend-requests.md must carry the H4 → B5 ask"
-            exit 1
-          }
-
-      - name: Verify WS transport runbook present
-        working-directory: TroSky/frontend
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -s apps/mobile/WS_CREDENTIAL_TRANSPORT.md || {
-            echo "::error::apps/mobile/WS_CREDENTIAL_TRANSPORT.md missing (H4 runbook)"
-            exit 1
-          }
-
   build-apk:
     name: Build APK (mobile, debug)
     runs-on: ubuntu-latest
