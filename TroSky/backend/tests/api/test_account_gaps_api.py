@@ -4,6 +4,7 @@ and the email address -- routed, validated and working end to end."""
 
 from __future__ import annotations
 
+import re
 import secrets
 import uuid
 
@@ -201,7 +202,9 @@ class TestChangeEmail:
         before = await client.get("/api/v1/users/me", headers=headers)
         sent = SandboxEmailProvider.get_last_email(new_email)
         assert sent is not None
-        code = "".join(filter(str.isdigit, sent.body_text.split("is ")[1].split(".")[0]))
+        found = re.search(r"\b(\d{4,10})\b", sent.body_text)
+        assert found is not None, sent.body_text
+        code = found.group(1)
         wrong = await client.post(
             "/api/v1/users/me/change-email/confirm",
             headers=headers,

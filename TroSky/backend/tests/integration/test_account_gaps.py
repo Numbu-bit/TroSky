@@ -4,6 +4,7 @@ address -- against a real Postgres."""
 
 from __future__ import annotations
 
+import re
 import uuid
 
 import pytest
@@ -23,6 +24,7 @@ from app.models.identity import FavouritePlaceKind
 from app.models.notifications import NotificationTopic
 from app.providers.email.sandbox import SandboxEmailProvider
 from app.providers.sms.sandbox import SandboxSmsProvider
+from app.repositories.session_repository import SessionRepository
 from app.schemas.user import (
     FavouritePlaceCreateRequest,
     FavouritePlaceUpdateRequest,
@@ -66,7 +68,9 @@ def _auth(db_session: AsyncSession, **settings: object) -> AuthService:
 def _emailed_code(to: str) -> str:
     sent = SandboxEmailProvider.get_last_email(to)
     assert sent is not None, f"no email sent to {to}"
-    return "".join(filter(str.isdigit, sent.body_text.split("is ")[1].split(".")[0]))
+    found = re.search(r"\b(\d{4,10})\b", sent.body_text)
+    assert found is not None, sent.body_text
+    return found.group(1)
 
 
 async def _stop(db_session: AsyncSession, latitude: float = 5.6, longitude: float = -0.2):
@@ -218,9 +222,17 @@ class TestChangePassword:
     ) -> None:
         user = await make_user(password_hash=hash_password(PASSWORD))
         auth = _auth(db_session)
-        for _ in range(2):
-            await auth.login_password(user.phone_number, PASSWORD, None, "127.0.0.1")
-        keep, other = await auth.list_sessions(user.id)
+        sessions = SessionRepository(db_session)
+        keep, other = [
+            await sessions.create_session(
+                user_id=user.id,
+                device_id=device,
+                device_name=None,
+                ip_address=None,
+                user_agent=None,
+            )
+            for device in ("phone", "tablet")
+        ]
 
         await auth.change_password(
             user.id, session_id=keep.id, current_password=PASSWORD, new_password="N3wPassword"
