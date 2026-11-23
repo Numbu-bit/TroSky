@@ -14,6 +14,7 @@
 | B2 | Register on a fresh database | **Done** (not re-tested on an empty database) | `scripts.seed_reference_data` after `alembic upgrade head` (compose, image entrypoint, k8s job) |
 | B3 | An expired seat hold keeps its seats until the sweeper runs | **Done** (0.22.1, 11 Oct; merged 20 Oct) | `app/repositories/seat_holds.py`: a hold past `expires_at` is free at once |
 | B4 | A search with an unknown stop answers 500 | **Promoted to G38** (15 Nov) | See G38 below |
+| B5 | WebSocket auth via header or ticket, not `?token=` | **New** (22 Nov) | See B5 below |
 | CI | Backend workflow never ran (the backend changelog calls this "B3") | **Done** | `.github/workflows/backend.yml` at the repository root |
 | D1 | Demo data | **Done** (in use; replaces the frontend's `tool/seed_local_trips.dart`) | `make seed-demo` / `python -m scripts.seed_demo_data` |
 | D2 | GPS simulator | **Done** (in use) | `make simulate-gps` / `python -m scripts.simulate_gps` |
@@ -374,3 +375,36 @@ Response: `HTTP/1.1 500 INTERNAL_SERVER_ERROR`, body `{"error":{"code":"INTERNAL
 **Suggested fix:** validate `origin_stop_id` / `destination_stop_id` exist in `stops` before writing the `search_events` row (or write the row without stop IDs when they don't exist), and return `404 STOP_NOT_FOUND` with `details.stop_id` so the app knows which id to drop.
 
 **Frontend impact:** small today (handled as a generic "try again"), gets cleaner the moment the typed error lands — the app can self-heal saved searches and favourites that point at removed stops.
+
+### B5 — WebSocket auth via header or ticket, not `?token=`
+
+**Needed by:** the passenger live-tracking screen (`trip_tracking_service.dart`), which opens `wss://…/ws/trips/{id}/track?token=<access_token>` to receive vehicle position updates during a trip. H4 of the 21 Nov 2026 pre-launch audit.
+
+**The problem.** The access token travels in the URL query. Every proxy, CDN edge, application access log and crash-report breadcrumb along the way captures the full URL including the query. The user's refresh token is Keystore-/Keychain-backed and never on the wire, but the short-lived access token is still enough to impersonate the user for its lifetime (currently 15 minutes). The frontend `CLAUDE.md` documents this contract (`?token=`) — the backend ships it; the frontend obeys.
+
+**Expected behaviour.** One of (owner picks the shape the backend can support):
+
+1. **Native header auth.** Accept `Sec-WebSocket-Protocol: bearer.<access_token>` from Flutter's `web_socket_channel` (the `protocols` parameter; Dart `dart:io` HttpClient sends it as a header on the upgrade). This is the cleanest for Flutter mobile; only one round trip.
+2. **Short-lived ticket.** The client calls `POST /auth/ws/ticket` (authenticated with the normal `Authorization: Bearer …`) and receives a one-time, single-use, 60-second ticket that it then passes as the `?ticket=<opaque>` query. The ticket is burned on first socket accept and never logged.
+3. **Both.** Native header for mobile, ticket for browser (Fleet web can't set custom WS headers).
+
+Whichever path the backend ships, the frontend must be able to use it without an interim mixed state that still writes the raw bearer somewhere the attacker can read.
+
+**Scope of the backend change.**
+
+- `app/api/v1/ws/trips.py` (or wherever the tracker socket lives): accept the new auth, keep the old `?token=` for a one-release deprecation window, log a deprecation warning when it's used.
+- Tests: a WS accept with a valid header / ticket passes; a replay of the same ticket fails; a header with a rotated access token still works.
+- `backend/CHANGELOG.md` and `docs/backend-sync.md` so the frontend can pin the cutover.
+
+**Frontend plan (follow-up, after backend B5 lands).**
+
+- `trip_tracking_service.dart` switches to the agreed transport.
+- The frontend `CLAUDE.md` contract line "The WebSocket takes `?token=`" is deleted.
+- H5's `LogRedactor.redactUri` already masks `token`, `access_token`, `refresh_token` query params — so even if we end up on the ticket path, a crash breadcrumb cannot leak the ticket value.
+
+**Rejected designs.**
+
+- **Long-lived bearer in `Sec-WebSocket-Protocol`.** The header is less logged than query, but still sometimes captured. Would not meaningfully reduce the exposure; use a short-lived ticket or a rotated access token instead.
+- **Per-trip signed URL embedded in the booking response.** Pre-signing a URL that lets anyone who can read the booking open the WS leaks the trip to the manifest's recipients.
+
+**Frontend impact today.** Blocked: the frontend cannot ship the migration without the backend endpoint. H4 PR documents the gap and pins the client-side guardrail so no additional caller adds a raw bearer to a WS URL.

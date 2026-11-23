@@ -9,6 +9,7 @@ import 'package:trosky_ui/trosky_ui.dart';
 import '../l10n/app_localizations.dart';
 import '../passenger/trips/application/ticket_providers.dart';
 import 'routes.dart';
+import 'secure_window.dart';
 import 'server_wake_bar.dart';
 
 class TroskyMobileApp extends ConsumerStatefulWidget {
@@ -66,7 +67,7 @@ class _TroskyMobileAppState extends ConsumerState<TroskyMobileApp> {
       // its bar is on top, under dark icons.
       builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
         value: TroskySystemUi.darkIcons,
-        child: ServerWakeBar(child: child!),
+        child: TroskyPrivacyCover(child: ServerWakeBar(child: child!)),
       ),
     );
   }

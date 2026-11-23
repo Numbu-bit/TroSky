@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
@@ -114,6 +115,10 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
     setState(() => _busy = false);
     switch (result) {
       case Ok(:final value):
+        // H2: commit the autofill context so the password manager offers
+        // to save the new credential. Done before the route push so the
+        // save prompt fires on this page.
+        TextInput.finishAutofillContext();
         await context.pushNamed(
           AppRoute.verifyCode.name,
           extra: CodeRequest(
