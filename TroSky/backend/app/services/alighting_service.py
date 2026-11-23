@@ -27,7 +27,7 @@ from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, St
 from app.core.logging import get_logger
 from app.models.bookings import AlightedHow, Booking, BookingPassenger, BookingStatus
 from app.models.driver_actions import ActedAs, DriverActionKind
-from app.models.notifications import NotificationCategory
+from app.models.notifications import NotificationTopic
 from app.models.payments import WalletReferenceType
 from app.models.routes import Stop
 from app.models.trips import Trip, TripStatus
@@ -240,7 +240,7 @@ class AlightingService:
             return
         await self._notifications.notify(
             booking.passenger_id,
-            category=NotificationCategory.TRANSACTIONAL,
+            topic=NotificationTopic.BOOKING_UPDATES,
             title=f"You're at {stop.name}",
             body=(
                 f"Your ride on booking {booking.booking_reference} has ended. Going further? "

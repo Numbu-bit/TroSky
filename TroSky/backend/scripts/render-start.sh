@@ -143,6 +143,7 @@ from sqlalchemy import func, select
 from app.core.database import dispose_engine, transactional_session
 from app.core.logging import configure_logging, get_logger
 from app.core.permissions import SystemRole
+from app.models.notifications import Notification
 from app.models.routes import Route
 from app.models.trips import Trip
 from scripts.seed_dev_data import ensure_dev_admin
@@ -165,18 +166,39 @@ def demo_route_names() -> list[str]:
     ]
 
 
+def demo_inbox_mark() -> str | None:
+    """DEMO_INBOX_MARK in scripts/seed_demo_data.py, read from its source."""
+    tree = ast.parse(Path("scripts/seed_demo_data.py").read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Assign)
+            and any(getattr(target, "id", None) == "DEMO_INBOX_MARK" for target in node.targets)
+            and isinstance(node.value, ast.Constant)
+        ):
+            return str(node.value.value)
+    return None
+
+
 async def demo_seed_needed() -> bool:
     days = int(os.environ["DEMO_DAYS_LEFT"])
+    mark = demo_inbox_mark()
     async with transactional_session() as session:
         last = await session.scalar(
             select(func.max(Trip.scheduled_departure_at))
             .join(Route, Route.id == Trip.route_id)
             .where(Route.name.in_(demo_route_names()))
         )
-    needed = last is None or last < datetime.now(UTC) + timedelta(days=days)
+        inbox = None
+        if mark is not None:
+            inbox = await session.scalar(
+                select(Notification.id).where(Notification.data.contains({"demo": mark})).limit(1)
+            )
+    trips_low = last is None or last < datetime.now(UTC) + timedelta(days=days)
+    needed = trips_low or (mark is not None and inbox is None)
     logger.info(
         "demo_trips_checked",
         last_departure=last.isoformat() if last else None,
+        demo_inbox_missing=mark is not None and inbox is None,
         seed_needed=needed,
     )
     return needed

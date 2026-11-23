@@ -45,7 +45,7 @@ from app.models.bookings import (
     CancellationStatus,
     ReservationStatus,
 )
-from app.models.notifications import NotificationCategory
+from app.models.notifications import NotificationTopic
 from app.models.trips import Trip, TripStatus
 from app.repositories.booking_offer_repository import BookingOfferRepository
 from app.repositories.booking_repository import BookingRepository, SeatAlreadyReservedError
@@ -545,7 +545,7 @@ class BookingService:
             await self._redis.delete(_held_seats_key(booking.trip_id))
         await self._notifications.notify(
             booking.passenger_id,
-            category=NotificationCategory.TRANSACTIONAL,
+            topic=NotificationTopic.BOOKING_UPDATES,
             title="Booking confirmed",
             body=f"Your booking {booking.booking_reference} is confirmed. Have a safe trip!",
             data={"booking_id": str(booking.id)},
@@ -658,7 +658,7 @@ class BookingService:
             await self._tickets.revoke_tickets_for_booking(booking.id, reason="Trip cancelled")
             await self._notifications.notify(
                 booking.passenger_id,
-                category=NotificationCategory.TRANSACTIONAL,
+                topic=NotificationTopic.BOOKING_UPDATES,
                 title="Trip cancelled",
                 body=(
                     f"Your trip for booking {booking.booking_reference} was cancelled. "

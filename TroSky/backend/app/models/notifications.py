@@ -5,11 +5,9 @@ One row per logical notification event — always written regardless of
 channel preferences (it's the in-app inbox) — with ``channel_results``
 recording what happened on each attempted out-of-app channel (push/SMS/
 email), e.g. ``{"push": "sent", "sms": "skipped_opted_out", "email":
-"failed"}``. ``category`` decides whether preference opt-outs apply at
-all: ``TRANSACTIONAL`` and ``SAFETY`` notifications always bypass
-``NotificationPreference`` opt-outs (see
-``app.services.notification_service``) — only ``PROMOTIONAL`` respects
-``promotional_opt_in``.
+"failed"}``. ``topic`` decides which of the user's switches apply (see
+``NotificationPreference`` and ``app.services.notification_service``);
+``category`` follows from it and is kept for older clients.
 """
 
 from __future__ import annotations
@@ -34,6 +32,30 @@ class NotificationCategory(StrEnum):
     PROMOTIONAL = "promotional"
 
 
+class NotificationTopic(StrEnum):
+    """What a notification is about, and so which switch silences it."""
+
+    BOOKING_UPDATES = "booking_updates"
+    PAYMENT = "payment"
+    PROMOTIONS = "promotions"
+    SAFETY = "safety"
+    ACCOUNT = "account"
+
+
+# No switch turns these off: an SOS, a password change or a blocked account
+# must reach the person.
+ALWAYS_ON_TOPICS = frozenset({NotificationTopic.SAFETY, NotificationTopic.ACCOUNT})
+
+
+def category_for(topic: NotificationTopic) -> NotificationCategory:
+    """The older, coarser category a topic belongs to."""
+    if topic == NotificationTopic.SAFETY:
+        return NotificationCategory.SAFETY
+    if topic == NotificationTopic.PROMOTIONS:
+        return NotificationCategory.PROMOTIONAL
+    return NotificationCategory.TRANSACTIONAL
+
+
 class Notification(UUIDAuditBase):
     __tablename__ = "notifications"
 
@@ -44,6 +66,15 @@ class Notification(UUIDAuditBase):
         PgEnum(
             NotificationCategory,
             name="notification_category",
+            native_enum=True,
+            values_callable=enum_values,
+        ),
+        nullable=False,
+    )
+    topic: Mapped[NotificationTopic] = mapped_column(
+        PgEnum(
+            NotificationTopic,
+            name="notification_topic",
             native_enum=True,
             values_callable=enum_values,
         ),

@@ -42,7 +42,7 @@ from app.models.bookings import (
     ReservationStatus,
 )
 from app.models.driver_actions import ActedAs, DriverActionKind
-from app.models.notifications import NotificationCategory
+from app.models.notifications import NotificationTopic
 from app.models.trips import AssignmentResponse, Trip, TripStatus
 from app.repositories.booking_offer_repository import BookingOfferRepository, BookingRequest
 from app.repositories.booking_repository import BookingRepository, SeatAlreadyReservedError
@@ -113,7 +113,7 @@ class BookingAcceptanceService:
             seats = booking.passenger_count
             await self._notifications.notify(
                 driver.user_id,
-                category=NotificationCategory.TRANSACTIONAL,
+                topic=NotificationTopic.BOOKING_UPDATES,
                 title="New booking request",
                 body=(
                     f"{seats} seat{'s' if seats > 1 else ''} requested "
@@ -206,7 +206,7 @@ class BookingAcceptanceService:
         )
         await self._notifications.notify(
             booking.passenger_id,
-            category=NotificationCategory.TRANSACTIONAL,
+            topic=NotificationTopic.BOOKING_UPDATES,
             title="Booking accepted",
             body=(
                 f"Your booking {booking.booking_reference} was accepted. Pay within "
@@ -494,7 +494,7 @@ class BookingAcceptanceService:
         )
         await self._notifications.notify(
             booking.passenger_id,
-            category=NotificationCategory.TRANSACTIONAL,
+            topic=NotificationTopic.BOOKING_UPDATES,
             title="Moved to another vehicle",
             body=(
                 f"Booking {booking.booking_reference} is now on another vehicle, {leaves}, "
@@ -580,7 +580,7 @@ class BookingAcceptanceService:
         await self._forget_held_seats(booking.trip_id)
         await self._notifications.notify(
             booking.passenger_id,
-            category=NotificationCategory.TRANSACTIONAL,
+            topic=NotificationTopic.BOOKING_UPDATES,
             title="Booking not accepted",
             body=(
                 f"Booking {booking.booking_reference}: {ending.told}, and no other vehicle "

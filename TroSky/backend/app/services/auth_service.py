@@ -43,6 +43,7 @@ from app.core.security import (
 )
 from app.models.fraud import BlockedDevice
 from app.models.identity import OtpChannel, OtpPurpose, User, UserSession
+from app.models.notifications import NotificationTopic
 from app.providers.email.base import EmailProvider
 from app.providers.sms.base import SmsProvider
 from app.repositories.otp_repository import OtpRepository
@@ -55,6 +56,7 @@ from app.schemas.auth import (
     RegistrableRole,
     TokenPairResponse,
 )
+from app.services.notification_service import NotificationService
 from app.services.otp_service import OtpService, normalize_otp_target
 from app.utilities.password_policy import PasswordPolicyError, validate_password_policy
 from app.utilities.phone import InvalidPhoneNumberError, normalize_phone_number
@@ -608,3 +610,130 @@ class AuthService:
         await self._otp_repo.consume_password_reset_token(token_record)
         await self._sessions.revoke_all_sessions_for_user(user.id, reason="password_reset")
         logger.info("password_reset_completed", user_id=str(user.id))
+
+    # ------------------------------------------------------------------
+    # Changing the password and the email address (signed in)
+    # ------------------------------------------------------------------
+    async def _user_with_password(self, user_id: uuid.UUID, password: str) -> User:
+        user = await self._users.get_by_id(user_id)
+        if user is None:
+            raise NotFoundError("User not found.")
+        if not await verify_password_async(password, user.password_hash):
+            raise InvalidCredentialsError("Your current password is incorrect.")
+        return user
+
+    async def change_password(
+        self,
+        user_id: uuid.UUID,
+        *,
+        session_id: uuid.UUID,
+        current_password: str,
+        new_password: str,
+    ) -> None:
+        """Set a new password, proving the current one. Every other session is
+        signed out; this one stays. The person is told on every channel."""
+        user = await self._user_with_password(user_id, current_password)
+        if new_password == current_password:
+            raise ConflictError(
+                "Choose a password different from your current one.", code="PASSWORD_UNCHANGED"
+            )
+        self._enforce_password_policy(new_password)
+        await self._users.update_password(user, await hash_password_async(new_password))
+        await self._sessions.revoke_other_sessions_for_user(
+            user.id, keep_session_id=session_id, reason="password_changed"
+        )
+        await NotificationService(self._session, self._settings).notify(
+            user.id,
+            topic=NotificationTopic.ACCOUNT,
+            title="Your password was changed",
+            body=(
+                "Your TroSky password was just changed and your other devices were signed "
+                "out. If this wasn't you, reset your password now."
+            ),
+            data={"type": "password_changed"},
+        )
+        logger.info("password_changed", user_id=str(user.id))
+
+    def _check_new_email_domain(self, email: str) -> None:
+        allowed = self._settings.registration_email_domains
+        if allowed and email.rpartition("@")[2].lower() not in allowed:
+            domains = " or ".join(f"@{domain}" for domain in sorted(allowed))
+            raise ValidationAppError(
+                f"Use an email address ending in {domains}.",
+                code="EMAIL_DOMAIN_NOT_ALLOWED",
+                details={"allowed_domains": sorted(allowed)},
+            )
+
+    async def start_email_change(
+        self, user_id: uuid.UUID, *, new_email: str, current_password: str
+    ) -> str:
+        """Send a code to ``new_email``, proving the current password first.
+        The account keeps its current address until the code is confirmed
+        (:meth:`confirm_email_change`). Returns where the code went."""
+        user = await self._user_with_password(user_id, current_password)
+        target = normalize_otp_target(new_email)
+        if user.email is not None and user.email.lower() == target:
+            raise ConflictError("That is already your email address.", code="EMAIL_UNCHANGED")
+        self._check_new_email_domain(target)
+        if await self._users.get_by_email(target) is not None:
+            raise ConflictError(
+                "An account with this email already exists.", code="EMAIL_ALREADY_REGISTERED"
+            )
+        await self._otp.request_otp(
+            target=target,
+            channel=OtpChannel.EMAIL,
+            purpose=OtpPurpose.EMAIL_CHANGE,
+            user_id=user.id,
+        )
+        logger.info("email_change_requested", user_id=str(user.id))
+        return target
+
+    async def confirm_email_change(self, user_id: uuid.UUID, *, new_email: str, code: str) -> User:
+        """Switch the account to ``new_email`` with the code sent there. The
+        old address is told, in case it wasn't the owner who asked."""
+        target = normalize_otp_target(new_email)
+        challenge = await self._otp.verify_otp(
+            target=target, purpose=OtpPurpose.EMAIL_CHANGE, code=code
+        )
+        if challenge.user_id != user_id:
+            # Someone else's request for the same address: as if no code.
+            raise OtpNotFoundError()
+        user = await self._users.get_by_id(user_id)
+        if user is None:
+            raise NotFoundError("User not found.")
+        old_email = user.email
+        taken = await self._users.get_by_email(target)
+        if taken is not None and taken.id != user.id:
+            raise ConflictError(
+                "An account with this email already exists.", code="EMAIL_ALREADY_REGISTERED"
+            )
+        try:
+            await self._users.update_email(user, target)
+        except DuplicateUserError:
+            raise ConflictError(
+                "An account with this email already exists.", code="EMAIL_ALREADY_REGISTERED"
+            ) from None
+
+        if old_email is not None and old_email.lower() != target:
+            await self._tell_old_email(old_email)
+        await NotificationService(self._session, self._settings).notify(
+            user.id,
+            topic=NotificationTopic.ACCOUNT,
+            title="Your email address was changed",
+            body=f"Your TroSky account now uses {target}.",
+            data={"type": "email_changed"},
+        )
+        logger.info("email_changed", user_id=str(user.id))
+        return user
+
+    async def _tell_old_email(self, old_email: str) -> None:
+        """Best effort: a mail failure must not undo a confirmed change."""
+        try:
+            await self._email_provider.send_email(
+                old_email,
+                "Your TroSky email address was changed",
+                "The email address on your TroSky account was just changed, so this address "
+                "is no longer used for it. If this wasn't you, contact TroSky support at once.",
+            )
+        except Exception:
+            logger.warning("email_change_notice_failed", exc_info=True)

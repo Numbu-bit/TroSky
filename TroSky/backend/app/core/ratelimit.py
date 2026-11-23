@@ -52,6 +52,14 @@ DEFAULT_RULES: dict[str, RateLimitRule] = {
     "auth:otp_verify": RateLimitRule("auth:otp_verify", limit=10, window_seconds=300),
     "auth:password_reset": RateLimitRule("auth:password_reset", limit=5, window_seconds=3600),
     "auth:token_refresh": RateLimitRule("auth:token_refresh", limit=30, window_seconds=300),
+    # Each checks the current password, so each is a password guess.
+    "account:change_password": RateLimitRule(
+        "account:change_password", limit=5, window_seconds=900
+    ),
+    "account:change_email": RateLimitRule("account:change_email", limit=5, window_seconds=3600),
+    "account:change_email_confirm": RateLimitRule(
+        "account:change_email_confirm", limit=10, window_seconds=300
+    ),
     "payments:initiate": RateLimitRule("payments:initiate", limit=10, window_seconds=300),
     "tickets:validate": RateLimitRule("tickets:validate", limit=60, window_seconds=60),
     "sos:trigger": RateLimitRule("sos:trigger", limit=10, window_seconds=600),
