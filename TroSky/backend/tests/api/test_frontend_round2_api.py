@@ -17,7 +17,7 @@ from httpx import AsyncClient
 from app.core.database import get_session_factory
 from app.core.security import hash_password
 from app.models.identity import User, UserProfile
-from app.models.notifications import NotificationCategory
+from app.models.notifications import NotificationTopic
 from app.providers.storage.sandbox import SandboxStorageProvider
 from app.services.booking_service import BookingService
 from app.services.notification_service import NotificationService
@@ -224,7 +224,7 @@ class TestNotifications:  # G27
         async with get_session_factory()() as session:
             for title in ("Booked", "Paid"):
                 await NotificationService(session).notify(
-                    user_id, category=NotificationCategory.TRANSACTIONAL, title=title, body=title
+                    user_id, topic=NotificationTopic.BOOKING_UPDATES, title=title, body=title
                 )
             await session.commit()
 

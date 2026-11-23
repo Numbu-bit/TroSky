@@ -29,7 +29,7 @@ from app.models.drivers import (
     DriverDocument,
     DriverStatusHistory,
 )
-from app.models.notifications import NotificationCategory
+from app.models.notifications import NotificationTopic
 from app.models.vehicles import (
     Fleet,
     FleetOwner,
@@ -213,7 +213,7 @@ class ApprovalRequestsService:
         what = "your" if subject_type == "driver" else "your vehicle's"
         await NotificationService(self._session).notify(
             user_id,
-            category=NotificationCategory.TRANSACTIONAL,
+            topic=NotificationTopic.ACCOUNT,
             title="TroSky needs new documents",
             body=f"Please upload {what} {_names(document_types)} again. {note}"[:1000],
             data={

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +20,8 @@ from app.models.identity import (
     DevicePlatform,
     DeviceRegistration,
     EmergencyContact,
+    FavouritePlace,
+    FavouritePlaceKind,
     NotificationPreference,
     User,
 )
@@ -27,6 +30,9 @@ from app.providers.storage.malware_scan import MalwareScanner
 from app.repositories.profile_repository import (
     DeviceRepository,
     EmergencyContactRepository,
+    FavouritePlaceExistsError,
+    FavouritePlaceRepository,
+    FavouritePlaceView,
     FavouriteRouteExistsError,
     FavouriteRouteRepository,
     FavouriteRouteView,
@@ -38,13 +44,24 @@ from app.repositories.user_repository import UserRepository
 from app.schemas.user import (
     EmergencyContactCreateRequest,
     EmergencyContactUpdateRequest,
+    FavouritePlaceCreateRequest,
+    FavouritePlaceUpdateRequest,
     NotificationPreferencesUpdateRequest,
     UserProfileUpdateRequest,
 )
 from app.services.document_service import store_uploaded_document
+from app.utilities.geo import wkb_to_latlng
 from app.utilities.phone import normalize_phone_number
 
 logger = get_logger(__name__)
+
+_DEFAULT_PLACE_LABELS = {FavouritePlaceKind.HOME: "Home", FavouritePlaceKind.WORK: "Work"}
+
+
+def _coordinate(value: float) -> Decimal:
+    """Six decimal places (about 10 cm), as stored."""
+    return Decimal(str(round(value, 6)))
+
 
 _AVATAR_TYPES = {"image/jpeg", "image/png"}
 
@@ -58,6 +75,7 @@ class UserService:
         self._sessions = SessionRepository(session)
         self._devices = DeviceRepository(session)
         self._favourites = FavouriteRouteRepository(session)
+        self._places = FavouritePlaceRepository(session)
 
     async def get_user_with_roles(self, user_id: uuid.UUID) -> tuple[User, list[str]]:
         user = await self._users.get_by_id(user_id)
@@ -84,6 +102,8 @@ class UserService:
         if not await verify_password_async(password, user.password_hash):
             raise InvalidCredentialsError("Incorrect password.")
         await self._sessions.revoke_all_sessions_for_user(user_id, reason="account_deleted")
+        # Where someone lives and works is not kept once they leave.
+        await self._places.delete_all_for_user(user_id)
         await self._users.soft_delete(user)
 
     # ------------------------------------------------------------------
@@ -134,7 +154,7 @@ class UserService:
         self, user_id: uuid.UUID, request: NotificationPreferencesUpdateRequest
     ) -> NotificationPreference:
         pref = await self.get_notification_preferences(user_id)
-        await self._preferences.update(pref, **request.model_dump(exclude_unset=True))
+        await self._preferences.update(pref, **request.stored_fields())
         return pref
 
     # ------------------------------------------------------------------
@@ -195,6 +215,84 @@ class UserService:
         if favourite is None:
             raise NotFoundError("Favourite route not found.")
         await self._favourites.delete(favourite)
+
+    # ------------------------------------------------------------------
+    # Favourite places (Home and Work shortcuts)
+    # ------------------------------------------------------------------
+    async def list_favourite_places(self, user_id: uuid.UUID) -> list[FavouritePlaceView]:
+        return await self._places.list_for_user(user_id)
+
+    async def add_favourite_place(
+        self, user_id: uuid.UUID, request: FavouritePlaceCreateRequest
+    ) -> FavouritePlaceView:
+        stop_id, latitude, longitude = await self._place_location(
+            request.stop_id, request.latitude, request.longitude
+        )
+        limit = get_settings().FAVOURITE_PLACES_MAX_PER_USER
+        if await self._places.count_for_user(user_id) >= limit:
+            raise ConflictError(
+                f"You can save up to {limit} places. Remove one first.",
+                code="FAVOURITE_PLACES_LIMIT",
+            )
+        label = request.label or _DEFAULT_PLACE_LABELS.get(request.kind, "")
+        try:
+            place = await self._places.create(
+                FavouritePlace(
+                    user_id=user_id,
+                    kind=request.kind,
+                    label=label,
+                    stop_id=stop_id,
+                    latitude=latitude,
+                    longitude=longitude,
+                )
+            )
+        except FavouritePlaceExistsError:
+            raise ConflictError(
+                f"You already saved your {request.kind.value}. Change or remove it instead.",
+                code="FAVOURITE_PLACE_EXISTS",
+            ) from None
+        [view] = await self._places.list_for_user(user_id, place_id=place.id)
+        return view
+
+    async def update_favourite_place(
+        self, user_id: uuid.UUID, place_id: uuid.UUID, request: FavouritePlaceUpdateRequest
+    ) -> FavouritePlaceView:
+        place = await self._places.get_for_user(user_id, place_id)
+        if place is None:
+            raise NotFoundError("Favourite place not found.")
+        if request.label is not None:
+            place.label = request.label
+        if request.moves:
+            place.stop_id, place.latitude, place.longitude = await self._place_location(
+                request.stop_id, request.latitude, request.longitude
+            )
+        await self._places.save(place)
+        [view] = await self._places.list_for_user(user_id, place_id=place.id)
+        return view
+
+    async def delete_favourite_place(self, user_id: uuid.UUID, place_id: uuid.UUID) -> None:
+        place = await self._places.get_for_user(user_id, place_id)
+        if place is None:
+            raise NotFoundError("Favourite place not found.")
+        await self._places.delete(place)
+
+    async def _place_location(
+        self, stop_id: uuid.UUID | None, latitude: float | None, longitude: float | None
+    ) -> tuple[uuid.UUID | None, Decimal, Decimal]:
+        """The stop (checked), and the coordinates: those given, else the
+        stop's own."""
+        if stop_id is not None:
+            stop = await StopRepository(self._session).get_by_id(stop_id)
+            if stop is None:
+                raise NotFoundError("Stop not found.", details={"stop_id": str(stop_id)})
+            if latitude is None or longitude is None:
+                point = wkb_to_latlng(stop.location)
+                if point is None:  # every stop has a location; defensive only
+                    raise NotFoundError("Stop has no location.", details={"stop_id": str(stop_id)})
+                latitude, longitude = point
+        if latitude is None or longitude is None:  # the request schema rules this out
+            raise ValueError("A place needs a stop or coordinates.")
+        return stop_id, _coordinate(latitude), _coordinate(longitude)
 
     # ------------------------------------------------------------------
     # Profile photo

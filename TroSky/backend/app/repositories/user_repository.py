@@ -195,6 +195,16 @@ class UserRepository:
         user.email_verified_at = datetime.now(UTC)
         await self._session.flush()
 
+    async def update_email(self, user: User, email: str) -> None:
+        """Give the account a new, already proven, email address."""
+        user.email = email
+        user.email_verified_at = datetime.now(UTC)
+        try:
+            async with self._session.begin_nested():
+                await self._session.flush()
+        except IntegrityError as exc:
+            raise DuplicateUserError("email") from exc
+
     async def update_password(self, user: User, password_hash: str) -> None:
         user.password_hash = password_hash
         await self._session.flush()

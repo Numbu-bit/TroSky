@@ -44,6 +44,11 @@ _MESSAGES: dict[OtpPurpose, tuple[str, str]] = {
         "Your TroSky password reset code is {code}. It expires in {minutes} minutes. "
         "If you did not ask to reset your password, ignore this message.",
     ),
+    OtpPurpose.EMAIL_CHANGE: (
+        "Confirm your new TroSky email address",
+        "Your TroSky code to confirm this email address is {code}. It expires in {minutes} "
+        "minutes. If you did not ask to change your email, ignore this message.",
+    ),
 }
 _DEFAULT_MESSAGE = ("Your TroSky verification code", _OTP_MESSAGE_TEMPLATE)
 

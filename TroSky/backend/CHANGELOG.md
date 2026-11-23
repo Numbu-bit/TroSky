@@ -7,6 +7,35 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- **Notifications say where they lead: `deep_link`.** Each notification in `GET /notifications`
+  has a `deep_link`: a path in the app's router form (`/bookings/{id}`,
+  `/search?origin_stop_id={id}`, `/driver/trips/{id}`), or null when there is nowhere better than
+  the inbox. Pushes carry it as `data.deep_link`. It is worked out from the notification's `data`,
+  so older notifications get links too. `docs/notifications.md` lists every notification, its
+  `data` keys and its link.
+- **Topic switches in the notification preferences.** Every notification has a `topic`:
+  `booking_updates`, `payment`, `promotions`, `safety` or `account`. `GET/PATCH
+  /users/me/notification-preferences` adds `booking_updates_enabled`, `payment_enabled` and
+  `promotions_enabled` (the same switch as `promotional_opt_in`, which stays), and reports
+  `safety_enabled` and `account_enabled`, always true. A passenger can now turn off promotions,
+  or booking updates, without touching the rest.
+- **Favourite places: home, work and others.** `GET/POST /users/me/favourite-places`, `PATCH` and
+  `DELETE /users/me/favourite-places/{id}`. A place is a stop, a point, or both (`stop_id`,
+  `latitude`, `longitude`); given only a stop, it takes the stop's coordinates. One `home` and one
+  `work` at most (`FAVOURITE_PLACE_EXISTS`), up to `FAVOURITE_PLACES_MAX_PER_USER` (20) in all.
+  Deleting the account deletes its places.
+- **Changing the password: `POST /users/me/change-password`** with `current_password` and
+  `new_password`. A wrong current password is 401 `INVALID_CREDENTIALS`; the same password again
+  is 409 `PASSWORD_UNCHANGED`. Every other session is signed out, this one stays, and the person
+  is told.
+- **Changing the email: `POST /users/me/change-email`** with `new_email` and `current_password`
+  emails a code to the new address, and `POST /users/me/change-email/confirm` with that code
+  switches to it (verified). The old address stays in use until then, and is told once it has
+  been replaced.
+- **A demo inbox on staging.** The demo passenger gets a notification on every topic, each with a
+  link. `scripts/render-start.sh` now also runs the demo seed when they are missing, so they appear
+  on the first start after this is deployed.
+
 - **Seat zones: a short ride chooses from the front seats, a long ride from the back.** `GET
   /trips/{id}/seats` takes `origin_stop_id` and `destination_stop_id`, and says which part of the
   vehicle each seat is in (`zone`), where this ride chooses from (`passenger_zone`) and which seats
@@ -32,6 +61,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 - **Drivers are also reminded before their insurance expires,** 30, 14, 7, 3 and 1 days before
   (`INSURANCE_REMINDER_DAYS`), and so are the fleet owners whose vehicles they drive. A worker that
   slept through some sends only the latest one.
+
+### Changed
+
+- **The push, SMS and email switches now apply to booking and payment updates.** Until now every
+  notification was "transactional", and transactional ones ignored those switches, so turning off
+  SMS changed nothing. A notification now goes out on a channel only when the channel and its
+  topic are both on. Safety and account notifications still always go out, and the in-app inbox
+  still gets everything.
 
 ### Fixed
 

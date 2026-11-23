@@ -1,13 +1,15 @@
-"""Profile, notification preference, and emergency contact endpoints."""
+"""Profile, notification preference, emergency contact, favourite, and
+account security (password and email change) endpoints."""
 
 from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
 
-from fastapi import APIRouter, File, UploadFile, status
+from fastapi import APIRouter, Depends, File, UploadFile, status
 
 from app.api.dependencies import (
+    AuthServiceDep,
     CurrentPrincipal,
     MalwareScannerDep,
     StorageProviderDep,
@@ -16,7 +18,9 @@ from app.api.dependencies import (
 from app.api.payment_dependencies import PaymentMethodServiceDep
 from app.api.trip_dependencies import TripSearchServiceDep
 from app.api.v1.views import avatar_url, payment_method_response
-from app.models.identity import User
+from app.core.config import get_settings
+from app.core.ratelimit import rate_limit
+from app.models.identity import NotificationPreference, User
 from app.providers.storage.base import ObjectStorageProvider
 from app.repositories.profile_repository import FavouriteRouteView
 from app.schemas.common import MessageResponse
@@ -28,9 +32,16 @@ from app.schemas.payment import (
 )
 from app.schemas.user import (
     AccountDeletionRequest,
+    ChangeEmailConfirmRequest,
+    ChangeEmailRequest,
+    ChangePasswordRequest,
+    EmailChangeStartedResponse,
     EmergencyContactCreateRequest,
     EmergencyContactResponse,
     EmergencyContactUpdateRequest,
+    FavouritePlaceCreateRequest,
+    FavouritePlaceResponse,
+    FavouritePlaceUpdateRequest,
     FavouriteRouteCreateRequest,
     FavouriteRouteResponse,
     NextTripResponse,
@@ -102,20 +113,107 @@ async def delete_me(
     return MessageResponse(message="Account deleted.")
 
 
+def _preferences_response(pref: NotificationPreference) -> NotificationPreferencesResponse:
+    return NotificationPreferencesResponse(
+        push_enabled=pref.push_enabled,
+        sms_enabled=pref.sms_enabled,
+        email_enabled=pref.email_enabled,
+        booking_updates_enabled=pref.booking_updates_enabled,
+        payment_enabled=pref.payment_enabled,
+        promotions_enabled=pref.promotional_opt_in,
+        promotional_opt_in=pref.promotional_opt_in,
+    )
+
+
 @router.get("/me/notification-preferences", response_model=NotificationPreferencesResponse)
 async def get_notification_preferences(
     principal: CurrentPrincipal, users: UserServiceDep
 ) -> NotificationPreferencesResponse:
+    """Channels and topics. A notification goes out by push, SMS or email
+    only when its channel and its topic are both on; safety and account
+    notifications always do."""
     pref = await users.get_notification_preferences(principal.user_id)
-    return NotificationPreferencesResponse.model_validate(pref)
+    return _preferences_response(pref)
 
 
 @router.patch("/me/notification-preferences", response_model=NotificationPreferencesResponse)
 async def update_notification_preferences(
     body: NotificationPreferencesUpdateRequest, principal: CurrentPrincipal, users: UserServiceDep
 ) -> NotificationPreferencesResponse:
+    """Send only what changes. `safety_enabled` and `account_enabled` accept
+    only `true` (422 otherwise)."""
     pref = await users.update_notification_preferences(principal.user_id, body)
-    return NotificationPreferencesResponse.model_validate(pref)
+    return _preferences_response(pref)
+
+
+# ---------------------------------------------------------------------------
+# Changing the password and the email address
+# ---------------------------------------------------------------------------
+@router.post(
+    "/me/change-password",
+    response_model=MessageResponse,
+    dependencies=[Depends(rate_limit("account:change_password"))],
+)
+async def change_password(
+    body: ChangePasswordRequest, principal: CurrentPrincipal, auth: AuthServiceDep
+) -> MessageResponse:
+    """Set a new password, proving the current one. 401 `INVALID_CREDENTIALS`
+    when the current password is wrong; 409 `PASSWORD_UNCHANGED` when the new
+    one is the same, or `PASSWORD_POLICY_VIOLATION` when it is too weak.
+    Signs out every other session; this one stays signed in."""
+    await auth.change_password(
+        principal.user_id,
+        session_id=principal.session_id,
+        current_password=body.current_password,
+        new_password=body.new_password,
+    )
+    return MessageResponse(message="Password changed. Your other devices were signed out.")
+
+
+@router.post(
+    "/me/change-email",
+    response_model=EmailChangeStartedResponse,
+    dependencies=[Depends(rate_limit("account:change_email"))],
+)
+async def change_email(
+    body: ChangeEmailRequest, principal: CurrentPrincipal, auth: AuthServiceDep
+) -> EmailChangeStartedResponse:
+    """Start changing the account's email: proves the current password, then
+    emails a code to the new address. The current address stays in use
+    until `POST /users/me/change-email/confirm`. Call again to resend.
+    401 `INVALID_CREDENTIALS`; 409 `EMAIL_UNCHANGED` or
+    `EMAIL_ALREADY_REGISTERED`; 422 `EMAIL_DOMAIN_NOT_ALLOWED`; 429 within
+    the resend cooldown."""
+    sent_to = await auth.start_email_change(
+        principal.user_id, new_email=body.new_email, current_password=body.current_password
+    )
+    return EmailChangeStartedResponse(
+        message=(
+            "We sent a code to your new email address. Your current one stays until you confirm."
+        ),
+        otp_sent_to=sent_to,
+        expires_in_seconds=get_settings().OTP_EXPIRATION_SECONDS,
+    )
+
+
+@router.post(
+    "/me/change-email/confirm",
+    response_model=UserResponse,
+    dependencies=[Depends(rate_limit("account:change_email_confirm"))],
+)
+async def confirm_email_change(
+    body: ChangeEmailConfirmRequest,
+    principal: CurrentPrincipal,
+    auth: AuthServiceDep,
+    users: UserServiceDep,
+    storage: StorageProviderDep,
+) -> UserResponse:
+    """Switch to the new address with the code sent there; it counts as
+    verified. The old address gets an email saying so. Wrong, expired or
+    used-up codes answer as `POST /auth/verify-otp` does."""
+    await auth.confirm_email_change(principal.user_id, new_email=body.new_email, code=body.code)
+    user, roles = await users.get_user_with_roles(principal.user_id)
+    return await _user_response(user, roles, storage)
 
 
 @router.get("/me/emergency-contacts", response_model=list[EmergencyContactResponse])
@@ -264,6 +362,55 @@ async def delete_favourite_route(
     favourite_id: uuid.UUID, principal: CurrentPrincipal, users: UserServiceDep
 ) -> None:
     await users.delete_favourite_route(principal.user_id, favourite_id)
+
+
+# ---------------------------------------------------------------------------
+# Favourite places (Home and Work shortcuts)
+# ---------------------------------------------------------------------------
+@router.get("/me/favourite-places", response_model=list[FavouritePlaceResponse])
+async def list_favourite_places(
+    principal: CurrentPrincipal, users: UserServiceDep
+) -> list[FavouritePlaceResponse]:
+    """Home first, then work, then other places, oldest first."""
+    places = await users.list_favourite_places(principal.user_id)
+    return [FavouritePlaceResponse.model_validate(place) for place in places]
+
+
+@router.post(
+    "/me/favourite-places",
+    response_model=FavouritePlaceResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_favourite_place(
+    body: FavouritePlaceCreateRequest, principal: CurrentPrincipal, users: UserServiceDep
+) -> FavouritePlaceResponse:
+    """Save a place: a stop, a point, or both. 409 `FAVOURITE_PLACE_EXISTS`
+    for a second home or work (change it instead), `FAVOURITE_PLACES_LIMIT`
+    at the limit; 404 for an unknown stop."""
+    place = await users.add_favourite_place(principal.user_id, body)
+    return FavouritePlaceResponse.model_validate(place)
+
+
+@router.patch("/me/favourite-places/{place_id}", response_model=FavouritePlaceResponse)
+async def update_favourite_place(
+    place_id: uuid.UUID,
+    body: FavouritePlaceUpdateRequest,
+    principal: CurrentPrincipal,
+    users: UserServiceDep,
+) -> FavouritePlaceResponse:
+    place = await users.update_favourite_place(principal.user_id, place_id, body)
+    return FavouritePlaceResponse.model_validate(place)
+
+
+@router.delete(
+    "/me/favourite-places/{place_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+)
+async def delete_favourite_place(
+    place_id: uuid.UUID, principal: CurrentPrincipal, users: UserServiceDep
+) -> None:
+    await users.delete_favourite_place(principal.user_id, place_id)
 
 
 # ---------------------------------------------------------------------------

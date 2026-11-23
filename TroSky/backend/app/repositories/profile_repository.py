@@ -1,5 +1,5 @@
-"""Database access for emergency contacts, notification preferences, and
-device registrations."""
+"""Database access for emergency contacts, notification preferences,
+device registrations, and favourite routes and places."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import case, delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
@@ -16,6 +16,8 @@ from app.models.identity import (
     DevicePlatform,
     DeviceRegistration,
     EmergencyContact,
+    FavouritePlace,
+    FavouritePlaceKind,
     FavouriteRoute,
     NotificationPreference,
 )
@@ -239,3 +241,93 @@ class FavouriteRouteRepository:
     async def delete(self, favourite: FavouriteRoute) -> None:
         await self._session.delete(favourite)
         await self._session.flush()
+
+
+class FavouritePlaceExistsError(Exception):
+    """The user already has a home (or a work) place."""
+
+
+@dataclass(frozen=True, slots=True)
+class FavouritePlaceView:
+    id: uuid.UUID
+    kind: FavouritePlaceKind
+    label: str
+    stop_id: uuid.UUID | None
+    stop_name: str | None
+    latitude: float
+    longitude: float
+    created_at: datetime
+    updated_at: datetime
+
+
+class FavouritePlaceRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def list_for_user(
+        self, user_id: uuid.UUID, *, place_id: uuid.UUID | None = None
+    ) -> list[FavouritePlaceView]:
+        """Home first, then work, then the user's other places, oldest first."""
+        order = case(
+            (FavouritePlace.kind == FavouritePlaceKind.HOME, 0),
+            (FavouritePlace.kind == FavouritePlaceKind.WORK, 1),
+            else_=2,
+        )
+        stmt = (
+            select(FavouritePlace, Stop.name)
+            .outerjoin(Stop, Stop.id == FavouritePlace.stop_id)
+            .where(FavouritePlace.user_id == user_id)
+            .order_by(order, FavouritePlace.created_at, FavouritePlace.id)
+        )
+        if place_id is not None:
+            stmt = stmt.where(FavouritePlace.id == place_id)
+        result = await self._session.execute(stmt)
+        return [
+            FavouritePlaceView(
+                id=place.id,
+                kind=place.kind,
+                label=place.label,
+                stop_id=place.stop_id,
+                stop_name=stop_name,
+                latitude=float(place.latitude),
+                longitude=float(place.longitude),
+                created_at=place.created_at,
+                updated_at=place.updated_at,
+            )
+            for place, stop_name in result.all()
+        ]
+
+    async def count_for_user(self, user_id: uuid.UUID) -> int:
+        result = await self._session.execute(
+            select(func.count(FavouritePlace.id)).where(FavouritePlace.user_id == user_id)
+        )
+        return int(result.scalar_one())
+
+    async def get_for_user(self, user_id: uuid.UUID, place_id: uuid.UUID) -> FavouritePlace | None:
+        result = await self._session.execute(
+            select(FavouritePlace).where(
+                FavouritePlace.id == place_id, FavouritePlace.user_id == user_id
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def create(self, place: FavouritePlace) -> FavouritePlace:
+        try:
+            # A savepoint, so a second home does not poison the request's
+            # transaction.
+            async with self._session.begin_nested():
+                self._session.add(place)
+                await self._session.flush()
+        except IntegrityError as exc:
+            raise FavouritePlaceExistsError() from exc
+        return place
+
+    async def save(self, place: FavouritePlace) -> None:
+        await self._session.flush()
+
+    async def delete(self, place: FavouritePlace) -> None:
+        await self._session.delete(place)
+        await self._session.flush()
+
+    async def delete_all_for_user(self, user_id: uuid.UUID) -> None:
+        await self._session.execute(delete(FavouritePlace).where(FavouritePlace.user_id == user_id))

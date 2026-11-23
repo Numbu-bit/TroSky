@@ -10,7 +10,8 @@ the reference data:
 * a trip every 30 minutes, 05:30-21:00 Ghana time, from now until seven
   days ahead, on every route;
 * a verified demo passenger with GHS 200 in their wallet, three past trips
-  (paid, completed, one rated) and one upcoming paid booking.
+  (paid, completed, one rated), one upcoming paid booking, and an inbox
+  with a notification on every topic, each with a deep link.
 
 Idempotent: it adds only what is missing, so running it again tomorrow tops
 the timetable up to seven days ahead. Logins are printed at the end; they
@@ -42,6 +43,7 @@ from app.models.bookings import (
 )
 from app.models.drivers import ApprovalStatus, Driver
 from app.models.identity import NotificationPreference, Role, User, UserProfile, UserRole
+from app.models.notifications import Notification, NotificationTopic
 from app.models.payments import Payment, PaymentPurpose, PaymentStatus, WalletReferenceType
 from app.models.routes import Route, Stop
 from app.models.trips import Trip, TripDriverAssignment, TripStatus, TripVehicleAssignment
@@ -50,6 +52,7 @@ from app.providers.payments.base import PaymentChannel
 from app.providers.storage.malware_scan import NoOpMalwareScanner
 from app.providers.storage.sandbox import SandboxStorageProvider
 from app.repositories.booking_repository import BookingRepository
+from app.repositories.notification_repository import NotificationRepository
 from app.repositories.route_geometry import RouteGeometryRepository
 from app.repositories.route_repository import StopRepository
 from app.schemas.booking import BookingCreateRequest, PassengerInput
@@ -80,6 +83,9 @@ LAST_DEPARTURE = time(21, 0)
 EVERY_MINUTES = 30
 VEHICLES_PER_ROUTE = 2
 DEV_ADMIN_PHONE = "+233200000000"  # scripts.seed_dev_data's administrator
+# Marks the demo inbox's notifications; scripts/render-start.sh reads it
+# from here and runs the seed when no notification carries it.
+DEMO_INBOX_MARK = "inbox-2026-11"
 
 # (code, name, latitude, longitude). Codes match scripts.seed_dev_data where
 # the stop already exists there, so the two seeds share stops.
@@ -543,6 +549,138 @@ async def ensure_passenger_history(
         await service.confirm_booking(booking.id)
 
 
+async def ensure_demo_inbox(session: AsyncSession, passenger: User) -> None:
+    """A notification on every topic, some read, each opening somewhere in
+    the app, so the Inbox can be tried out. Written straight to the inbox:
+    nothing is pushed, texted or emailed."""
+    already = await session.execute(
+        select(Notification.id)
+        .where(
+            Notification.user_id == passenger.id,
+            Notification.data.contains({"demo": DEMO_INBOX_MARK}),
+        )
+        .limit(1)
+    )
+    if already.first() is not None:
+        return
+
+    rows = (
+        await session.execute(
+            select(
+                Booking.id, Booking.booking_reference, Booking.status, Booking.destination_stop_id
+            )
+            .join(Trip, Trip.id == Booking.trip_id)
+            .where(Booking.passenger_id == passenger.id)
+            .order_by(Trip.scheduled_departure_at.desc())
+        )
+    ).all()
+    upcoming = next((row for row in rows if row.status == BookingStatus.CONFIRMED), None)
+    completed = next((row for row in rows if row.status == BookingStatus.COMPLETED), None)
+    stop_name = None
+    if completed is not None and completed.destination_stop_id is not None:
+        stop_name = await session.scalar(
+            select(Stop.name).where(Stop.id == completed.destination_stop_id)
+        )
+
+    now = datetime.now(UTC)
+    # (minutes ago, topic, title, body, data, read)
+    inbox: list[tuple[int, NotificationTopic, str, str, dict[str, object], bool]] = []
+    if upcoming is not None:
+        inbox.append(
+            (
+                10,
+                NotificationTopic.BOOKING_UPDATES,
+                "Booking confirmed",
+                f"Your booking {upcoming.booking_reference} is confirmed. Have a safe trip!",
+                {"booking_id": str(upcoming.id)},
+                False,
+            )
+        )
+    inbox.append(
+        (
+            120,
+            NotificationTopic.PAYMENT,
+            "Top-up received",
+            "GHS 200.00 is in your TroSky wallet.",
+            {"deep_link": "/wallet"},
+            False,
+        )
+    )
+    if completed is not None:
+        inbox.append(
+            (
+                60 * 24 + 30,
+                NotificationTopic.BOOKING_UPDATES,
+                "How was your trip?",
+                f"Rate your driver for booking {completed.booking_reference}.",
+                {"booking_id": str(completed.id), "deep_link": f"/bookings/{completed.id}/rate"},
+                False,
+            )
+        )
+        if stop_name is not None:
+            inbox.append(
+                (
+                    60 * 24 + 40,
+                    NotificationTopic.BOOKING_UPDATES,
+                    f"You're at {stop_name}",
+                    f"Need a ride on from {stop_name}? See the trips leaving from here.",
+                    {
+                        "booking_id": str(completed.id),
+                        "stop_id": str(completed.destination_stop_id),
+                        "action": "onward_trips",
+                    },
+                    True,
+                )
+            )
+    inbox += [
+        (
+            60 * 24 * 3,
+            NotificationTopic.SAFETY,
+            "Add an emergency contact",
+            "If you ever use SOS, TroSky can alert someone you trust. Add them in your profile.",
+            {"deep_link": "/profile"},
+            True,
+        ),
+        (
+            60 * 24 * 5,
+            NotificationTopic.PROMOTIONS,
+            "Plenty of seats early on",
+            "Morning trips from Madina have seats to spare. Book ahead and choose yours.",
+            {"deep_link": "/search"},
+            True,
+        ),
+        (
+            60 * 24 * 10,
+            NotificationTopic.ACCOUNT,
+            "Welcome to TroSky",
+            "Your account is ready. Find a trip, pick your seat and pay with MoMo or your wallet.",
+            {"deep_link": "/home"},
+            True,
+        ),
+    ]
+    notifications = NotificationRepository(session)
+    for minutes_ago, topic, title, body, data, read in inbox:
+        when = now - timedelta(minutes=minutes_ago)
+        notification = await notifications.create(
+            user_id=passenger.id,
+            topic=topic,
+            title=title,
+            body=body,
+            data={**data, "demo": DEMO_INBOX_MARK},
+            channel_results={
+                "push": "skipped_demo",
+                "sms": "skipped_demo",
+                "email": "skipped_demo",
+            },
+            created_at=when,
+        )
+        if read:
+            notification.is_read = True
+            notification.read_at = when + timedelta(minutes=5)
+    await session.flush()
+    logger.info("demo_inbox_ready", notifications=len(inbox))
+
+
 async def _route_stop_ids(session: AsyncSession, route: Route) -> list[uuid.UUID]:
     geometry = (await RouteGeometryRepository(session).for_routes([route.id]))[route.id]
     return [point.stop_id for point in geometry.points]
@@ -577,9 +715,13 @@ async def seed_demo_data() -> None:
         fleet = await ensure_fleet(session, owner, reviewer, roles)
         added = await ensure_timetable(session, routes, fleet)
         await ensure_passenger_history(session, passenger, routes, fleet)
+        await ensure_demo_inbox(session, passenger)
     logger.info("demo_data_ready", trips_added=added)
     print(f"\nDemo data ready ({added} new trips). Password for every account: {DEMO_PASSWORD}")
-    print(f"  passenger    {PASSENGER[0]}  {PASSENGER[1]}  (GHS 200 wallet, 4 bookings)")
+    print(
+        f"  passenger    {PASSENGER[0]}  {PASSENGER[1]}  "
+        "(GHS 200 wallet, 4 bookings, a full inbox)"
+    )
     print(f"  fleet owner  {FLEET_OWNER[0]}  {FLEET_OWNER[1]}")
     for (phone, name), spec in zip(DEMO_DRIVERS, ROUTES, strict=False):
         print(f"  driver       {phone}  {name}  ({spec.name.replace('→', '->')})")

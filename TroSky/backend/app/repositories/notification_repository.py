@@ -9,7 +9,7 @@ from typing import Any
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.notifications import Notification, NotificationCategory
+from app.models.notifications import Notification, NotificationTopic, category_for
 
 
 class NotificationRepository:
@@ -20,20 +20,24 @@ class NotificationRepository:
         self,
         *,
         user_id: uuid.UUID,
-        category: NotificationCategory,
+        topic: NotificationTopic,
         title: str,
         body: str,
         data: dict[str, Any],
         channel_results: dict[str, Any],
+        created_at: datetime | None = None,
     ) -> Notification:
         notification = Notification(
             user_id=user_id,
-            category=category,
+            topic=topic,
+            category=category_for(topic),
             title=title,
             body=body,
             data=data,
             channel_results=channel_results,
         )
+        if created_at is not None:  # demo data back-dates its inbox
+            notification.created_at = created_at
         self._session.add(notification)
         await self._session.flush()
         return notification

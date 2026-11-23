@@ -74,6 +74,30 @@ class SessionRepository:
             .values(revoked_at=datetime.now(UTC))
         )
 
+    async def revoke_other_sessions_for_user(
+        self, user_id: uuid.UUID, *, keep_session_id: uuid.UUID, reason: str
+    ) -> None:
+        """Sign the user out everywhere except ``keep_session_id``."""
+        now = datetime.now(UTC)
+        await self._session.execute(
+            update(UserSession)
+            .where(
+                UserSession.user_id == user_id,
+                UserSession.id != keep_session_id,
+                UserSession.revoked_at.is_(None),
+            )
+            .values(revoked_at=now, revoked_reason=reason)
+        )
+        await self._session.execute(
+            update(RefreshToken)
+            .where(
+                RefreshToken.user_id == user_id,
+                RefreshToken.session_id != keep_session_id,
+                RefreshToken.revoked_at.is_(None),
+            )
+            .values(revoked_at=now)
+        )
+
     async def list_active_sessions_for_user(self, user_id: uuid.UUID) -> list[UserSession]:
         result = await self._session.execute(
             select(UserSession)

@@ -27,7 +27,7 @@ from app.core.exceptions import (
 )
 from app.core.redis import get_redis_client
 from app.models.bookings import Booking, BookingStatus
-from app.models.notifications import NotificationCategory
+from app.models.notifications import NotificationTopic
 from app.models.payments import (
     Payment,
     PaymentPurpose,
@@ -252,7 +252,7 @@ class TestNotificationCounts:  # G27
         notifications = NotificationService(db_session)
         for title in ("Booked", "Paid", "Boarding soon"):
             await notifications.notify(
-                user.id, category=NotificationCategory.TRANSACTIONAL, title=title, body=title
+                user.id, topic=NotificationTopic.BOOKING_UPDATES, title=title, body=title
             )
         assert await notifications.count_unread(user.id) == 3
 

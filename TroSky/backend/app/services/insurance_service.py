@@ -29,7 +29,7 @@ from app.core.config import Settings, get_settings
 from app.core.exceptions import NotFoundError
 from app.core.logging import get_logger
 from app.models.drivers import ApprovalStatus, Driver
-from app.models.notifications import NotificationCategory
+from app.models.notifications import NotificationTopic
 from app.repositories.driver_repository import DriverRepository
 from app.repositories.insurance_repository import InsuranceRepository
 from app.services.notification_service import NotificationService
@@ -149,7 +149,7 @@ class InsuranceService:
         }
         await self._notifications.notify(
             driver.user_id,
-            category=NotificationCategory.TRANSACTIONAL,
+            topic=NotificationTopic.ACCOUNT,
             title="Your insurance expires soon",
             body=(
                 f"Your insurance expires {when}, on {_day(expiry)}. Renew it and upload the new "
@@ -190,7 +190,7 @@ class InsuranceService:
         }
         await self._notifications.notify(
             driver.user_id,
-            category=NotificationCategory.TRANSACTIONAL,
+            topic=NotificationTopic.ACCOUNT,
             title="Renew your insurance",
             body=(
                 f"Your insurance expired on {_day(expiry)}. Renew it by {_day(renew_by)}, or your "
@@ -223,7 +223,7 @@ class InsuranceService:
         data = {"action": "insurance_blocked", "expiry_date": expiry.isoformat()}
         await self._notifications.notify(
             driver.user_id,
-            category=NotificationCategory.TRANSACTIONAL,
+            topic=NotificationTopic.ACCOUNT,
             title="Your driver account is blocked",
             body=(
                 f"Your insurance expired on {_day(expiry)} and wasn't renewed within "
@@ -256,7 +256,7 @@ class InsuranceService:
         )
         await self._notifications.notify(
             driver.user_id,
-            category=NotificationCategory.TRANSACTIONAL,
+            topic=NotificationTopic.ACCOUNT,
             title="Your driver account is unblocked",
             body=f"Your insurance is confirmed until {_day(expiry)}. You can take trips again.",
             data={"action": "insurance_unblocked", "expiry_date": expiry.isoformat()},
@@ -273,7 +273,7 @@ class InsuranceService:
             if owner != driver.user_id:  # an owner-driver has already been told
                 await self._notifications.notify(
                     owner,
-                    category=NotificationCategory.TRANSACTIONAL,
+                    topic=NotificationTopic.ACCOUNT,
                     title=title,
                     body=body,
                     data={**data, "driver_id": str(driver.id)},
