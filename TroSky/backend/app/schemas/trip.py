@@ -167,6 +167,19 @@ class TripDetailResponse(TripResponse):
     )
 
 
+class TripShareLinkRequest(RequestModel):
+    expires_in_minutes: int | None = Field(
+        default=None,
+        ge=5,
+        le=7 * 24 * 60,
+        description=(
+            "How long the link lasts, at most the server's limit (12 hours). Leave it out "
+            "for the limit. Either way the link ends when the passenger arrives."
+        ),
+        examples=[30],
+    )
+
+
 class TripShareLinkResponse(ApiModel):
     url: str = Field(..., description="Open in any browser; no TroSky account needed.")
     token: str = Field(..., description="For building your own link: GET /shared-trips/{token}.")
@@ -180,16 +193,26 @@ class SharedTripLocationResponse(ApiModel):
     is_stale: bool = Field(..., description="True when the last position is too old to trust.")
 
 
+class SharedStopPointResponse(ApiModel):
+    latitude: float
+    longitude: float
+
+
 class SharedTripResponse(ApiModel):
-    """A shared trip as family and friends see it."""
+    """A shared trip as family and friends see it: no passenger name, no
+    phone numbers, no fares. Once the link stops working, 410
+    `SHARE_LINK_GONE` with `details.reason`: `expired`, `stopped` (the
+    passenger stopped sharing), `arrived`, `ended` or `cancelled`."""
 
     trip_id: uuid.UUID
     status: TripStatus
     route_name: str
-    passenger_first_name: str | None
     driver_first_name: str | None
     boarding_stop_name: str
     alighting_stop_name: str
+    alighting_stop_location: SharedStopPointResponse | None = Field(
+        default=None, description="Where the passenger gets off, for the map."
+    )
     scheduled_departure_at: datetime
     scheduled_arrival_at: datetime | None
     vehicle: TripVehicleResponse | None

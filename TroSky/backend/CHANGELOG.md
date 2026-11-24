@@ -7,6 +7,15 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- **Stop sharing a live trip: `DELETE /bookings/{id}/share`.** Every link made for the booking so
+  far answers 410; a link made afterwards works. Links now carry when they were issued (64
+  characters instead of 54); older links still open until they expire or are stopped.
+- **Shorter share links on request.** `POST /bookings/{id}/share` takes an optional
+  `{"expires_in_minutes": 30}` (5 minutes up to the 12-hour limit).
+- **A live map on the shared-trip page** (`/share/{token}`): the vehicle and the stop the passenger
+  gets off at, on OpenStreetMap, refreshed every 15 seconds. `GET /shared-trips/{token}` adds
+  `alighting_stop_location` for it.
+
 - **Notifications say where they lead: `deep_link`.** Each notification in `GET /notifications`
   has a `deep_link`: a path in the app's router form (`/bookings/{id}`,
   `/search?origin_stop_id={id}`, `/driver/trips/{id}`), or null when there is nowhere better than
@@ -63,6 +72,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
   slept through some sends only the latest one.
 
 ### Changed
+
+- **A shared trip link ends when the passenger arrives,** or the trip ends, rather than showing
+  "arrived" until it expires. Every 410 from `GET /shared-trips/{token}` now says why in
+  `details.reason`: `expired`, `stopped`, `arrived`, `ended` or `cancelled`.
+- **No passenger name on a shared trip.** `passenger_first_name` is gone from `GET
+  /shared-trips/{token}`, and the page says "The trip is on the way".
 
 - **The push, SMS and email switches now apply to booking and payment updates.** Until now every
   notification was "transactional", and transactional ones ignored those switches, so turning off
