@@ -17,6 +17,7 @@ import pytest
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.exceptions import (
     ConflictError,
     FileValidationError,
@@ -35,6 +36,7 @@ from app.models.payments import (
     WalletReferenceType,
 )
 from app.models.safety import IncidentSeverity, IncidentType
+from app.models.trips import Trip, TripStatus
 from app.providers.payments.base import PaymentChannel
 from app.providers.sms.sandbox import SandboxSmsProvider
 from app.providers.storage.malware_scan import NoOpMalwareScanner
@@ -132,7 +134,73 @@ class TestShareLinks:  # G24
         assert shared.summary.trip_id == scenario.trip_id
         assert shared.boarding_stop_name == scenario.stop_names[LEGON]
         assert shared.alighting_stop_name == scenario.stop_names[CIRCLE]
+        assert shared.alighting_point is not None
         assert shared.location is None  # not under way yet
+
+    async def test_a_shorter_link_but_never_longer_than_the_limit(
+        self, db_session: AsyncSession, make_user, require_redis: None
+    ) -> None:
+        scenario = await _scenario(db_session, make_user)
+        passenger = await make_user()
+        booking = await book(db_session, passenger.id, scenario, seat=0)
+        shares = TripShareService(db_session, get_redis_client())
+
+        _, half_hour = await shares.create_link(
+            passenger.id, booking.id, lasts=timedelta(minutes=30)
+        )
+        _, capped = await shares.create_link(passenger.id, booking.id, lasts=timedelta(days=3))
+
+        now = datetime.now(UTC)
+        assert now + timedelta(minutes=29) < half_hour <= now + timedelta(minutes=30)
+        assert capped <= now + timedelta(seconds=get_settings().TRIP_SHARE_LINK_TTL_SECONDS)
+
+    async def test_stopping_ends_every_link_so_far_but_not_later_ones(
+        self, db_session: AsyncSession, make_user, require_redis: None
+    ) -> None:
+        scenario = await _scenario(db_session, make_user)
+        passenger = await make_user()
+        booking = await book(db_session, passenger.id, scenario, seat=0)
+        shares = TripShareService(db_session, get_redis_client())
+        first, _ = await shares.create_link(passenger.id, booking.id)
+        second, _ = await shares.create_link(passenger.id, booking.id)
+
+        with pytest.raises(NotFoundError):
+            await shares.stop_links((await make_user()).id, booking.id)
+        await shares.stop_links(passenger.id, booking.id)
+
+        for token in (first, second):
+            with pytest.raises(ShareLinkGoneError) as gone:
+                await shares.open_link(token)
+            assert gone.value.details == {"reason": "stopped"}
+        later, _ = await shares.create_link(passenger.id, booking.id)
+        assert (await shares.open_link(later)).summary.trip_id == scenario.trip_id
+
+    async def test_a_link_ends_when_the_passenger_arrives_or_the_trip_ends(
+        self, db_session: AsyncSession, make_user, require_redis: None
+    ) -> None:
+        scenario = await _scenario(db_session, make_user)
+        passenger, other = await make_user(), await make_user()
+        arrived = await book(db_session, passenger.id, scenario, seat=0)
+        riding = await book(db_session, other.id, scenario, seat=1)
+        shares = TripShareService(db_session, get_redis_client())
+        arrived_link, _ = await shares.create_link(passenger.id, arrived.id)
+        riding_link, _ = await shares.create_link(other.id, riding.id)
+
+        await db_session.execute(
+            update(Booking).where(Booking.id == arrived.id).values(status=BookingStatus.COMPLETED)
+        )
+        db_session.expire_all()
+        with pytest.raises(ShareLinkGoneError) as gone:
+            await shares.open_link(arrived_link)
+        assert gone.value.details == {"reason": "arrived"}
+
+        await db_session.execute(
+            update(Trip).where(Trip.id == scenario.trip_id).values(status=TripStatus.COMPLETED)
+        )
+        db_session.expire_all()
+        with pytest.raises(ShareLinkGoneError) as ended:
+            await shares.open_link(riding_link)
+        assert ended.value.details == {"reason": "ended"}
 
     async def test_only_the_passenger_can_share_and_only_once_paid(
         self, db_session: AsyncSession, make_user, require_redis: None
@@ -158,8 +226,9 @@ class TestShareLinks:  # G24
         secret = shares._secret()
 
         expired = encode_share_token(booking.id, datetime.now(UTC) - timedelta(seconds=1), secret)
-        with pytest.raises(ShareLinkGoneError):
+        with pytest.raises(ShareLinkGoneError) as gone:
             await shares.open_link(expired)
+        assert gone.value.details == {"reason": "expired"}
 
         token, _ = await shares.create_link(passenger.id, booking.id)
         await db_session.execute(

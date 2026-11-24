@@ -1,9 +1,10 @@
 """Live-trip links opened by family and friends: no account needed.
 
 ``GET /api/v1/shared-trips/{token}`` is the data; ``GET /share/{token}`` is a
-small page that shows it in any browser, for people without the app. Both
-answer 404 for a link that was never valid and 410 once it has expired or
-the booking was cancelled.
+small page that shows it in any browser, for people without the app: a
+live map, the ETA and the trip. Both answer 404 for a link that was never
+valid, and 410 once it has stopped (``details.reason`` says why: expired,
+stopped by the passenger, arrived, ended or cancelled).
 """
 
 from __future__ import annotations
@@ -16,7 +17,12 @@ from fastapi.responses import HTMLResponse
 from app.api.common_dependencies import DbSession, RedisClient
 from app.core.config import get_settings
 from app.core.ratelimit import rate_limit
-from app.schemas.trip import SharedTripLocationResponse, SharedTripResponse, TripVehicleResponse
+from app.schemas.trip import (
+    SharedStopPointResponse,
+    SharedTripLocationResponse,
+    SharedTripResponse,
+    TripVehicleResponse,
+)
 from app.services.trip_share_service import TripShareService, first_name
 
 router = APIRouter()
@@ -61,10 +67,16 @@ async def get_shared_trip(token: Token, service: TripShareServiceDep) -> SharedT
         trip_id=summary.trip_id,
         status=summary.status,
         route_name=summary.route_name,
-        passenger_first_name=shared.passenger_first_name,
         driver_first_name=first_name(summary.driver_name),
         boarding_stop_name=shared.boarding_stop_name,
         alighting_stop_name=shared.alighting_stop_name,
+        alighting_stop_location=(
+            SharedStopPointResponse(
+                latitude=shared.alighting_point[0], longitude=shared.alighting_point[1]
+            )
+            if shared.alighting_point
+            else None
+        ),
         scheduled_departure_at=summary.scheduled_departure_at,
         scheduled_arrival_at=summary.scheduled_arrival_at,
         vehicle=vehicle,
@@ -90,10 +102,15 @@ _PAGE = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>TroSky live trip</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H"
+      crossorigin="anonymous">
 <style>
   :root { --bg:#f6f7f9; --card:#fff; --ink:#14181f; --muted:#5b6472; --accent:#0a7d4f; }
   @media (prefers-color-scheme: dark) {
     :root { --bg:#0f1216; --card:#181c22; --ink:#e8ebf0; --muted:#9aa3b2; --accent:#3ccf8e; }
+    /* OpenStreetMap has no dark tiles: darken the light ones. */
+    #livemap .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.85); }
   }
   body { margin:0; font:16px/1.5 system-ui, sans-serif; background:var(--bg); color:var(--ink); }
   main { max-width:30rem; margin:0 auto; padding:1.25rem 1rem; }
@@ -106,6 +123,7 @@ _PAGE = """<!doctype html>
   dd { margin:0; }
   a.button { display:inline-block; margin-top:.6rem; padding:.55rem .9rem; border-radius:10px;
              background:var(--accent); color:#fff; text-decoration:none; font-weight:600; }
+  #livemap { height:16rem; border-radius:10px; }
 </style>
 </head>
 <body>
@@ -115,6 +133,8 @@ _PAGE = """<!doctype html>
     <h1 id="headline">Loading&hellip;</h1>
     <div class="muted" id="route"></div>
   </div>
+  <div class="card" id="map-card" hidden><div id="livemap" role="img"
+       aria-label="Map of where the vehicle is now"></div></div>
   <div class="card" id="eta-card" hidden>
     <div class="muted" id="eta-label"></div>
     <div class="big" id="eta"></div>
@@ -132,6 +152,9 @@ _PAGE = """<!doctype html>
   </div>
   <p class="muted" id="footer"></p>
 </main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH"
+        crossorigin="anonymous"></script>
 <script>
 const token = "__TOKEN__";
 const $ = (id) => document.getElementById(id);
@@ -139,6 +162,41 @@ const statusText = {
   scheduled: "hasn't set off yet", boarding: "is boarding", in_progress: "is on the way",
   paused: "has stopped for a moment", completed: "has arrived", cancelled: "was cancelled",
 };
+const endedText = {
+  expired: "This link has expired.",
+  stopped: "This trip is no longer being shared.",
+  arrived: "They have arrived.",
+  ended: "This trip has ended.",
+  cancelled: "This trip was cancelled.",
+};
+let map = null, bus = null, stop = null;
+function showMap(where, dropoff) {
+  // Without the map library (offline CDN), the Google Maps link still works.
+  if (typeof L === "undefined") return;
+  $("map-card").hidden = false;
+  const at = [where.latitude, where.longitude];
+  if (!map) {
+    map = L.map("livemap").setView(at, 15);
+    // OpenStreetMap's own tiles: free for light use like this, with credit.
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' +
+                   " contributors",
+    }).addTo(map);
+    const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
+    bus = L.circleMarker(at, { radius: 9, color: "#fff", weight: 3, fillColor: accent,
+                               fillOpacity: 1 }).addTo(map).bindTooltip("Vehicle");
+    if (dropoff) {
+      stop = L.circleMarker([dropoff.latitude, dropoff.longitude], { radius: 7, color: accent,
+        weight: 3, fillColor: "#fff", fillOpacity: 1 }).addTo(map).bindTooltip("Gets off here");
+      map.fitBounds(L.latLngBounds([at, [dropoff.latitude, dropoff.longitude]]),
+                    { padding: [30, 30], maxZoom: 16 });
+    }
+  } else {
+    bus.setLatLng(at);
+    if (!map.getBounds().contains(at)) map.panTo(at);
+  }
+}
 function time(iso) {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
@@ -147,15 +205,19 @@ async function refresh() {
   try { response = await fetch("__API__/shared-trips/" + token, { cache: "no-store" }); }
   catch (e) { $("footer").textContent = "Can't reach TroSky. Retrying..."; return true; }
   if (response.status === 404 || response.status === 410) {
-    $("headline").textContent = response.status === 410
-      ? "This trip is no longer being shared." : "This link isn't valid.";
-    $("route").textContent = ""; $("eta-card").hidden = true;
+    let reason = null;
+    if (response.status === 410) {
+      try { reason = (await response.json()).error.details.reason; } catch (e) { reason = null; }
+    }
+    $("headline").textContent = response.status === 404 ? "This link isn't valid."
+      : (endedText[reason] || "This trip is no longer being shared.");
+    $("route").textContent = ""; $("eta-card").hidden = true; $("map-card").hidden = true;
+    $("footer").textContent = "";
     return false;
   }
   if (!response.ok) { $("footer").textContent = "Couldn't refresh. Retrying..."; return true; }
   const trip = await response.json();
-  const who = trip.passenger_first_name || "Your contact";
-  $("headline").textContent = who + "'s trip " + (statusText[trip.status] || trip.status);
+  $("headline").textContent = "The trip " + (statusText[trip.status] || trip.status);
   $("route").textContent = trip.route_name;
   $("from").textContent = trip.boarding_stop_name;
   $("to").textContent = trip.alighting_stop_name;
@@ -166,14 +228,16 @@ async function refresh() {
   $("driver").textContent = trip.driver_first_name || "Not assigned yet";
   const where = trip.location;
   $("eta-card").hidden = !where;
+  if (!where) $("map-card").hidden = true;
   if (where) {
     $("eta-label").textContent = "Arrives at " + trip.alighting_stop_name + " in about";
     $("eta").textContent = trip.minutes_to_dropoff === null ? "—"
       : trip.minutes_to_dropoff + " min";
     $("seen").textContent = (where.is_stale ? "Last seen " : "Updated ") + time(where.updated_at);
-    const map = $("map");
-    map.href = "https://www.google.com/maps?q=" + where.latitude + "," + where.longitude;
-    map.hidden = false;
+    const link = $("map");
+    link.href = "https://www.google.com/maps?q=" + where.latitude + "," + where.longitude;
+    link.hidden = false;
+    showMap(where, trip.alighting_stop_location);
   }
   $("footer").textContent = "Link valid until " + new Date(trip.expires_at).toLocaleString();
   return trip.status !== "completed" && trip.status !== "cancelled";

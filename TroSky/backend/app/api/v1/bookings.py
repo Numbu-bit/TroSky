@@ -9,7 +9,7 @@ existence isn't leaked, unless the caller holds ``bookings:view_any``
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request, status
@@ -43,7 +43,11 @@ from app.schemas.common import PaginatedResponse
 from app.schemas.feedback import RateBookingRequest, RatingResponse
 from app.schemas.payment import PayBookingRequest, PaymentResponse
 from app.schemas.ticket import TicketResponse
-from app.schemas.trip import TripSearchResultResponse, TripShareLinkResponse
+from app.schemas.trip import (
+    TripSearchResultResponse,
+    TripShareLinkRequest,
+    TripShareLinkResponse,
+)
 from app.services.booking_service import BookingService
 from app.utilities.query_params import parse_enum_list
 
@@ -152,12 +156,18 @@ async def share_booking(
     request: Request,
     principal: CurrentPrincipal,
     shares: TripShareServiceDep,
+    body: TripShareLinkRequest | None = None,
 ) -> TripShareLinkResponse:
-    """A link anyone can open to follow this trip live: the vehicle, the
-    stops, and roughly when it reaches the passenger's stop. For a paid
-    booking; it expires after 12 hours, or as soon as the booking is
-    cancelled."""
-    token, expires_at = await shares.create_link(principal.user_id, booking_id)
+    """A link anyone can open to follow this trip live, with no TroSky
+    account: the vehicle on a map, the stops, and roughly when it reaches
+    the passenger's stop. Only the booking's passenger, and only once it is
+    paid. It lasts `expires_in_minutes` (default and most: 12 hours) and
+    ends sooner when the passenger arrives, the trip ends, the booking is
+    cancelled, or the passenger calls `DELETE /bookings/{id}/share`."""
+    lasts = None
+    if body is not None and body.expires_in_minutes is not None:
+        lasts = timedelta(minutes=body.expires_in_minutes)
+    token, expires_at = await shares.create_link(principal.user_id, booking_id, lasts=lasts)
     base = get_settings().TRIP_SHARE_BASE_URL
     url = (
         f"{base.rstrip('/')}/{token}"
@@ -165,6 +175,20 @@ async def share_booking(
         else str(request.url_for("shared_trip_page", token=token))
     )
     return TripShareLinkResponse(url=url, token=token, expires_at=expires_at)
+
+
+@router.delete(
+    "/{booking_id}/share",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+)
+async def stop_sharing_booking(
+    booking_id: uuid.UUID, principal: CurrentPrincipal, shares: TripShareServiceDep
+) -> None:
+    """Stop sharing: every link made for this booking so far answers 410
+    (`reason: stopped`). A link made afterwards works. The booking's
+    passenger only (404 for anyone else)."""
+    await shares.stop_links(principal.user_id, booking_id)
 
 
 @router.get("/{booking_id}/onward-trips", response_model=list[TripSearchResultResponse])
