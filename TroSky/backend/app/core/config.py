@@ -299,6 +299,8 @@ class Settings(BaseSettings):
     AVATAR_MAX_SIZE_BYTES: int = Field(default=5 * 1024 * 1024, gt=0)
     AVATAR_URL_TTL_SECONDS: int = Field(default=3600, gt=0, le=604800)
     FAVOURITE_ROUTES_MAX_PER_USER: int = Field(default=20, gt=0)
+    # Home and work count towards it.
+    FAVOURITE_PLACES_MAX_PER_USER: int = Field(default=20, gt=0)
     # Vehicles near me: ignore GPS positions older than this.
     NEARBY_VEHICLES_MAX_AGE_SECONDS: int = Field(default=300, gt=0)
     # "~3 min away" on search results: a vehicle's own reported speed when

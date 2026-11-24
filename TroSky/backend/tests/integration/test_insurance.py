@@ -67,20 +67,27 @@ async def _notifications(session: AsyncSession, user_id) -> list[Notification]:
     return list(result.scalars().all())
 
 
+# A test's notifications share one transaction, and so one created_at: the
+# database may return them in any order. Put them in the order they were sent
+# by their day instead: warnings count up after expiry, reminders count down
+# before it.
 async def _warnings(session: AsyncSession, user_id) -> list[int]:
-    return [
+    return sorted(
         note.data["day"]
         for note in await _notifications(session, user_id)
         if note.data.get("action") == "insurance_warning"
-    ]
+    )
 
 
 async def _reminders(session: AsyncSession, user_id) -> list[int]:
-    return [
-        note.data["day"]
-        for note in await _notifications(session, user_id)
-        if note.data.get("action") == "insurance_reminder"
-    ]
+    return sorted(
+        (
+            note.data["day"]
+            for note in await _notifications(session, user_id)
+            if note.data.get("action") == "insurance_reminder"
+        ),
+        reverse=True,
+    )
 
 
 async def _trip(session: AsyncSession, make_user) -> TripScenario:
@@ -321,8 +328,8 @@ class TestBlocking:
         )
         assert history is not None
         assert history.startswith(BLOCK_REASON)
-        notes = await _notifications(db_session, user.id)
-        assert notes[-1].title == "Your driver account is blocked"
+        titles = [note.title for note in await _notifications(db_session, user.id)]
+        assert "Your driver account is blocked" in titles
 
     async def test_a_blocked_driver_is_not_blocked_or_told_again(
         self, db_session: AsyncSession, make_user
@@ -416,8 +423,8 @@ class TestRenewal:
         await _give_insurance(db_session, driver, expires=_day(400))
         assert await service.check_driver(driver.id, today=_day(32)) == InsuranceOutcome.UNBLOCKED
         assert driver.status == ApprovalStatus.APPROVED
-        notes = await _notifications(db_session, user.id)
-        assert notes[-1].title == "Your driver account is unblocked"
+        titles = [note.title for note in await _notifications(db_session, user.id)]
+        assert "Your driver account is unblocked" in titles
 
     async def test_a_date_still_in_the_past_does_not(
         self, db_session: AsyncSession, make_user

@@ -31,7 +31,7 @@ from app.core.exceptions import (
 from app.core.logging import get_logger
 from app.models.driver_actions import ActedAs, DriverActionKind
 from app.models.drivers import ApprovalStatus
-from app.models.notifications import NotificationCategory
+from app.models.notifications import NotificationTopic
 from app.models.routes import Route
 from app.models.trips import (
     AssignmentResponse,
@@ -209,7 +209,7 @@ class TripService:
         route = await self._session.get(Route, trip.route_id)
         await self._notifications.notify(
             driver.user_id,
-            category=NotificationCategory.TRANSACTIONAL,
+            topic=NotificationTopic.BOOKING_UPDATES,
             title="New trip assigned",
             body=(
                 f"{route.name if route else 'A trip'}, leaving "
@@ -277,7 +277,7 @@ class TripService:
             if driver is not None:
                 await self._notifications.notify(
                     driver.user_id,
-                    category=NotificationCategory.TRANSACTIONAL,
+                    topic=NotificationTopic.BOOKING_UPDATES,
                     title="Trip accepted for you" if accept else "Trip taken off you",
                     body=(
                         "The operations team accepted this trip for you."
@@ -671,7 +671,7 @@ class TripService:
             route = await self._session.get(Route, trip.route_id)
             await self._notifications.notify(
                 driver.user_id,
-                category=NotificationCategory.TRANSACTIONAL,
+                topic=NotificationTopic.BOOKING_UPDATES,
                 title="Trip cancelled",
                 body=(
                     f"{route.name if route else 'Your trip'}, due to leave "

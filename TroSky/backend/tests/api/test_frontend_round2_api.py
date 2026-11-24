@@ -17,7 +17,7 @@ from httpx import AsyncClient
 from app.core.database import get_session_factory
 from app.core.security import hash_password
 from app.models.identity import User, UserProfile
-from app.models.notifications import NotificationCategory
+from app.models.notifications import NotificationTopic
 from app.providers.storage.sandbox import SandboxStorageProvider
 from app.services.booking_service import BookingService
 from app.services.notification_service import NotificationService
@@ -224,7 +224,7 @@ class TestNotifications:  # G27
         async with get_session_factory()() as session:
             for title in ("Booked", "Paid"):
                 await NotificationService(session).notify(
-                    user_id, category=NotificationCategory.TRANSACTIONAL, title=title, body=title
+                    user_id, topic=NotificationTopic.BOOKING_UPDATES, title=title, body=title
                 )
             await session.commit()
 
@@ -351,8 +351,10 @@ class TestShareLinks:  # G24
 
         assert shared.json()["url"] == f"http://testserver/share/{token}"
         assert data.status_code == 200, data.text
-        assert data.json()["passenger_first_name"] == "Akua"
+        assert "passenger_first_name" not in data.json()
+        assert "Akua" not in data.text  # no passenger name at all
         assert data.json()["driver_first_name"] == "Yaw"
+        assert data.json()["alighting_stop_location"] is not None
         assert data.json()["boarding_stop_name"] == world.scenario.stop_names[LEGON]
         assert "phone" not in data.text
         assert page.status_code == 200
@@ -360,6 +362,27 @@ class TestShareLinks:  # G24
         assert token in page.text
         assert "/api/v1/shared-trips/" in page.text
         assert bogus.status_code == 404
+
+    async def test_a_half_hour_link_then_stop_sharing(
+        self, client: AsyncClient, world: World
+    ) -> None:
+        headers = await _passenger(client)
+        booking = await _book(client, headers, world)
+        await _confirm(booking["id"])
+        url = f"/api/v1/bookings/{booking['id']}/share"
+
+        shared = await client.post(url, headers=headers, json={"expires_in_minutes": 30})
+        too_short = await client.post(url, headers=headers, json={"expires_in_minutes": 1})
+        stopped = await client.delete(url, headers=headers)
+        after = await client.get(f"/api/v1/shared-trips/{shared.json()['token']}")
+
+        assert shared.status_code == 201, shared.text
+        expires = datetime.fromisoformat(shared.json()["expires_at"])
+        assert expires <= datetime.now(UTC) + timedelta(minutes=30)
+        assert too_short.status_code == 422
+        assert stopped.status_code == 204
+        assert after.status_code == 410
+        assert after.json()["error"]["details"] == {"reason": "stopped"}
 
     async def test_an_unpaid_booking_cannot_be_shared(
         self, client: AsyncClient, world: World

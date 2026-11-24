@@ -21,7 +21,7 @@ from app.models.feedback import (
     ComplaintPriority,
     ComplaintStatus,
 )
-from app.models.notifications import NotificationCategory
+from app.models.notifications import NotificationTopic
 from app.repositories.feedback_repository import ComplaintRepository
 from app.repositories.user_repository import UserRepository
 from app.services.notification_service import NotificationService
@@ -187,7 +187,7 @@ class ComplaintService:
                 preview = body[: _PREVIEW_CHARACTERS - 1] + "\u2026"
             await NotificationService(self._session).notify(
                 complaint.filed_by,
-                category=NotificationCategory.TRANSACTIONAL,
+                topic=NotificationTopic.ACCOUNT,
                 title=f"TroSky support: {complaint.subject}"[:200],
                 body=preview,
                 data={

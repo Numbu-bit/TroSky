@@ -78,16 +78,32 @@ class RegisterResponse(ApiModel):
     message: str = "Registration successful. Verify your phone number with the OTP sent."
 
 
+def _not_email_change(purpose: OtpPurpose) -> OtpPurpose:
+    if purpose == OtpPurpose.EMAIL_CHANGE:
+        raise ValueError("Use POST /users/me/change-email and its /confirm for this purpose.")
+    return purpose
+
+
 class VerifyOtpRequest(RequestModel):
     target: str = Field(..., description="Phone (E.164) or email the OTP was sent to.")
     purpose: OtpPurpose
     code: str = Field(..., min_length=4, max_length=10)
+
+    @field_validator("purpose")
+    @classmethod
+    def _public_purpose(cls, value: OtpPurpose) -> OtpPurpose:
+        return _not_email_change(value)
 
 
 class ResendOtpRequest(RequestModel):
     target: str
     purpose: OtpPurpose
     channel: OtpChannel = OtpChannel.SMS
+
+    @field_validator("purpose")
+    @classmethod
+    def _public_purpose(cls, value: OtpPurpose) -> OtpPurpose:
+        return _not_email_change(value)
 
 
 class DeviceContext(RequestModel):

@@ -28,7 +28,8 @@ per-row below for that reason, not because it's excluded.
 
 | Route | Ownership scoping |
 |---|---|
-| `GET/PATCH/DELETE /users/me`, `/users/me/notification-preferences`, `/users/me/emergency-contacts*`, `POST /users/me/devices` | Always the caller's own record — there is no "get other user's profile" route. |
+| `GET/PATCH/DELETE /users/me`, `/users/me/notification-preferences`, `/users/me/emergency-contacts*`, `/users/me/favourite-routes*`, `/users/me/favourite-places*`, `POST /users/me/devices` | Always the caller's own record — there is no "get other user's profile" route. |
+| `POST /users/me/change-password`, `/users/me/change-email`, `/users/me/change-email/confirm` | The caller's own account, and only with its current password (the confirm step with the code emailed to the new address). Rate-limited per IP (`account:*`). |
 | `POST /auth/logout`, `/auth/logout-all`, `GET /auth/sessions`, `DELETE /auth/sessions/{id}` | Caller's own sessions only. |
 | `POST /bookings`, `GET /bookings`, `GET /bookings/{id}`, `POST /bookings/{id}/cancel`, `POST /bookings/{id}/pay`, `GET /bookings/{id}/tickets`, `POST/GET /bookings/{id}/rating` | 404 (not 403) on another passenger's booking, unless the caller also holds `bookings:view_any`. `pay` rate-limited (`payments:initiate`). |
 | `GET/POST /payments*`, `GET/POST /wallet*`, `GET/POST /wallet/withdrawals*` | Caller's own payments/wallet only, unless `payments:review` / `withdrawals:review`. Wallet topup rate-limited (`payments:initiate`). |

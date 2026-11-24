@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import uuid
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -9,7 +10,13 @@ from decimal import Decimal
 import pytest
 
 from app.utilities.geo import progress_along_route_km, travel_minutes
-from app.utilities.share_link import decode_share_token, encode_share_token
+from app.utilities.share_link import (
+    _PURPOSE_V1,
+    ShareToken,
+    _mac,
+    decode_share_token,
+    encode_share_token,
+)
 
 SECRET = "s" * 40
 
@@ -17,12 +24,32 @@ SECRET = "s" * 40
 class TestShareToken:
     def test_round_trip(self) -> None:
         booking_id = uuid.uuid4()
+        issued_at = datetime(2026, 10, 2, 18, 0, 0, 123000, tzinfo=UTC)
         expires_at = datetime(2026, 10, 2, 18, 30, tzinfo=UTC)
 
-        token = encode_share_token(booking_id, expires_at, SECRET)
+        token = encode_share_token(booking_id, expires_at, SECRET, issued_at=issued_at)
 
-        assert decode_share_token(token, SECRET) == (booking_id, expires_at)
-        assert len(token) <= 60  # fits in a text message with room to spare
+        assert decode_share_token(token, SECRET) == ShareToken(booking_id, issued_at, expires_at)
+        assert len(token) == 64  # fits in a text message with room to spare
+
+    def test_version_1_links_still_open_without_an_issue_time(self) -> None:
+        booking_id = uuid.uuid4()
+        expires_at = datetime(2026, 10, 2, 18, 30, tzinfo=UTC)
+        payload = booking_id.bytes + int(expires_at.timestamp()).to_bytes(8, "big")
+        raw = payload + _mac(payload, SECRET, _PURPOSE_V1)
+        token = base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+        assert len(token) == 54
+        assert decode_share_token(token, SECRET) == ShareToken(booking_id, None, expires_at)
+
+    def test_a_version_1_mac_does_not_sign_a_version_2_token(self) -> None:
+        # Each version has a key of its own, so one can't be passed off as the other.
+        token = encode_share_token(uuid.uuid4(), datetime.now(UTC), SECRET)
+        raw = base64.urlsafe_b64decode(token + "=" * (-len(token) % 4))
+        payload = raw[:32]
+        forged = payload + _mac(payload, SECRET, _PURPOSE_V1)
+
+        assert decode_share_token(base64.urlsafe_b64encode(forged).decode(), SECRET) is None
 
     def test_a_changed_character_is_rejected(self) -> None:
         token = encode_share_token(uuid.uuid4(), datetime.now(UTC), SECRET)

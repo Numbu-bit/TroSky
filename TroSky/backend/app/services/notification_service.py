@@ -1,13 +1,12 @@
 """Notification dispatch: the in-app inbox plus best-effort fan-out to
 push/SMS/email based on the recipient's preferences.
 
-``category`` decides whether preference opt-outs even apply:
-``TRANSACTIONAL`` (booking/payment/ticket/trip updates) and ``SAFETY``
-(SOS/incident acknowledgements) always bypass
-``NotificationPreference`` opt-outs — a passenger cannot accidentally
-silence their own payment receipt or an SOS acknowledgement. Only
-``PROMOTIONAL`` notifications respect ``promotional_opt_in``. This mirrors
-the policy `NotificationPreference`'s own docstring stated back in Phase 2.
+Every notification has a ``topic`` (``NotificationTopic``). It goes out on
+a channel only when the user has both that channel and that topic on
+(``delivers``). Safety and account notifications have no switch: an SOS
+acknowledgement, a password change or a blocked driver account always
+reaches the person. Promotions are off until the user turns them on. The
+in-app inbox gets every notification whatever the switches say.
 
 A failure on any one channel never blocks the others or the in-app
 record — the ``Notification`` row is always written first, and each
@@ -26,15 +25,40 @@ from app.core.config import Settings, get_settings
 from app.core.exceptions import NotFoundError, ProviderError
 from app.core.logging import get_logger
 from app.core.telemetry import NOTIFICATION_DELIVERY_TOTAL
-from app.models.notifications import Notification, NotificationCategory
+from app.models.identity import NotificationPreference
+from app.models.notifications import ALWAYS_ON_TOPICS, Notification, NotificationTopic
 from app.providers.email.factory import get_email_provider
 from app.providers.push.factory import get_push_provider
 from app.providers.sms.factory import get_sms_provider
 from app.repositories.notification_repository import NotificationRepository
 from app.repositories.profile_repository import DeviceRepository, NotificationPreferenceRepository
 from app.repositories.user_repository import UserRepository
+from app.services.notification_links import deep_link_for
 
 logger = get_logger(__name__)
+
+# The switch for each topic that has one, on NotificationPreference.
+_TOPIC_SWITCHES = {
+    NotificationTopic.BOOKING_UPDATES: "booking_updates_enabled",
+    NotificationTopic.PAYMENT: "payment_enabled",
+    NotificationTopic.PROMOTIONS: "promotional_opt_in",
+}
+_CHANNEL_SWITCHES = {"push": "push_enabled", "sms": "sms_enabled", "email": "email_enabled"}
+
+
+def delivers(
+    preference: NotificationPreference | None, topic: NotificationTopic, channel: str
+) -> bool:
+    """Whether a ``topic`` notification goes out on ``channel`` for a user
+    with these preferences. With no preferences saved, the defaults apply:
+    every channel on, every topic on except promotions."""
+    if topic in ALWAYS_ON_TOPICS:
+        return True
+    if preference is None:
+        return topic != NotificationTopic.PROMOTIONS
+    return bool(getattr(preference, _TOPIC_SWITCHES[topic])) and bool(
+        getattr(preference, _CHANNEL_SWITCHES[channel])
+    )
 
 
 class NotificationService:
@@ -50,56 +74,51 @@ class NotificationService:
         self,
         user_id: uuid.UUID,
         *,
-        category: NotificationCategory,
+        topic: NotificationTopic,
         title: str,
         body: str,
         data: dict[str, Any] | None = None,
     ) -> Notification:
         data = data or {}
         preference = await self._preferences.get_for_user(user_id)
-        bypasses_opt_out = category in (
-            NotificationCategory.TRANSACTIONAL,
-            NotificationCategory.SAFETY,
-        )
+
+        # The push carries the link too, so tapping it opens the same place
+        # as tapping the notification in the inbox.
+        push_data = dict(data)
+        link = deep_link_for(data)
+        if link is not None:
+            push_data["deep_link"] = link
 
         channel_results: dict[str, str] = {}
         channel_results["push"] = await self._dispatch_push(
             user_id,
             title=title,
             body=body,
-            data=data,
-            preference_allows=self._allows(preference, "push_enabled", bypasses_opt_out),
+            data=push_data,
+            preference_allows=delivers(preference, topic, "push"),
         )
         channel_results["sms"] = await self._dispatch_sms(
             user_id,
             body=body,
-            preference_allows=self._allows(preference, "sms_enabled", bypasses_opt_out),
+            preference_allows=delivers(preference, topic, "sms"),
         )
         channel_results["email"] = await self._dispatch_email(
             user_id,
             title=title,
             body=body,
-            preference_allows=self._allows(preference, "email_enabled", bypasses_opt_out),
+            preference_allows=delivers(preference, topic, "email"),
         )
         for channel, result in channel_results.items():
             NOTIFICATION_DELIVERY_TOTAL.labels(channel=channel, result=result).inc()
 
         return await self._notifications.create(
             user_id=user_id,
-            category=category,
+            topic=topic,
             title=title,
             body=body,
             data=data,
             channel_results=channel_results,
         )
-
-    @staticmethod
-    def _allows(preference: object, field: str, bypasses_opt_out: bool) -> bool:
-        if bypasses_opt_out:
-            return True
-        if preference is None:
-            return True  # no preference row yet — defaults are opt-in
-        return bool(getattr(preference, field))
 
     async def _dispatch_push(
         self,

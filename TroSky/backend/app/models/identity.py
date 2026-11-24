@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from enum import StrEnum
 
 from sqlalchemy import (
@@ -39,7 +40,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import CITEXT
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.types import TIMESTAMP, Boolean, Integer, String
+from sqlalchemy.types import TIMESTAMP, Boolean, Integer, Numeric, String
 
 from app.models.base import Base, SoftDeleteMixin, UUIDAuditBase, enum_values
 
@@ -55,6 +56,9 @@ class OtpPurpose(StrEnum):
     PASSWORD_RESET = "password_reset"  # noqa: S105 - enum value, not a credential
     PHONE_VERIFICATION = "phone_verification"
     EMAIL_VERIFICATION = "email_verification"
+    # Proves a new address before it replaces the account's email
+    # (POST /users/me/change-email). Keyed on the new address.
+    EMAIL_CHANGE = "email_change"
 
 
 class DevicePlatform(StrEnum):
@@ -402,9 +406,14 @@ class FavouriteRoute(UUIDAuditBase):
 
 
 class NotificationPreference(UUIDAuditBase):
-    """Per-user notification channel opt-in/opt-out. Transactional messages
-    (OTP, payment, safety) always bypass promotional opt-out — enforced in
-    the notification dispatch service (Phase 9), not here."""
+    """What a user wants to hear about, and how.
+
+    Channels (push, SMS, email) and topics (booking updates, payment,
+    promotions) are both switches: a notification goes out on a channel
+    only when both its channel and its topic are on. Safety and account
+    notifications have no switch and always go out. The in-app inbox gets
+    every notification either way. Enforced in
+    ``app.services.notification_service``."""
 
     __tablename__ = "notification_preferences"
 
@@ -414,6 +423,58 @@ class NotificationPreference(UUIDAuditBase):
     push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     sms_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     email_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # The "promotions" topic: off until the user turns it on.
     promotional_opt_in: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    booking_updates_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
+    payment_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
 
     __table_args__ = (UniqueConstraint("user_id", name="uq_notification_preferences_user_id"),)
+
+
+class FavouritePlaceKind(StrEnum):
+    HOME = "home"
+    WORK = "work"
+    CUSTOM = "custom"
+
+
+class FavouritePlace(UUIDAuditBase):
+    """A place a user saved for the Home screen: their home, their work (one
+    of each at most) or any other place they name. Always has coordinates;
+    ``stop_id`` is set when they picked a stop rather than a point."""
+
+    __tablename__ = "favourite_places"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    kind: Mapped[FavouritePlaceKind] = mapped_column(
+        PgEnum(
+            FavouritePlaceKind,
+            name="favourite_place_kind",
+            native_enum=True,
+            values_callable=enum_values,
+        ),
+        nullable=False,
+    )
+    label: Mapped[str] = mapped_column(String(60), nullable=False)
+    # The place keeps its coordinates if the stop is ever removed.
+    stop_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("stops.id", ondelete="SET NULL"), nullable=True
+    )
+    latitude: Mapped[Decimal] = mapped_column(Numeric(9, 6), nullable=False)
+    longitude: Mapped[Decimal] = mapped_column(Numeric(9, 6), nullable=False)
+
+    __table_args__ = (
+        Index("ix_favourite_places_user_id", "user_id"),
+        Index(
+            "uq_favourite_places_user_home_work",
+            "user_id",
+            "kind",
+            unique=True,
+            postgresql_where=text("kind IN ('home', 'work')"),
+        ),
+    )

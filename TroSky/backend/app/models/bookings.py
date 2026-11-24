@@ -115,6 +115,11 @@ class Booking(UUIDAuditBase):
     idempotency_key: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
     idempotency_request_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     expires_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    # Every live-trip link shared for this booking before this moment no
+    # longer opens (DELETE /bookings/{id}/share).
+    share_links_revoked_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True
+    )
     version: Mapped[int] = mapped_column(nullable=False, default=1, server_default="1")
 
     __table_args__ = (
