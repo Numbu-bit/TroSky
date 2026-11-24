@@ -10,7 +10,9 @@ from __future__ import annotations
 import uuid
 from decimal import Decimal
 
-from app.models.drivers import VerificationStatus
+import pytest
+
+from app.models.drivers import ApprovalStatus, VerificationStatus, passenger_verification
 from app.schemas.trip import TripDriverResponse
 
 
@@ -52,3 +54,31 @@ class TestTripDriverResponsePopulatedFields:
         dumped = driver.model_dump(mode="json")
         assert dumped["phone_number"] == "+233245550201"
         assert dumped["verification_status"] == "verified"
+
+
+class TestPassengerVerification:
+    @pytest.mark.parametrize(
+        ("approval", "shown"),
+        [
+            (ApprovalStatus.APPROVED, VerificationStatus.VERIFIED),
+            (ApprovalStatus.SUSPENDED, VerificationStatus.VERIFIED),
+            (ApprovalStatus.PENDING, VerificationStatus.PENDING),
+            (ApprovalStatus.UNDER_REVIEW, VerificationStatus.PENDING),
+            (ApprovalStatus.REJECTED, VerificationStatus.REJECTED),
+            (ApprovalStatus.EXPIRED, VerificationStatus.UNVERIFIED),
+        ],
+    )
+    def test_follows_the_approval_by_default(
+        self, approval: ApprovalStatus, shown: VerificationStatus
+    ) -> None:
+        assert passenger_verification(approval, VerificationStatus.UNVERIFIED) == shown
+
+    def test_a_recorded_verification_wins(self) -> None:
+        assert (
+            passenger_verification(ApprovalStatus.APPROVED, VerificationStatus.REJECTED)
+            == VerificationStatus.REJECTED
+        )
+        assert (
+            passenger_verification(ApprovalStatus.PENDING, VerificationStatus.VERIFIED)
+            == VerificationStatus.VERIFIED
+        )
