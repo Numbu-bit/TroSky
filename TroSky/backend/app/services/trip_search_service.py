@@ -32,7 +32,7 @@ from app.core.config import Settings, get_settings
 from app.core.database import keep_writes_on_failure
 from app.core.exceptions import NoPickupNearbyError, NotFoundError, StopNotOnRouteError
 from app.models.analytics import SEARCH_GRID_DEGREES, SearchEvent
-from app.models.drivers import VerificationStatus
+from app.models.drivers import VerificationStatus, passenger_verification
 from app.models.identity import UserProfile
 from app.models.routes import Stop
 from app.models.trips import TripStatus
@@ -135,8 +135,15 @@ class TripSearchService:
             average, count = await self._ratings.get_driver_average_rating(summary.driver_id)
             driver_row = await self._drivers.get_by_id(summary.driver_id)
             if driver_row is not None:
-                phone = driver_row.phone_number
-                verification = driver_row.verification_status
+                # A work number when the driver gave one, else the number
+                # they signed up with. The endpoint shows it only to a
+                # passenger booked on this trip.
+                phone = driver_row.phone_number or (
+                    driver_user.phone_number if driver_user is not None else None
+                )
+                verification = passenger_verification(
+                    driver_row.status, driver_row.verification_status
+                )
         return TripDetails(
             summary,
             profile,

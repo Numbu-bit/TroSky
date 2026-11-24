@@ -45,6 +45,30 @@ class VerificationStatus(StrEnum):
     REJECTED = "rejected"
 
 
+# How a driver's onboarding reads to passengers, until something (a Ghana Card
+# check, say) sets ``Driver.verification_status`` itself. Approved means
+# TroSky's team checked their documents; a suspension (an expired insurance,
+# for one) doesn't undo that.
+_VERIFICATION_FROM_APPROVAL = {
+    ApprovalStatus.APPROVED: VerificationStatus.VERIFIED,
+    ApprovalStatus.SUSPENDED: VerificationStatus.VERIFIED,
+    ApprovalStatus.PENDING: VerificationStatus.PENDING,
+    ApprovalStatus.UNDER_REVIEW: VerificationStatus.PENDING,
+    ApprovalStatus.REJECTED: VerificationStatus.REJECTED,
+    ApprovalStatus.EXPIRED: VerificationStatus.UNVERIFIED,
+}
+
+
+def passenger_verification(
+    status: ApprovalStatus, verification_status: VerificationStatus
+) -> VerificationStatus:
+    """What passengers see on the driver's pill: an explicit verification
+    when one was recorded, else what their approval says."""
+    if verification_status != VerificationStatus.UNVERIFIED:
+        return verification_status
+    return _VERIFICATION_FROM_APPROVAL.get(status, VerificationStatus.UNVERIFIED)
+
+
 class DocumentType(StrEnum):
     DRIVER_LICENSE = "driver_license"
     PROFILE_PHOTO = "profile_photo"

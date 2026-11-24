@@ -87,6 +87,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- **The driver's phone and "Verified" pill on Trip details were always empty.** Both read new
+  columns that nothing filled (`drivers.phone_number`, `drivers.verification_status`), so every
+  driver showed `phone_number: null` and `unverified`. A passenger booked on the trip now gets the
+  driver's work number, or else the number they signed up with; and a driver approved by TroSky's
+  team shows as `verified` (`pending` under review, `rejected` if refused) unless a check recorded
+  on the driver says otherwise.
 - **Celery worker was crashing at every startup** (`kombu.exceptions.VersionMismatch: Redis transport requires redis-py versions 6.1.0 or later. You have 5.3.1`), which took the API with it through `render-start.sh`'s supervisor and put staging into a restart loop of about 80 s cycles (~22 s healthy, ~60 s 503). `celery[redis]` left `kombu` unpinned, so a new build pulled kombu 5.6+ next to the `redis<6.0.0` pin and the two didn't talk at runtime. `kombu>=5.4.0,<5.6.0` is now a direct dependency to hold the compatible pair together until redis-py moves to 6.x.
 
 ### Phase 1 — Foundation (2026-08-04)
