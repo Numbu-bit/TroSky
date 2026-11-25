@@ -164,15 +164,23 @@ const Map<String, Set<String>> _telemetrySchema = {
   'profile_opened': {},
   'profile_section_tapped': {'section'},
   'profile_signout_tapped': {},
+  'profile_language_opened': {},
+  'profile_about_opened': {},
+  'profile_report_problem_opened': {},
+  'about_terms_tapped': {},
+  'about_privacy_tapped': {},
+  'about_licenses_tapped': {},
   'password_reset_requested': {},
   'password_reset_completed': {},
 
   // Favourites
   'favourites_opened': {'from'},
   'favourite_deleted': {'kind'},
+  'favourites_empty_add_tapped': {},
 
   // Home
   'home_bell_tapped': {},
+  'home_sos_tapped': {},
 
   // Notifications
   'notifications_opened': {'from'},

@@ -13,7 +13,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../app/offline_banner.dart';
 import '../../../../app/routes.dart';
+import '../../../../app/telemetry.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../safety/domain/safety_args.dart';
 import '../../application/home_providers.dart';
 
 /// A vehicle with this many free seats or fewer has the amber pin, as the
@@ -215,7 +217,15 @@ class _HomeMapState extends ConsumerState<HomeMap> {
             child: TroskySosButton(
               label: l10n.homeSos,
               semanticsLabel: l10n.homeSosLabel,
-              onPressed: () => context.pushNamed(AppRoute.sos.name),
+              onPressed: () {
+                ref
+                    .read(telemetryProvider)
+                    .emit(TelemetryEvent('home_sos_tapped'));
+                context.pushNamed(
+                  AppRoute.sosAlert.name,
+                  extra: const SosArgs(),
+                );
+              },
             ),
           ),
           Positioned(

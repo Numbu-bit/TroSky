@@ -306,12 +306,12 @@ void main() {
     });
   });
 
-  group('subscribe banner (decision 16)', () {
-    testWidgets('on in mock mode; opens Subscribe', (tester) async {
+  group('subscribe banner (decision 16, removed in step 21/B2)', () {
+    testWidgets('no longer renders — even with FEATURES=subscriptions', (
+      tester,
+    ) async {
       await openHome(tester);
-      expect(find.text('Subscribe your commute'), findsOneWidget);
-      await tapVisible(tester, find.text('Try it'));
-      expect(find.text('This screen is coming soon.'), findsOneWidget);
+      expect(find.text('Subscribe your commute'), findsNothing);
     });
 
     testWidgets('off when FEATURES leaves it out', (tester) async {
@@ -553,8 +553,13 @@ void main() {
   });
 
   group('buttons open their screens; Back returns to Home', () {
+    // Step 21/B2: Home SOS now pushes AppRoute.sosAlert (the real
+    // P-12 Emergency screen). Its routing is covered in
+    // home_sos_routing_test.dart (and in sos_screen_test.dart). The
+    // sosEnabled gate is a compile-time flag, false in this harness,
+    // so a navigation end-to-end from Home → SosScreen needs its own
+    // build with SOS_ENABLED=true and lives outside this list.
     for (final (label, title) in [
-      ('SOS, emergency help', 'SOS'),
       ('Notifications', 'Notifications'),
       ('Where are you going?, Now', 'Where are you going?'),
     ]) {
@@ -585,14 +590,14 @@ void main() {
       expect(tester.takeException(), isNull);
     }
 
-    testWidgets('Home, located, banner on', (tester) async {
+    testWidgets('Home, located, text scale 1.3', (tester) async {
       final world = TestWorld();
       world.location
         ..permission = LocationPermissionStatus.granted
         ..position = nearMadina;
       await check(tester, world);
-      await tapVisible(tester, find.text('Try it'));
-      expect(find.text('This screen is coming soon.'), findsOneWidget);
+      // Subscribe banner was removed in step 21/B2; this used to also
+      // tap "Try it". The text-scale check above is the point.
     });
 
     testWidgets('with the location explanation open', (tester) async {
