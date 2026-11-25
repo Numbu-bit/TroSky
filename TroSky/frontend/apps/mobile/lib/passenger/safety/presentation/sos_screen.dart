@@ -255,11 +255,17 @@ class _HoldView extends StatelessWidget {
         children: [
           Row(
             children: [
-              IconButton(
-                onPressed: submitting
-                    ? null
-                    : () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.close, color: TroskyColors.surface),
+              Semantics(
+                label: l10n.sosClose,
+                button: true,
+                container: true,
+                child: IconButton(
+                  onPressed: submitting
+                      ? null
+                      : () => Navigator.of(context).pop(),
+                  tooltip: l10n.sosClose,
+                  icon: const Icon(Icons.close, color: TroskyColors.surface),
+                ),
               ),
               Expanded(
                 child: Semantics(

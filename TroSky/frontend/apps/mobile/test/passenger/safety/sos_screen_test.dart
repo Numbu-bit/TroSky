@@ -151,4 +151,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(tel.events.any((e) => e.name == 'sos_opened'), isTrue);
   });
+
+  testWidgets('a11y: close (X) button has an accessible label', (tester) async {
+    tester.view.physicalSize = const Size(400, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(_host(safety: _FakeSafety(), telemetry: _Tel()));
+    await tester.pumpAndSettle();
+    expect(find.bySemanticsLabel('Close'), findsOneWidget);
+  });
 }

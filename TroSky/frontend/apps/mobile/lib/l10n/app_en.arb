@@ -2580,6 +2580,8 @@
 
   "sosTitle": "Emergency",
   "@sosTitle": { "description": "P-12 header." },
+  "sosClose": "Close",
+  "@sosClose": { "description": "Semantics label on the close (X) button in the SOS screen header." },
   "sosHoldSemantics": "Hold to send SOS, 3 second hold",
   "@sosHoldSemantics": { "description": "Semantics label on the SOS hold button." },
   "sosHoldInstruction": "Hold for 3 seconds",

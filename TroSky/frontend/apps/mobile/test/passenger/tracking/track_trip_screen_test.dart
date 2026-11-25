@@ -173,6 +173,22 @@ void main() {
     expect(telemetry.events.any((e) => e.name == 'track_trip_opened'), isTrue);
   });
 
+  testWidgets('a11y: driver call + message buttons expose semantic labels', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final telemetry = _RecordingTelemetry();
+    final service = _MockService(const []);
+    await tester.pumpWidget(_host(service: service, telemetry: telemetry));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(find.bySemanticsLabel('Call driver'), findsOneWidget);
+    expect(find.bySemanticsLabel('Message driver'), findsOneWidget);
+  });
+
   testWidgets('SOS button opens the placeholder sheet with Call 191', (
     tester,
   ) async {

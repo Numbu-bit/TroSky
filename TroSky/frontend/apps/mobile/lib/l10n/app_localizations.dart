@@ -3450,6 +3450,12 @@ abstract class AppLocalizations {
   /// **'Emergency'**
   String get sosTitle;
 
+  /// Semantics label on the close (X) button in the SOS screen header.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get sosClose;
+
   /// Semantics label on the SOS hold button.
   ///
   /// In en, this message translates to:
