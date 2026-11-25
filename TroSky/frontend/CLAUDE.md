@@ -136,5 +136,18 @@ TroSky is built for millions of users. Every change meets this bar before PR goe
 
 ## Env parsing (Nov 2026)
 
-Env parsers fail loud on missing or unrecognised required flags. Never
-silently default. See step21/A.
+Env parsers fail loud on missing or unrecognised required flags for
+EVERY DeployEnv. Never silently default. Any required flag that is
+missing, empty, or unrecognised throws `StateError` (or
+`ArgumentError`) at parse time with the flag name + expected values.
+
+Required for every deploy: `DEPLOY_ENV`, `API_MODE` (`live` | `mock`),
+`API_BASE_URL` (http(s) with an authority), `WS_BASE_URL` (ws(s) with
+an authority), `HELP_CENTRE_URL`. `DEPLOY_ENV=prod` additionally
+requires https/wss schemes, a non-placeholder host, `API_MODE=live`,
+and `TESTER_MENU` off.
+
+No more silent dev-loop fallback. `flutter run` must pass
+`--dart-define-from-file=env/dev.example.json` (or equivalent). Added
+in step 21/A2 after PR #93 (silent fallback to mock on staging). See
+PR #101 (C4) for the prod-specific rules this builds on.
