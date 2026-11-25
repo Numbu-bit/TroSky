@@ -32,37 +32,42 @@ Screenshots: `Desktop\TroSky debug\on-device-audit\`.
 | Status | Count |
 |---|---|
 | works | 48 |
-| coming-soon | 11 |
+| coming-soon | 10 |
 | stub | 3 |
-| dead-row | 2 |
+| dead-row | 1 |
 | broken | 1 |
-| hidden | 2 |
+| hidden | 3 |
 
 ## Top-5 things the owner will trip on today
 
-1. **Home map SOS FAB opens "Coming soon"**, not the real SOS screen.
-   `home_map.dart:218` pushes `AppRoute.sos` (placeholder) instead of
-   `AppRoute.sosAlert`. The live SOS screen is only reachable through
-   the tester menu or the Live-tracking → SOS button. This is a
+1. **Home map SOS FAB opens "Coming soon"** — confirmed on device
+   (screenshot `04-sos-tap.png`). The screen is titled "SOS", body says
+   "This screen is coming soon." No Call 191, no hold-to-send, no
+   alert. `home_map.dart:218` pushes `AppRoute.sos` (placeholder)
+   instead of `AppRoute.sosAlert`. The real SOS screen is only
+   reachable through the tester menu or Live-tracking → SOS. This is a
    production-bar failure ("SOS reachable within 2 taps during a trip"
-   — true only mid-trip).
-2. **Home "Subscribe to your commute" banner opens "Coming soon"**.
-   `home_sheet.dart:102` pushes `AppRoute.subscribe` (placeholder).
-   Backend has no subscriptions endpoint (G14); the banner is only on
-   in mock mode, but the staging build with `FEATURES` unset still
-   turns it on by default because the home sheet renders the banner
-   whenever the Feature.subscriptions flag is set.
-3. **Favourites has no "Add" button** — the empty state copy tells
-   you to open Search and tap the heart on a result, but the verb
-   "Add" on a list screen is the expected affordance. First-time users
-   land on an empty screen and have nowhere to tap.
-4. **Profile → Report a problem** → `Coming soon`. The ReportScreen
-   exists and ships (`reportEnabled=true`), but it has NO wired entry
+   — true only mid-trip, not from Home).
+2. **Favourites empty screen has no "Add" button** — confirmed on
+   device (screenshot `05-favourites.png`). First-time user lands on
+   a page with a heart icon and copy "Save routes you take often. Add
+   one from Search. To add: open Search → pick a route → tap the
+   heart." The only tap target is the Back arrow.
+3. **Profile → Report a problem** → `Coming soon`. The ReportScreen
+   exists and ships (`REPORT_ENABLED=true`), but has NO wired entry
    point anywhere in the app. The route `AppRoute.report` is only
    reachable via deep link today.
-5. **Profile → Language** → `Coming soon`. The app ships `en` only;
-   this is expected but the row is visible with no way to tell a user
-   "English-only for now" except the subtitle.
+4. **Profile → Change password / Change email / Language / About
+   TroSky** all show "Coming soon" subtitles and are un-tappable
+   (confirmed on device, screenshots `01-profile.png` and
+   `02-profile-scrolled.png`). Four rows that look disabled to any
+   tester.
+5. **Home — Subscribe promo banner opens "Coming soon"** when it
+   does render. On the current staging build (`API_MODE=live`,
+   `FEATURES` unset) the banner is suppressed because
+   `Feature.subscriptions` defaults OFF in live mode — so this trips
+   only in mock / demo builds. Still worth fixing because the demo
+   APK does show it.
 
 ## Screens that crash or hang
 
@@ -95,9 +100,9 @@ Screenshots: `Desktop\TroSky debug\on-device-audit\`.
 | Home — "Where are you going?" | Search sheet | `works` | |
 | Home — map with vehicles | Markers around you | `works` | |
 | Home — "Current location" FAB | Recentres on your location | `works` | Needs permission; shows "Location unknown" on deny. |
-| **Home — SOS FAB (red)** | Opens a "Coming soon" placeholder | **`dead-row`** | 🚨 Pushes `AppRoute.sos`, not `AppRoute.sosAlert`. Top-1 trip-on. |
-| Home — favourite chips row | 2-4 chips per saved route; "See all" link | `works` | Empty state line when none saved. |
-| **Home — Subscribe promo banner** | "Subscribe to your commute" → opens "Coming soon" | **`coming-soon`** | 🚨 Pushes `AppRoute.subscribe`. Backend G14 open. |
+| **Home — SOS FAB (red)** | 📱 Opens a page titled "SOS" / "This screen is coming soon." | **`dead-row`** | 🚨 `home_map.dart:218` pushes `AppRoute.sos`, not `AppRoute.sosAlert`. Confirmed on device (`04-sos-tap.png`). Top-1 trip-on. |
+| Home — favourite chips row | 2-4 chips per saved route; "See all" link | `works` | 📱 Empty state line "No favourite routes yet." (confirmed on home screenshot). |
+| Home — Subscribe promo banner | "Subscribe to your commute" → opens "Coming soon" | `coming-soon` | Only renders when `Feature.subscriptions` is on (mock/demo default; off in live). `home_sheet.dart:102` pushes `AppRoute.subscribe`. |
 
 ## Search + Results
 
@@ -183,17 +188,17 @@ Screenshots: `Desktop\TroSky debug\on-device-audit\`.
 |---|---|---|---|
 | Profile — avatar + name + verified | Header block, no tap | `works` | Avatar tap is deferred (Step 21). |
 | **Profile — Personal information** | Opens P-22 (name editable; email/phone read-only; avatar row "Coming soon") | `works` | 📱 Confirmed: name editable + Save; email/phone show "Change via support". |
-| **Profile — Change password** | Row visible, subtitle "Coming soon", tap does nothing | **`coming-soon`** | Backend has no `/users/me/password` POST yet. |
-| **Profile — Change email** | Row visible, subtitle "Coming soon", tap does nothing | **`coming-soon`** | Backend gap: no change-email endpoint. |
+| **Profile — Change password** | 📱 Row visible, subtitle "Coming soon", tap does nothing | **`coming-soon`** | Backend has no `/users/me/password` POST yet. Confirmed on device (`01-profile.png`). |
+| **Profile — Change email** | 📱 Row visible, subtitle "Coming soon", tap does nothing | **`coming-soon`** | Backend gap: no change-email endpoint. Confirmed on device. |
 | Profile — Change phone | Row not present | `hidden` | Intentionally hidden; backend has no change-phone endpoint. |
-| **Profile — Notifications** | Opens P-20 (Inbox + Preferences tabs) | `works` | Only if `NOTIFICATIONS_ENABLED=true` (which this build has). |
-| **Profile — Favourite routes** | Opens P-26 | `works` (+ stub) | Row works; **the screen itself has no "Add" button** — see trip-on list. |
-| **Profile — Language** | Row visible, subtitle "Coming soon", tap does nothing | **`coming-soon`** | App is English-only. |
+| **Profile — Notifications** | 📱 Opens P-20 (Inbox + Preferences tabs) | `works` | Row shows chevron (tappable) in the current build. |
+| **Profile — Favourite routes** | 📱 Opens P-26 | `works` (+ stub) | Row works; **the screen itself has no "Add" button** — see trip-on list, `05-favourites.png`. |
+| **Profile — Language** | 📱 Row visible, subtitle "Coming soon", tap does nothing | **`coming-soon`** | App is English-only. Confirmed on device. |
 | Profile — Payment methods | Switches to Wallet tab | `works` | `context.goNamed(wallet)`. |
 | Profile — Transactions | Switches to Wallet tab | `works` | Same handler as Payment methods — doesn't scroll to the transactions section; both land on top of Wallet. Minor UX stub. |
 | **Profile — Help centre** | Opens `https://trosky.africa/help` in the system browser | `works` | Via `launchUrl`. External site — if browser denies, nothing happens visibly. |
-| **Profile — Report a problem** | Row visible, subtitle "Coming soon", tap does nothing | **`coming-soon`** | 🚨 ReportScreen ships (`REPORT_ENABLED=true`) but has NO wired entry point. Dead feature from the user's view. |
-| **Profile — About** | Row visible, subtitle "Coming soon", tap does nothing | **`coming-soon`** | No About screen exists. |
+| **Profile — Report a problem** | 📱 Row visible, subtitle "Coming soon", tap does nothing | **`coming-soon`** | 🚨 ReportScreen ships (`REPORT_ENABLED=true`) but has NO wired entry point. Dead feature from the user's view. Confirmed on device (`02-profile-scrolled.png`). |
+| **Profile — About TroSky** | 📱 Row visible, subtitle "Coming soon", tap does nothing | **`coming-soon`** | No About screen exists. Row label is "About TroSky" (not "About"). Confirmed on device (`02-profile-scrolled.png`). |
 | Profile — Sign out | Confirm dialog → signs out | `works` | |
 | Profile — Delete account | Opens P-25 | `works` | Type `DELETE` + password; wipes local stores. |
 
@@ -214,7 +219,7 @@ Screenshots: `Desktop\TroSky debug\on-device-audit\`.
 | Screen / entry point | What a user sees | Status | Notes |
 |---|---|---|---|
 | Favourites — list rows | Each row: route label, delete button | `works` | |
-| **Favourites — Empty state** | "No saved routes. Tap the heart on a search result to save one." | **`stub`** | No "Add" button on-screen; first-time user has nowhere to tap. |
+| **Favourites — Empty state** | 📱 Heart icon + "Save routes you take often. Add one from Search." + "To add: open Search → pick a route → tap the heart." | **`stub`** | No "Add" button on-screen; first-time user has nowhere to tap. Confirmed on device (`05-favourites.png`). |
 | Favourites — Delete | Confirm dialog | `works` | |
 | Favourites — Edit label | Not present | `hidden` | Edit is deferred; delete-and-re-add is the only path. |
 
@@ -222,7 +227,7 @@ Screenshots: `Desktop\TroSky debug\on-device-audit\`.
 
 | Screen / entry point | What a user sees | Status | Notes |
 |---|---|---|---|
-| **SOS (P-12) — from Home** | Opens "Coming soon" placeholder | **`dead-row`** | 🚨 Home map SOS FAB pushes `AppRoute.sos` not `sosAlert`. |
+| **SOS (P-12) — from Home** | 📱 Opens a page titled "SOS" with body "This screen is coming soon." | **`dead-row`** | 🚨 Home map SOS FAB pushes `AppRoute.sos` not `sosAlert`. Confirmed on device (`04-sos-tap.png`). |
 | SOS — from Live tracking | Full-screen Emergency, hold-to-send, Call 191 | `works` | PR #115 fix: close (X) has a semantic label. |
 | SOS — from Tester menu | Same as above | `works` | |
 | **Report an issue (P-13)** | ReportScreen exists but no wired entry point | **`stub`** | Route is only reachable via deep-link. |
@@ -259,3 +264,10 @@ Screenshots: `Desktop\TroSky debug\on-device-audit\`.
 
 Branch: `audit/on-device-nov-2026`
 Build command: documented in `README.md` (updated 25 Nov 2026); for this audit, DEPLOY_ENV=staging + every feature flag true.
+
+## Audit method and coverage caveat
+
+- `main` HEAD at audit time: `8b881f5 Merge pull request #115 from Numbu-bit/feat/step21-a11y-and-docs`.
+- Attempted `flutter build apk --release` from clean `main` with the full task-specified flag set; Gradle `verifyReleaseSigningReady` rejected it — `android/key.properties` is not present on this machine. See `apps/mobile/android/SIGNING.md`. The release keystore is the owner's; this repo does not carry it.
+- Walk performed on the staging APK already installed on the owner's connected phone (version `0.1.0`, `lastUpdateTime=2026-11-21`, built elsewhere with the signing config available). That APK pre-dates PR #113/#114/#115 (Nov 25) but post-dates every Coming-Soon / dead-row / stub observation above — those have been in the app for several releases. Spot checks tagged 📱 in the tables were performed on that installed build.
+- A fresh, fully-featured release APK could not be produced in this audit without wiring signing; that is the signing-runbook task, not this report's scope. If a code-level fix PR needs on-device verification against the latest main, the owner would run that build on their own machine with the keystore present.
