@@ -27,7 +27,12 @@ ProviderContainer appContainer({
   final container = ProviderContainer(
     overrides: [
       envProvider.overrideWithValue(
-        Env.parse(apiBaseUrl: '', wsBaseUrl: '', apiMode: 'mock'),
+        Env.parse(
+          apiBaseUrl: 'http://localhost:8000/api/v1',
+          wsBaseUrl: 'ws://localhost:8000/api/v1',
+          apiMode: 'mock',
+          deployEnv: 'dev',
+        ),
       ),
       mockBackendProvider.overrideWithValue(backend),
       mockLatencyProvider.overrideWithValue(Duration.zero),

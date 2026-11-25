@@ -78,8 +78,9 @@ void main() {
     dio = createApiClient(
       env: Env.parse(
         apiBaseUrl: _baseUrl ?? '',
-        wsBaseUrl: '',
+        wsBaseUrl: (_baseUrl ?? '').replaceFirst(RegExp('^http'), 'ws'),
         apiMode: 'live',
+        deployEnv: 'dev',
       ),
       tokens: () => tokens,
     );

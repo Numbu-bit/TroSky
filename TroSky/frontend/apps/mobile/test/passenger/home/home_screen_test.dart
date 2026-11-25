@@ -318,9 +318,10 @@ void main() {
       await openHome(
         tester,
         env: Env.parse(
-          apiBaseUrl: '',
-          wsBaseUrl: '',
+          apiBaseUrl: 'http://localhost:8000/api/v1',
+          wsBaseUrl: 'ws://localhost:8000/api/v1',
           apiMode: 'mock',
+          deployEnv: 'dev',
           features: '',
         ),
       );

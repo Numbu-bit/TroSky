@@ -48,8 +48,9 @@ Future<TestWorld> openHome(
 }) => (
   env: Env.parse(
     apiBaseUrl: 'http://localhost:8000/api/v1',
-    wsBaseUrl: '',
+    wsBaseUrl: 'ws://localhost:8000/api/v1',
     apiMode: 'live',
+    deployEnv: 'dev',
   ),
   overrides: [
     serverWakeProvider.overrideWithValue(null),
