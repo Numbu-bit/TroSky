@@ -72,24 +72,61 @@ class Env {
 
   /// Reads `API_BASE_URL`, `WS_BASE_URL`, `API_MODE`, `DEPLOY_ENV`,
   /// `TESTER_MENU`, `MAP_TILE_URL`, `FEATURES`, and `HELP_CENTRE_URL`.
-  factory Env.fromDefines() => Env.parse(
-    apiBaseUrl: const String.fromEnvironment('API_BASE_URL'),
-    wsBaseUrl: const String.fromEnvironment('WS_BASE_URL'),
-    apiMode: const String.fromEnvironment('API_MODE'),
-    deployEnv: const String.fromEnvironment('DEPLOY_ENV'),
-    testerMenu: const bool.hasEnvironment('TESTER_MENU')
-        ? const String.fromEnvironment('TESTER_MENU')
-        : null,
-    mapTileUrl: const String.fromEnvironment('MAP_TILE_URL'),
-    helpCentreUrl: const bool.hasEnvironment('HELP_CENTRE_URL')
-        ? const String.fromEnvironment('HELP_CENTRE_URL')
-        : null,
-    // An empty FEATURES turns every feature off, so "not set" differs from
-    // "set to nothing".
-    features: const bool.hasEnvironment('FEATURES')
-        ? const String.fromEnvironment('FEATURES')
-        : null,
-  );
+  ///
+  /// Release builds (every APK/IPA) require every flag — the strict
+  /// [parse] throws on the first missing one. In non-release (the dev
+  /// `flutter run` loop and the test harness) a missing `DEPLOY_ENV`
+  /// falls back to a safe dev config so `flutter test` doesn't need a
+  /// `--dart-define-from-file`. A dev run with the env file passed
+  /// still goes through the strict path and benefits from the same
+  /// fail-loud errors on typos.
+  factory Env.fromDefines() {
+    const deployEnv = String.fromEnvironment('DEPLOY_ENV');
+    if (deployEnv.isEmpty && !kReleaseMode) {
+      // Dev / test fallback. Still goes through [parse] so any
+      // partially-set defines (e.g. a bad MAP_TILE_URL) still throw.
+      return Env.parse(
+        apiBaseUrl: const String.fromEnvironment(
+          'API_BASE_URL',
+          defaultValue: 'http://localhost:8000/api/v1',
+        ),
+        wsBaseUrl: const String.fromEnvironment(
+          'WS_BASE_URL',
+          defaultValue: 'ws://localhost:8000/api/v1',
+        ),
+        apiMode: const String.fromEnvironment('API_MODE', defaultValue: 'mock'),
+        deployEnv: 'dev',
+        testerMenu: const bool.hasEnvironment('TESTER_MENU')
+            ? const String.fromEnvironment('TESTER_MENU')
+            : null,
+        mapTileUrl: const String.fromEnvironment('MAP_TILE_URL'),
+        helpCentreUrl: const bool.hasEnvironment('HELP_CENTRE_URL')
+            ? const String.fromEnvironment('HELP_CENTRE_URL')
+            : null,
+        features: const bool.hasEnvironment('FEATURES')
+            ? const String.fromEnvironment('FEATURES')
+            : null,
+      );
+    }
+    return Env.parse(
+      apiBaseUrl: const String.fromEnvironment('API_BASE_URL'),
+      wsBaseUrl: const String.fromEnvironment('WS_BASE_URL'),
+      apiMode: const String.fromEnvironment('API_MODE'),
+      deployEnv: deployEnv,
+      testerMenu: const bool.hasEnvironment('TESTER_MENU')
+          ? const String.fromEnvironment('TESTER_MENU')
+          : null,
+      mapTileUrl: const String.fromEnvironment('MAP_TILE_URL'),
+      helpCentreUrl: const bool.hasEnvironment('HELP_CENTRE_URL')
+          ? const String.fromEnvironment('HELP_CENTRE_URL')
+          : null,
+      // An empty FEATURES turns every feature off, so "not set" differs
+      // from "set to nothing".
+      features: const bool.hasEnvironment('FEATURES')
+          ? const String.fromEnvironment('FEATURES')
+          : null,
+    );
+  }
 
   /// Validates raw values. Live mode needs an http(s) `API_BASE_URL`.
   ///

@@ -176,10 +176,7 @@ void main() {
     });
 
     test('a malformed URL throws', () {
-      expect(
-        () => _dev(helpCentreUrl: 'not-a-url'),
-        throwsArgumentError,
-      );
+      expect(() => _dev(helpCentreUrl: 'not-a-url'), throwsArgumentError);
     });
   });
 
@@ -195,11 +192,7 @@ void main() {
 
     test('a URL without the placeholders is refused', () {
       for (final url in ['https://tiles.example.com/', 'tiles/{z}/{x}/{y}']) {
-        expect(
-          () => _dev(mapTileUrl: url),
-          throwsArgumentError,
-          reason: url,
-        );
+        expect(() => _dev(mapTileUrl: url), throwsArgumentError, reason: url);
       }
     });
   });
@@ -212,8 +205,10 @@ void main() {
 
     test('FEATURES overrides the defaults; empty turns everything off', () {
       expect(
-        _dev(apiMode: 'live', features: 'subscriptions')
-            .has(Feature.subscriptions),
+        _dev(
+          apiMode: 'live',
+          features: 'subscriptions',
+        ).has(Feature.subscriptions),
         isTrue,
       );
       expect(_dev(features: '').features, isEmpty);
@@ -223,10 +218,7 @@ void main() {
     });
 
     test('an unknown feature is refused', () {
-      expect(
-        () => _dev(features: 'subscription'),
-        throwsArgumentError,
-      );
+      expect(() => _dev(features: 'subscription'), throwsArgumentError);
     });
   });
 

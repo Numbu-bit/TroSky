@@ -147,7 +147,12 @@ an authority), `HELP_CENTRE_URL`. `DEPLOY_ENV=prod` additionally
 requires https/wss schemes, a non-placeholder host, `API_MODE=live`,
 and `TESTER_MENU` off.
 
-No more silent dev-loop fallback. `flutter run` must pass
-`--dart-define-from-file=env/dev.example.json` (or equivalent). Added
-in step 21/A2 after PR #93 (silent fallback to mock on staging). See
-PR #101 (C4) for the prod-specific rules this builds on.
+Every release build (`--release`/APK/IPA, every deploy) requires each
+flag — the strict parser throws on the first missing one, so a PR #93
+style silent fallback to mock can never ship. In debug and test (the
+`flutter run` dev loop, `flutter test`) a missing `DEPLOY_ENV` falls
+back to a safe dev config so tests don't need per-file overrides. A
+typo or partial define in debug still goes through the strict parser
+and still throws. Added in step 21/A2 after PR #93 (silent fallback
+to mock on staging). See PR #101 (C4) for the prod-specific rules
+this builds on.
