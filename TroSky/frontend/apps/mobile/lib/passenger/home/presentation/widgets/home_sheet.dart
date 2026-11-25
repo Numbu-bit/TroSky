@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:trosky_api/trosky_api.dart';
-import 'package:trosky_auth/trosky_auth.dart';
-import 'package:trosky_core/trosky_core.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
 import '../../../../app/routes.dart';
@@ -13,19 +11,17 @@ import '../../application/home_providers.dart';
 import 'held_booking_card.dart';
 
 /// The white sheet under the Home map (P5): the handle, a booking with
-/// seats held (decision 31), "Favourite Routes"
-/// with "See all", the route chips (decision 15), and the subscribe banner
-/// when its feature is on (decision 16). Below the handle it scrolls, so
-/// small phones and large text lose nothing.
+/// seats held (decision 31), "Favourite Routes" with "See all", and
+/// the route chips (decision 15). The subscribe banner (decision 16)
+/// was removed in Step 21/B2: the backend has no subscriptions
+/// endpoint (G14) and the banner only ever opened a Coming Soon
+/// placeholder.
 class HomeSheet extends ConsumerWidget {
   const HomeSheet({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final promo = ref.watch(
-      envProvider.select((env) => env.has(Feature.subscriptions)),
-    );
     return DecoratedBox(
       decoration: BoxDecoration(
         color: TroskyColors.surface,
@@ -91,17 +87,6 @@ class HomeSheet extends ConsumerWidget {
                     ),
                     const SizedBox(height: TroskySpacing.s10),
                     const _FavouriteRoutes(),
-                    if (promo) ...[
-                      const SizedBox(height: TroskySpacing.s14),
-                      TroskyPromoBanner(
-                        eyebrow: l10n.homePromoEyebrow,
-                        title: l10n.homePromoTitle,
-                        body: l10n.homePromoBody,
-                        action: l10n.homePromoAction,
-                        onPressed: () =>
-                            context.pushNamed(AppRoute.subscribe.name),
-                      ),
-                    ],
                   ],
                 ),
               ),

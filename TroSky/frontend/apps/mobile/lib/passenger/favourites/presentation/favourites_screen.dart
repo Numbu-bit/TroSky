@@ -10,6 +10,9 @@ import 'package:trosky_auth/trosky_auth.dart';
 import 'package:trosky_core/trosky_core.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
+import 'package:go_router/go_router.dart';
+
+import '../../../app/routes.dart';
 import '../../../app/telemetry.dart';
 import '../../../l10n/app_localizations.dart';
 import '../application/favourites_providers.dart';
@@ -129,10 +132,10 @@ class _FavouritesScreenState extends ConsumerState<FavouritesScreen> {
   }
 }
 
-class _EmptyState extends StatelessWidget {
+class _EmptyState extends ConsumerWidget {
   const _EmptyState();
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.all(TroskySpacing.s32),
@@ -159,6 +162,17 @@ class _EmptyState extends StatelessWidget {
             style: TroskyTypography.body12Regular.copyWith(
               color: TroskyColors.textSecondary,
             ),
+          ),
+          const SizedBox(height: TroskySpacing.s16),
+          TroskyButton(
+            label: l10n.favouritesEmptyAddCta,
+            variant: TroskyButtonVariant.primary,
+            onPressed: () {
+              ref
+                  .read(telemetryProvider)
+                  .emit(TelemetryEvent('favourites_empty_add_tapped'));
+              context.pushNamed(AppRoute.search.name);
+            },
           ),
         ],
       ),
