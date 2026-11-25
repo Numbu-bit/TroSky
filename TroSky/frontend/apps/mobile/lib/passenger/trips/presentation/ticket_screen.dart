@@ -691,6 +691,10 @@ class _PassengerCard extends StatelessWidget {
   }
 }
 
+@visibleForTesting
+Widget cantScanExpanderForTest(String reference) =>
+    _CantScanExpander(reference: reference);
+
 class _CantScanExpander extends StatefulWidget {
   const _CantScanExpander({required this.reference});
 
@@ -741,13 +745,19 @@ class _CantScanExpanderState extends State<_CantScanExpander> {
                   ),
                 ),
                 const SizedBox(width: TroskySpacing.s8),
-                IconButton(
-                  icon: const Icon(Icons.copy, size: 18),
-                  onPressed: () async {
-                    await Clipboard.setData(
-                      ClipboardData(text: widget.reference),
-                    );
-                  },
+                Semantics(
+                  label: AppLocalizations.of(context).bookingCopyReference,
+                  button: true,
+                  container: true,
+                  child: IconButton(
+                    icon: const Icon(Icons.copy, size: 18),
+                    tooltip: AppLocalizations.of(context).bookingCopyReference,
+                    onPressed: () async {
+                      await Clipboard.setData(
+                        ClipboardData(text: widget.reference),
+                      );
+                    },
+                  ),
                 ),
               ],
             ),

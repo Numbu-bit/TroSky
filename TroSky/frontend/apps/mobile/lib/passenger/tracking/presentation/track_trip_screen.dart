@@ -624,12 +624,14 @@ class _BottomCard extends StatelessWidget {
                   icon: Icons.phone,
                   background: TroskyColors.green,
                   onPressed: driver?.phoneNumber == null ? null : onCall,
+                  semanticsLabel: l10n.tripDetailsCallDriver,
                 ),
                 const SizedBox(width: TroskySpacing.s8),
                 _DarkIconButton(
                   icon: Icons.chat_bubble_outline,
                   background: TroskyColors.whiteA10,
                   onPressed: driver?.phoneNumber == null ? null : onMessage,
+                  semanticsLabel: l10n.tripDetailsMessageDriver,
                 ),
               ],
             ),
@@ -739,11 +741,13 @@ class _DarkIconButton extends StatelessWidget {
     required this.icon,
     required this.background,
     required this.onPressed,
+    required this.semanticsLabel,
   });
 
   final IconData icon;
   final Color background;
   final Future<void> Function()? onPressed;
+  final String semanticsLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -756,7 +760,13 @@ class _DarkIconButton extends StatelessWidget {
         child: InkWell(
           customBorder: const CircleBorder(),
           onTap: onPressed == null ? null : () => unawaited(onPressed!()),
-          child: Icon(icon, color: TroskyColors.white, size: 20),
+          child: Semantics(
+            button: true,
+            enabled: onPressed != null,
+            label: semanticsLabel,
+            excludeSemantics: true,
+            child: Icon(icon, color: TroskyColors.white, size: 20),
+          ),
         ),
       ),
     );

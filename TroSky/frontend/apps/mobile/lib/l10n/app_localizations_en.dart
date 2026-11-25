@@ -1970,6 +1970,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sosTitle => 'Emergency';
 
   @override
+  String get sosClose => 'Close';
+
+  @override
   String get sosHoldSemantics => 'Hold to send SOS, 3 second hold';
 
   @override
