@@ -9,8 +9,9 @@ import 'support/fake_adapter.dart';
 
 final _env = Env.parse(
   apiBaseUrl: 'http://api.test/api/v1',
-  wsBaseUrl: '',
+  wsBaseUrl: 'ws://api.test/api/v1',
   apiMode: 'live',
+  deployEnv: 'dev',
 );
 
 /// Refreshes by swapping 'old' for 'new' after a short wait, so concurrent

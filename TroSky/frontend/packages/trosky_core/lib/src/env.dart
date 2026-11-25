@@ -55,10 +55,10 @@ enum Feature {
 /// Settings passed at build time with `--dart-define-from-file`
 /// (see frontend/env/README.md).
 ///
-/// Env parsing is fail-loud in release builds (step 21/A): a release
-/// APK with a required flag missing or unrecognised throws at startup
-/// rather than silently defaulting. The `flutter run` dev loop keeps
-/// its empty→mock default so tests and local work don't need flags.
+/// Env parsing is fail-loud for every DeployEnv (step 21/A2): a build
+/// with a required flag missing or unrecognised throws at startup
+/// rather than silently defaulting. `flutter run` must pass
+/// `--dart-define-from-file=env/dev.example.json` or equivalent.
 class Env {
   const Env({
     required this.apiBaseUrl,
@@ -93,23 +93,32 @@ class Env {
 
   /// Validates raw values. Live mode needs an http(s) `API_BASE_URL`.
   ///
-  /// Fail-loud in release (step 21/A + C4):
-  /// - Empty or unknown `API_MODE` throws.
-  /// - Live mode with a bad `API_BASE_URL` throws (unchanged).
+  /// Fail-loud rule (step 21/A2, extending C4 to every deploy):
+  /// - `DEPLOY_ENV` is required and must be one of [DeployEnv.values].
+  /// - `API_MODE` is required and must be `live` or `mock`.
+  /// - `API_BASE_URL` is required and must parse to an http(s) URL with
+  ///   an authority.
+  /// - `WS_BASE_URL` is required and must parse to a ws(s) URL with an
+  ///   authority.
   /// - A supplied but malformed `HELP_CENTRE_URL` throws.
-  /// - Empty or unknown `DEPLOY_ENV` throws.
   /// - `DEPLOY_ENV=prod` additionally enforces: `API_MODE=live`,
   ///   https-only `API_BASE_URL` with a non-placeholder host, wss-only
   ///   `WS_BASE_URL`, and `TESTER_MENU` not enabled.
   ///
-  /// [mapTileUrl] defaults to [osmTileUrl]. [features] is a comma-separated
-  /// list of [Feature] names; `null` (not set) means
+  /// There is no silent default for any required flag in any deploy —
+  /// a staging build with `API_MODE` missing throws at parse time, so
+  /// the PR #93 class of bug (silent fallback to mock on staging) can
+  /// never recur. `flutter run` must now pass
+  /// `--dart-define-from-file=env/dev.example.json` or equivalent.
+  ///
+  /// [mapTileUrl] defaults to [osmTileUrl]. [features] is a
+  /// comma-separated list of [Feature] names; `null` (not set) means
   /// [Feature.defaultsFor] the mode.
   factory Env.parse({
     required String apiBaseUrl,
     required String wsBaseUrl,
     required String apiMode,
-    String deployEnv = '',
+    required String deployEnv,
     String? testerMenu,
     String mapTileUrl = '',
     String? features,
@@ -120,56 +129,82 @@ class Env {
     final rawMode = apiMode.trim().toLowerCase();
     final rawDeploy = deployEnv.trim().toLowerCase();
 
-    // DEPLOY_ENV identifies which deployment this build is for and is
-    // orthogonal to API_MODE. Dev/tests keep the implicit fallback so
-    // `flutter run` without flags still works.
-    final DeployEnv deploy;
+    // DEPLOY_ENV is required for every build. No silent fallback.
     if (rawDeploy.isEmpty) {
-      if (kReleaseMode) {
-        throw StateError(
-          'DEPLOY_ENV is required in release builds. '
-          'Expected one of ${DeployEnv.values.map((e) => e.name).join(" | ")}. '
-          'Pass --dart-define-from-file=env/<env>.json at build time.',
-        );
-      }
-      deploy = DeployEnv.dev;
-    } else {
-      deploy = DeployEnv.values.firstWhere(
-        (e) => e.name == rawDeploy,
-        orElse: () => throw ArgumentError.value(
-          deployEnv,
-          'DEPLOY_ENV',
-          'Expected one of ${DeployEnv.values.map((e) => e.name).join(", ")}',
-        ),
+      throw StateError(
+        'DEPLOY_ENV is required. '
+        'Expected one of ${DeployEnv.values.map((e) => e.name).join(" | ")}. '
+        'Pass --dart-define-from-file=env/<env>.json at build time.',
       );
     }
+    final deploy = DeployEnv.values.firstWhere(
+      (e) => e.name == rawDeploy,
+      orElse: () => throw ArgumentError.value(
+        deployEnv,
+        'DEPLOY_ENV',
+        'Expected one of ${DeployEnv.values.map((e) => e.name).join(", ")}',
+      ),
+    );
 
-    if (kReleaseMode &&
-        (rawMode.isEmpty || !_knownApiModes.contains(rawMode))) {
+    // API_MODE is required. Never silently fall back to mock/live based
+    // on whether API_BASE_URL is empty — that was the root of PR #93.
+    if (rawMode.isEmpty) {
       throw StateError(
-        'API_MODE is required in release builds and must be one of '
-        '${_knownApiModes.join(" | ")} (got "$apiMode"). '
-        'Pass --dart-define-from-file=env/<env>.json at build time.',
+        'API_MODE is required (got ""). '
+        'Expected one of ${_knownApiModes.join(" | ")}. '
+        'Pass --dart-define=API_MODE=live (or mock) in your env file.',
       );
     }
     final mode = switch (rawMode) {
       'mock' => ApiMode.mock,
       'live' => ApiMode.live,
-      '' when base.isEmpty => ApiMode.mock,
-      '' => ApiMode.live,
-      _ => throw ArgumentError.value(apiMode, 'API_MODE', 'Use mock or live'),
+      _ => throw ArgumentError.value(
+        apiMode,
+        'API_MODE',
+        'Expected one of ${_knownApiModes.join(" | ")}',
+      ),
     };
-    if (mode == ApiMode.live) {
-      final uri = Uri.tryParse(base);
-      if (uri == null ||
-          !uri.hasAuthority ||
-          !uri.isScheme('http') && !uri.isScheme('https')) {
-        throw ArgumentError.value(
-          apiBaseUrl,
-          'API_BASE_URL',
-          'Live mode needs an http(s) URL, e.g. http://10.0.2.2:8000/api/v1',
-        );
-      }
+
+    // API_BASE_URL is required for every deploy. Shape validated as
+    // http(s) with authority. Prod tightens to https-only below.
+    if (base.isEmpty) {
+      throw StateError(
+        'API_BASE_URL is required. '
+        'Pass --dart-define=API_BASE_URL=http(s)://host/api/v1 '
+        'in your env file.',
+      );
+    }
+    final apiUri = Uri.tryParse(base);
+    if (apiUri == null ||
+        !apiUri.hasAuthority ||
+        !(apiUri.isScheme('http') || apiUri.isScheme('https'))) {
+      throw ArgumentError.value(
+        apiBaseUrl,
+        'API_BASE_URL',
+        'Must be an http(s) URL with a host, '
+            'e.g. http://10.0.2.2:8000/api/v1',
+      );
+    }
+
+    // WS_BASE_URL is required for every deploy. Shape validated as
+    // ws(s) with authority. Prod tightens to wss-only below.
+    if (ws.isEmpty) {
+      throw StateError(
+        'WS_BASE_URL is required. '
+        'Pass --dart-define=WS_BASE_URL=ws(s)://host/api/v1 '
+        'in your env file.',
+      );
+    }
+    final wsUri = Uri.tryParse(ws);
+    if (wsUri == null ||
+        !wsUri.hasAuthority ||
+        !(wsUri.isScheme('ws') || wsUri.isScheme('wss'))) {
+      throw ArgumentError.value(
+        wsBaseUrl,
+        'WS_BASE_URL',
+        'Must be a ws(s) URL with a host, '
+            'e.g. ws://10.0.2.2:8000/api/v1',
+      );
     }
 
     // DEPLOY_ENV=prod invariants. Enforced even outside kReleaseMode so
@@ -195,13 +230,6 @@ class Env {
           'API_BASE_URL',
           'DEPLOY_ENV=prod rejects placeholder host "${apiUri.host}" '
               '(likely copied from env/*.example.json).',
-        );
-      }
-      if (ws.isEmpty) {
-        throw ArgumentError.value(
-          wsBaseUrl,
-          'WS_BASE_URL',
-          'DEPLOY_ENV=prod requires a wss:// WS_BASE_URL.',
         );
       }
       final wsUri = Uri.tryParse(ws);
