@@ -15,12 +15,17 @@ class SosArgs {
   bool get inTrip => tripId != null;
 }
 
-/// Opens P-13. `tripId` must be set — the backend only reports against a
-/// trip. `bookingReference` is shown at the top as context.
+/// Opens P-13. `tripId` is null for a general "Report a problem"
+/// opened from Profile — the report is still captured in the safety
+/// outbox and the submit button shows success without calling the
+/// `/incidents` endpoint (that endpoint requires a trip). When
+/// `tripId` is set, the trip-scoped flow is used. `bookingReference`
+/// is shown at the top as context.
 class ReportArgs {
-  const ReportArgs({required this.tripId, this.bookingReference});
-  final String tripId;
+  const ReportArgs({this.tripId, this.bookingReference});
+  final String? tripId;
   final String? bookingReference;
+  bool get inTrip => tripId != null;
 }
 
 /// Opens P-14. Rating is per-booking (binds to trip + driver).

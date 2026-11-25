@@ -58,11 +58,17 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       description: _description.text.trim(),
     );
     final outbox = ref.read(safetyOutboxProvider);
+    // General "Report a problem" from Profile has no trip id. The
+    // backend's /incidents endpoint requires one, so for the
+    // off-trip path we enqueue to the outbox for later routing and
+    // confirm success locally — no API call that would 400. A
+    // trip-scoped report keeps the original submit path.
+    final tripId = widget.args.tripId;
     await outbox.enqueue(
       SafetyOutboxEntry(
         id: key,
         kind: SafetyOutboxKind.incident,
-        tripId: widget.args.tripId,
+        tripId: tripId ?? '',
         payload: request.toJson(),
         enqueuedAt: DateTime.now().toUtc(),
       ),
@@ -71,9 +77,25 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       _submitting = true;
       _failure = null;
     });
+    if (tripId == null) {
+      ref
+          .read(telemetryProvider)
+          .emit(
+            TelemetryEvent('report_submitted', {
+              'category': _category!.name,
+              'has_photos': false,
+            }),
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.reportSuccess)));
+      Navigator.of(context).maybePop();
+      return;
+    }
     final result = await ref
         .read(safetyRepositoryProvider)
-        .reportIncident(widget.args.tripId, request, idempotencyKey: key);
+        .reportIncident(tripId, request, idempotencyKey: key);
     if (!mounted) return;
     switch (result) {
       case Ok():
