@@ -5,9 +5,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-final _homeMap = File(
-  'lib/passenger/home/presentation/widgets/home_map.dart',
-);
+final _homeMap = File('lib/passenger/home/presentation/widgets/home_map.dart');
 
 void main() {
   test('home_map pushes AppRoute.sosAlert, not AppRoute.sos', () async {
@@ -24,15 +22,19 @@ void main() {
     );
   });
 
-  test('home_sheet does not push AppRoute.subscribe (banner removed)', () async {
-    final sheet = await File(
-      'lib/passenger/home/presentation/widgets/home_sheet.dart',
-    ).readAsString();
-    expect(
-      RegExp(r'AppRoute\.subscribe').hasMatch(sheet),
-      isFalse,
-      reason: 'Subscribe banner was removed in step 21/B2; its route '
-          'push should be gone from home_sheet.',
-    );
-  });
+  test(
+    'home_sheet does not push AppRoute.subscribe (banner removed)',
+    () async {
+      final sheet = await File(
+        'lib/passenger/home/presentation/widgets/home_sheet.dart',
+      ).readAsString();
+      expect(
+        RegExp(r'AppRoute\.subscribe').hasMatch(sheet),
+        isFalse,
+        reason:
+            'Subscribe banner was removed in step 21/B2; its route '
+            'push should be gone from home_sheet.',
+      );
+    },
+  );
 }

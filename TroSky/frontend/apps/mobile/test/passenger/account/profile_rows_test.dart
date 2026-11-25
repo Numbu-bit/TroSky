@@ -22,7 +22,8 @@ void main() {
       expect(
         RegExp(r'subtitle:\s*l10n\.profileComingSoon').hasMatch(content),
         isFalse,
-        reason: 'Profile rows must not use profileComingSoon; use '
+        reason:
+            'Profile rows must not use profileComingSoon; use '
             'profileNextBackendRelease for backend-blocked rows or wire '
             'the row to a real screen.',
       );
