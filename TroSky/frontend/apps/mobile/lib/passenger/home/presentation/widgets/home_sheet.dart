@@ -10,14 +10,24 @@ import '../../../search/search_prefill.dart';
 import '../../application/home_providers.dart';
 import 'held_booking_card.dart';
 
-/// The white sheet under the Home map (P5): the handle, a booking with
-/// seats held (decision 31), "Favourite Routes" with "See all", and
-/// the route chips (decision 15). The subscribe banner (decision 16)
-/// was removed in Step 21/B2: the backend has no subscriptions
-/// endpoint (G14) and the banner only ever opened a Coming Soon
-/// placeholder.
+/// The draggable white sheet under the Home map (P5): the handle, a
+/// booking with seats held (decision 31), "Favourite Routes" with
+/// "See all", and the route chips (decision 15). The subscribe
+/// banner (decision 16) was removed in Step 21/B2 (G14 backend gap).
+///
+/// Step 21/B3: the sheet became a proper
+/// [DraggableScrollableSheet] again — drag the handle up to expand to
+/// 86 % of the map area (reveals more favourites + the held-booking
+/// card without squeezing), release to snap back to the resting 32 %.
+/// The [scrollController] threaded in here binds the sheet's inner
+/// scroll to the drag so a swipe starts the drag before it scrolls.
 class HomeSheet extends ConsumerWidget {
-  const HomeSheet({super.key});
+  const HomeSheet({super.key, this.scrollController});
+
+  /// Scroll controller from the hosting `DraggableScrollableSheet`.
+  /// Null in tests / previews that mount the sheet without the
+  /// draggable host, in which case the inner list scrolls normally.
+  final ScrollController? scrollController;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -39,6 +49,7 @@ class HomeSheet extends ConsumerWidget {
             const SizedBox(height: TroskySpacing.s14),
             Expanded(
               child: SingleChildScrollView(
+                controller: scrollController,
                 padding: const EdgeInsets.fromLTRB(
                   TroskySpacing.s16,
                   0,
