@@ -429,11 +429,23 @@ void main() {
   });
 
   testWidgets('Tab bar (D1): Home selected, then Wallet', (tester) async {
-    const items = [
-      TroskyTabItem(emoji: '🏠', label: 'Home'),
-      TroskyTabItem(emoji: '🗺️', label: 'Trips'),
-      TroskyTabItem(emoji: '💰', label: 'Wallet'),
-      TroskyTabItem(emoji: '👤', label: 'Profile'),
+    final items = [
+      TroskyTabItem(
+        icon: (color) => TroskyIcons.house(color: color),
+        label: 'Home',
+      ),
+      TroskyTabItem(
+        icon: (color) => TroskyIcons.map(color: color),
+        label: 'Trips',
+      ),
+      TroskyTabItem(
+        icon: (color) => TroskyIcons.wallet(color: color, size: 24),
+        label: 'Wallet',
+      ),
+      TroskyTabItem(
+        icon: (color) => TroskyIcons.userRound(color: color),
+        label: 'Profile',
+      ),
     ];
     await _golden(
       tester,

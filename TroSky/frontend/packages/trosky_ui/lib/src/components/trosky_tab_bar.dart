@@ -8,17 +8,23 @@ import '../tokens/trosky_radii.dart';
 import '../tokens/trosky_spacing.dart';
 import '../tokens/trosky_typography.dart';
 
+/// Builds the glyph for a tab. Called twice per tab: once for the
+/// unselected state (muted) and once for the selected state (green).
+/// Lets the caller supply any widget — in the passenger shell it's a
+/// Lucide icon (step 21/B3, replacing the emoji-glyph bar).
+typedef TroskyTabIconBuilder = Widget Function(Color color);
+
 /// One tab of a [TroskyTabBar].
 class TroskyTabItem {
-  const TroskyTabItem({required this.emoji, required this.label});
+  const TroskyTabItem({required this.icon, required this.label});
 
-  /// Drawn with the phone's emoji font, as designed (decision 17).
-  final String emoji;
+  /// Builder that returns the glyph coloured for the state.
+  final TroskyTabIconBuilder icon;
   final String label;
 }
 
 /// The bottom tab bar of Driver Home (D1), which the passenger app uses too
-/// (decision 12): white, a 1 px top border, 60 px tall. Each tab is an emoji
+/// (decision 12): white, a 1 px top border, 60 px tall. Each tab is an icon
 /// over a 10 px label, 2 px apart; the selected one is green with a
 /// 16 × 3 bar under it.
 ///
@@ -100,7 +106,9 @@ class _Tab extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(item.emoji, style: TroskyTypography.body18Regular),
+              item.icon(
+                selected ? TroskyColors.green : TroskyColors.textSecondary,
+              ),
               const SizedBox(height: TroskySpacing.s2),
               Text(
                 item.label,
