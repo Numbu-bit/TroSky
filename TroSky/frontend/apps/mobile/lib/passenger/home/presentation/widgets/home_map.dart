@@ -147,108 +147,101 @@ class _HomeMapState extends ConsumerState<HomeMap> {
         ? ref.watch(nearbyVehiclesProvider(centre))
         : null;
 
-    return SizedBox(
-      height: HomeMap.height,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: FlutterMap(
-              mapController: _map,
-              options: MapOptions(
-                initialCenter: centre,
-                initialZoom: homeMapZoom,
-                minZoom: 6,
-                maxZoom: 18,
-                backgroundColor: TroskyColors.background,
-                interactionOptions: const InteractionOptions(
-                  flags:
-                      InteractiveFlag.drag |
-                      InteractiveFlag.pinchZoom |
-                      InteractiveFlag.doubleTapZoom,
-                ),
-                onMapReady: () {
-                  _ready = true;
-                  final position = ref
-                      .read(locationControllerProvider)
-                      .position;
-                  if (position != null && position != centre) {
-                    _moveTo(position);
-                  }
-                },
+    // The parent sizes us (fixed 220 px by default; grows up to full
+    // stack when the Home sheet drags down past its rest point).
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: FlutterMap(
+            mapController: _map,
+            options: MapOptions(
+              initialCenter: centre,
+              initialZoom: homeMapZoom,
+              minZoom: 6,
+              maxZoom: 18,
+              backgroundColor: TroskyColors.background,
+              interactionOptions: const InteractionOptions(
+                flags:
+                    InteractiveFlag.drag |
+                    InteractiveFlag.pinchZoom |
+                    InteractiveFlag.doubleTapZoom,
               ),
-              children: [
-                TileLayer(
-                  urlTemplate: env.mapTileUrl,
-                  userAgentPackageName: 'com.trosky.app',
-                  tileProvider: _tiles,
-                ),
-                MarkerLayer(
-                  markers: [
-                    for (final vehicle
-                        in vehicles?.value ?? const <NearbyVehicleResponse>[])
-                      _vehicleMarker(l10n, vehicle),
-                    if (location.position case final position?)
-                      Marker(
-                        point: position,
-                        width: TroskyLocationDot.size.width,
-                        height: TroskyLocationDot.size.height,
-                        child: TroskyLocationDot(
-                          semanticsLabel: l10n.homeYouAreHere,
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          // The sheet covers the bottom 8 px of the map.
-          const Positioned(left: 8, bottom: 12, child: _Attribution()),
-          Positioned(
-            right: 6,
-            bottom: 58,
-            child: TroskyMyLocationButton(
-              semanticsLabel: l10n.homeMyLocation,
-              onPressed: _locate,
-            ),
-          ),
-          Positioned(
-            right: 10,
-            bottom: 10,
-            child: TroskySosButton(
-              label: l10n.homeSos,
-              semanticsLabel: l10n.homeSosLabel,
-              onPressed: () {
-                ref
-                    .read(telemetryProvider)
-                    .emit(TelemetryEvent('home_sos_tapped'));
-                context.pushNamed(
-                  AppRoute.sosAlert.name,
-                  extra: const SosArgs(),
-                );
+              onMapReady: () {
+                _ready = true;
+                final position = ref.read(locationControllerProvider).position;
+                if (position != null && position != centre) {
+                  _moveTo(position);
+                }
               },
             ),
+            children: [
+              TileLayer(
+                urlTemplate: env.mapTileUrl,
+                userAgentPackageName: 'com.trosky.app',
+                tileProvider: _tiles,
+              ),
+              MarkerLayer(
+                markers: [
+                  for (final vehicle
+                      in vehicles?.value ?? const <NearbyVehicleResponse>[])
+                    _vehicleMarker(l10n, vehicle),
+                  if (location.position case final position?)
+                    Marker(
+                      point: position,
+                      width: TroskyLocationDot.size.width,
+                      height: TroskyLocationDot.size.height,
+                      child: TroskyLocationDot(
+                        semanticsLabel: l10n.homeYouAreHere,
+                      ),
+                    ),
+                ],
+              ),
+            ],
           ),
-          Positioned(
-            top: TroskySpacing.s8,
-            left: TroskySpacing.s12,
-            right: TroskySpacing.s12,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (offline)
-                  const OfflineBanner(floating: true)
-                else if (vehicles?.hasError ?? false)
-                  _VehiclesError(
-                    message: l10n.homeVehiclesError,
-                    retry: l10n.offlineRetry,
-                    onRetry: () =>
-                        ref.invalidate(nearbyVehiclesProvider(centre)),
-                  ),
-              ],
-            ),
+        ),
+        // The sheet covers the bottom 8 px of the map.
+        const Positioned(left: 8, bottom: 12, child: _Attribution()),
+        Positioned(
+          right: 6,
+          bottom: 58,
+          child: TroskyMyLocationButton(
+            semanticsLabel: l10n.homeMyLocation,
+            onPressed: _locate,
           ),
-        ],
-      ),
+        ),
+        Positioned(
+          right: 10,
+          bottom: 10,
+          child: TroskySosButton(
+            label: l10n.homeSos,
+            semanticsLabel: l10n.homeSosLabel,
+            onPressed: () {
+              ref
+                  .read(telemetryProvider)
+                  .emit(TelemetryEvent('home_sos_tapped'));
+              context.pushNamed(AppRoute.sosAlert.name, extra: const SosArgs());
+            },
+          ),
+        ),
+        Positioned(
+          top: TroskySpacing.s8,
+          left: TroskySpacing.s12,
+          right: TroskySpacing.s12,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (offline)
+                const OfflineBanner(floating: true)
+              else if (vehicles?.hasError ?? false)
+                _VehiclesError(
+                  message: l10n.homeVehiclesError,
+                  retry: l10n.offlineRetry,
+                  onRetry: () => ref.invalidate(nearbyVehiclesProvider(centre)),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
