@@ -22,6 +22,15 @@ class HomeScreen extends ConsumerStatefulWidget {
   /// How far the sheet reaches up over the map (`marginTop: -8`).
   static const double sheetOverlap = 8;
 
+  /// Resting height of the Home sheet as a fraction of the stack
+  /// (map + sheet) — one line of favourites + the handle visible by
+  /// default. The user can drag it up to [sheetMaxSize].
+  static const double sheetMinSize = 0.32;
+
+  /// Maximum height the sheet drags to — stops short of the header so
+  /// the search bar + bell stay reachable.
+  static const double sheetMaxSize = 0.86;
+
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
@@ -66,23 +75,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           children: [
             const HomeHeader(),
             Expanded(
-              child: Stack(
-                children: const [
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: HomeMap.height,
-                    child: HomeMap(),
-                  ),
-                  Positioned(
-                    top: HomeMap.height - HomeScreen.sheetOverlap,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: HomeSheet(),
-                  ),
-                ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Resting height = map height - 8 px overlap;
+                  // DraggableScrollableSheet works in fractions of
+                  // the stack, so derive both from constraints.
+                  final stack = constraints.maxHeight;
+                  final restFraction =
+                      ((stack - HomeMap.height + HomeScreen.sheetOverlap) /
+                              stack)
+                          .clamp(0.25, 0.95);
+                  final maxFraction = HomeScreen.sheetMaxSize.clamp(
+                    restFraction,
+                    0.95,
+                  );
+                  return Stack(
+                    children: [
+                      // Map pinned at the top (fixed height). The FAB
+                      // (My location) + the SOS button inside the map
+                      // stay above the sheet's resting height.
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: HomeMap.height,
+                        child: const HomeMap(),
+                      ),
+                      DraggableScrollableSheet(
+                        initialChildSize: restFraction,
+                        minChildSize: restFraction,
+                        maxChildSize: maxFraction,
+                        // Two snap points: the resting height and the
+                        // fully-expanded one. Dragging between them
+                        // moves freely; releasing snaps.
+                        snap: true,
+                        snapSizes: [restFraction, maxFraction],
+                        builder: (context, scrollController) =>
+                            HomeSheet(scrollController: scrollController),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ],
