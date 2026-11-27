@@ -172,6 +172,21 @@ const Map<String, Set<String>> _telemetrySchema = {
   'about_licenses_tapped': {},
   'password_reset_requested': {},
   'password_reset_completed': {},
+  // P-23 Change password. `reason` is a stable slug, never the input
+  // (see [passwordChangeFailureReasons]). No password, email or OTP
+  // string EVER appears in these payloads.
+  'password_change_opened': {},
+  'password_change_submitted': {},
+  'password_change_success': {},
+  'password_change_failed': {'reason'},
+  // P-24 Change email (P-24a request + P-24b verify). Same shape and
+  // same hard rule: no email, password or OTP in payloads — `reason`
+  // only (see [emailChangeFailureReasons]).
+  'email_change_opened': {},
+  'email_change_submitted': {},
+  'email_change_verification_resent': {},
+  'email_change_confirmed': {},
+  'email_change_failed': {'reason'},
 
   // Favourites
   'favourites_opened': {'from'},

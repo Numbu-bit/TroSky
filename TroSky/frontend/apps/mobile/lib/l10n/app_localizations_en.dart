@@ -2169,6 +2169,214 @@ class AppLocalizationsEn extends AppLocalizations {
       'Coming with the next backend release';
 
   @override
+  String get changePasswordTitle => 'Change password';
+
+  @override
+  String get changePasswordIntro =>
+      'Enter your current password, then choose a new one.';
+
+  @override
+  String get changePasswordCurrentLabel => 'Current password';
+
+  @override
+  String get changePasswordNewLabel => 'New password';
+
+  @override
+  String get changePasswordConfirmLabel => 'Confirm new password';
+
+  @override
+  String get changePasswordRevealShow => 'Show password';
+
+  @override
+  String get changePasswordRevealHide => 'Hide password';
+
+  @override
+  String get changePasswordObscuredSemantics => 'Password, hidden';
+
+  @override
+  String get changePasswordStrengthWeak => 'Weak';
+
+  @override
+  String get changePasswordStrengthFair => 'Fair';
+
+  @override
+  String get changePasswordStrengthGood => 'Good';
+
+  @override
+  String get changePasswordStrengthStrong => 'Strong';
+
+  @override
+  String get changePasswordRule =>
+      'At least 8 characters, with letters and digits.';
+
+  @override
+  String get changePasswordMismatch => 'The two passwords don\'t match.';
+
+  @override
+  String get changePasswordWrongCurrent =>
+      'That password doesn\'t match our records.';
+
+  @override
+  String get changePasswordSameAsCurrent =>
+      'New password must differ from your current one.';
+
+  @override
+  String get changePasswordTooWeak =>
+      'That password doesn\'t meet the policy. Try a longer one with letters and digits.';
+
+  @override
+  String get changePasswordRateLimited =>
+      'Too many attempts. Try again in a minute.';
+
+  @override
+  String changePasswordRateLimitedWithSeconds(int seconds) {
+    return 'Too many attempts. Try again in ${seconds}s.';
+  }
+
+  @override
+  String get changePasswordServerError =>
+      'We couldn\'t change your password. Please try again.';
+
+  @override
+  String get changePasswordOffline =>
+      'You\'re offline. Reconnect to change your password.';
+
+  @override
+  String get changePasswordCta => 'Change password';
+
+  @override
+  String get changePasswordSuccess => 'Password changed';
+
+  @override
+  String get changeEmailRequestTitle => 'Change email';
+
+  @override
+  String get changeEmailCurrentLabel => 'Current email';
+
+  @override
+  String get changeEmailCurrentNone => 'No email on file';
+
+  @override
+  String get changeEmailNewLabel => 'New email';
+
+  @override
+  String get changeEmailPasswordLabel => 'Current password';
+
+  @override
+  String get changeEmailInvalid => 'Enter a valid email address.';
+
+  @override
+  String get changeEmailSameAsCurrent =>
+      'New email must differ from your current one.';
+
+  @override
+  String get changeEmailAlreadyInUse =>
+      'This email is already linked to another TroSky account.';
+
+  @override
+  String get changeEmailDomainNotAllowed =>
+      'Emails from that provider aren\'t supported yet.';
+
+  @override
+  String get changeEmailWrongPassword =>
+      'That password doesn\'t match our records.';
+
+  @override
+  String get changeEmailRateLimited =>
+      'Too many attempts. Try again in a minute.';
+
+  @override
+  String changeEmailRateLimitedWithSeconds(int seconds) {
+    return 'Too many attempts. Try again in ${seconds}s.';
+  }
+
+  @override
+  String get changeEmailServerError =>
+      'We couldn\'t start the email change. Please try again.';
+
+  @override
+  String get changeEmailOffline =>
+      'You\'re offline. Reconnect to change your email.';
+
+  @override
+  String get changeEmailRequestCta => 'Send verification code';
+
+  @override
+  String get changeEmailRequestIntro =>
+      'We\'ll email a 6-digit code to your new address to confirm it\'s yours.';
+
+  @override
+  String get changeEmailVerifyTitle => 'Verify your new email';
+
+  @override
+  String changeEmailVerifySentTo(String masked) {
+    return 'We sent a 6-digit code to $masked.';
+  }
+
+  @override
+  String get changeEmailVerifyPasteHint =>
+      'You can paste the code from your email.';
+
+  @override
+  String get changeEmailVerifyCodeLabel => '6-digit code';
+
+  @override
+  String changeEmailVerifyCodeSemantics(int position) {
+    return '6 digit code, digit $position of 6';
+  }
+
+  @override
+  String get changeEmailVerifyResend => 'Resend code';
+
+  @override
+  String changeEmailVerifyResendIn(int seconds) {
+    return 'Resend in ${seconds}s';
+  }
+
+  @override
+  String get changeEmailVerifyCta => 'Confirm new email';
+
+  @override
+  String get changeEmailVerifyWrongCode =>
+      'That code doesn\'t match. Check your email and try again.';
+
+  @override
+  String get changeEmailVerifyExpired => 'That code expired. Tap Resend.';
+
+  @override
+  String get changeEmailVerifyTooManyAttempts =>
+      'Too many wrong codes. Resend a new one in a minute.';
+
+  @override
+  String get changeEmailVerifyServerError =>
+      'We couldn\'t confirm the change. Please try again.';
+
+  @override
+  String get changeEmailVerifyOffline =>
+      'You\'re offline. Reconnect to confirm your email.';
+
+  @override
+  String get changeEmailVerifySuccess => 'Email updated';
+
+  @override
+  String piiEmailPending(String masked) {
+    return 'Change to $masked is pending verification.';
+  }
+
+  @override
+  String get piiEmailPendingMenu => 'Pending email change';
+
+  @override
+  String get piiEmailPendingContinue => 'Continue verification';
+
+  @override
+  String get piiEmailPendingCancel => 'Cancel email change';
+
+  @override
+  String get piiEmailPendingCleared =>
+      'Pending change cleared from this device. You can start a new change at any time.';
+
+  @override
   String get languageTitle => 'Language';
 
   @override
