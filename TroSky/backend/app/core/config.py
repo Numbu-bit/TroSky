@@ -97,6 +97,13 @@ class Settings(BaseSettings):
     # HTTP re-validates on every request; a socket has no requests, so this
     # bounds how long a logout, suspension or token expiry can go unnoticed.
     WS_AUTH_RECHECK_SECONDS: int = Field(default=30, gt=0, le=3600)
+    # How long a ticket from POST /auth/ws/ticket can wait before opening its
+    # (one) socket.
+    WS_TICKET_TTL_SECONDS: int = Field(default=60, ge=5, le=300)
+    # The tracking socket's old ?token=<access token>. Deprecated: the token
+    # lands in proxy and edge logs. Turn off once the apps open it with
+    # ?ticket= instead.
+    WS_QUERY_TOKEN_ALLOWED: bool = True
 
     # --- Database --------------------------------------------------------
     DATABASE_URL: str
