@@ -192,6 +192,18 @@ const Map<String, Set<String>> _telemetrySchema = {
   'favourites_opened': {'from'},
   'favourite_deleted': {'kind'},
   'favourites_empty_add_tapped': {},
+  'favourite_place_added': {'kind'},
+  'favourite_place_edited': {'kind'},
+  'favourite_place_deleted': {'kind'},
+  'favourite_home_set': {},
+  'favourite_work_set': {},
+
+  // Share trip
+  'share_trip_tapped': {},
+  'share_trip_minted': {},
+  'share_trip_reused_cache': {},
+  'share_trip_revoked': {},
+  'share_trip_failed': {'reason'},
 
   // Home
   'home_bell_tapped': {},
@@ -201,9 +213,11 @@ const Map<String, Set<String>> _telemetrySchema = {
   'notifications_opened': {'from'},
   'notifications_tab_changed': {'tab'},
   'notification_mark_all_read': {},
-  'notification_tapped': {'type', 'has_deep_link'},
-  'notification_unroutable': {'type'},
+  'notification_tapped': {'type', 'has_deep_link', 'routed'},
+  'notification_unroutable': {'type', 'path_pattern'},
   'notification_pref_toggled': {'category', 'enabled'},
+  'safety_pref_warning_shown': {},
+  'safety_pref_warning_confirmed': {},
 
   // Safety
   'rate_opened': {'from'},

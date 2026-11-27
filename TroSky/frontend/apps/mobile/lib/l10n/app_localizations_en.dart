@@ -2570,6 +2570,57 @@ class AppLocalizationsEn extends AppLocalizations {
       'Per-category toggles are coming. For now, choose which channels we use.';
 
   @override
+  String get notifPrefsChannelsHeader => 'CHANNELS';
+
+  @override
+  String get notifPrefsCategoriesHeader => 'CATEGORIES';
+
+  @override
+  String get notifPrefsPushEnabledDesc => 'Lock-screen and heads-up alerts.';
+
+  @override
+  String get notifPrefsSmsEnabledDesc => 'Text messages to your phone number.';
+
+  @override
+  String get notifPrefsEmailEnabledDesc => 'Messages to your email address.';
+
+  @override
+  String get notifPrefsPromotionalOptInDesc => 'Marketing and newsletters.';
+
+  @override
+  String get notifPrefsBookingUpdates => 'Bookings & trips';
+
+  @override
+  String get notifPrefsBookingUpdatesDesc =>
+      'Updates about your bookings and trips.';
+
+  @override
+  String get notifPrefsPayment => 'Payments';
+
+  @override
+  String get notifPrefsPaymentDesc => 'Payments, refunds, top-ups and payouts.';
+
+  @override
+  String get notifPrefsPromotions => 'Promotions';
+
+  @override
+  String get notifPrefsPromotionsDesc =>
+      'Offers and news. Off until you turn it on.';
+
+  @override
+  String get notifPrefsSafety => 'Safety';
+
+  @override
+  String get notifPrefsSafetyAlwaysOn => 'SOS and trip emergencies. Always on.';
+
+  @override
+  String get notifPrefsAccount => 'Account';
+
+  @override
+  String get notifPrefsAccountAlwaysOn =>
+      'Password or email changes, documents, support replies. Always on.';
+
+  @override
   String get notifPrefsPushEnabled => 'Push notifications';
 
   @override
@@ -2627,6 +2678,87 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get favouriteDeleteFailed => 'Couldn\'t remove.';
+
+  @override
+  String get favouritesPlacesHeader => 'PLACES';
+
+  @override
+  String get favouritesRoutesHeader => 'SAVED ROUTES';
+
+  @override
+  String get favouritePlaceHome => 'Home';
+
+  @override
+  String get favouritePlaceWork => 'Work';
+
+  @override
+  String get favouritePlaceAddHome => 'Add Home';
+
+  @override
+  String get favouritePlaceAddWork => 'Add Work';
+
+  @override
+  String get favouritePlaceAddFabTooltip => 'Add a place';
+
+  @override
+  String get favouritePlaceAddTitle => 'Add a place';
+
+  @override
+  String get favouritePlaceEditTitle => 'Edit place';
+
+  @override
+  String get favouritePlaceKindLabel => 'Type';
+
+  @override
+  String get favouritePlaceKindCustom => 'Custom';
+
+  @override
+  String get favouritePlaceLabelLabel => 'Label';
+
+  @override
+  String get favouritePlaceStopLabel => 'Destination stop';
+
+  @override
+  String get favouritePlaceSaveCta => 'Save place';
+
+  @override
+  String get favouritePlaceEditLabelAction => 'Edit label';
+
+  @override
+  String get favouritePlaceDeleteAction => 'Delete';
+
+  @override
+  String get favouritePlaceDeleteConfirmTitle => 'Remove this place?';
+
+  @override
+  String get favouritePlaceDeleteConfirmBody => 'You can add it again later.';
+
+  @override
+  String get favouritePlaceSaveFailed => 'Couldn\'t save. Please try again.';
+
+  @override
+  String get favouritePlaceDeleteFailed =>
+      'Couldn\'t remove. Please try again.';
+
+  @override
+  String get trackTripShareSheetTitle => 'Share this trip';
+
+  @override
+  String get trackTripShareMintCta => 'Mint share link';
+
+  @override
+  String trackTripShareReuseHint(String remaining) {
+    return 'Using a link that expires $remaining.';
+  }
+
+  @override
+  String get trackTripShareStopAction => 'Stop sharing';
+
+  @override
+  String get trackTripShareStoppedToast => 'Share links revoked.';
+
+  @override
+  String get trackTripShareFailedToast => 'Couldn\'t share. Please try again.';
 
   @override
   String homeBellSemantics(int unread) {

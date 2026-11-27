@@ -1,11 +1,21 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:trosky_api/trosky_api.dart';
 import 'package:trosky_auth/trosky_auth.dart';
 import 'package:trosky_core/trosky_core.dart';
 
+import '../data/share_token_cache.dart';
 import '../data/trip_tracking_service.dart';
 
 part 'tracking_providers.g.dart';
+
+/// Encrypted share-token cache (step 21/close-stubs-C). Kept alive
+/// for the session so the Hive box stays open between taps.
+final shareTokenCacheProvider = Provider<ShareTokenCache>((ref) {
+  final cache = ShareTokenCache();
+  ref.onDispose(cache.close);
+  return cache;
+});
 
 /// Opens the realtime channel for one trip. Fresh per trip id; the
 /// screen disposes it on unmount.

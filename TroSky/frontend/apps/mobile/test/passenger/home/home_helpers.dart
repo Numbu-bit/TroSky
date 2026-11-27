@@ -201,6 +201,25 @@ class FlakyFavourites implements UserRepository {
   Future<Result<UserResponse>> confirmEmailChange(
     ChangeEmailConfirmRequest request,
   ) => _inner.confirmEmailChange(request);
+
+  @override
+  Future<Result<List<FavouritePlaceResponse>>> listFavouritePlaces() =>
+      _inner.listFavouritePlaces();
+
+  @override
+  Future<Result<FavouritePlaceResponse>> addFavouritePlace(
+    FavouritePlaceCreateRequest request,
+  ) => _inner.addFavouritePlace(request);
+
+  @override
+  Future<Result<FavouritePlaceResponse>> updateFavouritePlace(
+    String placeId,
+    FavouritePlaceUpdateRequest request,
+  ) => _inner.updateFavouritePlace(placeId, request);
+
+  @override
+  Future<Result<void>> deleteFavouritePlace(String placeId) =>
+      _inner.deleteFavouritePlace(placeId);
 }
 
 /// [UserRepository] override using [wrap] around the mock one.

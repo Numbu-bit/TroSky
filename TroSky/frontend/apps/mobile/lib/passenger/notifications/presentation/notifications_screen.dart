@@ -14,8 +14,12 @@ import 'package:trosky_auth/trosky_auth.dart';
 import 'package:trosky_core/trosky_core.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 
+import 'package:go_router/go_router.dart';
+
 import '../../../app/telemetry.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../tracking/domain/track_trip_args.dart' show tripTrackingEnabled;
+import '../application/notification_router.dart';
 import '../application/notifications_providers.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
@@ -161,18 +165,20 @@ class _NotificationRow extends ConsumerWidget {
       button: true,
       child: InkWell(
         onTap: () async {
-          // Mark read optimistically; record analytics and route if we
-          // can parse a destination out of `data`. Deep-link details
-          // vary by backend contract — this is intentionally a stub.
-          final hasDeepLink =
-              notif.data.containsKey('route') ||
-              notif.data.containsKey('deep_link');
+          // Mark read optimistically — never block navigation on the
+          // mark-read PATCH. Route via NotificationRouter when the
+          // backend's deep_link maps to a known shape.
+          final route = NotificationRouter.resolve(
+            notif,
+            trackingEnabled: tripTrackingEnabled,
+          );
           ref
               .read(telemetryProvider)
               .emit(
                 TelemetryEvent('notification_tapped', {
                   'type': notif.category.name,
-                  'has_deep_link': hasDeepLink,
+                  'has_deep_link': notif.deepLink != null,
+                  'routed': route != null,
                 }),
               );
           if (unread) {
@@ -186,12 +192,15 @@ class _NotificationRow extends ConsumerWidget {
               }),
             );
           }
-          if (!hasDeepLink) {
+          if (route == null) {
             ref
                 .read(telemetryProvider)
                 .emit(
                   TelemetryEvent('notification_unroutable', {
                     'type': notif.category.name,
+                    'path_pattern': NotificationRouter.patternOf(
+                      notif.deepLink,
+                    ),
                   }),
                 );
             if (context.mounted) {
@@ -201,6 +210,21 @@ class _NotificationRow extends ConsumerWidget {
                 ),
               );
             }
+            return;
+          }
+          if (!context.mounted) return;
+          if (route.useGo) {
+            context.goNamed(
+              route.routeName,
+              pathParameters: route.pathParameters,
+              extra: route.extra,
+            );
+          } else {
+            context.pushNamed(
+              route.routeName,
+              pathParameters: route.pathParameters,
+              extra: route.extra,
+            );
           }
         },
         child: Container(
@@ -371,17 +395,10 @@ class _PreferencesTab extends ConsumerWidget {
         Ok(:final value) => ListView(
           padding: const EdgeInsets.all(TroskySpacing.s12),
           children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: TroskySpacing.s12),
-              child: Text(
-                l10n.notifPrefsBannerChannelOnly,
-                style: TroskyTypography.body12Regular.copyWith(
-                  color: TroskyColors.textSecondary,
-                ),
-              ),
-            ),
+            _SectionHeader(label: l10n.notifPrefsChannelsHeader),
             _PrefToggle(
               label: l10n.notifPrefsPushEnabled,
+              description: l10n.notifPrefsPushEnabledDesc,
               value: value.pushEnabled,
               category: 'push',
               apply: (v) =>
@@ -389,12 +406,14 @@ class _PreferencesTab extends ConsumerWidget {
             ),
             _PrefToggle(
               label: l10n.notifPrefsSmsEnabled,
+              description: l10n.notifPrefsSmsEnabledDesc,
               value: value.smsEnabled,
               category: 'sms',
               apply: (v) => NotificationPreferencesUpdateRequest(smsEnabled: v),
             ),
             _PrefToggle(
               label: l10n.notifPrefsEmailEnabled,
+              description: l10n.notifPrefsEmailEnabledDesc,
               value: value.emailEnabled,
               category: 'email',
               apply: (v) =>
@@ -402,14 +421,119 @@ class _PreferencesTab extends ConsumerWidget {
             ),
             _PrefToggle(
               label: l10n.notifPrefsPromotionalOptIn,
+              description: l10n.notifPrefsPromotionalOptInDesc,
               value: value.promotionalOptIn,
               category: 'promotional',
               apply: (v) =>
                   NotificationPreferencesUpdateRequest(promotionalOptIn: v),
             ),
+            const SizedBox(height: TroskySpacing.s16),
+            _SectionHeader(label: l10n.notifPrefsCategoriesHeader),
+            _PrefToggle(
+              label: l10n.notifPrefsBookingUpdates,
+              description: l10n.notifPrefsBookingUpdatesDesc,
+              value: value.bookingUpdatesEnabled,
+              category: 'booking_updates',
+              apply: (v) => NotificationPreferencesUpdateRequest(
+                bookingUpdatesEnabled: v,
+              ),
+            ),
+            _PrefToggle(
+              label: l10n.notifPrefsPayment,
+              description: l10n.notifPrefsPaymentDesc,
+              value: value.paymentEnabled,
+              category: 'payment',
+              apply: (v) =>
+                  NotificationPreferencesUpdateRequest(paymentEnabled: v),
+            ),
+            _PrefToggle(
+              label: l10n.notifPrefsPromotions,
+              description: l10n.notifPrefsPromotionsDesc,
+              value: value.promotionsEnabled,
+              category: 'promotions',
+              apply: (v) =>
+                  NotificationPreferencesUpdateRequest(promotionsEnabled: v),
+            ),
+            // Safety + Account are backend-enforced always-on
+            // (preflight confirmed: "safety notifications can't be
+            // turned off"). They're shown as read-only indicators so
+            // the surface stays honest.
+            _PrefAlwaysOn(
+              label: l10n.notifPrefsSafety,
+              description: l10n.notifPrefsSafetyAlwaysOn,
+            ),
+            _PrefAlwaysOn(
+              label: l10n.notifPrefsAccount,
+              description: l10n.notifPrefsAccountAlwaysOn,
+            ),
           ],
         ),
       },
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(
+        left: 4,
+        top: TroskySpacing.s4,
+        bottom: TroskySpacing.s8,
+      ),
+      child: Text(
+        label,
+        style: TroskyTypography.body12SemiBoldH133.copyWith(
+          color: TroskyColors.textSecondary,
+        ),
+      ),
+    );
+  }
+}
+
+class _PrefAlwaysOn extends StatelessWidget {
+  const _PrefAlwaysOn({required this.label, required this.description});
+  final String label;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: '$label, on, cannot be turned off',
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TroskyTypography.body14SemiBold.copyWith(
+                      color: TroskyColors.ink,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      description,
+                      style: TroskyTypography.body12Regular.copyWith(
+                        color: TroskyColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Switch(value: true, onChanged: null),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -420,8 +544,10 @@ class _PrefToggle extends ConsumerStatefulWidget {
     required this.value,
     required this.category,
     required this.apply,
+    this.description,
   });
   final String label;
+  final String? description;
   final bool value;
   final String category;
   final NotificationPreferencesUpdateRequest Function(bool) apply;
@@ -444,11 +570,26 @@ class _PrefToggleState extends ConsumerState<_PrefToggle> {
         child: Row(
           children: [
             Expanded(
-              child: Text(
-                widget.label,
-                style: TroskyTypography.body14SemiBold.copyWith(
-                  color: TroskyColors.ink,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.label,
+                    style: TroskyTypography.body14SemiBold.copyWith(
+                      color: TroskyColors.ink,
+                    ),
+                  ),
+                  if (widget.description != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        widget.description!,
+                        style: TroskyTypography.body12Regular.copyWith(
+                          color: TroskyColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
             Switch(

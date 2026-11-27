@@ -60,6 +60,21 @@ class _FakeUser implements UserRepository {
   Future<Result<UserResponse>> confirmEmailChange(
     ChangeEmailConfirmRequest request,
   ) async => const Err(NetworkFailure());
+  @override
+  Future<Result<List<FavouritePlaceResponse>>> listFavouritePlaces() async =>
+      const Ok([]);
+  @override
+  Future<Result<FavouritePlaceResponse>> addFavouritePlace(
+    FavouritePlaceCreateRequest request,
+  ) async => const Err(NetworkFailure());
+  @override
+  Future<Result<FavouritePlaceResponse>> updateFavouritePlace(
+    String placeId,
+    FavouritePlaceUpdateRequest request,
+  ) async => const Err(NetworkFailure());
+  @override
+  Future<Result<void>> deleteFavouritePlace(String placeId) async =>
+      const Err(NetworkFailure());
 }
 
 FavouriteRouteResponse _f({required String id, String? label}) =>
@@ -88,15 +103,20 @@ Widget _host(_FakeUser repo) => ProviderScope(
 );
 
 void main() {
-  testWidgets('empty state shows the "Add from Search" helper', (tester) async {
-    tester.view.physicalSize = const Size(400, 1200);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-    await tester.pumpWidget(_host(_FakeUser([])));
-    await tester.pumpAndSettle();
-    expect(find.textContaining('Save routes'), findsOneWidget);
-    expect(find.textContaining('tap the heart'), findsOneWidget);
-  });
+  testWidgets(
+    'empty state shows the "Add from Search" helper on Routes section',
+    (tester) async {
+      tester.view.physicalSize = const Size(400, 1800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(_host(_FakeUser([])));
+      await tester.pumpAndSettle();
+      // The Routes section's empty helper still prompts the user to
+      // tap the heart on a search result (step 21/close-stubs-C kept
+      // Routes as a secondary section).
+      expect(find.textContaining('tap the heart'), findsOneWidget);
+    },
+  );
 
   testWidgets('route rows render the origin → destination copy', (
     tester,

@@ -49,6 +49,22 @@ class _FakeRepo implements UserRepository {
   }
 
   @override
+  Future<Result<List<FavouritePlaceResponse>>> listFavouritePlaces() async =>
+      const Ok([]);
+  @override
+  Future<Result<FavouritePlaceResponse>> addFavouritePlace(
+    FavouritePlaceCreateRequest request,
+  ) async => const Err(NetworkFailure());
+  @override
+  Future<Result<FavouritePlaceResponse>> updateFavouritePlace(
+    String placeId,
+    FavouritePlaceUpdateRequest request,
+  ) async => const Err(NetworkFailure());
+  @override
+  Future<Result<void>> deleteFavouritePlace(String placeId) async =>
+      const Err(NetworkFailure());
+
+  @override
   Future<Result<MessageResponse>> changePassword(
     ChangePasswordRequest request, {
     required String idempotencyKey,

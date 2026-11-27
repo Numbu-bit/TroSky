@@ -10,6 +10,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:trosky_api/trosky_api.dart';
 import 'package:trosky_auth/trosky_auth.dart';
+import 'package:trosky_core/trosky_core.dart';
 import 'package:trosky_ui/trosky_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -260,7 +261,7 @@ class _TrackTripScreenState extends ConsumerState<TrackTripScreen>
               liveFare: _location?.liveFarePerSeat,
               ridersCount:
                   _location?.ridersCount ?? widget.args.trip.ridersCount,
-              onShare: _share,
+              onShare: _openShareSheet,
               onSos: () => _openSos(context),
               onCall: _callDriver,
               onMessage: _messageDriver,
@@ -288,6 +289,44 @@ class _TrackTripScreenState extends ConsumerState<TrackTripScreen>
 
   Future<void> _share() async {
     final l10n = AppLocalizations.of(context);
+    ref.read(telemetryProvider).emit(TelemetryEvent('share_trip_tapped'));
+    ref.read(telemetryProvider).emit(TelemetryEvent('track_trip_share_tapped'));
+    final bookingId = widget.args.booking.id;
+    final cache = ref.read(shareTokenCacheProvider);
+
+    // 1. Try the cache first (unexpired tokens only).
+    final cached = await cache.read(bookingId);
+    TripShareLinkResponse? link = cached;
+    if (link != null) {
+      ref
+          .read(telemetryProvider)
+          .emit(TelemetryEvent('share_trip_reused_cache'));
+    } else {
+      // 2. Mint via the backend-scoped booking share endpoint.
+      final minted = await ref
+          .read(bookingRepositoryProvider)
+          .mintShareLink(bookingId);
+      switch (minted) {
+        case Ok(:final value):
+          link = value;
+          await cache.write(bookingId, value);
+          ref.read(telemetryProvider).emit(TelemetryEvent('share_trip_minted'));
+        case Err():
+          ref
+              .read(telemetryProvider)
+              .emit(
+                TelemetryEvent('share_trip_failed', const {'reason': 'mint'}),
+              );
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l10n.trackTripShareFailedToast)),
+          );
+          return;
+      }
+    }
+
+    if (!mounted) return;
+    // 3. Build the share text with the backend-issued URL.
     final seat = widget.args.booking.passengers.isNotEmpty
         ? widget.args.booking.passengers.first.seatId
         : '';
@@ -297,15 +336,89 @@ class _TrackTripScreenState extends ConsumerState<TrackTripScreen>
           widget.args.trip.scheduledArrivalAt ??
           widget.args.trip.scheduledDepartureAt,
     );
-    final text = l10n.trackTripShareText(
-      '${widget.args.trip.originStopName} → '
-      '${widget.args.trip.destinationStopName}',
-      time,
-      seat,
-      plate,
-    );
-    ref.read(telemetryProvider).emit(TelemetryEvent('track_trip_share_tapped'));
+    // Legacy multi-field share text kept for continuity; the share
+    // URL is appended on its own line so recipients open the live
+    // public tracker.
+    final text =
+        '${l10n.trackTripShareText('${widget.args.trip.originStopName} → ${widget.args.trip.destinationStopName}', time, seat, plate)}\n${link.url}';
     await SharePlus.instance.share(ShareParams(text: text));
+  }
+
+  Future<void> _openShareSheet() async {
+    final l10n = AppLocalizations.of(context);
+    final bookingId = widget.args.booking.id;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: TroskyColors.surface,
+      showDragHandle: true,
+      builder: (sheetCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            TroskySpacing.s20,
+            TroskySpacing.s8,
+            TroskySpacing.s20,
+            TroskySpacing.s20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                l10n.trackTripShareSheetTitle,
+                style: TroskyTypography.heading22ExtraBold,
+              ),
+              const SizedBox(height: TroskySpacing.s16),
+              TroskyButton(
+                label: l10n.trackTripShareMintCta,
+                variant: TroskyButtonVariant.primary,
+                onPressed: () {
+                  Navigator.of(sheetCtx).pop();
+                  unawaited(_share());
+                },
+              ),
+              const SizedBox(height: TroskySpacing.s8),
+              Semantics(
+                label: l10n.trackTripShareStopAction,
+                button: true,
+                child: TroskyButton(
+                  label: l10n.trackTripShareStopAction,
+                  variant: TroskyButtonVariant.danger,
+                  onPressed: () async {
+                    Navigator.of(sheetCtx).pop();
+                    await _revoke(bookingId);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _revoke(String bookingId) async {
+    final l10n = AppLocalizations.of(context);
+    final result = await ref
+        .read(bookingRepositoryProvider)
+        .revokeShareLinks(bookingId);
+    if (!mounted) return;
+    if (result case Err()) {
+      ref
+          .read(telemetryProvider)
+          .emit(
+            TelemetryEvent('share_trip_failed', const {'reason': 'revoke'}),
+          );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.trackTripShareFailedToast)));
+      return;
+    }
+    await ref.read(shareTokenCacheProvider).remove(bookingId);
+    ref.read(telemetryProvider).emit(TelemetryEvent('share_trip_revoked'));
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(l10n.trackTripShareStoppedToast)));
   }
 
   Future<void> _openSos(BuildContext context) async {
