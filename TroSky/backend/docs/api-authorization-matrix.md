@@ -39,6 +39,7 @@ per-row below for that reason, not because it's excluded.
 | `GET/POST /notifications*` | Caller's own inbox only. |
 | `POST/GET /complaints*` | 404 on another user's complaint unless `complaints:manage`. |
 | `POST /trips/{id}/incidents`, `/sos`, `GET /incidents/{id}`, `/sos/{id}` | `SafetyService._assert_trip_participant` — the trip's assigned driver or a passenger with an active booking on it; reads 404 for non-owners unless `incidents:manage`/`sos:review`. SOS trigger rate-limited (`sos:trigger`). |
+| `POST /sos/{id}/resolved` | Only the person who raised the alert ("I'm safe now"); 404 for anyone else, `sos:review` included (admins use `/admin/sos-alerts/{id}/resolve`). |
 
 ## `driver` role required (router-level, `app/api/v1/drivers.py` + `app/api/v1/driver_trips.py`)
 

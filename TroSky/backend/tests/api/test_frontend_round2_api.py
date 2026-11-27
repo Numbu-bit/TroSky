@@ -235,6 +235,30 @@ class TestSos:  # G19
         fetched = await client.get(f"/api/v1/sos/{raised.json()['id']}", headers=headers)
         assert fetched.status_code == 200
 
+    async def test_marked_safe_by_the_sender_only(
+        self, client: AsyncClient, seed_identity_data: None
+    ) -> None:  # G-sos-marked-safe
+        headers = await _passenger(client)
+        someone_else = await _passenger(client)
+        raised = await client.post(
+            "/api/v1/sos", headers=headers, json={"latitude": 5.6037, "longitude": -0.187}
+        )
+        url = f"/api/v1/sos/{raised.json()['id']}/resolved"
+
+        not_theirs = await client.post(url, headers=someone_else)
+        safe = await client.post(url, headers=headers)
+        again = await client.post(url, headers=headers)
+
+        assert not_theirs.status_code == 404
+        assert not_theirs.json()["error"]["code"] == "NOT_FOUND"
+        assert safe.status_code == 200, safe.text
+        assert safe.json()["status"] == "resolved"
+        assert safe.json()["resolved_by"] == raised.json()["triggered_by"]
+        assert safe.json()["resolution_notes"]
+        assert again.status_code == 200
+        assert again.json()["resolved_at"] == safe.json()["resolved_at"]
+        assert (await client.post(url)).status_code == 401
+
 
 class TestNotifications:  # G27
     async def test_unread_count_and_read_all(
@@ -489,6 +513,7 @@ async def test_every_new_endpoint_is_in_the_openapi_document(app_instance) -> No
     expected = {
         ("get", "/api/v1/trips/{trip_id}/fare-quote"),
         ("post", "/api/v1/sos"),
+        ("post", "/api/v1/sos/{alert_id}/resolved"),
         ("post", "/api/v1/bookings/{booking_id}/share"),
         ("get", "/api/v1/shared-trips/{token}"),
         ("get", "/api/v1/bookings/summary"),
