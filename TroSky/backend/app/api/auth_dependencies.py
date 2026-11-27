@@ -11,6 +11,7 @@ imports. ``app.main.create_app`` wires this implementation in via
 
 from __future__ import annotations
 
+import uuid
 from typing import Annotated
 
 from fastapi import Depends, Request
@@ -46,14 +47,29 @@ async def resolve_principal(db: AsyncSession, token: str) -> Principal:
         claims = decode_token(token, expected_type=TokenType.ACCESS)
     except TokenError as exc:
         raise UnauthorizedError("Invalid or expired access token.") from exc
+    return await principal_for_session(
+        db, user_id=claims.subject_user_id, session_id=claims.session_id
+    )
 
+
+async def principal_for_session(
+    db: AsyncSession, *, user_id: uuid.UUID, session_id: uuid.UUID
+) -> Principal:
+    """The checks ``resolve_principal`` makes once the token itself is
+    accepted: the session is not revoked, the account is active and not
+    suspended, and fresh roles and permissions. Also used on its own for a
+    WebSocket opened with a one-time ticket (``app.core.ws_tickets``),
+    which names the session it was issued to rather than carrying a token.
+
+    Raises ``UnauthorizedError`` or ``AccountSuspendedError``.
+    """
     sessions = SessionRepository(db)
-    session_record = await sessions.get_active_session(claims.session_id)
+    session_record = await sessions.get_active_session(session_id)
     if session_record is None:
         raise UnauthorizedError("This session has been revoked.")
 
     users = UserRepository(db)
-    user = await users.get_by_id(claims.subject_user_id)
+    user = await users.get_by_id(user_id)
     if user is None:
         raise UnauthorizedError("Account no longer exists.")
     if user.is_suspended:
@@ -67,7 +83,7 @@ async def resolve_principal(db: AsyncSession, token: str) -> Principal:
 
     return Principal(
         user_id=user.id,
-        session_id=claims.session_id,
+        session_id=session_id,
         roles=frozenset(roles),
         permissions=frozenset(permissions),
         is_active=True,

@@ -7,6 +7,17 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- **Open the tracking WebSocket with a one-time ticket, not the access token** (B5, H4 of the
+  pre-launch audit). `POST /auth/ws/ticket` (signed in as usual) answers 201
+  `{"ticket", "expires_in": 60, "expires_at"}`; open
+  `wss://…/api/v1/ws/trips/{id}/track?ticket=<ticket>`. A ticket opens one socket and is used up
+  by it (another socket with it is closed with 1008 "Invalid or expired ticket"), and dies unused
+  after 60 seconds (`WS_TICKET_TTL_SECONDS`). Ask for a new one for every connection, reconnects
+  included. Redis keeps only a hash of it. A socket opened this way stays open while its session
+  is signed in and allowed to watch the trip: it is not cut at the access token's 15 minutes, and
+  a logout or suspension still closes it within `WS_AUTH_RECHECK_SECONDS`. Rate limit
+  `auth:ws_ticket`, 30 a minute.
+
 - **Stop sharing a live trip: `DELETE /bookings/{id}/share`.** Every link made for the booking so
   far answers 410; a link made afterwards works. Links now carry when they were issued (64
   characters instead of 54); older links still open until they expire or are stopped.
@@ -70,6 +81,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 - **Drivers are also reminded before their insurance expires,** 30, 14, 7, 3 and 1 days before
   (`INSURANCE_REMINDER_DAYS`), and so are the fleet owners whose vehicles they drive. A worker that
   slept through some sends only the latest one.
+
+### Deprecated
+
+- **`?token=<access token>` on the tracking WebSocket** (B5). It still works for now, and each use
+  logs `ws_query_token_deprecated` (without the token). Once the apps open the socket with
+  `?ticket=`, set `WS_QUERY_TOKEN_ALLOWED=false`: a `?token=` socket is then closed with 1008
+  "Use ?ticket= from POST /auth/ws/ticket".
 
 ### Changed
 
