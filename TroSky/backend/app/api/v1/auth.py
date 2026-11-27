@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Request, status
 
-from app.api.dependencies import AuthServiceDep, CurrentPrincipal
+from app.api.dependencies import AuthServiceDep, CurrentPrincipal, RedisClient
+from app.core.config import get_settings
 from app.core.ratelimit import rate_limit
+from app.core.ws_tickets import issue_ticket
 from app.schemas.auth import (
     ForgotPasswordRequest,
     LoginRequest,
@@ -20,6 +23,7 @@ from app.schemas.auth import (
     SessionResponse,
     TokenPairResponse,
     VerifyOtpRequest,
+    WsTicketResponse,
 )
 from app.schemas.common import MessageResponse
 
@@ -180,3 +184,27 @@ async def revoke_session(
 ) -> None:
     """Revoke a specific device session (e.g. remote sign-out of a lost phone)."""
     await auth.revoke_session_for_user(principal.user_id, session_id)
+
+
+@router.post(
+    "/ws/ticket",
+    response_model=WsTicketResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit("auth:ws_ticket"))],
+)
+async def issue_websocket_ticket(
+    principal: CurrentPrincipal, redis: RedisClient
+) -> WsTicketResponse:
+    """A one-time ticket for opening a WebSocket without putting the access
+    token in its URL: ``wss://…/api/v1/ws/trips/{id}/track?ticket=<ticket>``.
+
+    It opens one socket and is used up by it (a second socket with the same
+    ticket is closed with 1008 "Invalid or expired ticket"), and dies unused
+    after ``expires_in`` seconds (60). Ask for a new one for every
+    connection, reconnects included. The socket then stays open for as long
+    as this session is signed in and allowed to watch the trip."""
+    ttl = get_settings().WS_TICKET_TTL_SECONDS
+    ticket = await issue_ticket(redis, principal, ttl_seconds=ttl)
+    return WsTicketResponse(
+        ticket=ticket, expires_in=ttl, expires_at=datetime.now(UTC) + timedelta(seconds=ttl)
+    )

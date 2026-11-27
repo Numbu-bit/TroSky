@@ -52,6 +52,8 @@ DEFAULT_RULES: dict[str, RateLimitRule] = {
     "auth:otp_verify": RateLimitRule("auth:otp_verify", limit=10, window_seconds=300),
     "auth:password_reset": RateLimitRule("auth:password_reset", limit=5, window_seconds=3600),
     "auth:token_refresh": RateLimitRule("auth:token_refresh", limit=30, window_seconds=300),
+    # One per socket opened, reconnects included.
+    "auth:ws_ticket": RateLimitRule("auth:ws_ticket", limit=30, window_seconds=60),
     # Each checks the current password, so each is a password guess.
     "account:change_password": RateLimitRule(
         "account:change_password", limit=5, window_seconds=900
