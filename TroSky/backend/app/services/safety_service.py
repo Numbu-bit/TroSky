@@ -28,6 +28,7 @@ from app.core.exceptions import (
 from app.core.logging import get_logger
 from app.core.telemetry import SOS_EVENTS_TOTAL
 from app.models.bookings import Booking, BookingStatus
+from app.models.identity import EmergencyContact
 from app.models.safety import (
     DEFAULT_SEVERITY,
     EscalationContactType,
@@ -52,6 +53,10 @@ logger = get_logger(__name__)
 
 _PHOTO_TYPES = {"image/jpeg", "image/png"}
 _CLOCK_LEEWAY = timedelta(minutes=2)
+
+# What the operations team reads on an alert its own sender closed.
+MARKED_SAFE_NOTE = "Marked safe in the app by the person who raised it."
+_MARKED_SAFE_SMS = "TroSky: your contact who sent an emergency alert has told us they are safe now."
 
 _ACTIVE_BOOKING_STATUSES = (
     BookingStatus.PENDING,
@@ -264,12 +269,43 @@ class SafetyService:
             f"TroSky SOS Alert: your contact has triggered an emergency alert{context}."
             f"{location_text} Please check on them."
         )
+        await self._text_contacts(contacts, message)
+
+    async def _text_contacts(self, contacts: list[EmergencyContact], message: str) -> None:
         provider = get_sms_provider(self._settings)
         for contact in contacts:
             try:
                 await provider.send_sms(contact.phone_number, message)
             except ProviderError:
                 logger.error("sos_emergency_contact_sms_failed", contact_id=str(contact.id))
+
+    async def mark_safe(self, alert_id: uuid.UUID, *, user_id: uuid.UUID) -> SosAlert:
+        """The app's "I'm safe now" button, for the person who raised the alert.
+
+        Ends the alert as resolved, with a note for the operations team
+        (``MARKED_SAFE_NOTE``), and texts the emergency contacts who were
+        told about the alert. Anyone else gets the 404 of an alert that
+        doesn't exist, as for reading it. Pressing it again, or after the
+        team has already closed the alert, changes nothing and texts no one.
+        """
+        alert = await self._sos.get_for_update(alert_id)
+        if alert is None or alert.triggered_by != user_id:
+            raise NotFoundError("SOS alert not found.")
+        if alert.status not in (SosAlertStatus.ACTIVE, SosAlertStatus.ACKNOWLEDGED):
+            return alert
+        await self._sos.resolve(
+            alert,
+            resolved_by=user_id,
+            resolution_notes=MARKED_SAFE_NOTE,
+            status=SosAlertStatus.RESOLVED,
+        )
+        SOS_EVENTS_TOTAL.labels(status=alert.status.value).inc()
+        logger.warning("sos_marked_safe", alert_id=str(alert.id))
+        self._announce(alert, "sos.updated", marked_safe=True)
+        contacts = await self._contacts.list_for_user(user_id)
+        if contacts:
+            await self._text_contacts(contacts, _MARKED_SAFE_SMS)
+        return alert
 
     async def get_sos_alert(
         self, alert_id: uuid.UUID, *, requesting_user_id: uuid.UUID, is_privileged: bool = False

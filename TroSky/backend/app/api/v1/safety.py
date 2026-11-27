@@ -142,3 +142,19 @@ async def get_sos_alert(
         alert_id, requesting_user_id=principal.user_id, is_privileged=is_privileged
     )
     return SosAlertResponse.model_validate(alert)
+
+
+@router.post("/sos/{alert_id}/resolved", response_model=SosAlertResponse)
+async def mark_sos_safe(
+    alert_id: uuid.UUID, principal: CurrentPrincipal, service: SafetyServiceDep
+) -> SosAlertResponse:
+    """The "I'm safe now" button. Only the person who raised the alert can
+    use it (anyone else gets 404). The alert ends as ``resolved``, with
+    ``resolved_by`` the caller and a ``resolution_notes`` line telling the
+    operations team the sender closed it; the emergency contacts texted
+    when it was raised are told the sender is safe. Calling it again, or
+    after the team has already closed the alert, returns the alert as it
+    is and texts no one. The admin equivalent is
+    ``POST /admin/sos-alerts/{id}/resolve``."""
+    alert = await service.mark_safe(alert_id, user_id=principal.user_id)
+    return SosAlertResponse.model_validate(alert)

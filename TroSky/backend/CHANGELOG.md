@@ -7,6 +7,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- **"I'm safe now" after an SOS: `POST /sos/{id}/resolved`** (G-sos-marked-safe). The person who
+  raised the alert closes it themselves: it ends as `resolved`, with `resolved_by` them and a
+  `resolution_notes` line telling the operations team the sender marked themselves safe. The
+  emergency contacts texted about the alert get a second text saying the sender is safe. Anyone
+  else gets 404; calling it again, or after the team closed the alert, returns the alert unchanged
+  and texts no one.
+
 - **Stop sharing a live trip: `DELETE /bookings/{id}/share`.** Every link made for the booking so
   far answers 410; a link made afterwards works. Links now carry when they were issued (64
   characters instead of 54); older links still open until they expire or are stopped.
