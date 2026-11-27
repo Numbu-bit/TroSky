@@ -31,6 +31,8 @@ import '../passenger/trips/presentation/trip_details_screen.dart';
 import '../passenger/trips/presentation/trips_screen.dart';
 import '../passenger/account/domain/account_args.dart';
 import '../passenger/account/presentation/about_screen.dart';
+import '../passenger/account/presentation/change_email_screen.dart';
+import '../passenger/account/presentation/change_password_screen.dart';
 import '../passenger/account/presentation/delete_account_screen.dart';
 import '../passenger/account/presentation/language_screen.dart';
 import '../passenger/account/presentation/personal_info_screen.dart';
@@ -123,6 +125,18 @@ enum AppRoute {
   /// Personal information (P-22) — sub-page of Profile. Gated by
   /// `ACCOUNT_ENABLED`.
   personalInfo('/profile/personal-info'),
+
+  /// Change password (P-23) — signed-in rotate. Gated by
+  /// `ACCOUNT_ENABLED`.
+  changePassword('/profile/change-password'),
+
+  /// Change email, step a (P-24a) — new email + current password.
+  /// Gated by `ACCOUNT_ENABLED`.
+  changeEmail('/profile/change-email'),
+
+  /// Change email, step b (P-24b) — OTP verify. `extra` is a
+  /// [ChangeEmailVerifyArgs]. Gated by `ACCOUNT_ENABLED`.
+  changeEmailVerify('/profile/change-email/verify'),
 
   /// Delete account (P-25) — type-to-confirm + password. Gated by
   /// `ACCOUNT_ENABLED`.
@@ -346,6 +360,33 @@ GoRouter router(Ref ref) {
         redirect: (context, state) =>
             accountEnabled ? null : AppRoute.profile.path,
         builder: (context, state) => const PersonalInfoScreen(),
+      ),
+      GoRoute(
+        path: AppRoute.changePassword.path,
+        name: AppRoute.changePassword.name,
+        redirect: (context, state) =>
+            accountEnabled ? null : AppRoute.profile.path,
+        builder: (context, state) => const ChangePasswordScreen(),
+      ),
+      GoRoute(
+        path: AppRoute.changeEmail.path,
+        name: AppRoute.changeEmail.name,
+        redirect: (context, state) =>
+            accountEnabled ? null : AppRoute.profile.path,
+        builder: (context, state) => const ChangeEmailRequestScreen(),
+      ),
+      GoRoute(
+        path: AppRoute.changeEmailVerify.path,
+        name: AppRoute.changeEmailVerify.name,
+        redirect: (context, state) {
+          if (!accountEnabled) return AppRoute.profile.path;
+          return state.extra is ChangeEmailVerifyArgs
+              ? null
+              : AppRoute.changeEmail.path;
+        },
+        builder: (context, state) => ChangeEmailVerifyScreen(
+          args: state.extra! as ChangeEmailVerifyArgs,
+        ),
       ),
       GoRoute(
         path: AppRoute.deleteAccount.path,

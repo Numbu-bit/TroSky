@@ -207,6 +207,17 @@ class SessionController extends _$SessionController {
     return me;
   }
 
+  /// Updates the in-memory session user when a call elsewhere (e.g.
+  /// P-24b `change-email/confirm`) returns a refreshed [UserResponse].
+  /// Also writes [user] to the on-device cache so a cold start reads
+  /// the new email / verification state, not a stale one. No-ops when
+  /// the session isn't currently authenticated.
+  Future<void> applyUpdatedUser(UserResponse user) async {
+    if (state.value is! SessionAuthenticated) return;
+    await _cache.write(user);
+    state = AsyncData(SessionAuthenticated(user));
+  }
+
   /// Signs out this device.
   ///
   /// The saved refresh token is deleted first: once the backend has

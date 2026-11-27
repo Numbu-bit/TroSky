@@ -1,7 +1,7 @@
-// Step 21/B2 regression test: Profile should no longer show "Coming
-// soon" anywhere except the two backend-blocked rows (Change
-// password / Change email), which now read "Coming with the next
-// backend release".
+// Step 21/B2 + B4 regression test: Profile should no longer show
+// "Coming soon" anywhere, and the Change password + Change email
+// rows must be wired to real screens (step 21/B4), not left as
+// "Coming with the next backend release" subtitles.
 
 import 'dart:io';
 
@@ -23,21 +23,26 @@ void main() {
         RegExp(r'subtitle:\s*l10n\.profileComingSoon').hasMatch(content),
         isFalse,
         reason:
-            'Profile rows must not use profileComingSoon; use '
-            'profileNextBackendRelease for backend-blocked rows or wire '
-            'the row to a real screen.',
+            'Profile rows must not use profileComingSoon; wire the row to '
+            'a real screen.',
       );
     },
   );
 
-  test(
-    'Profile source: Change password + Change email use profileNextBackendRelease',
-    () async {
-      final content = await _profileScreen.readAsString();
-      expect(
-        RegExp(r'profileNextBackendRelease').allMatches(content).length,
-        greaterThanOrEqualTo(2),
-      );
-    },
-  );
+  test('Profile source: Change password + Change email are wired to their '
+      'routes (no profileNextBackendRelease subtitle left)', () async {
+    final content = await _profileScreen.readAsString();
+    // No row should carry the "coming with the next backend release"
+    // subtitle any more — both endpoints shipped in step 21/B4.
+    expect(
+      RegExp(r'subtitle:\s*l10n\.profileNextBackendRelease').hasMatch(content),
+      isFalse,
+      reason:
+          'profileNextBackendRelease subtitles should have been removed '
+          'when Change password + Change email went live (step 21/B4).',
+    );
+    // Both routes should be referenced from Profile now.
+    expect(content, contains('AppRoute.changePassword.name'));
+    expect(content, contains('AppRoute.changeEmail.name'));
+  });
 }

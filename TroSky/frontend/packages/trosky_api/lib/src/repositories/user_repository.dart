@@ -25,6 +25,34 @@ abstract interface class UserRepository {
   /// change-email / change-phone endpoints (gaps as of Step 20).
   Future<Result<UserResponse>> updateMe(UserProfileUpdateRequest request);
 
+  /// `POST /users/me/change-password` — rotate this account's password.
+  /// 401 `INVALID_CREDENTIALS` when the current password is wrong; 409
+  /// `PASSWORD_UNCHANGED` when the new one is the same; 409
+  /// `PASSWORD_POLICY_VIOLATION` when it is too weak. [idempotencyKey]
+  /// de-dupes retries of the same attempt on the server. On success
+  /// every OTHER session is signed out; this one stays.
+  Future<Result<MessageResponse>> changePassword(
+    ChangePasswordRequest request, {
+    required String idempotencyKey,
+  });
+
+  /// `POST /users/me/change-email` — start changing the account email.
+  /// The current address stays in use until [confirmEmailChange]. 401
+  /// `INVALID_CREDENTIALS`; 409 `EMAIL_UNCHANGED` /
+  /// `EMAIL_ALREADY_REGISTERED`; 422 `EMAIL_DOMAIN_NOT_ALLOWED`; 429
+  /// inside the resend cooldown. [idempotencyKey] de-dupes retries.
+  Future<Result<EmailChangeStartedResponse>> changeEmail(
+    ChangeEmailRequest request, {
+    required String idempotencyKey,
+  });
+
+  /// `POST /users/me/change-email/confirm` — finish an email change
+  /// started by [changeEmail], with the OTP sent to the new address.
+  /// Wrong, expired or used codes answer as `POST /auth/verify-otp` does.
+  Future<Result<UserResponse>> confirmEmailChange(
+    ChangeEmailConfirmRequest request,
+  );
+
   /// `DELETE /users/me` — soft-deletes the account. The backend signs
   /// every session out; local secure storage must be wiped after.
   Future<Result<MessageResponse>> deleteAccount(AccountDeletionRequest request);
@@ -82,6 +110,43 @@ class LiveUserRepository implements UserRepository {
         () => _dio.patch<Object?>('/users/me', data: request.toJson()),
         (data) => UserResponse.fromJson(jsonObject(data)),
       );
+
+  @override
+  Future<Result<MessageResponse>> changePassword(
+    ChangePasswordRequest request, {
+    required String idempotencyKey,
+  }) => apiCall(
+    () => _dio.post<Object?>(
+      '/users/me/change-password',
+      data: request.toJson(),
+      options: Options(headers: {'Idempotency-Key': idempotencyKey}),
+    ),
+    (data) => MessageResponse.fromJson(jsonObject(data)),
+  );
+
+  @override
+  Future<Result<EmailChangeStartedResponse>> changeEmail(
+    ChangeEmailRequest request, {
+    required String idempotencyKey,
+  }) => apiCall(
+    () => _dio.post<Object?>(
+      '/users/me/change-email',
+      data: request.toJson(),
+      options: Options(headers: {'Idempotency-Key': idempotencyKey}),
+    ),
+    (data) => EmailChangeStartedResponse.fromJson(jsonObject(data)),
+  );
+
+  @override
+  Future<Result<UserResponse>> confirmEmailChange(
+    ChangeEmailConfirmRequest request,
+  ) => apiCall(
+    () => _dio.post<Object?>(
+      '/users/me/change-email/confirm',
+      data: request.toJson(),
+    ),
+    (data) => UserResponse.fromJson(jsonObject(data)),
+  );
 
   @override
   Future<Result<MessageResponse>> deleteAccount(

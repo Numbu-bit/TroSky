@@ -184,6 +184,23 @@ class FlakyFavourites implements UserRepository {
   Future<Result<NotificationPreferencesResponse>> updateNotificationPreferences(
     NotificationPreferencesUpdateRequest request,
   ) => _inner.updateNotificationPreferences(request);
+
+  @override
+  Future<Result<MessageResponse>> changePassword(
+    ChangePasswordRequest request, {
+    required String idempotencyKey,
+  }) => _inner.changePassword(request, idempotencyKey: idempotencyKey);
+
+  @override
+  Future<Result<EmailChangeStartedResponse>> changeEmail(
+    ChangeEmailRequest request, {
+    required String idempotencyKey,
+  }) => _inner.changeEmail(request, idempotencyKey: idempotencyKey);
+
+  @override
+  Future<Result<UserResponse>> confirmEmailChange(
+    ChangeEmailConfirmRequest request,
+  ) => _inner.confirmEmailChange(request);
 }
 
 /// [UserRepository] override using [wrap] around the mock one.

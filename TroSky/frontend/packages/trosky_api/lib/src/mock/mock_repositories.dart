@@ -167,6 +167,42 @@ class MockUserRepository implements UserRepository {
     ),
   );
 
+  // Step 21/B4: change-password + change-email. The mock backend
+  // doesn't track account mutations; returning NOT_IMPLEMENTED matches
+  // how updateMe / deleteAccount behave in mock mode. Live is the
+  // target for both; widget tests supply their own fakes.
+  @override
+  Future<Result<MessageResponse>> changePassword(
+    ChangePasswordRequest request, {
+    required String idempotencyKey,
+  }) async => const Err(
+    UnknownFailure(
+      code: 'NOT_IMPLEMENTED',
+      message: 'Changing the password is not available in mock mode.',
+    ),
+  );
+
+  @override
+  Future<Result<EmailChangeStartedResponse>> changeEmail(
+    ChangeEmailRequest request, {
+    required String idempotencyKey,
+  }) async => const Err(
+    UnknownFailure(
+      code: 'NOT_IMPLEMENTED',
+      message: 'Changing the email is not available in mock mode.',
+    ),
+  );
+
+  @override
+  Future<Result<UserResponse>> confirmEmailChange(
+    ChangeEmailConfirmRequest request,
+  ) async => const Err(
+    UnknownFailure(
+      code: 'NOT_IMPLEMENTED',
+      message: 'Confirming the email change is not available in mock mode.',
+    ),
+  );
+
   // Step 20/B: DELETE /users/me/favourite-routes/{id} +
   // notification-preferences GET/PATCH. The mock backend doesn't track
   // either today; returning NOT_IMPLEMENTED keeps mock mode honest and
