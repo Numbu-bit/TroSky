@@ -97,6 +97,59 @@ Map<String, dynamic> _$AccountDeletionRequestToJson(
   'reason': ?instance.reason,
 };
 
+_ChangePasswordRequest _$ChangePasswordRequestFromJson(
+  Map<String, dynamic> json,
+) => _ChangePasswordRequest(
+  currentPassword: json['current_password'] as String,
+  newPassword: json['new_password'] as String,
+);
+
+Map<String, dynamic> _$ChangePasswordRequestToJson(
+  _ChangePasswordRequest instance,
+) => <String, dynamic>{
+  'current_password': instance.currentPassword,
+  'new_password': instance.newPassword,
+};
+
+_ChangeEmailRequest _$ChangeEmailRequestFromJson(Map<String, dynamic> json) =>
+    _ChangeEmailRequest(
+      newEmail: json['new_email'] as String,
+      currentPassword: json['current_password'] as String,
+    );
+
+Map<String, dynamic> _$ChangeEmailRequestToJson(_ChangeEmailRequest instance) =>
+    <String, dynamic>{
+      'new_email': instance.newEmail,
+      'current_password': instance.currentPassword,
+    };
+
+_EmailChangeStartedResponse _$EmailChangeStartedResponseFromJson(
+  Map<String, dynamic> json,
+) => _EmailChangeStartedResponse(
+  message: json['message'] as String,
+  otpSentTo: json['otp_sent_to'] as String,
+  expiresInSeconds: (json['expires_in_seconds'] as num).toInt(),
+);
+
+Map<String, dynamic> _$EmailChangeStartedResponseToJson(
+  _EmailChangeStartedResponse instance,
+) => <String, dynamic>{
+  'message': instance.message,
+  'otp_sent_to': instance.otpSentTo,
+  'expires_in_seconds': instance.expiresInSeconds,
+};
+
+_ChangeEmailConfirmRequest _$ChangeEmailConfirmRequestFromJson(
+  Map<String, dynamic> json,
+) => _ChangeEmailConfirmRequest(
+  newEmail: json['new_email'] as String,
+  code: json['code'] as String,
+);
+
+Map<String, dynamic> _$ChangeEmailConfirmRequestToJson(
+  _ChangeEmailConfirmRequest instance,
+) => <String, dynamic>{'new_email': instance.newEmail, 'code': instance.code};
+
 _FavouriteRouteCreateRequest _$FavouriteRouteCreateRequestFromJson(
   Map<String, dynamic> json,
 ) => _FavouriteRouteCreateRequest(
