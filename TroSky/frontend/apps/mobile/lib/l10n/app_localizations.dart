@@ -3822,11 +3822,359 @@ abstract class AppLocalizations {
   /// **'Coming soon'**
   String get profileComingSoon;
 
-  /// Subtitle on P-21 rows whose backend endpoint isn't shipped yet (Change password, Change email).
+  /// Subtitle on P-21 rows whose backend endpoint isn't shipped yet. Retained for compatibility; passenger-side uses removed in step 21/B4 when change-password + change-email went live.
   ///
   /// In en, this message translates to:
   /// **'Coming with the next backend release'**
   String get profileNextBackendRelease;
+
+  /// P-23 AppBar title.
+  ///
+  /// In en, this message translates to:
+  /// **'Change password'**
+  String get changePasswordTitle;
+
+  /// P-23 lead.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your current password, then choose a new one.'**
+  String get changePasswordIntro;
+
+  /// P-23 field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Current password'**
+  String get changePasswordCurrentLabel;
+
+  /// P-23 field label.
+  ///
+  /// In en, this message translates to:
+  /// **'New password'**
+  String get changePasswordNewLabel;
+
+  /// P-23 field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm new password'**
+  String get changePasswordConfirmLabel;
+
+  /// P-23 — label on the obscured/show-password toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show password'**
+  String get changePasswordRevealShow;
+
+  /// P-23 — label on the revealed/hide-password toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide password'**
+  String get changePasswordRevealHide;
+
+  /// P-23 — Semantics label announced for an obscured password field.
+  ///
+  /// In en, this message translates to:
+  /// **'Password, hidden'**
+  String get changePasswordObscuredSemantics;
+
+  /// P-23 strength label.
+  ///
+  /// In en, this message translates to:
+  /// **'Weak'**
+  String get changePasswordStrengthWeak;
+
+  /// P-23 strength label.
+  ///
+  /// In en, this message translates to:
+  /// **'Fair'**
+  String get changePasswordStrengthFair;
+
+  /// P-23 strength label.
+  ///
+  /// In en, this message translates to:
+  /// **'Good'**
+  String get changePasswordStrengthGood;
+
+  /// P-23 strength label.
+  ///
+  /// In en, this message translates to:
+  /// **'Strong'**
+  String get changePasswordStrengthStrong;
+
+  /// P-23 helper under the New field.
+  ///
+  /// In en, this message translates to:
+  /// **'At least 8 characters, with letters and digits.'**
+  String get changePasswordRule;
+
+  /// P-23 inline error when Confirm != New.
+  ///
+  /// In en, this message translates to:
+  /// **'The two passwords don\'t match.'**
+  String get changePasswordMismatch;
+
+  /// P-23 inline error on Current for 401 INVALID_CREDENTIALS.
+  ///
+  /// In en, this message translates to:
+  /// **'That password doesn\'t match our records.'**
+  String get changePasswordWrongCurrent;
+
+  /// P-23 inline error on New for 409 PASSWORD_UNCHANGED (and client pre-check).
+  ///
+  /// In en, this message translates to:
+  /// **'New password must differ from your current one.'**
+  String get changePasswordSameAsCurrent;
+
+  /// P-23 inline error for 409 PASSWORD_POLICY_VIOLATION.
+  ///
+  /// In en, this message translates to:
+  /// **'That password doesn\'t meet the policy. Try a longer one with letters and digits.'**
+  String get changePasswordTooWeak;
+
+  /// P-23 banner for 429.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Try again in a minute.'**
+  String get changePasswordRateLimited;
+
+  /// P-23 banner for 429 when Retry-After was given.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Try again in {seconds}s.'**
+  String changePasswordRateLimitedWithSeconds(int seconds);
+
+  /// P-23 banner for 5xx / unexpected.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t change your password. Please try again.'**
+  String get changePasswordServerError;
+
+  /// P-23 banner for network failure.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re offline. Reconnect to change your password.'**
+  String get changePasswordOffline;
+
+  /// P-23 primary button.
+  ///
+  /// In en, this message translates to:
+  /// **'Change password'**
+  String get changePasswordCta;
+
+  /// P-23 success toast.
+  ///
+  /// In en, this message translates to:
+  /// **'Password changed'**
+  String get changePasswordSuccess;
+
+  /// P-24a AppBar title.
+  ///
+  /// In en, this message translates to:
+  /// **'Change email'**
+  String get changeEmailRequestTitle;
+
+  /// P-24a read-only current email label.
+  ///
+  /// In en, this message translates to:
+  /// **'Current email'**
+  String get changeEmailCurrentLabel;
+
+  /// P-24a — shown when the account has no email yet.
+  ///
+  /// In en, this message translates to:
+  /// **'No email on file'**
+  String get changeEmailCurrentNone;
+
+  /// P-24a new email field label.
+  ///
+  /// In en, this message translates to:
+  /// **'New email'**
+  String get changeEmailNewLabel;
+
+  /// P-24a confirm-with-password field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Current password'**
+  String get changeEmailPasswordLabel;
+
+  /// P-24a inline error for invalid email.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid email address.'**
+  String get changeEmailInvalid;
+
+  /// P-24a inline error for 409 EMAIL_UNCHANGED (and client pre-check).
+  ///
+  /// In en, this message translates to:
+  /// **'New email must differ from your current one.'**
+  String get changeEmailSameAsCurrent;
+
+  /// P-24a inline error for 409 EMAIL_ALREADY_REGISTERED.
+  ///
+  /// In en, this message translates to:
+  /// **'This email is already linked to another TroSky account.'**
+  String get changeEmailAlreadyInUse;
+
+  /// P-24a inline error for 422 EMAIL_DOMAIN_NOT_ALLOWED.
+  ///
+  /// In en, this message translates to:
+  /// **'Emails from that provider aren\'t supported yet.'**
+  String get changeEmailDomainNotAllowed;
+
+  /// P-24a inline error for 401 INVALID_CREDENTIALS.
+  ///
+  /// In en, this message translates to:
+  /// **'That password doesn\'t match our records.'**
+  String get changeEmailWrongPassword;
+
+  /// P-24a/b banner for 429.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Try again in a minute.'**
+  String get changeEmailRateLimited;
+
+  /// P-24a/b banner for 429 with Retry-After.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Try again in {seconds}s.'**
+  String changeEmailRateLimitedWithSeconds(int seconds);
+
+  /// P-24a banner for 5xx / unexpected.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t start the email change. Please try again.'**
+  String get changeEmailServerError;
+
+  /// P-24a banner for network failure.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re offline. Reconnect to change your email.'**
+  String get changeEmailOffline;
+
+  /// P-24a primary button.
+  ///
+  /// In en, this message translates to:
+  /// **'Send verification code'**
+  String get changeEmailRequestCta;
+
+  /// P-24a lead.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'ll email a 6-digit code to your new address to confirm it\'s yours.'**
+  String get changeEmailRequestIntro;
+
+  /// P-24b AppBar title.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify your new email'**
+  String get changeEmailVerifyTitle;
+
+  /// P-24b sub-head, with the masked new email.
+  ///
+  /// In en, this message translates to:
+  /// **'We sent a 6-digit code to {masked}.'**
+  String changeEmailVerifySentTo(String masked);
+
+  /// P-24b helper under the code field.
+  ///
+  /// In en, this message translates to:
+  /// **'You can paste the code from your email.'**
+  String get changeEmailVerifyPasteHint;
+
+  /// P-24b code field label.
+  ///
+  /// In en, this message translates to:
+  /// **'6-digit code'**
+  String get changeEmailVerifyCodeLabel;
+
+  /// P-24b — Semantics label for one digit slot in the code field.
+  ///
+  /// In en, this message translates to:
+  /// **'6 digit code, digit {position} of 6'**
+  String changeEmailVerifyCodeSemantics(int position);
+
+  /// P-24b resend button.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend code'**
+  String get changeEmailVerifyResend;
+
+  /// P-24b resend cooldown label.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend in {seconds}s'**
+  String changeEmailVerifyResendIn(int seconds);
+
+  /// P-24b primary button.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm new email'**
+  String get changeEmailVerifyCta;
+
+  /// P-24b inline error for 400/401 wrong code.
+  ///
+  /// In en, this message translates to:
+  /// **'That code doesn\'t match. Check your email and try again.'**
+  String get changeEmailVerifyWrongCode;
+
+  /// P-24b inline error for 410 / expired-OTP.
+  ///
+  /// In en, this message translates to:
+  /// **'That code expired. Tap Resend.'**
+  String get changeEmailVerifyExpired;
+
+  /// P-24b banner for OTP_ATTEMPTS_EXCEEDED.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many wrong codes. Resend a new one in a minute.'**
+  String get changeEmailVerifyTooManyAttempts;
+
+  /// P-24b banner for 5xx / unexpected.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t confirm the change. Please try again.'**
+  String get changeEmailVerifyServerError;
+
+  /// P-24b banner for network failure.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re offline. Reconnect to confirm your email.'**
+  String get changeEmailVerifyOffline;
+
+  /// P-24b success toast (shown on P-22).
+  ///
+  /// In en, this message translates to:
+  /// **'Email updated'**
+  String get changeEmailVerifySuccess;
+
+  /// P-22 — muted sub-line under the current email when a change is awaiting confirmation on THIS device. Server-side pending state isn't surfaced yet (no pending_email on /users/me), so this only reflects a change started here.
+  ///
+  /// In en, this message translates to:
+  /// **'Change to {masked} is pending verification.'**
+  String piiEmailPending(String masked);
+
+  /// P-22 — overflow menu header on the email pending sub-line.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending email change'**
+  String get piiEmailPendingMenu;
+
+  /// P-22 — overflow option to jump back to P-24b.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue verification'**
+  String get piiEmailPendingContinue;
+
+  /// P-22 — overflow option to drop the pending state.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel email change'**
+  String get piiEmailPendingCancel;
+
+  /// P-22 — snackbar after cancelling a pending change locally.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending change cleared from this device. You can start a new change at any time.'**
+  String get piiEmailPendingCleared;
 
   /// P-28 Language screen app-bar title.
   ///

@@ -125,14 +125,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         _Row(
                           icon: Icons.lock_outline,
                           title: l10n.profileRowChangePassword,
-                          subtitle: l10n.profileNextBackendRelease,
-                          onTap: null, // Backend-blocked: G-change-password.
+                          onTap: () {
+                            _trackSection(ProfileSection.changePassword);
+                            context.pushNamed(AppRoute.changePassword.name);
+                          },
                         ),
                         _Row(
                           icon: Icons.email_outlined,
                           title: l10n.profileRowChangeEmail,
-                          subtitle: l10n.profileNextBackendRelease,
-                          onTap: null, // Backend-blocked: G-change-email.
+                          onTap: () {
+                            _trackSection(ProfileSection.changeEmail);
+                            context.pushNamed(AppRoute.changeEmail.name);
+                          },
                         ),
                         // A Change-phone row belongs here when the
                         // backend ships G-change-phone. Hidden until

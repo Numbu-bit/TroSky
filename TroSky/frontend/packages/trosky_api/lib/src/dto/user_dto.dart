@@ -72,6 +72,63 @@ abstract class AccountDeletionRequest with _$AccountDeletionRequest {
       _$AccountDeletionRequestFromJson(json);
 }
 
+/// `POST /users/me/change-password`. Backend requires `new_password`
+/// to be at least 8 characters with an uppercase letter, a lowercase
+/// letter and a digit; the current password confirms intent. On
+/// success the backend signs every OTHER session out — this one stays.
+@freezed
+abstract class ChangePasswordRequest with _$ChangePasswordRequest {
+  const factory ChangePasswordRequest({
+    required String currentPassword,
+    required String newPassword,
+  }) = _ChangePasswordRequest;
+
+  factory ChangePasswordRequest.fromJson(Map<String, dynamic> json) =>
+      _$ChangePasswordRequestFromJson(json);
+}
+
+/// `POST /users/me/change-email` — start changing the account email.
+/// The backend emails a code to [newEmail]; the current address stays
+/// in use until [ChangeEmailConfirmRequest]. Calling again resends;
+/// 429 during the resend cooldown.
+@freezed
+abstract class ChangeEmailRequest with _$ChangeEmailRequest {
+  const factory ChangeEmailRequest({
+    required String newEmail,
+    required String currentPassword,
+  }) = _ChangeEmailRequest;
+
+  factory ChangeEmailRequest.fromJson(Map<String, dynamic> json) =>
+      _$ChangeEmailRequestFromJson(json);
+}
+
+/// 200 from `POST /users/me/change-email` — the OTP has been dispatched
+/// to [otpSentTo] and is good for [expiresInSeconds] seconds.
+@freezed
+abstract class EmailChangeStartedResponse with _$EmailChangeStartedResponse {
+  const factory EmailChangeStartedResponse({
+    required String message,
+    required String otpSentTo,
+    required int expiresInSeconds,
+  }) = _EmailChangeStartedResponse;
+
+  factory EmailChangeStartedResponse.fromJson(Map<String, dynamic> json) =>
+      _$EmailChangeStartedResponseFromJson(json);
+}
+
+/// `POST /users/me/change-email/confirm` — switch to [newEmail] using
+/// the [code] sent there. Returns the refreshed [UserResponse].
+@freezed
+abstract class ChangeEmailConfirmRequest with _$ChangeEmailConfirmRequest {
+  const factory ChangeEmailConfirmRequest({
+    required String newEmail,
+    required String code,
+  }) = _ChangeEmailConfirmRequest;
+
+  factory ChangeEmailConfirmRequest.fromJson(Map<String, dynamic> json) =>
+      _$ChangeEmailConfirmRequestFromJson(json);
+}
+
 /// `FavouriteRouteCreateRequest` for `POST /users/me/favourite-routes`.
 @freezed
 abstract class FavouriteRouteCreateRequest with _$FavouriteRouteCreateRequest {
