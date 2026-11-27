@@ -26,7 +26,9 @@ from fastapi import (
     status,
 )
 from redis.asyncio.client import PubSub
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.auth_dependencies import principal_for_session
 from app.api.dependencies import CurrentPrincipal, TrackingServiceDep, resolve_principal
 from app.core.config import get_settings
 from app.core.database import get_session_factory
@@ -36,6 +38,7 @@ from app.core.permissions import Principal
 from app.core.ratelimit import rate_limit
 from app.core.redis import close_pubsub, get_redis_client
 from app.core.telemetry import ACTIVE_WEBSOCKET_CONNECTIONS
+from app.core.ws_tickets import TicketHolder, redeem_ticket
 from app.schemas.tracking import EtaResponse, LiveLocationResponse, NearbyVehicleResponse
 from app.services.tracking_service import TrackingService, channel_name
 
@@ -97,10 +100,30 @@ async def authorize_trip_watcher(token: str | None, trip_id: uuid.UUID) -> Princ
     """
     if not token:
         raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason="Missing token")
+    return await _authorize_watcher(trip_id, lambda session: resolve_principal(session, token))
+
+
+async def authorize_ticket_holder(holder: TicketHolder, trip_id: uuid.UUID) -> Principal:
+    """``authorize_trip_watcher`` for a socket opened with a one-time
+    ticket: the ticket is gone once used, so the checks run against the
+    session it was issued to (``principal_for_session``). A socket opened
+    this way lasts as long as that session: a refresh keeps the session,
+    and a logout or suspension closes the socket at the next check."""
+    return await _authorize_watcher(
+        trip_id,
+        lambda session: principal_for_session(
+            session, user_id=holder.user_id, session_id=holder.session_id
+        ),
+    )
+
+
+async def _authorize_watcher(
+    trip_id: uuid.UUID, resolve: Callable[[AsyncSession], Awaitable[Principal]]
+) -> Principal:
     session_factory = get_session_factory()
     async with session_factory() as session:
         try:
-            principal = await resolve_principal(session, token)
+            principal = await resolve(session)
         except AppError as exc:
             raise WebSocketException(
                 code=status.WS_1008_POLICY_VIOLATION, reason=exc.message[:_MAX_CLOSE_REASON]
@@ -109,6 +132,38 @@ async def authorize_trip_watcher(token: str | None, trip_id: uuid.UUID) -> Princ
         if not await service.can_watch_trip(trip_id, principal):
             raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason="Forbidden")
     return principal
+
+
+async def authorize_handshake(
+    websocket: WebSocket, trip_id: uuid.UUID
+) -> Callable[[], Awaitable[Principal]]:
+    """Check a new socket's credentials; on success, return the check to
+    repeat while it stays open.
+
+    ``?ticket=`` (from ``POST /auth/ws/ticket``) is the way in. The old
+    ``?token=<access token>`` still works while ``WS_QUERY_TOKEN_ALLOWED``
+    is on, and is logged as deprecated (without the token) each time.
+    """
+    ticket = websocket.query_params.get("ticket")
+    if ticket is not None:
+        holder = await redeem_ticket(get_redis_client(), ticket)
+        if holder is None:
+            raise WebSocketException(
+                code=status.WS_1008_POLICY_VIOLATION, reason="Invalid or expired ticket"
+            )
+        await authorize_ticket_holder(holder, trip_id)
+        return lambda: authorize_ticket_holder(holder, trip_id)
+
+    token = websocket.query_params.get("token")
+    if token is not None:
+        if not get_settings().WS_QUERY_TOKEN_ALLOWED:
+            raise WebSocketException(
+                code=status.WS_1008_POLICY_VIOLATION,
+                reason="Use ?ticket= from POST /auth/ws/ticket",
+            )
+        logger.warning("ws_query_token_deprecated", trip_id=str(trip_id))
+    await authorize_trip_watcher(token, trip_id)
+    return lambda: authorize_trip_watcher(token, trip_id)
 
 
 async def relay_while_authorized(
@@ -161,15 +216,16 @@ async def track_trip(websocket: WebSocket, trip_id: uuid.UUID) -> None:
     ``TrackingService.record_location``.
 
     Browsers can't attach an ``Authorization`` header to a WebSocket
-    handshake, so the access token is passed as ``?token=...`` instead --
-    the standard fallback for this transport. FastAPI dependencies don't run
-    for WebSocket routes, so ``authorize_trip_watcher`` applies the same
-    checks as ``get_current_principal`` plus ``can_watch_trip``: before
-    ``accept()``, and then every ``WS_AUTH_RECHECK_SECONDS`` for as long as
-    the socket stays open.
+    handshake. Open it with ``?ticket=...``: a one-time ticket from
+    ``POST /auth/ws/ticket`` (see ``app.core.ws_tickets``), so the access
+    token never appears in a URL. ``?token=<access token>`` is deprecated
+    and goes away when ``WS_QUERY_TOKEN_ALLOWED`` is turned off. FastAPI
+    dependencies don't run for WebSocket routes, so ``authorize_handshake``
+    applies the same checks as ``get_current_principal`` plus
+    ``can_watch_trip``: before ``accept()``, and then every
+    ``WS_AUTH_RECHECK_SECONDS`` for as long as the socket stays open.
     """
-    token = websocket.query_params.get("token")
-    await authorize_trip_watcher(token, trip_id)
+    reauthorize = await authorize_handshake(websocket, trip_id)
 
     redis = get_redis_client()
     await websocket.accept()
@@ -180,7 +236,7 @@ async def track_trip(websocket: WebSocket, trip_id: uuid.UUID) -> None:
         await relay_while_authorized(
             websocket,
             pubsub,
-            reauthorize=lambda: authorize_trip_watcher(token, trip_id),
+            reauthorize=reauthorize,
             recheck_seconds=get_settings().WS_AUTH_RECHECK_SECONDS,
         )
     except WebSocketDisconnect:

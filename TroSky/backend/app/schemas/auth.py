@@ -137,6 +137,16 @@ class TokenPairResponse(ApiModel):
     session_id: uuid.UUID
 
 
+class WsTicketResponse(ApiModel):
+    ticket: str = Field(
+        ...,
+        description="Opaque, single use: pass as ?ticket= when opening the WebSocket. "
+        "Don't store or log it.",
+    )
+    expires_in: int = Field(..., description="Seconds the ticket can wait before it is used.")
+    expires_at: datetime
+
+
 class ForgotPasswordRequest(RequestModel):
     identifier: str = Field(..., description="Phone number or email to send a reset code to.")
 
