@@ -130,7 +130,8 @@ class TripDriverResponse(ApiModel):
     phone_number: str | None = Field(
         default=None,
         description=(
-            "Driver's E.164 phone number. Non-null only for callers with a "
+            "Driver's E.164 phone number: their work number if they gave one, else the "
+            "number they signed up with. Non-null only for callers with a "
             "confirmed/completed booking on this trip; null otherwise."
         ),
         examples=[None],
@@ -138,8 +139,9 @@ class TripDriverResponse(ApiModel):
     verification_status: VerificationStatus = Field(
         default=VerificationStatus.UNVERIFIED,
         description=(
-            "Passenger-facing driver verification. Simple four-state enum, "
-            "independent of the admin-only approval lifecycle."
+            "Passenger-facing driver verification: `verified` once TroSky's team has "
+            "approved the driver's documents, `pending` while they are reviewed, "
+            "`rejected` if refused. A recorded check (a Ghana Card one, say) overrides it."
         ),
     )
 

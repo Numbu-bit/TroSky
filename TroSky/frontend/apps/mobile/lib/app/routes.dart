@@ -30,7 +30,9 @@ import '../passenger/trips/presentation/ticket_screen.dart';
 import '../passenger/trips/presentation/trip_details_screen.dart';
 import '../passenger/trips/presentation/trips_screen.dart';
 import '../passenger/account/domain/account_args.dart';
+import '../passenger/account/presentation/about_screen.dart';
 import '../passenger/account/presentation/delete_account_screen.dart';
+import '../passenger/account/presentation/language_screen.dart';
 import '../passenger/account/presentation/personal_info_screen.dart';
 import '../passenger/account/presentation/profile_screen.dart';
 import '../passenger/account/presentation/reset_password_screen.dart';
@@ -135,6 +137,18 @@ enum AppRoute {
   resetPasswordNew('/reset-password/new'),
   notifications('/notifications'),
   favouriteRoutes('/favourite-routes'),
+
+  /// Language (P-28) — sub-page of Profile. Static, en_GH only.
+  language('/profile/language'),
+
+  /// About TroSky (P-29) — sub-page of Profile. Version, Terms,
+  /// Privacy, Open-source licenses.
+  about('/profile/about'),
+
+  /// Report a problem (P-13, general) — from Profile, no trip
+  /// context. Same ReportScreen as the trip-scoped flow; ReportArgs
+  /// with tripId=null routes through a local-only outbox submit.
+  reportGeneral('/report'),
   subscribe('/subscribe'),
   sos('/sos'),
 
@@ -369,10 +383,36 @@ GoRouter router(Ref ref) {
                 title: AppLocalizations.of(context).placeholderFavouriteRoutes,
               ),
       ),
+      GoRoute(
+        path: AppRoute.language.path,
+        name: AppRoute.language.name,
+        redirect: (context, state) =>
+            accountEnabled ? null : AppRoute.profile.path,
+        builder: (context, state) => const LanguageScreen(),
+      ),
+      GoRoute(
+        path: AppRoute.about.path,
+        name: AppRoute.about.name,
+        redirect: (context, state) =>
+            accountEnabled ? null : AppRoute.profile.path,
+        builder: (context, state) => const AboutScreen(),
+      ),
+      GoRoute(
+        path: AppRoute.reportGeneral.path,
+        name: AppRoute.reportGeneral.name,
+        redirect: (context, state) =>
+            reportEnabled ? null : AppRoute.profile.path,
+        builder: (context, state) => const ReportScreen(args: ReportArgs()),
+      ),
+      // AppRoute.sos and AppRoute.subscribe are retained as defensive
+      // placeholders: no UI in this build pushes to either (Home SOS
+      // now pushes AppRoute.sosAlert; the Subscribe promo banner was
+      // removed in step 21/B2). A persistent deep link from an older
+      // version still lands here instead of 404.
       for (final (pushed, title)
           in <(AppRoute, String Function(AppLocalizations))>[
-            (AppRoute.subscribe, (l10n) => l10n.placeholderSubscribe),
             (AppRoute.sos, (l10n) => l10n.placeholderSos),
+            (AppRoute.subscribe, (l10n) => l10n.placeholderSubscribe),
           ])
         route(
           pushed,

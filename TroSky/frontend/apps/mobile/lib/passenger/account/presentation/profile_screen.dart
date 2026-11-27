@@ -125,15 +125,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         _Row(
                           icon: Icons.lock_outline,
                           title: l10n.profileRowChangePassword,
-                          subtitle: l10n.profileComingSoon,
-                          onTap: null, // Backend endpoint missing; see PR body.
+                          subtitle: l10n.profileNextBackendRelease,
+                          onTap: null, // Backend-blocked: G-change-password.
                         ),
                         _Row(
                           icon: Icons.email_outlined,
                           title: l10n.profileRowChangeEmail,
-                          subtitle: l10n.profileComingSoon,
-                          onTap: null,
+                          subtitle: l10n.profileNextBackendRelease,
+                          onTap: null, // Backend-blocked: G-change-email.
                         ),
+                        // A Change-phone row belongs here when the
+                        // backend ships G-change-phone. Hidden until
+                        // then to keep the section honest.
                       ],
                     ),
                     _Section(
@@ -172,8 +175,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         _Row(
                           icon: Icons.language_outlined,
                           title: l10n.profileRowLanguage,
-                          subtitle: l10n.profileComingSoon,
-                          onTap: null,
+                          onTap: () {
+                            _trackSection(ProfileSection.language);
+                            context.pushNamed(AppRoute.language.name);
+                          },
                         ),
                       ],
                     ),
@@ -214,14 +219,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         _Row(
                           icon: Icons.flag_outlined,
                           title: l10n.profileRowReportProblem,
-                          subtitle: l10n.profileComingSoon,
-                          onTap: null, // Step 19 ReportScreen ships separately.
+                          onTap: () {
+                            _trackSection(ProfileSection.reportProblem);
+                            ref
+                                .read(telemetryProvider)
+                                .emit(
+                                  TelemetryEvent(
+                                    'profile_report_problem_opened',
+                                  ),
+                                );
+                            context.pushNamed(AppRoute.reportGeneral.name);
+                          },
                         ),
                         _Row(
                           icon: Icons.info_outline,
                           title: l10n.profileRowAbout,
-                          subtitle: l10n.profileComingSoon,
-                          onTap: null,
+                          onTap: () {
+                            _trackSection(ProfileSection.about);
+                            context.pushNamed(AppRoute.about.name);
+                          },
                         ),
                       ],
                     ),

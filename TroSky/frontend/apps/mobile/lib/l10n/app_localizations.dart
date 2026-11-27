@@ -3450,6 +3450,12 @@ abstract class AppLocalizations {
   /// **'Emergency'**
   String get sosTitle;
 
+  /// Semantics label on the close (X) button in the SOS screen header.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get sosClose;
+
   /// Semantics label on the SOS hold button.
   ///
   /// In en, this message translates to:
@@ -3810,11 +3816,95 @@ abstract class AppLocalizations {
   /// **'About TroSky'**
   String get profileRowAbout;
 
-  /// Subtitle on unwired P-21 rows.
+  /// Subtitle on unwired P-21 rows (retained for compatibility; all passenger-side uses retired in step 21/B2).
   ///
   /// In en, this message translates to:
   /// **'Coming soon'**
   String get profileComingSoon;
+
+  /// Subtitle on P-21 rows whose backend endpoint isn't shipped yet (Change password, Change email).
+  ///
+  /// In en, this message translates to:
+  /// **'Coming with the next backend release'**
+  String get profileNextBackendRelease;
+
+  /// P-28 Language screen app-bar title.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get languageTitle;
+
+  /// P-28 — current locale name.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get languageEnglishName;
+
+  /// P-28 — current locale code.
+  ///
+  /// In en, this message translates to:
+  /// **'en_GH'**
+  String get languageEnglishCode;
+
+  /// P-28 — pill on the active row.
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get languageCurrentPill;
+
+  /// P-28 — muted line under the current-language row.
+  ///
+  /// In en, this message translates to:
+  /// **'More languages coming soon.'**
+  String get languageMoreComingSoon;
+
+  /// P-28 — Semantics label on the active-language row.
+  ///
+  /// In en, this message translates to:
+  /// **'Current language: English'**
+  String get languageCurrentSemantics;
+
+  /// P-29 About screen app-bar title.
+  ///
+  /// In en, this message translates to:
+  /// **'About TroSky'**
+  String get aboutTitle;
+
+  /// P-29 — short tagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Ghanaian shared transport, one tap away.'**
+  String get aboutTagline;
+
+  /// P-29 — label next to the version number.
+  ///
+  /// In en, this message translates to:
+  /// **'App version'**
+  String get aboutVersionLabel;
+
+  /// P-29 — row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms of service'**
+  String get aboutTerms;
+
+  /// P-29 — row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy policy'**
+  String get aboutPrivacy;
+
+  /// P-29 — row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Open-source licenses'**
+  String get aboutLicenses;
+
+  /// P-26 empty-state primary button; opens Search.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a favourite route'**
+  String get favouritesEmptyAddCta;
 
   /// P-21 danger-zone sign-out button.
   ///

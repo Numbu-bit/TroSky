@@ -1970,6 +1970,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sosTitle => 'Emergency';
 
   @override
+  String get sosClose => 'Close';
+
+  @override
   String get sosHoldSemantics => 'Hold to send SOS, 3 second hold';
 
   @override
@@ -2160,6 +2163,49 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileComingSoon => 'Coming soon';
+
+  @override
+  String get profileNextBackendRelease =>
+      'Coming with the next backend release';
+
+  @override
+  String get languageTitle => 'Language';
+
+  @override
+  String get languageEnglishName => 'English';
+
+  @override
+  String get languageEnglishCode => 'en_GH';
+
+  @override
+  String get languageCurrentPill => 'Current';
+
+  @override
+  String get languageMoreComingSoon => 'More languages coming soon.';
+
+  @override
+  String get languageCurrentSemantics => 'Current language: English';
+
+  @override
+  String get aboutTitle => 'About TroSky';
+
+  @override
+  String get aboutTagline => 'Ghanaian shared transport, one tap away.';
+
+  @override
+  String get aboutVersionLabel => 'App version';
+
+  @override
+  String get aboutTerms => 'Terms of service';
+
+  @override
+  String get aboutPrivacy => 'Privacy policy';
+
+  @override
+  String get aboutLicenses => 'Open-source licenses';
+
+  @override
+  String get favouritesEmptyAddCta => 'Add a favourite route';
 
   @override
   String get profileSignOut => 'Sign out';

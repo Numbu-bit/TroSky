@@ -100,6 +100,26 @@ abstract final class TroskyIcons {
   static Widget vehicle({required Color color}) =>
       _lucide(LucideIcons.busFront, color, 22);
 
+  // Passenger shell tabs + Home bell (step 21/B3): replaces the
+  // emoji-glyph tab bar with a proper icon set. Sizes match the
+  // tab-bar + header rhythm (24 px icons, 20 px bell).
+
+  /// Home tab glyph: lucide "house", 24 px.
+  static Widget house({required Color color, double size = 24}) =>
+      _lucide(LucideIcons.house, color, size);
+
+  /// Trips tab glyph: lucide "map", 24 px.
+  static Widget map({required Color color, double size = 24}) =>
+      _lucide(LucideIcons.map, color, size);
+
+  /// Profile tab glyph: lucide "user-round", 24 px.
+  static Widget userRound({required Color color, double size = 24}) =>
+      _lucide(LucideIcons.userRound, color, size);
+
+  /// Home header bell: lucide "bell", 20 px.
+  static Widget bell({required Color color, double size = 20}) =>
+      _lucide(LucideIcons.bell, color, size);
+
   static Widget _lucide(IconData icon, Color color, double size) =>
       ExcludeSemantics(
         child: Icon(icon, color: color, size: size),

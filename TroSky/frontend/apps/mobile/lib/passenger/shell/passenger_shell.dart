@@ -33,10 +33,22 @@ class PassengerShell extends StatelessWidget {
           value: TroskySystemUi.darkIcons,
           child: TroskyTabBar(
             items: [
-              TroskyTabItem(emoji: '🏠', label: l10n.tabHome),
-              TroskyTabItem(emoji: '🗺️', label: l10n.tabTrips),
-              TroskyTabItem(emoji: '💰', label: l10n.tabWallet),
-              TroskyTabItem(emoji: '👤', label: l10n.tabProfile),
+              TroskyTabItem(
+                icon: (color) => TroskyIcons.house(color: color),
+                label: l10n.tabHome,
+              ),
+              TroskyTabItem(
+                icon: (color) => TroskyIcons.map(color: color),
+                label: l10n.tabTrips,
+              ),
+              TroskyTabItem(
+                icon: (color) => TroskyIcons.wallet(color: color, size: 24),
+                label: l10n.tabWallet,
+              ),
+              TroskyTabItem(
+                icon: (color) => TroskyIcons.userRound(color: color),
+                label: l10n.tabProfile,
+              ),
             ],
             currentIndex: shell.currentIndex,
             // Tapping the open tab again goes back to its first screen.

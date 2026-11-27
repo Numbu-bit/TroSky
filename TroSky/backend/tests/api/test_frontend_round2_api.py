@@ -200,6 +200,27 @@ class TestTripSearchAndDetails:  # G20, G21, G22
         assert trip["driver"]["rating_count"] == 0
         assert (trip["seats_total"], trip["riders_count"], trip["available_seats"]) == (4, 0, 4)
 
+    async def test_only_a_booked_passenger_sees_the_drivers_phone(
+        self, client: AsyncClient, world: World
+    ) -> None:
+        booked = await _passenger(client)
+        booking = await _book(client, booked, world)
+        await _confirm(booking["id"])
+        stranger = await _passenger(client)
+        url = f"/api/v1/trips/{world.scenario.trip_id}"
+
+        as_booked = (await client.get(url, headers=booked)).json()["driver"]
+        as_stranger = (await client.get(url, headers=stranger)).json()["driver"]
+        anonymous = (await client.get(url)).json()["driver"]
+
+        # No work number was given, so it is the number they signed up with.
+        assert as_booked["phone_number"] == "+233" + world.driver_phone[1:]
+        assert as_stranger["phone_number"] is None
+        assert anonymous["phone_number"] is None
+        # The scenario's driver was approved: passengers see them as verified.
+        assert as_booked["verification_status"] == "verified"
+        assert anonymous["verification_status"] == "verified"
+
 
 class TestSos:  # G19
     async def test_sos_from_home(self, client: AsyncClient, seed_identity_data: None) -> None:

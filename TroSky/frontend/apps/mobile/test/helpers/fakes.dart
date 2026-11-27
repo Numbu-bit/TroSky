@@ -209,7 +209,13 @@ Widget testApp({
   return ProviderScope(
     overrides: [
       envProvider.overrideWithValue(
-        env ?? Env.parse(apiBaseUrl: '', wsBaseUrl: '', apiMode: 'mock'),
+        env ??
+            Env.parse(
+              apiBaseUrl: 'http://localhost:8000/api/v1',
+              wsBaseUrl: 'ws://localhost:8000/api/v1',
+              apiMode: 'mock',
+              deployEnv: 'dev',
+            ),
       ),
       mockBackendProvider.overrideWithValue(w.backend),
       mockLatencyProvider.overrideWithValue(Duration.zero),

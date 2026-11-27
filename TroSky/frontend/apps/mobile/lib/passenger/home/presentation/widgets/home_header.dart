@@ -220,9 +220,10 @@ String placeName(NearbyStopResponse stop) {
   return '${stop.name}, $city';
 }
 
-/// The bell: a 36 px disc at 12 % white with 🔔, inside a 48 px touch area.
-/// Carries a red badge with the unread notification count when `> 0`.
-/// Refreshes on app foreground and after every inbox mark-read.
+/// The bell: a 36 px disc at 12 % white with the lucide bell glyph,
+/// inside a 48 px touch area. Carries a red badge with the unread
+/// notification count when `> 0`. Refreshes on app foreground and
+/// after every inbox mark-read.
 class _Bell extends ConsumerStatefulWidget {
   const _Bell({required this.label, required this.onPressed});
 
@@ -290,10 +291,9 @@ class _BellState extends ConsumerState<_Bell> with WidgetsBindingObserver {
                       color: TroskyColors.whiteA12,
                       shape: BoxShape.circle,
                     ),
-                    child: const Text(
-                      '🔔',
-                      textScaler: TextScaler.noScaling,
-                      style: TroskyTypography.body16Regular,
+                    child: TroskyIcons.bell(
+                      color: TroskyColors.white,
+                      size: 20,
                     ),
                   ),
                   if (unread > 0)

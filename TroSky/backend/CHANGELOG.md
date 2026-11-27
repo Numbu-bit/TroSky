@@ -71,6 +71,24 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
   (`INSURANCE_REMINDER_DAYS`), and so are the fleet owners whose vehicles they drive. A worker that
   slept through some sends only the latest one.
 
+- **Open the tracking WebSocket with a one-time ticket, not the access token** (B5, H4 of the
+  pre-launch audit). `POST /auth/ws/ticket` (signed in as usual) answers 201
+  `{"ticket", "expires_in": 60, "expires_at"}`; open
+  `wss://…/api/v1/ws/trips/{id}/track?ticket=<ticket>`. A ticket opens one socket and is used up
+  by it (another socket with it is closed with 1008 "Invalid or expired ticket"), and dies unused
+  after 60 seconds (`WS_TICKET_TTL_SECONDS`). Ask for a new one for every connection, reconnects
+  included. Redis keeps only a hash of it. A socket opened this way stays open while its session
+  is signed in and allowed to watch the trip: it is not cut at the access token's 15 minutes, and
+  a logout or suspension still closes it within `WS_AUTH_RECHECK_SECONDS`. Rate limit
+  `auth:ws_ticket`, 30 a minute.
+
+### Deprecated
+
+- **`?token=<access token>` on the tracking WebSocket** (B5). It still works for now, and each use
+  logs `ws_query_token_deprecated` (without the token). Once the apps open the socket with
+  `?ticket=`, set `WS_QUERY_TOKEN_ALLOWED=false`: a `?token=` socket is then closed with 1008
+  "Use ?ticket= from POST /auth/ws/ticket".
+
 ### Changed
 
 - **A shared trip link ends when the passenger arrives,** or the trip ends, rather than showing
@@ -87,6 +105,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- **The driver's phone and "Verified" pill on Trip details were always empty.** Both read new
+  columns that nothing filled (`drivers.phone_number`, `drivers.verification_status`), so every
+  driver showed `phone_number: null` and `unverified`. A passenger booked on the trip now gets the
+  driver's work number, or else the number they signed up with; and a driver approved by TroSky's
+  team shows as `verified` (`pending` under review, `rejected` if refused) unless a check recorded
+  on the driver says otherwise.
 - **Celery worker was crashing at every startup** (`kombu.exceptions.VersionMismatch: Redis transport requires redis-py versions 6.1.0 or later. You have 5.3.1`), which took the API with it through `render-start.sh`'s supervisor and put staging into a restart loop of about 80 s cycles (~22 s healthy, ~60 s 503). `celery[redis]` left `kombu` unpinned, so a new build pulled kombu 5.6+ next to the `redis<6.0.0` pin and the two didn't talk at runtime. `kombu>=5.4.0,<5.6.0` is now a direct dependency to hold the compatible pair together until redis-py moves to 6.x.
 
 ### Phase 1 — Foundation (2026-08-04)

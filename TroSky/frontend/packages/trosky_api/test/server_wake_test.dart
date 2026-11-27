@@ -59,8 +59,9 @@ class _NoTokens implements SessionTokens {
 
 final _env = Env.parse(
   apiBaseUrl: 'https://api.test/api/v1',
-  wsBaseUrl: '',
+  wsBaseUrl: 'wss://api.test/api/v1',
   apiMode: 'live',
+  deployEnv: 'dev',
 );
 
 void main() {

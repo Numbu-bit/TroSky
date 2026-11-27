@@ -3,5 +3,6 @@
   "API_BASE_URL": "http://localhost:8000/api/v1",
   "WS_BASE_URL": "ws://localhost:8000/api/v1",
   "API_MODE": "mock",
-  "MAP_TILE_URL": "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+  "MAP_TILE_URL": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+  "HELP_CENTRE_URL": "https://trosky.africa/help"
 }
