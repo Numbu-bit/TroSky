@@ -29,23 +29,20 @@ void main() {
     },
   );
 
-  test(
-    'Profile source: Change password + Change email are wired to their '
-    'routes (no profileNextBackendRelease subtitle left)',
-    () async {
-      final content = await _profileScreen.readAsString();
-      // No row should carry the "coming with the next backend release"
-      // subtitle any more — both endpoints shipped in step 21/B4.
-      expect(
-        RegExp(r'subtitle:\s*l10n\.profileNextBackendRelease').hasMatch(content),
-        isFalse,
-        reason:
-            'profileNextBackendRelease subtitles should have been removed '
-            'when Change password + Change email went live (step 21/B4).',
-      );
-      // Both routes should be referenced from Profile now.
-      expect(content, contains('AppRoute.changePassword.name'));
-      expect(content, contains('AppRoute.changeEmail.name'));
-    },
-  );
+  test('Profile source: Change password + Change email are wired to their '
+      'routes (no profileNextBackendRelease subtitle left)', () async {
+    final content = await _profileScreen.readAsString();
+    // No row should carry the "coming with the next backend release"
+    // subtitle any more — both endpoints shipped in step 21/B4.
+    expect(
+      RegExp(r'subtitle:\s*l10n\.profileNextBackendRelease').hasMatch(content),
+      isFalse,
+      reason:
+          'profileNextBackendRelease subtitles should have been removed '
+          'when Change password + Change email went live (step 21/B4).',
+    );
+    // Both routes should be referenced from Profile now.
+    expect(content, contains('AppRoute.changePassword.name'));
+    expect(content, contains('AppRoute.changeEmail.name'));
+  });
 }
