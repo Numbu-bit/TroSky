@@ -9,3 +9,11 @@ final favouritesListProvider =
     FutureProvider<Result<List<FavouriteRouteResponse>>>((ref) {
       return ref.read(userRepositoryProvider).listFavouriteRoutes();
     });
+
+/// `GET /users/me/favourite-places` — the user's saved places
+/// (Home / Work / Custom). Backend sorts newest first by
+/// `created_at`; the Places section orders Home → Work → others.
+final favouritePlacesProvider =
+    FutureProvider<Result<List<FavouritePlaceResponse>>>((ref) {
+      return ref.read(userRepositoryProvider).listFavouritePlaces();
+    });

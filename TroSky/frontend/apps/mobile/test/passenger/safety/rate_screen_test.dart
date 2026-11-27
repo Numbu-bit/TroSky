@@ -60,6 +60,12 @@ class _FakeBookings implements BookingRepository {
   @override
   Future<Result<RatingResponse>> getRating(String bookingId) async =>
       const Err(NetworkFailure());
+  @override
+  Future<Result<TripShareLinkResponse>> mintShareLink(String bookingId) async =>
+      const Err(NetworkFailure());
+  @override
+  Future<Result<void>> revokeShareLinks(String bookingId) async =>
+      const Err(NetworkFailure());
 }
 
 class _Tel implements TelemetryService {

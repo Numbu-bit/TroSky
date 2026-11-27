@@ -21,9 +21,10 @@ enum NotificationCategory {
   }
 }
 
-/// `NotificationResponse`. The backend doesn't expose a dedicated
-/// `deep_link` field; routing hints live inside [data] (a free-form
-/// JSON blob). Treat [data] as untrusted — never render raw values.
+/// `NotificationResponse`. [deepLink] is now a first-class backend
+/// field (step 21/close-stubs-C); [data] retains free-form routing
+/// hints for older clients. Treat both as untrusted — never render
+/// raw values.
 class NotificationResponse {
   const NotificationResponse({
     required this.id,
@@ -35,6 +36,7 @@ class NotificationResponse {
     required this.isRead,
     this.readAt,
     required this.createdAt,
+    this.deepLink,
   });
 
   final String id;
@@ -46,6 +48,11 @@ class NotificationResponse {
   final bool isRead;
   final DateTime? readAt;
   final DateTime createdAt;
+
+  /// Backend-shaped routing hint, e.g. `/bookings/{id}`, `/wallet`,
+  /// `/profile`, `/search?origin_stop_id=...`. Null when the backend
+  /// has no suggestion for the client — fall back to [data].
+  final String? deepLink;
 
   factory NotificationResponse.fromJson(Map<String, dynamic> json) =>
       NotificationResponse(
@@ -62,6 +69,7 @@ class NotificationResponse {
             ? null
             : DateTime.parse(json['read_at'] as String),
         createdAt: DateTime.parse(json['created_at'] as String),
+        deepLink: json['deep_link'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -74,6 +82,7 @@ class NotificationResponse {
     'is_read': isRead,
     if (readAt != null) 'read_at': readAt!.toIso8601String(),
     'created_at': createdAt.toIso8601String(),
+    if (deepLink != null) 'deep_link': deepLink,
   };
 }
 
@@ -100,21 +109,36 @@ class MarkAllReadResponse {
 }
 
 /// `NotificationPreferencesResponse` from
-/// `GET /users/me/notification-preferences`. These are **channel-level**
-/// opt-outs (push / SMS / email) + a promotional opt-out. The brief's
-/// category-level taxonomy (booking_updates/safety/payment/…) would
-/// need a backend change; filed as a gap.
+/// `GET /users/me/notification-preferences`. Channel toggles (push /
+/// SMS / email + `promotionalOptIn`) plus category toggles
+/// (booking / payment / promotions). [safetyEnabled] and
+/// [accountEnabled] are reported but **always true** on the backend
+/// ("safety notifications can't be turned off"); the UI surfaces
+/// them as read-only indicators, not toggles.
 class NotificationPreferencesResponse {
   const NotificationPreferencesResponse({
     required this.pushEnabled,
     required this.smsEnabled,
     required this.emailEnabled,
+    required this.bookingUpdatesEnabled,
+    required this.paymentEnabled,
+    required this.promotionsEnabled,
     required this.promotionalOptIn,
+    this.safetyEnabled = true,
+    this.accountEnabled = true,
   });
 
   final bool pushEnabled;
   final bool smsEnabled;
   final bool emailEnabled;
+  final bool bookingUpdatesEnabled;
+  final bool paymentEnabled;
+  final bool promotionsEnabled;
+  final bool safetyEnabled;
+  final bool accountEnabled;
+
+  /// Deprecated on the backend in favour of [promotionsEnabled]; kept
+  /// so an older client still parses the field.
   final bool promotionalOptIn;
 
   factory NotificationPreferencesResponse.fromJson(Map<String, dynamic> json) =>
@@ -122,36 +146,60 @@ class NotificationPreferencesResponse {
         pushEnabled: json['push_enabled'] as bool,
         smsEnabled: json['sms_enabled'] as bool,
         emailEnabled: json['email_enabled'] as bool,
-        promotionalOptIn: json['promotional_opt_in'] as bool,
+        bookingUpdatesEnabled: json['booking_updates_enabled'] as bool? ?? true,
+        paymentEnabled: json['payment_enabled'] as bool? ?? true,
+        promotionsEnabled:
+            json['promotions_enabled'] as bool? ??
+            (json['promotional_opt_in'] as bool? ?? false),
+        promotionalOptIn: json['promotional_opt_in'] as bool? ?? false,
+        safetyEnabled: json['safety_enabled'] as bool? ?? true,
+        accountEnabled: json['account_enabled'] as bool? ?? true,
       );
 
   Map<String, dynamic> toJson() => {
     'push_enabled': pushEnabled,
     'sms_enabled': smsEnabled,
     'email_enabled': emailEnabled,
+    'booking_updates_enabled': bookingUpdatesEnabled,
+    'payment_enabled': paymentEnabled,
+    'promotions_enabled': promotionsEnabled,
+    'safety_enabled': safetyEnabled,
+    'account_enabled': accountEnabled,
     'promotional_opt_in': promotionalOptIn,
   };
 }
 
-/// `PATCH /users/me/notification-preferences`. Any field left out keeps
-/// its value.
+/// `PATCH /users/me/notification-preferences`. "Send only the
+/// switches that change" — every field is optional. `safety_enabled`
+/// and `account_enabled` are omitted here: the backend rejects
+/// attempts to turn them off.
 class NotificationPreferencesUpdateRequest {
   const NotificationPreferencesUpdateRequest({
     this.pushEnabled,
     this.smsEnabled,
     this.emailEnabled,
+    this.bookingUpdatesEnabled,
+    this.paymentEnabled,
+    this.promotionsEnabled,
     this.promotionalOptIn,
   });
 
   final bool? pushEnabled;
   final bool? smsEnabled;
   final bool? emailEnabled;
+  final bool? bookingUpdatesEnabled;
+  final bool? paymentEnabled;
+  final bool? promotionsEnabled;
   final bool? promotionalOptIn;
 
   Map<String, dynamic> toJson() => {
     if (pushEnabled != null) 'push_enabled': pushEnabled,
     if (smsEnabled != null) 'sms_enabled': smsEnabled,
     if (emailEnabled != null) 'email_enabled': emailEnabled,
+    if (bookingUpdatesEnabled != null)
+      'booking_updates_enabled': bookingUpdatesEnabled,
+    if (paymentEnabled != null) 'payment_enabled': paymentEnabled,
+    if (promotionsEnabled != null) 'promotions_enabled': promotionsEnabled,
     if (promotionalOptIn != null) 'promotional_opt_in': promotionalOptIn,
   };
 }

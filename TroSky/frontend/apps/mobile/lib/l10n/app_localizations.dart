@@ -4542,11 +4542,107 @@ abstract class AppLocalizations {
   /// **'Promotions'**
   String get notifCategoryPromotional;
 
-  /// Preferences banner explaining the channel-level shape.
+  /// Preferences banner explaining the channel-level shape. Retained for backward compatibility; removed from the Preferences tab in step 21/close-stubs-C once category toggles landed.
   ///
   /// In en, this message translates to:
   /// **'Per-category toggles are coming. For now, choose which channels we use.'**
   String get notifPrefsBannerChannelOnly;
+
+  /// Preferences — section header for push/SMS/email/promos.
+  ///
+  /// In en, this message translates to:
+  /// **'CHANNELS'**
+  String get notifPrefsChannelsHeader;
+
+  /// Preferences — section header for topic toggles.
+  ///
+  /// In en, this message translates to:
+  /// **'CATEGORIES'**
+  String get notifPrefsCategoriesHeader;
+
+  /// Prefs channel description.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock-screen and heads-up alerts.'**
+  String get notifPrefsPushEnabledDesc;
+
+  /// Prefs channel description.
+  ///
+  /// In en, this message translates to:
+  /// **'Text messages to your phone number.'**
+  String get notifPrefsSmsEnabledDesc;
+
+  /// Prefs channel description.
+  ///
+  /// In en, this message translates to:
+  /// **'Messages to your email address.'**
+  String get notifPrefsEmailEnabledDesc;
+
+  /// Prefs channel description for the deprecated promotional_opt_in — kept so older servers still render nicely.
+  ///
+  /// In en, this message translates to:
+  /// **'Marketing and newsletters.'**
+  String get notifPrefsPromotionalOptInDesc;
+
+  /// Category toggle label.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookings & trips'**
+  String get notifPrefsBookingUpdates;
+
+  /// Category toggle description.
+  ///
+  /// In en, this message translates to:
+  /// **'Updates about your bookings and trips.'**
+  String get notifPrefsBookingUpdatesDesc;
+
+  /// Category toggle label.
+  ///
+  /// In en, this message translates to:
+  /// **'Payments'**
+  String get notifPrefsPayment;
+
+  /// Category toggle description.
+  ///
+  /// In en, this message translates to:
+  /// **'Payments, refunds, top-ups and payouts.'**
+  String get notifPrefsPaymentDesc;
+
+  /// Category toggle label.
+  ///
+  /// In en, this message translates to:
+  /// **'Promotions'**
+  String get notifPrefsPromotions;
+
+  /// Category toggle description.
+  ///
+  /// In en, this message translates to:
+  /// **'Offers and news. Off until you turn it on.'**
+  String get notifPrefsPromotionsDesc;
+
+  /// Always-on category label.
+  ///
+  /// In en, this message translates to:
+  /// **'Safety'**
+  String get notifPrefsSafety;
+
+  /// Always-on description under Safety.
+  ///
+  /// In en, this message translates to:
+  /// **'SOS and trip emergencies. Always on.'**
+  String get notifPrefsSafetyAlwaysOn;
+
+  /// Always-on category label.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get notifPrefsAccount;
+
+  /// Always-on description under Account.
+  ///
+  /// In en, this message translates to:
+  /// **'Password or email changes, documents, support replies. Always on.'**
+  String get notifPrefsAccountAlwaysOn;
 
   /// Preference toggle.
   ///
@@ -4649,6 +4745,162 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t remove.'**
   String get favouriteDeleteFailed;
+
+  /// P-26 — section header for Home/Work/Custom places.
+  ///
+  /// In en, this message translates to:
+  /// **'PLACES'**
+  String get favouritesPlacesHeader;
+
+  /// P-26 — section header for the older favourite-routes list.
+  ///
+  /// In en, this message translates to:
+  /// **'SAVED ROUTES'**
+  String get favouritesRoutesHeader;
+
+  /// Default label for the Home place.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get favouritePlaceHome;
+
+  /// Default label for the Work place.
+  ///
+  /// In en, this message translates to:
+  /// **'Work'**
+  String get favouritePlaceWork;
+
+  /// P-26 — affordance when the user hasn't set Home.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Home'**
+  String get favouritePlaceAddHome;
+
+  /// P-26 — affordance when the user hasn't set Work.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Work'**
+  String get favouritePlaceAddWork;
+
+  /// P-26 — FAB tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a place'**
+  String get favouritePlaceAddFabTooltip;
+
+  /// Add-place sheet title.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a place'**
+  String get favouritePlaceAddTitle;
+
+  /// Edit-place sheet title.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit place'**
+  String get favouritePlaceEditTitle;
+
+  /// Picker label for kind (home/work/custom).
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get favouritePlaceKindLabel;
+
+  /// Kind value.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get favouritePlaceKindCustom;
+
+  /// Picker field label for the place's name.
+  ///
+  /// In en, this message translates to:
+  /// **'Label'**
+  String get favouritePlaceLabelLabel;
+
+  /// Picker field label for the destination stop.
+  ///
+  /// In en, this message translates to:
+  /// **'Destination stop'**
+  String get favouritePlaceStopLabel;
+
+  /// Add-place sheet primary button.
+  ///
+  /// In en, this message translates to:
+  /// **'Save place'**
+  String get favouritePlaceSaveCta;
+
+  /// Overflow action on custom places.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit label'**
+  String get favouritePlaceEditLabelAction;
+
+  /// Overflow action on places.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get favouritePlaceDeleteAction;
+
+  /// Place delete confirm title.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this place?'**
+  String get favouritePlaceDeleteConfirmTitle;
+
+  /// Place delete confirm body.
+  ///
+  /// In en, this message translates to:
+  /// **'You can add it again later.'**
+  String get favouritePlaceDeleteConfirmBody;
+
+  /// Place save failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save. Please try again.'**
+  String get favouritePlaceSaveFailed;
+
+  /// Place delete failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t remove. Please try again.'**
+  String get favouritePlaceDeleteFailed;
+
+  /// Live tracking — share sheet title.
+  ///
+  /// In en, this message translates to:
+  /// **'Share this trip'**
+  String get trackTripShareSheetTitle;
+
+  /// Live tracking — share sheet primary action.
+  ///
+  /// In en, this message translates to:
+  /// **'Mint share link'**
+  String get trackTripShareMintCta;
+
+  /// Live tracking — reused cached share link helper.
+  ///
+  /// In en, this message translates to:
+  /// **'Using a link that expires {remaining}.'**
+  String trackTripShareReuseHint(String remaining);
+
+  /// Live tracking — revoke all active share links.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop sharing'**
+  String get trackTripShareStopAction;
+
+  /// Live tracking — revoke success toast.
+  ///
+  /// In en, this message translates to:
+  /// **'Share links revoked.'**
+  String get trackTripShareStoppedToast;
+
+  /// Live tracking — mint/revoke failure toast.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t share. Please try again.'**
+  String get trackTripShareFailedToast;
 
   /// Semantics label on the Home bell button.
   ///

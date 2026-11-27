@@ -3,6 +3,7 @@ import 'package:trosky_core/trosky_core.dart';
 
 import '../client/api_client.dart';
 import '../dto/booking_dto.dart';
+import '../dto/favourite_place_dto.dart';
 import '../dto/paginated.dart';
 import '../dto/safety_dto.dart';
 
@@ -67,6 +68,17 @@ abstract interface class BookingRepository {
   /// `GET /bookings/{booking_id}/rating` — null when the passenger hasn't
   /// rated yet. 404 at the HTTP layer surfaces as `NotFoundFailure`.
   Future<Result<RatingResponse>> getRating(String bookingId);
+
+  /// `POST /bookings/{booking_id}/share` — mint a public share link
+  /// (12 h TTL). Returns `{url, token, expires_at}`. The backend
+  /// enforces that only the booking's passenger may mint; a paid
+  /// booking is required. Live tracking opens the URL in a browser.
+  Future<Result<TripShareLinkResponse>> mintShareLink(String bookingId);
+
+  /// `DELETE /bookings/{booking_id}/share` — revoke every active
+  /// share link for this booking. Later calls to those URLs answer
+  /// 410 `reason: stopped`.
+  Future<Result<void>> revokeShareLinks(String bookingId);
 }
 
 /// [BookingRepository] against the backend.
@@ -152,6 +164,17 @@ class LiveBookingRepository implements BookingRepository {
     () => _dio.get<Object?>('/bookings/$bookingId/rating'),
     (data) => RatingResponse.fromJson(jsonObject(data)),
   );
+
+  @override
+  Future<Result<TripShareLinkResponse>> mintShareLink(String bookingId) =>
+      apiCall(
+        () => _dio.post<Object?>('/bookings/$bookingId/share', data: const {}),
+        (data) => TripShareLinkResponse.fromJson(jsonObject(data)),
+      );
+
+  @override
+  Future<Result<void>> revokeShareLinks(String bookingId) =>
+      apiCall(() => _dio.delete<Object?>('/bookings/$bookingId/share'), (_) {});
 }
 
 /// The backend's string for [reason] ("change_of_plans"), matching the

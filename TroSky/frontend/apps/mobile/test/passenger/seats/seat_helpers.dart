@@ -267,6 +267,12 @@ class RecordingBookings implements BookingRepository {
   @override
   Future<Result<RatingResponse>> getRating(String bookingId) =>
       _inner.getRating(bookingId);
+  @override
+  Future<Result<TripShareLinkResponse>> mintShareLink(String bookingId) =>
+      _inner.mintShareLink(bookingId);
+  @override
+  Future<Result<void>> revokeShareLinks(String bookingId) =>
+      _inner.revokeShareLinks(bookingId);
 }
 
 /// The app's [ProviderContainer], to read what the screens see.

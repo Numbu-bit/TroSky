@@ -4,6 +4,7 @@ import '../client/interceptors.dart';
 import '../dto/auth_dto.dart';
 import '../dto/booking_dto.dart';
 import '../dto/driver_dto.dart';
+import '../dto/favourite_place_dto.dart';
 import '../dto/notification_dto.dart';
 import '../dto/paginated.dart';
 import '../dto/payment_dto.dart';
@@ -223,6 +224,9 @@ class MockUserRepository implements UserRepository {
       pushEnabled: true,
       smsEnabled: true,
       emailEnabled: true,
+      bookingUpdatesEnabled: true,
+      paymentEnabled: true,
+      promotionsEnabled: false,
       promotionalOptIn: false,
     ),
   );
@@ -235,6 +239,42 @@ class MockUserRepository implements UserRepository {
       code: 'NOT_IMPLEMENTED',
       message:
           'Updating notification preferences is not available in mock mode.',
+    ),
+  );
+
+  // Step 21/close-stubs-C: favourite-places. Mock mode returns an
+  // empty list and NOT_IMPLEMENTED for the mutations so widget tests
+  // supply their own fakes.
+  @override
+  Future<Result<List<FavouritePlaceResponse>>> listFavouritePlaces() async =>
+      const Ok([]);
+
+  @override
+  Future<Result<FavouritePlaceResponse>> addFavouritePlace(
+    FavouritePlaceCreateRequest request,
+  ) async => const Err(
+    UnknownFailure(
+      code: 'NOT_IMPLEMENTED',
+      message: 'Adding places is not available in mock mode.',
+    ),
+  );
+
+  @override
+  Future<Result<FavouritePlaceResponse>> updateFavouritePlace(
+    String placeId,
+    FavouritePlaceUpdateRequest request,
+  ) async => const Err(
+    UnknownFailure(
+      code: 'NOT_IMPLEMENTED',
+      message: 'Editing places is not available in mock mode.',
+    ),
+  );
+
+  @override
+  Future<Result<void>> deleteFavouritePlace(String placeId) async => const Err(
+    UnknownFailure(
+      code: 'NOT_IMPLEMENTED',
+      message: 'Deleting places is not available in mock mode.',
     ),
   );
 }
@@ -412,6 +452,25 @@ class MockBookingRepository implements BookingRepository {
   @override
   Future<Result<RatingResponse>> getRating(String bookingId) async => const Err(
     UnknownFailure(code: 'NOT_FOUND', message: 'No rating in mock mode.'),
+  );
+
+  // Step 21/close-stubs-C: booking share links. Mock mode returns
+  // NOT_IMPLEMENTED so widget tests supply their own fakes.
+  @override
+  Future<Result<TripShareLinkResponse>> mintShareLink(String bookingId) async =>
+      const Err(
+        UnknownFailure(
+          code: 'NOT_IMPLEMENTED',
+          message: 'Share links are not available in mock mode.',
+        ),
+      );
+
+  @override
+  Future<Result<void>> revokeShareLinks(String bookingId) async => const Err(
+    UnknownFailure(
+      code: 'NOT_IMPLEMENTED',
+      message: 'Revoking share links is not available in mock mode.',
+    ),
   );
 }
 

@@ -3,6 +3,7 @@ import 'package:trosky_core/trosky_core.dart';
 
 import '../client/api_client.dart';
 import '../dto/auth_dto.dart';
+import '../dto/favourite_place_dto.dart';
 import '../dto/notification_dto.dart';
 import '../dto/user_dto.dart';
 
@@ -60,6 +61,27 @@ abstract interface class UserRepository {
   /// `DELETE /users/me/favourite-routes/{id}` — forget a pinned
   /// commute route. The list order is by `createdAt`.
   Future<Result<void>> deleteFavouriteRoute(String favouriteId);
+
+  /// `GET /users/me/favourite-places` — saved places (Home / Work /
+  /// Custom). Newest first by `createdAt`.
+  Future<Result<List<FavouritePlaceResponse>>> listFavouritePlaces();
+
+  /// `POST /users/me/favourite-places` — add a place. The backend
+  /// enforces "at most one home" and "at most one work"; set a
+  /// matching kind again to replace the earlier one, on the backend.
+  Future<Result<FavouritePlaceResponse>> addFavouritePlace(
+    FavouritePlaceCreateRequest request,
+  );
+
+  /// `PATCH /users/me/favourite-places/{id}` — edit label (custom
+  /// places). Backend ignores attempts to rename Home/Work.
+  Future<Result<FavouritePlaceResponse>> updateFavouritePlace(
+    String placeId,
+    FavouritePlaceUpdateRequest request,
+  );
+
+  /// `DELETE /users/me/favourite-places/{id}`.
+  Future<Result<void>> deleteFavouritePlace(String placeId);
 
   /// `GET /users/me/notification-preferences` — channel-level opt-outs
   /// (push / SMS / email + promotional). Category-level preferences
@@ -161,6 +183,44 @@ class LiveUserRepository implements UserRepository {
   @override
   Future<Result<void>> deleteFavouriteRoute(String favouriteId) => apiCall(
     () => _dio.delete<Object?>('/users/me/favourite-routes/$favouriteId'),
+    (_) {},
+  );
+
+  @override
+  Future<Result<List<FavouritePlaceResponse>>> listFavouritePlaces() => apiCall(
+    () => _dio.get<Object?>('/users/me/favourite-places'),
+    (data) => [
+      for (final p in (data as List? ?? const []))
+        FavouritePlaceResponse.fromJson(jsonObject(p)),
+    ],
+  );
+
+  @override
+  Future<Result<FavouritePlaceResponse>> addFavouritePlace(
+    FavouritePlaceCreateRequest request,
+  ) => apiCall(
+    () => _dio.post<Object?>(
+      '/users/me/favourite-places',
+      data: request.toJson(),
+    ),
+    (data) => FavouritePlaceResponse.fromJson(jsonObject(data)),
+  );
+
+  @override
+  Future<Result<FavouritePlaceResponse>> updateFavouritePlace(
+    String placeId,
+    FavouritePlaceUpdateRequest request,
+  ) => apiCall(
+    () => _dio.patch<Object?>(
+      '/users/me/favourite-places/$placeId',
+      data: request.toJson(),
+    ),
+    (data) => FavouritePlaceResponse.fromJson(jsonObject(data)),
+  );
+
+  @override
+  Future<Result<void>> deleteFavouritePlace(String placeId) => apiCall(
+    () => _dio.delete<Object?>('/users/me/favourite-places/$placeId'),
     (_) {},
   );
 

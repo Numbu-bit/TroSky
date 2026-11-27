@@ -8,6 +8,7 @@ export 'src/client/server_wake.dart';
 export 'src/dto/auth_dto.dart';
 export 'src/dto/booking_dto.dart';
 export 'src/dto/driver_dto.dart';
+export 'src/dto/favourite_place_dto.dart';
 export 'src/dto/notification_dto.dart';
 export 'src/dto/paginated.dart';
 export 'src/dto/payment_dto.dart';
