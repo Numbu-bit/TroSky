@@ -751,6 +751,23 @@ class _ForgetfulFavourites implements UserRepository {
   Future<Result<NotificationPreferencesResponse>> updateNotificationPreferences(
     NotificationPreferencesUpdateRequest request,
   ) => _inner.updateNotificationPreferences(request);
+
+  @override
+  Future<Result<MessageResponse>> changePassword(
+    ChangePasswordRequest request, {
+    required String idempotencyKey,
+  }) => _inner.changePassword(request, idempotencyKey: idempotencyKey);
+
+  @override
+  Future<Result<EmailChangeStartedResponse>> changeEmail(
+    ChangeEmailRequest request, {
+    required String idempotencyKey,
+  }) => _inner.changeEmail(request, idempotencyKey: idempotencyKey);
+
+  @override
+  Future<Result<UserResponse>> confirmEmailChange(
+    ChangeEmailConfirmRequest request,
+  ) => _inner.confirmEmailChange(request);
 }
 
 /// A search whose results depend on the query's `travelDate`. Any date

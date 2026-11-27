@@ -46,6 +46,20 @@ class _FakeUser implements UserRepository {
   Future<Result<NotificationPreferencesResponse>> updateNotificationPreferences(
     NotificationPreferencesUpdateRequest request,
   ) async => const Err(NetworkFailure());
+  @override
+  Future<Result<MessageResponse>> changePassword(
+    ChangePasswordRequest request, {
+    required String idempotencyKey,
+  }) async => const Err(NetworkFailure());
+  @override
+  Future<Result<EmailChangeStartedResponse>> changeEmail(
+    ChangeEmailRequest request, {
+    required String idempotencyKey,
+  }) async => const Err(NetworkFailure());
+  @override
+  Future<Result<UserResponse>> confirmEmailChange(
+    ChangeEmailConfirmRequest request,
+  ) async => const Err(NetworkFailure());
 }
 
 FavouriteRouteResponse _f({required String id, String? label}) =>
