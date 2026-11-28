@@ -246,7 +246,12 @@ class AlightingService:
                 f"Your ride on booking {booking.booking_reference} has ended. Going further? "
                 f"See vehicles leaving from {stop.name} soon."
             ),
-            data={"booking_id": str(booking.id), "stop_id": str(stop_id), "action": "onward_trips"},
+            data={
+                "booking_id": str(booking.id),
+                "stop_id": str(stop_id),
+                "stop_name": stop.name,
+                "action": "onward_trips",
+            },
         )
 
     async def _nearest_stop(self, trip: Trip, geometry: RouteGeometry) -> uuid.UUID | None:

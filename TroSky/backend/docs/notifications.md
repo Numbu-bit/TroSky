@@ -57,12 +57,14 @@ switch and the topic's switch are both on**:
 | --- | --- | --- | --- |
 | Booking accepted | The driver accepted; pay now | `booking_id`, `action: "pay"` | `/bookings/{booking_id}` |
 | Moved to another vehicle | The booking was moved to another trip | `booking_id`, `trip_id`, `action: "moved"` | `/bookings/{booking_id}` |
-| Booking not accepted | No trip could take it | `booking_id`, `action: "search_again"` | `/search` |
+| Booking not accepted | No trip could take it | `booking_id`, `action: "search_again"`, `origin_stop_id`, `origin_stop_name`, `destination_stop_id`, `destination_stop_name` | `/search?origin_stop_id=…&origin_stop_name=…&destination_stop_id=…&destination_stop_name=…` |
 | Booking confirmed | Payment went through | `booking_id` | `/bookings/{booking_id}` |
 | Trip cancelled | The trip was cancelled | `booking_id`, `trip_id` | `/bookings/{booking_id}` |
-| You're at {stop} | Got off; offers a ride on | `booking_id`, `stop_id`, `action: "onward_trips"` | `/search?origin_stop_id={stop_id}` |
+| You're at {stop} | Got off; offers a ride on | `booking_id`, `stop_id`, `stop_name`, `action: "onward_trips"` | `/search?origin_stop_id={stop_id}&origin_stop_name={stop_name}` |
 
 All `booking_updates`.
+
+The two Search links carry each stop's name beside its id, percent-encoded (a space is `%20`), so the app can fill in the Search form without another request. "You're at {stop}" has no destination: the passenger has arrived. Notifications stored before the names were added keep links with the ids only.
 
 ### Drivers
 
