@@ -364,7 +364,7 @@ export function ComplaintPage() {
               ) : null}
               {data.trip_id && can('trips:manage', 'trips:monitor_live') ? (
                 <Link to={`/trips/${data.trip_id}`} className="link-inline">
-                  Open the trip
+                  View trip
                 </Link>
               ) : null}
             </p>

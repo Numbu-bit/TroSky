@@ -169,7 +169,7 @@ function BookingBody({ booking }: { booking: Booking }) {
           </p>
           {can('trips:manage', 'trips:monitor_live') ? (
             <Link to={`/trips/${booking.trip_id}`} className="link-inline text-sm">
-              Open the trip
+              View trip
             </Link>
           ) : null}
         </Block>
