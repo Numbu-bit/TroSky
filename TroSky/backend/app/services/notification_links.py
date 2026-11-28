@@ -9,13 +9,17 @@ listed in ``docs/notifications.md``; keep the two in step.
 
 A ``deep_link`` key in ``data`` wins, for notifications written with one
 (demo data, and announcements that point somewhere specific).
+
+Search links carry each stop's name beside its id, so the app can fill in
+the Search form without looking the stops up. Notifications stored before
+the names were added link with the ids alone.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import Any
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 
 def deep_link_for(data: Mapping[str, Any]) -> str | None:
@@ -30,10 +34,13 @@ def deep_link_for(data: Mapping[str, Any]) -> str | None:
 
     # Passengers
     if action == "onward_trips":
-        stop_id = data.get("stop_id")
-        return f"/search?{urlencode({'origin_stop_id': stop_id})}" if stop_id else "/search"
+        # They've arrived, so there's no destination to fill in.
+        return _search_link(origin=(data.get("stop_id"), data.get("stop_name")))
     if action == "search_again":
-        return "/search"
+        return _search_link(
+            origin=(data.get("origin_stop_id"), data.get("origin_stop_name")),
+            destination=(data.get("destination_stop_id"), data.get("destination_stop_name")),
+        )
 
     # Drivers
     if action in ("booking_request", "trip_assignment", "trip_cancelled") and trip_id:
@@ -52,3 +59,18 @@ def deep_link_for(data: Mapping[str, Any]) -> str | None:
     if booking_id:
         return f"/bookings/{booking_id}"
     return None
+
+
+def _search_link(*, origin: tuple[Any, Any], destination: tuple[Any, Any] = (None, None)) -> str:
+    """``/search`` with whichever stops are known, each as its id and name
+    (``origin_stop_id``, ``origin_stop_name``, then the same for the
+    destination). A name is only sent with its id. Spaces are ``%20``, not
+    ``+``, so every URL parser reads them the same way."""
+    query: dict[str, str] = {}
+    for end, (stop_id, name) in (("origin", origin), ("destination", destination)):
+        if not stop_id:
+            continue
+        query[f"{end}_stop_id"] = str(stop_id)
+        if isinstance(name, str) and name:
+            query[f"{end}_stop_name"] = name
+    return f"/search?{urlencode(query, quote_via=quote)}" if query else "/search"

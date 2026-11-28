@@ -11,6 +11,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from urllib.parse import quote, urlencode
 
 import pytest
 from sqlalchemy import select
@@ -43,6 +44,7 @@ from app.schemas.booking import BookingCreateRequest, PassengerInput
 from app.services.alighting_service import AlightingService
 from app.services.booking_acceptance_service import BookingAcceptanceService
 from app.services.booking_service import BookingService
+from app.services.notification_links import deep_link_for
 from app.services.trip_service import TripService
 from app.services.wallet_service import WalletService
 from app.utilities.geo import wkb_to_latlng
@@ -114,6 +116,16 @@ async def _titles(session: AsyncSession, user_id: uuid.UUID) -> list[str]:
         .order_by(Notification.created_at)
     )
     return list(rows)
+
+
+async def _data(session: AsyncSession, user_id: uuid.UUID, title: str) -> dict[str, str]:
+    data = await session.scalar(
+        select(Notification.data).where(
+            Notification.user_id == user_id, Notification.title == title
+        )
+    )
+    assert data is not None, f"no {title!r} notification"
+    return data
 
 
 async def _kinds(session: AsyncSession, **filters: object) -> list[tuple[str, str]]:
@@ -334,6 +346,28 @@ class TestMovingToAnotherVehicle:
         assert ended.trip_id == scenario.trip_id
         assert await _active_seats(db_session, scenario.trip_id) == set()
         assert "Booking not accepted" in await _titles(db_session, booking.passenger_id)
+        # Tapping it opens Search filled in for the same ride.
+        data = await _data(db_session, booking.passenger_id, "Booking not accepted")
+        names = {
+            index: (await db_session.get(Stop, scenario.stop_ids[index])).name  # type: ignore[union-attr]
+            for index in (LEGON, CIRCLE)
+        }
+        assert data["origin_stop_id"] == str(scenario.stop_ids[LEGON])
+        assert data["origin_stop_name"] == names[LEGON]
+        assert data["destination_stop_id"] == str(scenario.stop_ids[CIRCLE])
+        assert data["destination_stop_name"] == names[CIRCLE]
+        assert deep_link_for(data) == (
+            "/search?"
+            + urlencode(
+                {
+                    "origin_stop_id": data["origin_stop_id"],
+                    "origin_stop_name": names[LEGON],
+                    "destination_stop_id": data["destination_stop_id"],
+                    "destination_stop_name": names[CIRCLE],
+                },
+                quote_via=quote,
+            )
+        )
 
     async def test_a_vehicle_without_enough_free_seats_is_passed_over(
         self, db_session: AsyncSession, make_user, accepting: Settings
@@ -609,6 +643,9 @@ class TestGettingOff:
         assert reservation.status == ReservationStatus.COMPLETED
         legon = (await db_session.get(Stop, scenario.stop_ids[LEGON])).name  # type: ignore[union-attr]
         assert f"You're at {legon}" in await _titles(db_session, booking.passenger_id)
+        onward = await _data(db_session, booking.passenger_id, f"You're at {legon}")
+        assert onward["stop_id"] == str(scenario.stop_ids[LEGON])
+        assert onward["stop_name"] == legon
         share = (
             booking.fare_amount * get_settings().DRIVER_EARNINGS_SHARE_PERCENT / Decimal(100)
         ).quantize(Decimal("0.01"))

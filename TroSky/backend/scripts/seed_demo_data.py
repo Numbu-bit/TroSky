@@ -627,6 +627,7 @@ async def ensure_demo_inbox(session: AsyncSession, passenger: User) -> None:
                     {
                         "booking_id": str(completed.id),
                         "stop_id": str(completed.destination_stop_id),
+                        "stop_name": stop_name,
                         "action": "onward_trips",
                     },
                     True,

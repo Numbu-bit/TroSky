@@ -43,6 +43,7 @@ from app.models.bookings import (
 )
 from app.models.driver_actions import ActedAs, DriverActionKind
 from app.models.notifications import NotificationTopic
+from app.models.routes import Stop
 from app.models.trips import AssignmentResponse, Trip, TripStatus
 from app.repositories.booking_offer_repository import BookingOfferRepository, BookingRequest
 from app.repositories.booking_repository import BookingRepository, SeatAlreadyReservedError
@@ -586,7 +587,11 @@ class BookingAcceptanceService:
                 f"Booking {booking.booking_reference}: {ending.told}, and no other vehicle "
                 "going your way had a seat. You have not been charged. Please search again."
             ),
-            data={"booking_id": str(booking.id), "action": "search_again"},
+            data={
+                "booking_id": str(booking.id),
+                "action": "search_again",
+                **await self._search_again_stops(booking),
+            },
         )
         announce(
             self._session,
@@ -595,6 +600,21 @@ class BookingAcceptanceService:
             trip_id=booking.trip_id,
             reason=ending.reason,
         )
+
+    async def _search_again_stops(self, booking: Booking) -> dict[str, str]:
+        """The booking's pickup and destination, as ids and names, so tapping
+        "Booking not accepted" opens Search filled in for the same ride."""
+        trip = await self._trips.get_by_id(booking.trip_id)
+        if trip is None:
+            return {}
+        boards_at, alights_at = await self._segment(booking, trip)
+        stops: dict[str, str] = {}
+        for end, stop_id in (("origin", boards_at), ("destination", alights_at)):
+            stop = await self._session.get(Stop, stop_id)
+            if stop is not None:
+                stops[f"{end}_stop_id"] = str(stop.id)
+                stops[f"{end}_stop_name"] = stop.name
+        return stops
 
     async def _forget_held_seats(self, trip_id: uuid.UUID) -> None:
         if self._redis is not None:

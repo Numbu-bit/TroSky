@@ -88,6 +88,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
   is signed in and allowed to watch the trip: it is not cut at the access token's 15 minutes, and
   a logout or suspension still closes it within `WS_AUTH_RECHECK_SECONDS`. Rate limit
   `auth:ws_ticket`, 30 a minute.
+- **Stop names in the Search links of notifications** (G-notification-deep-link-stop-names).
+  "Booking not accepted" now carries the booking's pickup and destination
+  (`origin_stop_id`/`origin_stop_name`, `destination_stop_id`/`destination_stop_name`) in `data`,
+  and its `deep_link` is `/search?` with all four (it was a bare `/search`). "You're at {stop}"
+  adds `stop_name`, and its link adds `origin_stop_name`. Names are percent-encoded (`%20` for a
+  space). The app can fill in the Search form straight from the link. Older notifications keep
+  their id-only links.
 
 ### Deprecated
 

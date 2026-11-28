@@ -22,6 +22,7 @@ from app.services.notification_service import delivers
 BOOKING = str(uuid.uuid4())
 TRIP = str(uuid.uuid4())
 STOP = str(uuid.uuid4())
+OTHER_STOP = str(uuid.uuid4())
 
 
 class TestDeepLinks:
@@ -33,10 +34,38 @@ class TestDeepLinks:
             ({"booking_id": BOOKING, "action": "pay"}, f"/bookings/{BOOKING}"),
             ({"booking_id": BOOKING, "trip_id": TRIP, "action": "moved"}, f"/bookings/{BOOKING}"),
             ({"booking_id": BOOKING, "trip_id": TRIP}, f"/bookings/{BOOKING}"),
+            # Stored before stop names were added: ids only, or a bare /search.
             ({"booking_id": BOOKING, "action": "search_again"}, "/search"),
             (
                 {"booking_id": BOOKING, "stop_id": STOP, "action": "onward_trips"},
                 f"/search?origin_stop_id={STOP}",
+            ),
+            # With the names: spaces as %20, and & or ' can't break the query.
+            (
+                {
+                    "booking_id": BOOKING,
+                    "stop_id": STOP,
+                    "stop_name": "Kwame Nkrumah Circle",
+                    "action": "onward_trips",
+                },
+                f"/search?origin_stop_id={STOP}&origin_stop_name=Kwame%20Nkrumah%20Circle",
+            ),
+            (
+                {
+                    "booking_id": BOOKING,
+                    "action": "search_again",
+                    "origin_stop_id": STOP,
+                    "origin_stop_name": "Madina",
+                    "destination_stop_id": OTHER_STOP,
+                    "destination_stop_name": "Shell & Kofi's",
+                },
+                f"/search?origin_stop_id={STOP}&origin_stop_name=Madina"
+                f"&destination_stop_id={OTHER_STOP}&destination_stop_name=Shell%20%26%20Kofi%27s",
+            ),
+            # A name never goes without its id.
+            (
+                {"booking_id": BOOKING, "stop_name": "Madina", "action": "onward_trips"},
+                "/search",
             ),
             # Drivers
             (
